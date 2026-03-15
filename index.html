@@ -107,10 +107,29 @@
   font-size:1rem;
   letter-spacing:.4px;
 }
-    .hero{
-      padding:30px 8px 28px 0;
-      max-width:700px;
-    }
+   .hero{
+  padding:30px 8px 28px 0;
+  max-width:900px;
+}
+
+.hero-layout{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.hero-main{
+  flex:1;
+  min-width:280px;
+}
+
+.side-feature-grid{
+  margin-top:0;
+  max-width:360px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-self:flex-start;
+}
     .hero-badge{
       display:inline-flex;align-items:center;gap:8px;
       background:#fff;border:1px solid var(--line);border-radius:999px;
@@ -270,19 +289,23 @@
     .bottom-switch button{margin-left:6px}
 
     @media (max-width: 1080px){
-      .page{grid-template-columns:1fr}
-      .left-panel{padding:26px 20px 10px}
-      .feature-grid{grid-template-columns:1fr 1fr}
-      .right-panel{padding:12px 16px 28px}
-    }
-    @media (max-width: 640px){
-      .brand-top{justify-content:center;text-align:center}
-      .brand-top-vertical{gap:10px}
-      .hero{text-align:center;padding-right:0}
-      .feature-grid{grid-template-columns:1fr}
-      .login-card{padding:22px 18px;border-radius:24px}
-      .row-between{flex-direction:column;align-items:flex-start}
-    }
+  .page{grid-template-columns:1fr}
+  .left-panel{padding:26px 20px 10px}
+  .feature-grid{grid-template-columns:1fr 1fr}
+  .side-feature-grid{max-width:100%}
+  .hero-layout{flex-direction:column}
+  .right-panel{padding:12px 16px 28px}
+}
+   @media (max-width: 640px){
+  .brand-top{justify-content:center;text-align:center}
+  .brand-top-vertical{gap:10px}
+  .hero{text-align:center;padding-right:0}
+  .hero-layout{flex-direction:column}
+  .feature-grid{grid-template-columns:1fr}
+  .side-feature-grid{grid-template-columns:1fr}
+  .login-card{padding:22px 18px;border-radius:24px}
+  .row-between{flex-direction:column;align-items:flex-start}
+}
   </style>
 </head>
 <body>
@@ -300,27 +323,28 @@
   </div>
 </div>
 
-        <div class="hero">
-          <div class="hero-badge"><i class="fa-solid fa-shield-halved"></i> Secure School Access Portal</div>
-          <h2>Official QBank Login</h2>
-          <p>
-            Sign in with your school email or continue with Google to access question generation,
-            question bank tools, exam workflows, and your own protected teaching data.
-          </p>
+        <div class="hero hero-layout">
+  <div class="hero-main">
+    <h2>QBank Login</h2>
+    <p>
+      Sign in with your school email or continue with Google to access question generation,
+      question bank tools, exam workflows, and your own protected teaching data.
+    </p>
+  </div>
 
-          <div class="feature-grid">
-            <div class="feature-card">
-              <i class="fa-solid fa-layer-group"></i>
-              <h3>Question Bank</h3>
-              <p>Create, review, organize, and save academic content in one place.</p>
-            </div>
-                 <div class="feature-card">
-              <i class="fa-solid fa-wand-magic-sparkles"></i>
-              <h3>AI Workflow</h3>
-              <p>Generate MCQs, descriptive questions, and structured academic content faster.</p>
-            </div>
-          </div>
-        </div>
+  <div class="feature-grid side-feature-grid">
+    <div class="feature-card">
+      <i class="fa-solid fa-layer-group"></i>
+      <h3>Question Bank</h3>
+      <p>Create, review, organize, and save academic content in one place.</p>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      <h3>AI Workflow</h3>
+      <p>Generate MCQs, descriptive questions, and structured academic content faster.</p>
+    </div>
+  </div>
+</div>
       </div>
 
       <div class="footer-note">Official SciMentra Foundation academic access for teachers and authorized staff.</div>
