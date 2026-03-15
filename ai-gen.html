@@ -3274,9 +3274,9 @@ questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${m
       }
 
       // Normalize LaTeX delimiters before any option shuffling
-        questionData.parsedBody   = __fixLatex(questionData.parsedBody || '');
-        questionData.parsedAnswer = __fixLatex(questionData.parsedAnswer || '');
-        questionData.parsedMeta   = __fixLatex(questionData.parsedMeta || '');
+        questionData.parsedBody   = questionData.parsedBody || '';
+questionData.parsedAnswer = questionData.parsedAnswer || '';
+questionData.parsedMeta   = questionData.parsedMeta || '';
 
 // Randomize A/B/C/D and remap the Ans: letters accordingly
 shuffleOptionsForQuestion(questionData);
