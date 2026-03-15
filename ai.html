@@ -1,0 +1,3518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>AI Question Generator | St. Patrick's School</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+   <script>
+  window.MathJax = {
+    loader: { load: ['[tex]/noerrors'] },
+    tex: {
+      inlineMath: [['\\(', '\\)']],   // inline only \( ... \)
+      displayMath: [['\\[', '\\]']],  // display only \[ ... ]
+      processEscapes: true,
+      packages: {'[+]': ['noerrors']}
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+    <style>
+      :root {
+        --header-height: 90px;
+        --chat-bar-height: 65px;
+      }
+      html {
+        height: -webkit-fill-available;
+      }
+      body {
+  margin: 0; padding: 0; font-family: 'Inter','Segoe UI', Arial, sans-serif;
+  background-color: #f4f8fc;
+  min-height: 100vh;
+  height: auto;              /* let page grow on desktop */
+  overflow-y: auto;          /* enable page scroll by default */
+}
+      body::after {
+        content: "St. Patrick's\A IIT & NEET FOUNDATION";
+        white-space: pre; position: fixed; top: 50%; left: 50%;
+        transform: translate(-50%, -50%); font-size: 5vw; font-weight: bold;
+        color: rgba(15, 61, 107, 0.04); z-index: -1; text-align: center;
+        pointer-events: none; line-height: 1.2;
+      }
+      .page-wrapper {
+        display: flex; flex-direction: column; height: 100%;
+      }
+      
+      #main-header {
+        background: linear-gradient(90deg, #1762a7, #0f3d6b);
+        color: #fff; border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;
+        min-height: var(--header-height); display: flex; flex-direction: column;
+        align-items: center; justify-content: center; padding: 15px 10px 18px 10px;
+        box-sizing: border-box; flex-shrink: 0;
+          position: sticky; top: 0; z-index: 1200;
+      }
+      #main-header .school-title { font-size: 1.8em; font-weight: bold; margin:0; }
+      #main-header .subtitle { font-size: 1.05em; color: #e0eaff; margin-top: 5px; }
+
+     main {
+  flex-grow: 1;
+  display: flex; flex-direction: column;
+}
+/* Desktop override: ensure page scrolls, not the inner panel */
+@media (hover: hover) and (pointer: fine) {
+  main { overflow: visible; }
+}
+      
+     .review-container {
+  width: 100%; max-width: 800px; margin: auto; background: #fff;
+  border-radius: 16px; box-shadow: 0 4px 18px rgba(0, 27, 68, 0.1);
+  display: flex; flex-direction: column; flex-grow: 1; overflow: visible; /* <- allow dropdown to overflow */
+  margin-top: 20px; margin-bottom: 20px;
+}
+
+      .setup-form-container { padding: 25px 30px; }
+      .setup-form-container h2 { text-align: center; color: #0f3d6b; margin-top: 0; margin-bottom: 20px; }
+      .setup-form-container .form-group { margin-bottom: 15px; }
+      .setup-form-container label { font-weight: 600; margin-bottom: 5px; color: #185496; display: block; }
+      .setup-form-container input[type="text"] { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1.3px solid #bcd6ef; font-size: 1em; background: #f7fafd; box-sizing: border-box; }
+      .setup-form-container button[type="submit"] { background: linear-gradient(90deg, #1762a7, #0f3d6b); color: #fff; font-weight: bold; cursor: pointer; padding: 12px 0; margin-top: 15px; width: 100%; border-radius: 8px; border: none; font-size: 1.05em; }
+
+      .custom-dropdown { position: relative; }
+      .selected-option { padding: 10px 12px; color: #12416c; background: #f7fafd; border-radius: 6px; border: 1.3px solid #bcd6ef; cursor: pointer; }
+      .dropdown-options {
+  display: none; position: absolute; top: 100%; left: 0; right: 0;
+  background: #fff; border: 1.3px solid #bcd6ef; border-top: none;
+  border-radius: 0 0 6px 6px; box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1);
+  z-index: 2000;
+  max-height: min(280px, 45vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;   /* smooth inner scroll on mobile */
+  touch-action: pan-y;                 /* allow vertical scroll inside */
+}
+
+      .custom-dropdown.open .dropdown-options { display: block; }
+      .dropdown-options div[data-value] { padding: 10px 15px; cursor: pointer; }
+      .dropdown-options div[data-value]:hover { background: #e0eaff; }
+
+      .chat-ui-bar {
+        background: linear-gradient(90deg, #1762a7, #0f3d6b);
+        color: white; flex-shrink: 0; padding: 12px 15px;
+        display: flex; align-items: center; box-sizing: border-box;
+      }
+      .ai-chat-header {
+        justify-content: space-between;
+        flex-direction: column; align-items: flex-start;
+        justify-content: center; gap: 5px;
+      }
+      .chat-header-line { width: 100%; }
+      .chat-header-line.buttons { margin-top: 8px; display: flex; gap: 10px; }
+      .ai-chat-header p { margin: 0; font-size: 0.9em; line-height: 1.4; font-weight: 500;}
+      .header-actions .btn-small { background-color: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 14px; font-size: 0.9em; border-radius: 5px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
+      .header-actions .btn-small:hover { background-color: rgba(255,255,255,0.3); }
+      #ai-save-all-btn { background-color: #28a745; }
+      /* === New action row & button styles === */
+        .actions-row{
+          display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%;
+        }
+        .btn{ display:inline-block; width:100%; padding:10px 0; border-radius:8px; border:1.5px solid transparent; font-weight:700; font-size:.95em; cursor:pointer; }
+        .action-saffron{ background:#ff9933; color:#fff; }
+        .action-green{ background:#28a745; color:#fff; }
+        .action-outline{ background:#fff; color:#1762a7; border-color:#1762a7; }
+        
+        /* full-width strip like bottom CTA */
+       .strip-cta{
+          display:block;
+          /* full-bleed inside a container that has 15px side padding */
+          width: calc(100% + 30px);
+          margin: 12px -15px 8px -15px;   /* cancel the 15px left/right padding of .chat-ui-bar */
+          border:0;
+          border-radius:10px;
+          padding:12px 16px;
+          font-weight:700;
+          font-size:1.02em;
+          background:linear-gradient(90deg,#1762a7,#0f3d6b);
+          color:#fff;
+        }
+      .chat-input-bar {
+        gap: 10px;
+        transition: height 0.2s ease;
+    }
+      
+      .ai-chat-container { display: flex; flex-direction: column; height: 100%; }
+
+      .chat-messages-area {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+      }
+      .message {
+        margin-bottom: 12px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.5;
+      }
+      .user-message {
+        background-color: #dcf8c6;
+        margin-left: auto;
+        color: #333;
+        align-self: flex-end;
+      }
+      .ai-message {
+        background-color: #fff;
+        margin-right: auto;
+        color: #333;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+        align-self: flex-start;
+      }
+      .system-message { background-color: #e9edef; color: #54656f; text-align: center; font-size: 0.85em; max-width: 100%; border-radius: 5px; margin: 8px auto; }
+      
+      .ai-question-item {
+        background-color: #fff;
+        color: #222;
+        float: left;
+        text-align: left;
+        max-width: 85%;
+        margin-bottom: 12px;
+        padding: 12px 16px;
+        border-radius: 14px;
+        font-size: 0.95em;
+        line-height: 1.5em;
+        clear: both;
+        position: relative;
+        word-wrap: break-word;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+        align-self: flex-start;
+        padding-right: 40px;
+      }
+      .question-meta-ai {
+        color: #c82333;
+        font-weight: 600;
+        font-size: 0.9em;
+        margin-bottom: 6px;
+        display: block;
+      }
+      .question-text-ai {
+        color: #004085;
+        font-size: 0.98em;
+        white-space: pre-wrap;
+        display: block;
+      }
+      .selection-popup {
+        position: absolute; background: #333; color: white; border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2); padding: 5px;
+        z-index: 1010; display: flex; gap: 5px;
+      }
+      .selection-popup button { background: none; border: none; color: white; padding: 8px 10px; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
+      .selection-popup button:hover { background-color: #555; }
+      
+      .chat-input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border-radius: 25px;
+        padding: 8px 15px;
+        flex-grow: 1;
+      }
+      #chat-prompt-input {
+            flex-grow: 1;
+            padding: 0;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            resize: none;
+            line-height: 1.4;
+            background: transparent;
+            color: #333;
+            max-height: 120px;
+            min-height: 22px;
+            padding-right: 70px;
+            transition: height 0.2s ease;
+        }
+      .input-buttons {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #chat-upload-btn, #chat-send-btn {
+        background: none;
+        border: none;
+        color: #54656f;
+        font-size: 1.4em;
+        cursor: pointer;
+        padding: 5px;
+      }
+      #chat-send-btn {
+        color: #1762a7;
+      }
+      
+      #scroll-to-bottom {
+        position: fixed;
+        bottom: 85px;
+        right: 20px;
+        z-index: 100;
+        background-color: #0f3d6b;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 44px;
+        height: 44px;
+        font-size: 1.2em;
+        cursor: pointer;
+        display: none;
+        animation: floatPulse 2.5s ease-in-out infinite;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        transition: transform 0.3s ease;
+      }
+      #scroll-to-bottom:hover {
+        transform: scale(1.1);
+      }
+      @keyframes floatPulse {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+
+      .edit-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2000;
+        background: #ffffff;
+        border: 1.5px solid #ccc;
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        padding: 20px 25px;
+        max-width: 90%;
+        width: 600px;
+        font-family: 'Segoe UI', sans-serif;
+      }
+      .edit-popup h3 {
+        margin-top: 0;
+        font-size: 1.3em;
+        color: #0f3d6b;
+      }
+      .edit-popup label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: bold;
+        color: #185496;
+      }
+      .edit-popup input,
+      .edit-popup textarea {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 14px;
+        font-size: 1em;
+        border: 1.3px solid #bcd6ef;
+        border-radius: 6px;
+        background-color: #f7fafd;
+        box-sizing: border-box;
+      }
+      .edit-popup .popup-buttons {
+        text-align: right;
+      }
+      .edit-popup .popup-buttons button {
+        padding: 8px 14px;
+        margin-left: 10px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 0.95em;
+      }
+      .edit-popup #edit-cancel {
+        background: #ccc;
+        color: #333;
+      }
+      .edit-popup #edit-save {
+        background: #0f3d6b;
+        color: white;
+      }
+      
+      .chat-bubble {
+        max-width: 80%;
+        margin-bottom: 12px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        font-size: 0.95em;
+        line-height: 1.4em;
+        display: inline-block;
+        clear: both;
+        position: relative;
+        word-wrap: break-word;
+        align-self: flex-end;
+      }
+      .user-bubble {
+        background-color: #d1eaff;
+        color: #003865;
+        float: right;
+        text-align: right;
+      }
+      .ai-bubble {
+        background-color: #f1f1f1;
+        color: #222;
+        float: left;
+        text-align: left;
+        align-self: flex-start;
+      }
+      .bubble-text {
+        white-space: pre-wrap;
+      }
+
+      .question-actions {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+      }
+      .q-action-btn {
+        background: none;
+        border: none;
+        color: #54656f;
+        font-size: 1.1em;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        line-height: 20px;
+      }
+      .q-action-btn:hover {
+        background-color: #e0e0e0;
+      }
+
+      .actions-menu {
+        position: absolute;
+        background: #333;
+        color: white;
+        border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        padding: 5px;
+        z-index: 1010;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        right: 15px;
+        top: 40px;
+        min-width: 100px;
+      }
+      .actions-menu button {
+        background: none;
+        border: none;
+        color: white;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95em;
+        text-align: left;
+      }
+      .actions-menu button:hover {
+        background-color: #555;
+      }
+
+      .temp-answer {
+        background-color: #fff8e1;
+        border-top: 2px solid #ffecb3;
+        padding: 10px 14px;
+        margin-top: 10px;
+        border-radius: 0 0 12px 12px;
+        font-style: italic;
+        color: #5d4037;
+        white-space: pre-wrap;
+      }
+        /* --- Styles for Confirmation Modal --- */
+.confirmation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.confirmation-modal {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 450px;
+    text-align: left;
+}
+
+.confirmation-modal h3 {
+    margin-top: 0;
+    font-size: 1.2em;
+    color: #0f3d6b;
+}
+
+.confirmation-modal p {
+    line-height: 1.6;
+    color: #333;
+    font-size: 0.95em;
+    white-space: pre-wrap; /* This ensures line breaks from AI are respected */
+}
+
+.confirmation-modal .modal-buttons {
+    margin-top: 20px;
+    text-align: right;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.confirmation-modal .modal-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.95em;
+}
+
+#confirm-cancel-btn {
+    background: #e9ecef;
+    color: #495057;
+}
+
+#confirm-proceed-btn {
+    background: #0f3d6b;
+    color: white;
+}
+          /* Page scrolls under the sticky header on all devices */
+html, body {
+  min-height: 100%;
+  height: auto;
+  overflow-y: auto;
+}
+
+/* On touch devices, keep scroll but reduce rubber-banding */
+@media (hover: none) and (pointer: coarse) {
+  html, body { overscroll-behavior-y: contain; }
+}
+/* lock page scroll ONLY while in chat (JS will toggle this class) */
+body.chat-lock { overflow: hidden; }
+
+/* Review container should fill the viewport so the input can sit at the bottom */
+.review-container { 
+  min-height: calc(100vh - 40px);   /* 20px top + 20px bottom margins */
+  height: auto;
+}
+
+/* Chat layout: input at bottom, messages scroll */
+.ai-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 40px);      /* match .review-container */
+}
+
+.chat-messages-area {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;                   /* critical so it can shrink inside flex */
+}
+
+/* keep the input visually stuck to the bottom edge */
+#chat-input-bar {
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+/* lock page scroll when chat is open */
+body.chat-lock { overflow: hidden; height: 100vh; }
+
+/* Full-width bottom CTA replacing input bar */
+.fullwidth-open-btn{
+  display:block;
+  width:100%;
+  border:0;
+  border-radius:0;
+  padding:16px 18px;
+  font-weight:700;
+  font-size:1.05em;
+  background: linear-gradient(90deg, #1762a7, #0f3d6b);
+  color:#fff;
+  cursor:pointer;
+}
+.fullwidth-open-btn:active { opacity:.92; }
+        /* Thin strip for the Show/Hide Paste Panel toggle */
+#ai-toggle-paste-btn{
+  display:block;
+  /* full-bleed across viewport */
+  width:100vw;
+  margin:12px 0 8px;
+  margin-left:calc(50% - 50vw);
+  margin-right:calc(50% - 50vw);
+
+  padding:12px 16px;
+  background:linear-gradient(90deg, #1762a7, #0f3d6b);
+  color:#fff;
+  border:0;
+  border-radius:0;               /* straight edges like a strip */
+  font-weight:700;
+  text-align:center;
+  box-shadow:0 2px 8px rgba(0,0,0,0.12);
+}
+#ai-toggle-paste-btn:active{ opacity:.95; }
+
+        /* Make the confirm modal scrollable */
+.confirmation-modal{
+  width: min(560px, 92vw);
+  max-height: 85vh;                  /* keep it inside the screen */
+  display: flex;
+  flex-direction: column;
+}
+
+.confirmation-modal p{
+  flex: 1 1 auto;                    /* take remaining height */
+  overflow-y: auto;                  /* scroll the text */
+  margin: 0;                         /* avoid pushing buttons off */
+  word-break: break-word;
+  -webkit-overflow-scrolling: touch; /* smooth on mobile */
+  overscroll-behavior: contain;      /* don't bubble to page */
+}
+
+.confirmation-modal .modal-buttons{
+  flex-shrink: 0;                    /* keep buttons visible */
+  margin-top: 12px;
+}
+    .question-text-ai{font-style:normal;}
+</style>
+</head>
+<body>
+  <script src="chapters.js"></script>
+  <div class="page-wrapper">
+    <header id="main-header">
+      <h1 class="school-title">St. Patrick's School</h1>
+      <div class="subtitle">IIT & NEET FOUNDATION</div>
+    </header>
+    <main>
+      <div id="ai-container" class="review-container">
+        <div class="setup-form-container">
+          <h2>AI Question Generator</h2>
+          <p>Loading...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <input
+    type="file"
+    id="file-upload-input"
+    accept="image/*,application/pdf,.doc,.docx"
+    capture="environment"
+    style="display:none;"
+  >
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+  <script>
+    // --- FULL JAVASCRIPT ---
+    const API_BASE_URL = 'https://question-bank-lqsu.onrender.com';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
+      authDomain: "stpatricks-questionbank.firebaseapp.com",
+      projectId: "stpatricks-questionbank",
+      storageBucket: "stpatricks-questionbank.appspot.com",
+      messagingSenderId: "917615322861",
+      appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
+    };
+
+   firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// CampusConnect custom alert (replaces window.alert)
+(function setupCampusConnectAlert(){
+  const dlgId = 'dlgAppAlert';
+  if (document.getElementById(dlgId)) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = `
+    <dialog id="dlgAppAlert" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
+      <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
+        CampusConnect
+      </div>
+      <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
+        <p id="appAlertText" style="margin:0 0 12px 0;"></p>
+        <div style="text-align:right;margin-top:4px;">
+          <button id="btnAppAlertOk"
+                  style="background:#0f3d6b;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+            OK
+          </button>
+        </div>
+      </div>
+    </dialog>
+  `;
+  const dialog = wrapper.firstElementChild;
+  document.body.appendChild(dialog);
+
+  const textEl = dialog.querySelector('#appAlertText');
+  const okBtn  = dialog.querySelector('#btnAppAlertOk');
+
+  function show(msg){
+    if (textEl) textEl.textContent = msg;
+    dialog.showModal();
+  }
+
+  if (okBtn) okBtn.onclick = () => dialog.close();
+
+  // Override native alert
+  window.alert = show;
+})();
+
+    let stagedFile = null;
+    let currentUserProfile = null;
+    let currentSessionQuestions = []; // NEW: navigation guards
+    let currentPage = 'form';
+    let lastSessionParams = null;
+
+       const aiGeneratorConfig = {
+      classes: [
+        "3rd Class", "4th Class", "5th Class", "6th Class",
+        "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"
+      ],
+      boards: [
+        "CBSE",
+        "ICSE",
+        "Olympiad",
+        "IIT & NEET Foundation",
+        "JEE Mains",
+        "JEE Advance",
+        "NEET",
+        "AP State Board (SCERT)",
+        "Other"
+      ],
+      boardSubjectMappings: {
+  "CBSE": [
+    "English",
+    "Hindi",
+    "Mathematics",
+    "Science",
+    "Social Science",
+    "Computer Science / IT",
+    "Sanskrit",
+    "Physical Education",
+    "General Knowledge",
+    "Environmental Studies",
+    "Other"
+  ],
+  "ICSE": [
+    "English Language",
+    "English Literature",
+    "Second Language",
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "History & Civics",
+    "Geography",
+    "Computer Applications",
+    "Environmental Education",
+    "Commercial Studies / Economics",
+    "Other"
+  ],
+  "Olympiad": [
+    "Mathematics",
+    "Science",
+    "English",
+    "Reasoning",
+    "General Knowledge",
+    "Cyber / Computer"
+  ],
+  "IIT & NEET Foundation": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Reasoning"
+  ],
+  "JEE Mains": [
+    "Physics",
+    "Chemistry",
+    "Mathematics"
+  ],
+  "JEE Advance": [
+    "Physics",
+    "Chemistry",
+    "Mathematics"
+  ],
+  "NEET": [
+    "Physics",
+    "Chemistry",
+    "Biology"
+  ],
+  "AP State Board (SCERT)": [
+    "Telugu",
+    "Hindi",
+    "English",
+    "Mathematics",
+    "Physical Science",
+    "Biological Science",
+    "Social Studies",
+    "General Science",
+    "Computer / ICT",
+    "Other"
+  ],
+  "Other": [
+    "Other"
+  ]
+},
+
+questionTypes: [
+  "MCQ (Single)",
+  "MCQ (Multiple)",
+  "Fill in the Blanks",
+  "Assertion and Reason (MCQ Single)",
+  "Descriptive"
+],
+
+
+      // NEW: Board-wise subjects (your data is in boardSubjectMappings)
+      getSubjectsForBoard: function (boardName) {
+        const b = (boardName || '').trim();
+        const map = this.boardSubjectMappings || {};
+        return Array.isArray(map[b]) ? map[b] : (Array.isArray(map["Other"]) ? map["Other"] : []);
+      },
+
+      // BACKWARD COMPAT: if any old code still calls this
+      getSubjectsForClass: function () {
+        const firstBoard = (this.boards && this.boards[0]) ? this.boards[0] : 'Other';
+        return this.getSubjectsForBoard(firstBoard);
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          currentUserProfile = { uid: user.uid, email: user.email, displayName: user.displayName };
+          const state = history.state || {};
+          if (state.page === 'chat') {
+            loadAiChatInterface(state.sessionParams);
+          } else {
+            loadAiQuestionGeneratorForm();
+          }
+        } else {
+          window.location.href = 'login.html';
+        }
+      });
+
+      window.addEventListener('popstate', (event) => {
+        const state = event.state || {};
+        // If we are leaving chat, confirm first
+        if (currentPage === 'chat' && state.page !== 'chat') {
+          showLeaveChatConfirm(
+            () => {
+              // proceed
+              currentPage = state.page === 'chat' ? 'chat' : 'form';
+              if (state.page === 'chat') {
+                loadAiChatInterface(state.sessionParams || lastSessionParams || {});
+              } else {
+                loadAiQuestionGeneratorForm();
+              }
+            },
+            () => {
+              // cancel -> restore chat state
+              history.pushState({ page: 'chat', sessionParams: lastSessionParams }, 'Chat', '#chat');
+            }
+          );
+          return; // stop default handling until user decides
+        }
+
+        // Normal navigation
+        if (state.page === 'chat') {
+          loadAiChatInterface(state.sessionParams || lastSessionParams || {});
+        } else {
+          loadAiQuestionGeneratorForm();
+        }
+      });
+
+      // Warn if user tries to close/refresh while in chat with unsaved questions
+      window.addEventListener('beforeunload', (e) => {
+        if (currentPage === 'chat' && Array.isArray(currentSessionQuestions) && currentSessionQuestions.length > 0) {
+          e.preventDefault();
+          e.returnValue = ''; // required for Chrome/Edge
+        }
+      });
+    });
+
+    function loadAiQuestionGeneratorForm() {
+      currentPage = 'form';
+      document.body.classList.remove('chat-lock');
+      document.getElementById('main-header').style.display = 'flex';
+
+      const container = document.getElementById('ai-container');
+      container.innerHTML = '<div class="setup-form-container"></div>';
+      const formContainer = container.querySelector('.setup-form-container');
+
+                  const classesHTML = aiGeneratorConfig.classes
+        .map(c => `<div data-value="${c}">${c}</div>`)
+        .join('');
+
+      const boardsHTML = (aiGeneratorConfig.boards || [])
+        .map(b => `<div data-value="${b}">${b}</div>`)
+        .join('');
+
+      const initialBoard = (aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : 'Other';
+      const initialSubjects = aiGeneratorConfig.getSubjectsForBoard(initialBoard);
+
+     const initialSubjectsWithOther = Array.from(new Set([...(initialSubjects || []), "Other"]));
+const subjectsHTML = initialSubjectsWithOther
+        .map(s => `<div data-value="${s}">${s}</div>`)
+        .join('');
+
+
+      const qTypesHTML = aiGeneratorConfig.questionTypes
+        .map(qt => `<div data-value="${qt}">${qt}</div>`)
+        .join('');
+
+      formContainer.innerHTML = `
+        <h2>AI Question Generator</h2>
+       <form id="ai-setup-form">
+  <div class="form-group">
+    <label>Class:</label>
+    <div id="class-dropdown-ai" class="custom-dropdown">
+      <input type="hidden" id="class-value-ai" value="${(aiGeneratorConfig.classes && aiGeneratorConfig.classes[0]) ? aiGeneratorConfig.classes[0] : ''}">
+      <div class="selected-option">${(aiGeneratorConfig.classes && aiGeneratorConfig.classes[0]) ? aiGeneratorConfig.classes[0] : 'Select Class'}</div>
+      <div class="dropdown-options">${classesHTML}</div>
+    </div>
+  </div>
+          
+            <div class="form-group">
+            <label>Name of the Board:</label>
+            <div id="board-dropdown-ai" class="custom-dropdown">
+              <input type="hidden" id="board-value-ai" value="${(aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : ''}">
+              <div class="selected-option">${(aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : 'Select Board'}</div>
+              <div class="dropdown-options">${boardsHTML}</div>
+            </div>
+
+            <!-- NEW: show only when Board = Other -->
+            <div id="board-other-wrap" style="display:none;margin-top:10px;">
+              <label style="font-size:0.95em;">Type Board Name:</label>
+              <input type="text" id="board-other-input" placeholder="Enter Board Name" />
+            </div>
+          </div>
+
+            <div class="form-group">
+      <label>Subject:</label>
+      <div id="subject-dropdown-ai" class="custom-dropdown">
+    <input type="hidden" id="subject-value-ai" value="${(initialSubjectsWithOther[0] || '')}">
+    <div class="selected-option">${(initialSubjectsWithOther[0] || 'Select Subject')}</div>
+    <div class="dropdown-options">${subjectsHTML}</div>
+      </div>
+
+  <!-- NEW: show only when Subject = Other -->
+  <div id="subject-other-wrap" style="display:none;margin-top:10px;">
+    <label style="font-size:0.95em;">Type Subject Name:</label>
+    <input type="text" id="subject-other-input" placeholder="Enter Subject Name" />
+  </div>
+</div>
+ <div class="form-group">
+  <label>Chapter Name:</label>
+  <input
+    type="text"
+    id="chapter-input-ai"
+    placeholder="Type Chapter Name"
+    autocomplete="off"
+  />
+</div>
+              <div class="form-group">
+            <label>Question Type:</label>
+            <div id="qtype-dropdown-ai" class="custom-dropdown">
+              <input type="hidden" id="qtype-value-ai" value="${aiGeneratorConfig.questionTypes[0]}">
+              <div class="selected-option">${aiGeneratorConfig.questionTypes[0]}</div>
+              <div class="dropdown-options">${qTypesHTML}</div>
+            </div>
+          </div>
+
+         
+   <!-- NEW: Levels (L1/L2/L3) + Total (auto) -->
+<div class="form-group" id="levels-wrap-ai">
+  <label>Questions by Level:</label>
+
+  <!-- NON-DESCRIPTIVE -->
+  <div id="mcq-levels-wrap-ai" style="display:flex;flex-direction:column;gap:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:600;color:#0f3d6b;">Level 1</div>
+      <input type="number" id="lvl1-ai" min="0" value="0"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:600;color:#0f3d6b;">Level 2</div>
+      <input type="number" id="lvl2-ai" min="0" value="0"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:600;color:#0f3d6b;">Level 3</div>
+      <input type="number" id="lvl3-ai" min="0" value="0"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+  <div style="min-width:90px;font-weight:700;color:#0f3d6b;">Total</div>
+  <input type="number" id="lvl-total-ai" value="0" readonly
+    style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfd3d8;border-radius:14px;background:#f6f6f6;outline:none;font-size:18px;font-weight:800;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+</div>
+  </div>
+
+  <!-- DESCRIPTIVE (Marks + Levels) -->
+  <div id="desc-levels-wrap-ai" style="display:none;flex-direction:column;gap:10px;margin-top:6px;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:700;color:#0f3d6b;">Marks</div>
+      <input type="number" id="desc-marks-ai" min="1" value="1"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:600;color:#0f3d6b;">Level 1</div>
+      <input type="number" id="dlvl1-ai" min="0" value="0"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:600;color:#0f3d6b;">Level 2</div>
+      <input type="number" id="dlvl2-ai" min="0" value="0"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div style="min-width:90px;font-weight:600;color:#0f3d6b;">Level 3</div>
+      <input type="number" id="dlvl3-ai" min="0" value="0"
+        style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+    </div>
+
+       <!-- Descriptive Sets -->
+<div id="desc-sets-ai" style="display:flex;flex-direction:column;gap:10px;margin-top:6px;"></div>
+
+<button type="button" id="add-desc-set-ai"
+  style="margin-top:6px;padding:10px 12px;border:none;border-radius:14px;background:#0f3d6b;color:#fff;font-weight:800;cursor:pointer;">
+  + Add another set
+</button>
+
+<div style="margin-top:6px;font-size:12px;color:#5b6b7a;">
+  Tip: Each set can have its own Marks + (L1/L2/L3). Total will add all sets.
+</div>
+
+<!-- GRAND TOTAL (only once, always last) -->
+<div id="desc-grand-total-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;">
+  <div style="min-width:90px;font-weight:800;color:#0f3d6b;">Total</div>
+  <input type="number" id="dlvl-total-ai" value="0" readonly
+    style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfd3d8;border-radius:14px;background:#f6f6f6;outline:none;font-size:18px;font-weight:800;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+</div>
+
+  </div>
+</div>
+
+          <button type="submit">Start Generating</button>
+        </form>
+      `;
+
+      const _initialSubjectFinal =
+  ((initialSubjectsWithOther[0] || '') === 'Other')
+    ? ((document.getElementById('subject-other-input')?.value || '').trim() || 'Other')
+    : (initialSubjectsWithOther[0] || '');
+
+// Chapter is typed by user (no dropdown)
+const chapterInput = formContainer.querySelector('#chapter-input-ai');
+
+function __toTitleCaseWords(str) {
+  return (str || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map(w => w ? (w.charAt(0).toUpperCase() + w.slice(1)) : "")
+    .join(" ");
+}
+        
+if (chapterInput) {
+  // While typing: keep each word's first letter capital
+  chapterInput.addEventListener("input", () => {
+  // allow space normally; don't transform when last char is space
+  const v = chapterInput.value;
+  if (!v) return;
+
+  // If the user just typed a space, do nothing.
+  if (v.endsWith(" ")) return;
+
+  // Only format when last typed char is a letter (so spaces stay)
+  const last = v.slice(-1);
+  if (!/[A-Za-z]/.test(last)) return;
+
+  const cur = chapterInput.selectionStart || v.length;
+  chapterInput.value = __toTitleCaseWords(v);
+  chapterInput.setSelectionRange(cur, cur);
+});
+
+// Final cleanup when leaving field
+chapterInput.addEventListener("blur", () => {
+  chapterInput.value = __toTitleCaseWords(chapterInput.value);
+});
+
+  // Final cleanup when leaving the field
+  chapterInput.addEventListener("blur", () => {
+    chapterInput.value = __toTitleCaseWords(chapterInput.value);
+  });
+}
+
+/* NEW: Board Other + Subject Other toggle (Board "Other" forces Subject input too) */
+const __boardWrap = document.getElementById('board-other-wrap');
+const __boardOther = document.getElementById('board-other-input');
+
+const __subWrap = document.getElementById('subject-other-wrap');
+const __subOther = document.getElementById('subject-other-input');
+
+const __boardHidden = document.getElementById('board-value-ai');
+const __subHidden = document.getElementById('subject-value-ai');
+
+const __subSelected = formContainer.querySelector('#subject-dropdown-ai .selected-option');
+
+function __syncOtherToggles() {
+  const boardVal = __boardHidden?.value || '';
+  const subVal = __subHidden?.value || '';
+
+  const boardIsOther = (boardVal === 'Other');
+  const subjectIsOther = (subVal === 'Other');
+
+  // 1) Board other input
+  if (__boardWrap) __boardWrap.style.display = boardIsOther ? 'block' : 'none';
+  if (!boardIsOther && __boardOther) __boardOther.value = '';
+
+  // 2) Subject other input:
+  // If Board is Other, we don't have defined subjects -> always show subject input
+  const showSubjectOther = boardIsOther || subjectIsOther;
+  if (__subWrap) __subWrap.style.display = showSubjectOther ? 'block' : 'none';
+  if (!showSubjectOther && __subOther) __subOther.value = '';
+
+  // If Board is Other, force dropdown to "Other" so finalSubject uses typed value
+  if (boardIsOther && __subHidden && __subHidden.value !== 'Other') {
+    __subHidden.value = 'Other';
+    if (__subSelected) __subSelected.textContent = 'Other';
+  }
+}
+
+// initial load
+__syncOtherToggles();
+
+// when user selects Board/Subject (custom dropdown clicks)
+const __boardOpts = document.querySelector('#board-dropdown-ai .dropdown-options');
+const __subOpts = document.querySelector('#subject-dropdown-ai .dropdown-options');
+
+if (__boardOpts) {
+  __boardOpts.addEventListener('click', () => setTimeout(__syncOtherToggles, 0));
+}
+if (__subOpts) {
+  __subOpts.addEventListener('click', () => setTimeout(__syncOtherToggles, 0));
+}
+
+    setupCustomDropdownsForForm();
+
+/* NEW: Descriptive “Add another set” + Total across sets */
+(function () {
+  const descWrap = document.getElementById('desc-levels-wrap-ai');
+  const setsHost = document.getElementById('desc-sets-ai');
+  const addBtn   = document.getElementById('add-desc-set-ai');
+  const totalBox = document.getElementById('dlvl-total-ai');
+
+  // If the host isn't present, do nothing
+  if (!descWrap || !setsHost || !addBtn) return;
+
+  function makeSetRow(initialMarks='1', l1='0', l2='0', l3='0') {
+    const row = document.createElement('div');
+    row.className = 'desc-set-row';
+    row.style.cssText = 'border:1px solid #e4eef9;border-radius:14px;padding:10px;background:#fbfdff;';
+
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+        <div style="min-width:90px;font-weight:800;color:#0f3d6b;">Marks</div>
+        <input type="number" class="dset-marks" min="1" value="${initialMarks}"
+          style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;" />
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="min-width:90px;font-weight:700;color:#0f3d6b;">Level 1</div>
+        <input type="number" class="dset-l1" min="0" value="${l1}"
+          style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;" />
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;">
+        <div style="min-width:90px;font-weight:700;color:#0f3d6b;">Level 2</div>
+        <input type="number" class="dset-l2" min="0" value="${l2}"
+          style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;" />
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;">
+        <div style="min-width:90px;font-weight:700;color:#0f3d6b;">Level 3</div>
+        <input type="number" class="dset-l3" min="0" value="${l3}"
+          style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;" />
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+        <button type="button" class="dset-remove"
+          style="padding:8px 10px;border:none;border-radius:12px;background:#c82333;color:#fff;font-weight:800;cursor:pointer;">
+          Remove
+        </button>
+      </div>
+    `;
+
+    // wire events
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach(inp => inp.addEventListener('input', syncDescTotalAllSets));
+   row.querySelector('.dset-remove').onclick = () => {
+  row.remove();
+
+  // keep Total always at bottom (after all sets)
+  const totalRow = document.getElementById('desc-grand-total-row');
+  if (totalRow && descWrap) descWrap.appendChild(totalRow);
+
+  syncDescTotalAllSets();
+};
+
+    return row;
+  }
+
+  function syncDescTotalAllSets() {
+    // Base single-set inputs (your original dlvl fields)
+    const baseL1 = parseInt(document.getElementById('dlvl1-ai')?.value || '0', 10) || 0;
+    const baseL2 = parseInt(document.getElementById('dlvl2-ai')?.value || '0', 10) || 0;
+    const baseL3 = parseInt(document.getElementById('dlvl3-ai')?.value || '0', 10) || 0;
+
+    let sum = baseL1 + baseL2 + baseL3;
+
+    // Added sets
+    setsHost.querySelectorAll('.desc-set-row').forEach(row => {
+      const a = parseInt(row.querySelector('.dset-l1')?.value || '0', 10) || 0;
+      const b = parseInt(row.querySelector('.dset-l2')?.value || '0', 10) || 0;
+      const c = parseInt(row.querySelector('.dset-l3')?.value || '0', 10) || 0;
+      sum += (a + b + c);
+    });
+
+    if (totalBox) totalBox.value = String(sum);
+  }
+
+  // Add button: create one more set
+  addBtn.onclick = () => {
+  setsHost.appendChild(makeSetRow('1','0','0','0'));
+
+  // keep Total always at bottom (after all sets)
+  const totalRow = document.getElementById('desc-grand-total-row');
+  if (totalRow && descWrap) descWrap.appendChild(totalRow);
+
+  syncDescTotalAllSets();
+};
+
+  // Ensure totals update when base fields change too
+  ['dlvl1-ai','dlvl2-ai','dlvl3-ai'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', syncDescTotalAllSets);
+  });
+
+  // initial
+  syncDescTotalAllSets();
+
+  // expose helper so submit logic can reuse it
+  window.__getDescSetsPlan = function () {
+    const sets = [];
+
+    // base set (existing UI)
+    sets.push({
+      marks: parseInt(document.getElementById('desc-marks-ai')?.value || '0', 10) || 0,
+      l1: parseInt(document.getElementById('dlvl1-ai')?.value || '0', 10) || 0,
+      l2: parseInt(document.getElementById('dlvl2-ai')?.value || '0', 10) || 0,
+      l3: parseInt(document.getElementById('dlvl3-ai')?.value || '0', 10) || 0,
+    });
+
+    // added sets
+    setsHost.querySelectorAll('.desc-set-row').forEach(row => {
+      sets.push({
+        marks: parseInt(row.querySelector('.dset-marks')?.value || '0', 10) || 0,
+        l1: parseInt(row.querySelector('.dset-l1')?.value || '0', 10) || 0,
+        l2: parseInt(row.querySelector('.dset-l2')?.value || '0', 10) || 0,
+        l3: parseInt(row.querySelector('.dset-l3')?.value || '0', 10) || 0,
+      });
+    });
+
+    return sets;
+  };
+
+})();
+
+/* NEW: Toggle MCQ vs Descriptive block (Marks + Levels) */
+(function () {
+  const qtypeHidden = document.getElementById('qtype-value-ai');
+
+  const mcqWrap = document.getElementById('mcq-levels-wrap-ai');
+  const descWrap = document.getElementById('desc-levels-wrap-ai');
+
+  function syncLevelsMode() {
+    const qv = (qtypeHidden?.value || '').trim();
+    const isDesc = (qv === 'Descriptive');
+
+    if (mcqWrap) mcqWrap.style.display = isDesc ? 'none' : 'flex';
+    if (descWrap) descWrap.style.display = isDesc ? 'flex' : 'none';
+  }
+
+  syncLevelsMode();
+
+  const qtypeOpts = document.querySelector('#qtype-dropdown-ai .dropdown-options');
+  if (qtypeOpts) qtypeOpts.addEventListener('click', () => setTimeout(syncLevelsMode, 0));
+})();
+
+/* NEW: Auto Total (MCQ + Descriptive) */
+const __l1 = document.getElementById('lvl1-ai');
+const __l2 = document.getElementById('lvl2-ai');
+const __l3 = document.getElementById('lvl3-ai');
+const __total = document.getElementById('lvl-total-ai');
+
+const __dl1 = document.getElementById('dlvl1-ai');
+const __dl2 = document.getElementById('dlvl2-ai');
+const __dl3 = document.getElementById('dlvl3-ai');
+const __dtotal = document.getElementById('dlvl-total-ai');
+
+function __syncTotalMcq() {
+  const a = parseInt(__l1?.value || '0', 10) || 0;
+  const b = parseInt(__l2?.value || '0', 10) || 0;
+  const c = parseInt(__l3?.value || '0', 10) || 0;
+  if (__total) __total.value = String(a + b + c);
+}
+
+function __syncTotalDescSingle() {
+  const a = parseInt(__dl1?.value || '0', 10) || 0;
+  const b = parseInt(__dl2?.value || '0', 10) || 0;
+  const c = parseInt(__dl3?.value || '0', 10) || 0;
+  if (__dtotal) __dtotal.value = String(a + b + c);
+}
+
+[__l1, __l2, __l3].forEach(inp => inp && inp.addEventListener('input', __syncTotalMcq));
+[__dl1, __dl2, __dl3].forEach(inp => inp && inp.addEventListener('input', __syncTotalDescSingle));
+
+__syncTotalMcq();
+__syncTotalDescSingle();
+
+/* NEW: Descriptive marks reset when switching away (optional cleanup) */
+const __qtypeHidden = document.getElementById('qtype-value-ai');
+
+function __syncMarksCleanup() {
+  const qv = (__qtypeHidden?.value || '').trim();
+  const isDesc = (qv === 'Descriptive');
+  if (!isDesc) {
+    const m = document.getElementById('desc-marks-ai');
+    if (m) m.value = '1';
+    if (__dl1) __dl1.value = '0';
+    if (__dl2) __dl2.value = '0';
+    if (__dl3) __dl3.value = '0';
+    __syncTotalDescSingle();
+  }
+}
+
+__syncMarksCleanup();
+const __qtypeOpts = document.querySelector('#qtype-dropdown-ai .dropdown-options');
+if (__qtypeOpts) __qtypeOpts.addEventListener('click', () => setTimeout(__syncMarksCleanup, 0));
+
+      document.getElementById("ai-setup-form").onsubmit = (e) => {
+        e.preventDefault();
+
+       qTypeFinal = document.getElementById('qtype-value-ai').value;
+
+let derivedCount = 0;
+let planRaw = '';
+
+if (qTypeFinal === 'Descriptive') {
+  const sets = (window.__getDescSetsPlan ? window.__getDescSetsPlan() : []);
+  derivedCount = sets.reduce((s, x) => s + (x.l1 + x.l2 + x.l3), 0);
+
+  // Example: Set1(M1: L1:2,L2:0,L3:1) | Set2(M2: L1:1,L2:1,L3:0)
+  planRaw = sets.map((x, i) =>
+    `Set${i+1}(M${x.marks}: L1:${x.l1}, L2:${x.l2}, L3:${x.l3})`
+  ).join(' | ');
+} else {
+  const l1 = parseInt(document.getElementById('lvl1-ai')?.value || '0', 10) || 0;
+  const l2 = parseInt(document.getElementById('lvl2-ai')?.value || '0', 10) || 0;
+  const l3 = parseInt(document.getElementById('lvl3-ai')?.value || '0', 10) || 0;
+  derivedCount = l1 + l2 + l3;
+  planRaw = `L1:${l1}, L2:${l2}, L3:${l3}`;
+}
+
+
+                  const rawBoard = document.getElementById('board-value-ai') ? document.getElementById('board-value-ai').value : '';
+        const otherBoard = (document.getElementById('board-other-input')?.value || '').trim();
+        const finalBoard = (rawBoard === 'Other') ? (otherBoard || 'Other') : rawBoard;
+
+        const rawSubject = document.getElementById('subject-value-ai') ? document.getElementById('subject-value-ai').value : '';
+const otherSubject = (document.getElementById('subject-other-input')?.value || '').trim();
+const finalSubject = (rawSubject === 'Other') ? (otherSubject || 'Other') : rawSubject;
+
+let qTypeFinal = document.getElementById('qtype-value-ai').value;
+
+const sessionParams = {
+  class: document.getElementById('class-value-ai').value,
+  board: finalBoard,
+  subject: finalSubject,
+  questionType: qTypeFinal,
+  chapter: document.getElementById('chapter-value-ai').value,
+  levelPlan: planRaw,
+  numQuestions: derivedCount,
+  marks: (qTypeFinal === 'Descriptive')
+    ? (parseInt(document.getElementById('desc-marks-ai')?.value || '0', 10) || 0)
+    : 0
+};
+        if (!sessionParams.chapter || !sessionParams.subject) return;
+if (!sessionParams.numQuestions || sessionParams.numQuestions <= 0) return;
+if (sessionParams.questionType === 'Descriptive' && (!sessionParams.marks || sessionParams.marks <= 0)) return;
+
+
+        history.pushState({ page: 'chat', sessionParams: sessionParams }, 'Chat', '#chat');
+        loadAiChatInterface(sessionParams);
+      };
+    }
+
+    function loadAiChatInterface(sessionParams) {
+      currentPage = 'chat';
+      lastSessionParams = sessionParams;
+      document.body.classList.add('chat-lock');
+      document.getElementById('main-header').style.display = 'none';
+
+      const container = document.getElementById('ai-container');
+      currentSessionQuestions = [];
+
+      container.innerHTML = `
+        <div class="ai-chat-container">
+          <div class="ai-chat-header chat-ui-bar">
+            <div class="chat-header-line">
+            <p><b>Class:</b> ${sessionParams.class} / <b>Board:</b> ${sessionParams.board || ''} / <b>Subject:</b> ${sessionParams.subject}</p>
+            </div>
+            <div class="chat-header-line">
+              <p><b>Chapter:</b> ${sessionParams.chapter}</p>
+            </div>
+            <div class="chat-header-line">
+              <p><b>Plan:</b> ${sessionParams.levelPlan || ''}</p>
+            </div>
+            <div class="chat-header-line buttons actions-row">
+              <button id="ai-change-setup-btn" class="btn action-saffron">Change Setup</button>
+              <button id="ai-parse-preview-btn" class="btn action-outline">Preview</button>
+              <button id="ai-save-all-btn" class="btn action-green">Save All</button>
+            </div>
+          </div>
+          <!-- end .ai-chat-header -->
+
+          <button id="ai-toggle-paste-btn" class="strip-cta">
+            Show Paste Panel
+          </button>
+
+          <!-- Paste Zone (FINAL SET from ChatGPT) -->
+          <div
+            id="paste-zone"
+            class="paste-zone"
+            style="display:none;background:#ffffff;border:1px solid #bcd6ef;border-radius:10px;margin:10px 15px 0 15px;"
+          >
+            <div
+              class="pz-head"
+              style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e6eff8;"
+            >
+              <span style="font-weight:700;color:#0f3d6b;">Paste FINAL QUESTIONS</span>
+            </div>
+
+            <!-- BIGGER textarea (~half screen) -->
+            <textarea
+              id="paste-zone-text"
+              placeholder="Paste the FINAL SET block here (Q1 … QN). The parser ignores extra chat text automatically."
+              style="width:100%;box-sizing:border-box;border:none;outline:none;padding:12px 12px 16px 12px;
+                     font-size:15px;line-height:1.4;resize:vertical;background:#fff;border-radius:0 0 10px 10px;
+                     min-height:45vh;height:45vh;"
+            ></textarea>
+
+            <div class="pz-note" style="font-size:12px;color:#5b6b7a;padding:0 12px 12px 12px;">
+              Tip: Ask AI for one corrected block (Q1–Q<span id="pz-expected-n"></span>) with no extra text. Then paste it here.
+            </div>
+          </div>
+
+          <div id="chat-messages-area" class="chat-messages-area"></div>
+
+          <div
+            id="file-preview-box"
+            style="display: none; padding: 6px 16px; background: white; color: #333; font-size: 0.9em;
+                   font-family: 'Segoe UI', sans-serif; border-bottom: 1px solid #ddd;"
+          >
+            <span style="color: #1762a7;">📄</span>
+            <span id="file-preview-name" style="font-weight: 600; color: #333;"></span>
+            <button
+              id="remove-file-btn"
+              style="background: none; border: none; color: #c82333; font-size: 1.1em; cursor: pointer; margin-left: 10px;"
+              title="Remove File"
+            >
+              ❌
+            </button>
+          </div>
+
+          <div id="chat-input-bar" class="chat-ui-bar chat-input-bar" style="padding:0">
+            <button id="open-chatgpt-bottom" class="fullwidth-open-btn" aria-label="Open in ChatGPT">
+              Get Questions
+            </button>
+          </div>
+
+          <button id="scroll-to-bottom" title="Scroll to Bottom"⬇️</button>
+        </div>
+      `;
+
+      document.getElementById('ai-change-setup-btn').onclick = () => {
+        showLeaveChatConfirm(() => history.back(), () => {});
+      };
+      document.getElementById('ai-save-all-btn').onclick = () => saveSessionQuestions(sessionParams);
+
+      // Toggle the paste panel thin strip
+      const pasteToggleBtn = document.getElementById('ai-toggle-paste-btn');
+      const pasteZone = document.getElementById('paste-zone');
+            if (pasteToggleBtn && pasteZone) {
+        pasteToggleBtn.onclick = () => {
+          const isOpen = pasteZone.style.display !== 'none';
+          pasteZone.style.display = isOpen ? 'none' : 'block';
+          pasteToggleBtn.textContent = isOpen ? 'Show Paste Panel' : 'Hide Paste Panel';
+          pasteToggleBtn.setAttribute('aria-expanded', String(!isOpen));
+          if (!isOpen) document.getElementById('paste-zone-text')?.focus();
+        };
+      }
+
+      // --- Paste panel minimal helpers (scoped to this chat) ---
+      const _pzExpected = document.getElementById('pz-expected-n');
+      if (_pzExpected) _pzExpected.textContent = String(sessionParams.numQuestions || 20);
+
+      const _pzText = document.getElementById('paste-zone-text');
+      if (_pzText) {
+        const _autoGrow = () => {
+          _pzText.style.height = 'auto';
+          const maxH = Math.floor(window.innerHeight * 0.5);
+          const h = Math.min(_pzText.scrollHeight, maxH);
+          _pzText.style.height = h + 'px';
+          _pzText.style.overflowY = (_pzText.scrollHeight > maxH) ? 'auto' : 'hidden';
+        };
+        _pzText.addEventListener('input', _autoGrow);
+        _autoGrow();
+      }
+
+      // Parse & Preview from Paste Panel
+      const parsePreviewBtn = document.getElementById('ai-parse-preview-btn');
+      if (parsePreviewBtn) {
+        parsePreviewBtn.onclick = () => {
+          const box = document.getElementById('paste-zone-text');
+          if (!box) return __qb_toast('Paste box not found.');
+          const raw = (box.value || '').trim();
+          if (!raw) return __qb_toast('Nothing to parse. Paste the FINAL SET first.');
+          try {
+            const parsed = parseFinalSetIntoQuestions(raw, sessionParams);
+            if (!parsed.length) return __qb_toast('Could not find any Q1… blocks.');
+            currentSessionQuestions = parsed;
+            rerenderAllQuestions();
+            __qb_toast(`Parsed ${parsed.length} question(s).`);
+            const pz = document.getElementById('paste-zone');
+            if (pz) pz.style.display = 'none';
+            box.value = '';
+            _pzText && _pzText.dispatchEvent(new Event('input'));
+            const tgl = document.getElementById('ai-toggle-paste-btn');
+            if (tgl) { tgl.textContent = 'Show Paste Panel'; tgl.setAttribute?.('aria-expanded', 'false'); }
+          } catch (err) {
+            console.error(err);
+            __qb_toast('Parser error. Check the format (Q1:, A)–D), Ans: …).');
+          }
+        };
+      }
+
+      // Open ChatGPT with prefilled generation prompt (bottom full-width button)
+      const openCgBottomBtn = document.getElementById('open-chatgpt-bottom');
+      if (openCgBottomBtn) {
+        openCgBottomBtn.onclick = () => {
+          const genPrompt = buildChatGptGenerationPrompt(sessionParams);
+          openInChatGptWithPrefill(genPrompt);
+        };
+      }
+
+      // Keep file-preview remove working
+      const removeFileBtn = document.getElementById('remove-file-btn');
+      if (removeFileBtn) {
+        removeFileBtn.onclick = () => {
+          stagedFile = null;
+          const box = document.getElementById('file-preview-box');
+          const name = document.getElementById('file-preview-name');
+          if (box) box.style.display = 'none';
+          if (name) name.textContent = '';
+        };
+      }
+    }
+
+function updateSendButtonState(chatPromptInput, sendBtn) {
+  if (chatPromptInput.value.trim() !== '' || stagedFile) {
+    sendBtn.disabled = false;
+  } else {
+    sendBtn.disabled = true;
+  }
+}
+
+function setupCustomDropdownsForForm() {
+  setupCustomDropdown('class-dropdown-ai', 'class-value-ai', (selectedClass) => {
+    const subjectDropdown = document.getElementById('subject-dropdown-ai');
+    const subjectOptions = subjectDropdown.querySelector('.dropdown-options');
+    const subjectSelected = subjectDropdown.querySelector('.selected-option');
+    const subjectInput = document.getElementById('subject-value-ai');
+
+    const selectedBoard = document.getElementById('board-value-ai').value;
+    const newSubjects = aiGeneratorConfig.getSubjectsForBoard(selectedBoard);
+const newSubjectsWithOther = Array.from(new Set([...(newSubjects || []), "Other"]));
+
+subjectOptions.innerHTML = newSubjectsWithOther.map(s => `<div data-value="${s}">${s}</div>`).join('');
+subjectSelected.textContent = newSubjectsWithOther[0] || 'Select Subject';
+subjectInput.value = newSubjectsWithOther[0] || '';
+
+/* NEW: toggle Subject Other UI after refresh */
+const sWrap = document.getElementById('subject-other-wrap');
+const sOther = document.getElementById('subject-other-input');
+if (subjectInput.value === 'Other') {
+  if (sWrap) sWrap.style.display = 'block';
+  if (sOther) sOther.focus();
+} else {
+  if (sWrap) sWrap.style.display = 'none';
+  if (sOther) sOther.value = '';
+}
+
+    updateChapterDropdown(selectedClass, newSubjects[0] || '');
+
+    optionsContainerListener(
+      subjectOptions,
+      subjectSelected,
+      subjectInput,
+      subjectDropdown,
+      (newSubject) => {
+        updateChapterDropdown(selectedClass, newSubject);
+      }
+    );
+  });
+
+  setupCustomDropdown('subject-dropdown-ai', 'subject-value-ai', (selectedSubject) => {
+  const wrap = document.getElementById('subject-other-wrap');
+  const otherInput = document.getElementById('subject-other-input');
+
+  if (selectedSubject === 'Other') {
+    if (wrap) wrap.style.display = 'block';
+    if (otherInput) otherInput.focus();
+  } else {
+    if (wrap) wrap.style.display = 'none';
+    if (otherInput) otherInput.value = '';
+  }
+
+  const selectedClass = document.getElementById('class-value-ai').value;
+  const finalSubject = (selectedSubject === 'Other')
+    ? ((otherInput?.value || '').trim() || 'Other')
+    : selectedSubject;
+
+  updateChapterDropdown(selectedClass, finalSubject);
+});
+
+     setupCustomDropdown('board-dropdown-ai', 'board-value-ai', (selectedBoard) => {
+    const wrap = document.getElementById('board-other-wrap');
+    const otherInput = document.getElementById('board-other-input');
+
+    if (selectedBoard === 'Other') {
+      if (wrap) wrap.style.display = 'block';
+      if (otherInput) otherInput.focus();
+    } else {
+      if (wrap) wrap.style.display = 'none';
+      if (otherInput) otherInput.value = '';
+    }
+
+    // NEW: refresh subjects when board changes
+    const selectedClass = document.getElementById('class-value-ai').value;
+
+    const subjectDropdown = document.getElementById('subject-dropdown-ai');
+    const subjectOptions = subjectDropdown.querySelector('.dropdown-options');
+    const subjectSelected = subjectDropdown.querySelector('.selected-option');
+    const subjectInput = document.getElementById('subject-value-ai');
+
+   const newSubjects = aiGeneratorConfig.getSubjectsForBoard(selectedBoard);
+const newSubjectsWithOther = Array.from(new Set([...(newSubjects || []), "Other"]));
+
+subjectOptions.innerHTML = newSubjectsWithOther.map(s => `<div data-value="${s}">${s}</div>`).join('');
+subjectSelected.textContent = newSubjectsWithOther[0] || 'Select Subject';
+subjectInput.value = newSubjectsWithOther[0] || '';
+
+/* NEW: toggle Subject Other UI after refresh */
+const sWrap = document.getElementById('subject-other-wrap');
+const sOther = document.getElementById('subject-other-input');
+if (subjectInput.value === 'Other') {
+  if (sWrap) sWrap.style.display = 'block';
+  if (sOther) sOther.focus();
+} else {
+  if (sWrap) sWrap.style.display = 'none';
+  if (sOther) sOther.value = '';
+}
+
+    updateChapterDropdown(selectedClass, newSubjects[0] || '');
+
+    optionsContainerListener(
+      subjectOptions,
+      subjectSelected,
+      subjectInput,
+      subjectDropdown,
+      (newSubject) => updateChapterDropdown(selectedClass, newSubject)
+    );
+  });
+
+  setupCustomDropdown('qtype-dropdown-ai', 'qtype-value-ai');
+  setupCustomDropdown('chapter-dropdown-ai', 'chapter-value-ai');
+}
+
+function updateChapterDropdown(selectedClass, selectedSubject) {
+  const chapterDropdown = document.getElementById('chapter-dropdown-ai');
+  const chapterOptions = chapterDropdown.querySelector('.dropdown-options');
+  const chapterSelected = chapterDropdown.querySelector('.selected-option');
+  const chapterInput = document.getElementById('chapter-value-ai');
+
+  const chapters = (textbooks[selectedClass] && textbooks[selectedClass][selectedSubject])
+    ? textbooks[selectedClass][selectedSubject]
+    : [];
+
+  chapterOptions.innerHTML = chapters.map(ch => `<div data-value="${ch}">${ch}</div>`).join('');
+  chapterSelected.textContent = chapters[0] || 'Select Chapter';
+  chapterInput.value = chapters[0] || '';
+
+  optionsContainerListener(chapterOptions, chapterSelected, chapterInput, chapterDropdown, null);
+}
+
+function setupCustomDropdown(dropdownId, inputId, callback) {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+
+  const selected = dropdown.querySelector('.selected-option');
+  const options = dropdown.querySelector('.dropdown-options');
+  const input = document.getElementById(inputId);
+
+  selected.onclick = (e) => {
+    e.stopPropagation();
+    toggleDropdown(dropdownId);
+  };
+
+  optionsContainerListener(options, selected, input, dropdown, callback);
+}
+
+function optionsContainerListener(options, selected, input, dropdown, callback) {
+  options.querySelectorAll('div[data-value]').forEach(option => {
+    option.onclick = () => {
+      selected.textContent = option.textContent;
+      input.value = option.dataset.value;
+      dropdown.classList.remove('open');
+      if (callback) callback(input.value);
+    };
+  });
+}
+
+function toggleDropdown(dropdownId) {
+  const currentDropdown = document.getElementById(dropdownId);
+  if(!currentDropdown) return;
+
+  const currentlyOpen = currentDropdown.classList.contains('open');
+  document.querySelectorAll('.custom-dropdown.open').forEach(d => {
+    if (d.id !== dropdownId) d.classList.remove('open');
+  });
+  if(!currentlyOpen) currentDropdown.classList.add('open');
+}
+
+function showConfirmationModal(summary, originalPrompt, sessionParams) {
+  const overlay = document.createElement('div');
+  overlay.className = 'confirmation-overlay';
+  overlay.innerHTML = `
+  <div class="confirmation-modal">
+    <h3>Confirm Exam Instructions</h3>
+    <p>${summary}</p>
+    <div class="modal-buttons">
+      <button id="confirm-cancel-btn">Cancel</button>
+      <button id="confirm-proceed-btn">Proceed</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('confirm-cancel-btn').onclick = () => {
+    overlay.remove();
+    // Re-enable the send button if cancelled
+    const chatPromptInput = document.getElementById('chat-prompt-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    sendBtn.innerHTML = `<i class="fas fa-paper-plane"></i>`;
+    updateSendButtonState(chatPromptInput, sendBtn);
+  };
+
+  document.getElementById('confirm-proceed-btn').onclick = () => {
+    overlay.remove();
+    proceedWithGeneration(originalPrompt, sessionParams);
+  };
+}
+
+// ===== ADD BELOW (confirm helper that reuses your modal CSS) =====
+function showLeaveChatConfirm(onProceed, onCancel) {
+  const overlay = document.createElement('div');
+  overlay.className = 'confirmation-overlay';
+  overlay.innerHTML = `
+  <div class="confirmation-modal">
+    <h3>Confirm</h3>
+    <p>Are you sure you want to go back? Unsaved questions in this chat will be lost.</p>
+    <div class="modal-buttons">
+      <button id="leave-cancel-btn">Cancel</button>
+      <button id="leave-proceed-btn">Go Back</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('leave-cancel-btn').onclick = () => {
+    overlay.remove();
+    if (onCancel) onCancel();
+  };
+
+  document.getElementById('leave-proceed-btn').onclick = () => {
+    overlay.remove();
+    if (onProceed) onProceed();
+  };
+}
+// ===== END ADD =====
+
+async function proceedWithGeneration(originalPrompt, sessionParams) {
+  const messagesArea   = document.getElementById('chat-messages-area');
+  const chatPromptInput = document.getElementById('chat-prompt-input');
+  const sendBtn        = document.getElementById('chat-send-btn');
+
+  // Flags for Text Book modes
+  const isTextBookSingle   = sessionParams.questionType === "Text Book (MCQ Single)";
+  const isTextBookMultiple = sessionParams.questionType === "Text Book (MCQ Multiple)";
+
+  // We need to check this again
+  const didSendFile = stagedFile !== null;
+
+  const loadingMessage = appendChatMessage(
+    'Generating questions as per your instructions...',
+    'system-message',
+    messagesArea
+  );
+
+  try {
+    let result;
+
+// Text Book requires a file (PDF/image)
+if ((sessionParams.questionType === "Text Book (MCQ Single)" || sessionParams.questionType === "Text Book (MCQ Multiple)") && !stagedFile) {
+  __qb_toast('Please upload an image or PDF of the textbook page.');
+  appendChatMessage('Please upload an image or PDF of the textbook page, then tap “Get Questions” again.', 'system-message', messagesArea);
+  // restore send button state and exit gracefully
+  sendBtn.innerHTML = `<i class="fas fa-paper-plane"></i>`;
+  updateSendButtonState(chatPromptInput, sendBtn);
+  return;
+}
+    if (stagedFile) {
+      let extractPrompt;
+
+      if (sessionParams.questionType === "MCQ (Single)" || sessionParams.questionType === "Text Book (MCQ Single)") {
+        extractPrompt = `
+Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
+
+IMPORTANT: When a PDF or image file is uploaded, Extract questions EXACTLY as they appear in the uploaded file, WITHOUT adding, changing, or removing anything. Do NOT generate your own questions, explanations, or text. Extract ONLY MCQ (Single correct answer) questions from this file.
+
+If any question is missing "Level", analyze the question and assign either "Level 1", "Level 2", or "Level 3" based strictly on the definitions below. Do NOT use words like "easy", "medium", "intermediate", or "advanced" in the output. Only write "Level 1", "Level 2", or "Level 3" exactly as shown.
+
+- Level 1: Foundation Easy & Medium
+  - Basic conceptual, recall, or direct application questions suitable for students beginning IIT/NEET Foundation training.
+  - Should be similar to the easier problems from IIT/NEET Foundation workbooks (not regular school textbooks).
+  - Use single concepts and avoid multi-step reasoning; questions should be aligned with competitive exam styles (simple but focused).
+  - No direct copying from standard board textbooks.
+
+- Level 2: Foundation Difficult & Very Difficult
+  - Questions involving moderate application of concepts, sometimes requiring two steps or combining two related ideas.
+  - Should resemble 'tricky' questions from IIT/NEET Foundation practice sets, but not as complex as Olympiad/NTSE.
+  - Encourage careful reading, analysis, or use of a formula in a less-direct way.
+  - Higher challenge than Level 1, but not full Olympiad style.
+
+- Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
+  - Require multi-step logical reasoning and combine at least two different concepts.
+  - Must have non-standard twists or novel approaches, similar to Olympiad/NTSE/IIT Foundation exams.
+  - Do NOT include questions that are direct, single-step, formula-based, or similar to standard textbook problems. Avoid straightforward calculation or memory-based questions.
+  - Use inspiration from previous Olympiad, NTSE, and JEE Foundation exam papers for the appropriate class and topic.
+  - Do not copy questions exactly; always change numbers, variables, or context to fit the chosen class level.
+  - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
+  - Questions must remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions.
+
+If marks are missing, default to "1 Mark".
+
+For every question, use this meta line at the top:
+Q<num>: Level <Level>, <Marks> [MCQ (Single)]
+
+For MCQ (Single correct answer), each question must be formatted exactly as:
+Q<num>: Level <Level>, <Marks> [MCQ (Single)]
+<Question text>
+A) <Option A>
+B) <Option B>
+C) <Option C>
+D) <Option D>
+Ans: <A), B), C), or D) — only one>
+
+List all MCQ (Single) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
+`;
+      } else if (sessionParams.questionType === "MCQ (Multiple)" || sessionParams.questionType === "Text Book (MCQ Multiple)") {
+        extractPrompt = `
+Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
+
+IMPORTANT: When a PDF or image file is uploaded, Extract questions EXACTLY as they appear in the uploaded file, WITHOUT adding, changing, or removing anything. Do NOT generate your own questions, explanations, or text. Extract ONLY MCQ (Multiple correct answers) questions from this file.
+
+If any question is missing "Level", analyze the question and assign either "Level 1", "Level 2", or "Level 3" based strictly on the definitions below. Do NOT use words like "easy", "medium", "intermediate", or "advanced" in the output. Only write "Level 1", "Level 2", or "Level 3" exactly as shown.
+
+- Level 1: Foundation Easy & Medium
+  - Basic conceptual, recall, or direct application questions suitable for students beginning IIT/NEET Foundation training.
+  - Should be similar to the easier problems from IIT/NEET Foundation workbooks (not regular school textbooks).
+  - Use single concepts and avoid multi-step reasoning; questions should be aligned with competitive exam styles (simple but focused).
+  - No direct copying from standard board textbooks.
+
+- Level 2: Foundation Difficult & Very Difficult
+  - Questions involving moderate application of concepts, sometimes requiring two steps or combining two related ideas.
+  - Should resemble 'tricky' questions from IIT/NEET Foundation practice sets, but not as complex as Olympiad/NTSE.
+  - Encourage careful reading, analysis, or use of a formula in a less-direct way.
+  - Higher challenge than Level 1, but not full Olympiad style.
+
+- Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
+  - Require multi-step logical reasoning and combine at least two different concepts.
+  - Must have non-standard twists or novel approaches, similar to Olympiad/NTSE/IIT Foundation exams.
+  - Do NOT include questions that are direct, single-step, formula-based, or similar to standard textbook problems. Avoid straightforward calculation or memory-based questions.
+  - Use inspiration from previous Olympiad, NTSE, and JEE Foundation exam papers for the appropriate class and topic.
+  - Do not copy questions exactly; always change numbers, variables, or context to fit the chosen class level.
+  - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
+  - Questions must remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions.
+
+If marks are missing, default to "1 Mark".
+
+For every question, use this meta line at the top:
+Q<num>: Level <Level>, <Marks> [MCQ (Multiple)]
+
+For MCQ (Multiple correct answers), each question must be formatted exactly as:
+Q<num>: Level <Level>, <Marks> [MCQ (Multiple)]
+<Question text>
+A) <Option A>
+B) <Option B>
+C) <Option C>
+D) <Option D>
+Ans: <All correct options, e.g., "A), C), D)" — two or more, comma separated>
+
+List all MCQ (Multiple) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
+`;
+      } else if (sessionParams.questionType === "Descriptive") {
+        extractPrompt = `
+Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
+
+IMPORTANT: When a PDF or image file is uploaded, extract questions EXACTLY as they appear in the uploaded file, WITHOUT adding, changing, or removing anything. Do NOT generate your own questions, explanations, or text. Extract ONLY descriptive questions from this file.
+
+If any question is missing "Level", analyze the question and assign either "Level 1", "Level 2", or "Level 3" based strictly on the **CBSE level definitions** below. Do NOT use words like "easy", "medium", "intermediate", or "advanced" in the output. Only write "Level 1", "Level 2", or "Level 3" exactly as shown.
+
+- Level 1: Knowledge/Recall
+  - Direct textbook questions, fact recall, or direct comprehension from CBSE text.
+
+- Level 2: Application
+  - Application, interpretation, or multi-step thinking, but still within the scope of CBSE textbook.
+
+- Level 3: HOTS (Higher Order Thinking Skills)
+  - Analysis, evaluation, synthesis, or questions as labeled HOTS in CBSE/NCERT books.
+
+If marks are missing, estimate the appropriate marks based on the question’s type, expected length of answer, or any clues from the CBSE material (e.g., “Short Answer,” “Long Answer,” etc.). If you are unsure, leave the marks field blank.
+
+For every question, use this meta line at the top:
+Q<num>: Level <Level>, <Marks> [Descriptive]
+
+For descriptive questions, each question must be formatted exactly as:
+Q<num>: Level <Level>, <Marks> [Descriptive]
+<Question text>
+
+List all descriptive questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
+`;
+      }
+
+      /* For Text Book modes, switch the meta tag to [Text MCQ (...)] */
+if (isTextBookSingle) {
+  extractPrompt = extractPrompt.replace(/\[MCQ \(Single\)\]/g, '[Text (Single)]');
+}
+if (isTextBookMultiple) {
+  extractPrompt = extractPrompt.replace(/\[MCQ \(Multiple\)\]/g, '[Text (Multiple)]');
+}
+
+const formData = new FormData();
+formData.append('imageFile', stagedFile);
+formData.append('prompt', extractPrompt);
+
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/extract-from-image`, {
+        method: 'POST',
+        body: formData
+      });
+
+      result = await response.json();
+      if (!response.ok) throw new Error(result.error || "File processing failed.");
+
+    } else {
+      let fullPromptForAI;
+
+      const userPrompt = originalPrompt.trim();
+      const subtopicMatch =
+        userPrompt.match(/sub-?topics?\s*['":-]?\s*([a-zA-Z0-9 ,\-]+)/i) ||
+        userPrompt.match(/topics?\s*['":-]?\s*([a-zA-Z0-9 ,\-]+)/i) ||
+        userPrompt.match(/concepts?\s*['":-]?\s*([a-zA-Z0-9 ,\-]+)/i);
+
+      let focusInstruction = '';
+      if (subtopicMatch && subtopicMatch[1]) {
+        focusInstruction = `
+IMPORTANT: Generate all questions ONLY from the sub-topic "${subtopicMatch[1].trim()}". Do NOT include questions from any other part of the chapter. All questions must strictly relate to the selected class, subject, chapter, and sub-topic.
+`;
+      }
+
+      const baseInfo = `
+Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
+${focusInstruction}
+User request: "${userPrompt}".
+`;
+
+            if (sessionParams.questionType === "MCQ (Single)" || isTextBookSingle) {
+        fullPromptForAI = `
+${baseInfo}
+Strictly follow these level definitions for every question:
+
+- Level 1: Foundation Easy & Medium
+  Instructions for Level 1 questions:
+  - These should be basic conceptual, recall, or direct application questions suitable for students beginning IIT/NEET Foundation training.
+  - Questions should be similar to the easier problems from IIT Foundation or NEET Foundation workbooks—not regular school textbook exercises.
+  - Use single concepts and avoid multi-step reasoning, but ensure questions are aligned with competitive exam styles (simple but focused).
+  - No direct copying from standard board textbooks.
+
+- Level 2: Foundation Difficult & Very Difficult
+  Instructions for Level 2 questions:
+  - These should involve moderate application of concepts, sometimes requiring two steps or combining two related ideas.
+  - Style should resemble typical 'tricky' questions seen in IIT/NEET Foundation practice sets, but not as complex as Olympiad or advanced NTSE questions.
+  - Use questions that encourage careful reading, analysis, or use of a formula in a less-direct way.
+  - Ensure questions are higher in challenge than standard Foundation Level 1, but not full Olympiad style.
+
+- Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
+  Instructions for Level 3 questions (for any class 6th–10th):
+  - Each question must require multi-step logical reasoning and should combine at least two different concepts.
+  - Questions should have non-standard twists or novel approaches, similar to those found in Olympiad, NTSE, or IIT Foundation exams.
+  - Do NOT include questions that are direct, single-step, formula-based, or similar to standard textbook problems for the selected class. Avoid straightforward calculation or memory-based questions.
+  - Whenever possible, take inspiration from previous Olympiad, NTSE, and JEE Foundation exam papers appropriate to the selected class and topic.
+  - Do not copy questions exactly; always change numbers, variables, or context to fit the chosen class level.
+  - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
+  - Ensure the questions remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions; avoid requiring methods, tricks, or knowledge from higher classes.
+
+- Math equations must be written in LaTeX.
+
+**STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all options and answers for correctness and logic.
+- Check all calculations, facts, and reasoning in both the question and the options. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question or option if an error or ambiguity is found. Only output after confirming everything is correct.
+
+The user wants Multiple Choice Questions (MCQs) with only one correct answer for each question. Please generate questions based on the user's request.
+
+Each question MUST follow this strict format:
+1. Start with the question number, level, and marks (e.g., "Q1: Level 2, 1 Mark").
+2. On the next line, write the question text.
+3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
+4. On the final line for that question, specify the correct answer using the format "Ans: C)" (only ONE letter).
+
+Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
+`;
+      } else if (sessionParams.questionType === "MCQ (Multiple)" || isTextBookMultiple) {
+        fullPromptForAI = `
+${baseInfo}
+Strictly follow these level definitions for every question:
+
+- Level 1: Foundation Easy & Medium
+  Instructions for Level 1 questions:
+  - These should be basic conceptual, recall, or direct application questions suitable for students beginning IIT/NEET Foundation training.
+  - Questions should be similar to the easier problems from IIT Foundation or NEET Foundation workbooks—not regular school textbook exercises.
+  - Use single concepts and avoid multi-step reasoning, but ensure questions are aligned with competitive exam styles (simple but focused).
+  - No direct copying from standard board textbooks.
+
+- Level 2: Foundation Difficult & Very Difficult
+  Instructions for Level 2 questions:
+  - These should involve moderate application of concepts, sometimes requiring two steps or combining two related ideas.
+  - Style should resemble typical 'tricky' questions seen in IIT/NEET Foundation practice sets, but not as complex as Olympiad or advanced NTSE questions.
+  - Use questions that encourage careful reading, analysis, or use of a formula in a less-direct way.
+  - Ensure questions are higher in challenge than standard Foundation Level 1, but not full Olympiad style.
+
+- Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
+  Instructions for Level 3 questions (for any class 6th–10th):
+  - Each question must require multi-step logical reasoning and should combine at least two different concepts.
+  - Questions should have non-standard twists or novel approaches, similar to those found in Olympiad, NTSE, or IIT Foundation exams.
+  - Do NOT include questions that are direct, single-step, formula-based, or similar to standard textbook problems for the selected class. Avoid straightforward calculation or memory-based questions.
+  - Whenever possible, take inspiration from previous Olympiad, NTSE, and JEE Foundation exam papers appropriate to the selected class and topic.
+  - Do not copy questions exactly; always change numbers, variables, or context to fit the chosen class level.
+  - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
+  - Ensure the questions remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions; avoid requiring methods, tricks, or knowledge from higher classes.
+
+**STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all options for correctness and logic.
+- Check all calculations, facts, and reasoning in both the question and the options. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question or option if an error or ambiguity is found. Only output after confirming everything is correct.
+
+The user wants Multiple Choice Questions (MCQs) with more than one correct answer possible for each question (Multiple correct options).
+- Math equations must be written in LaTeX.
+
+***STRICT RULES FOR ANSWERS:***
+• Answer-count distribution per batch of 10 MCQs:
+  - Exactly 2 questions must have 1 correct option.
+  - Exactly 3 questions must have 2 correct options.
+  - Exactly 3 questions must have 3 correct options.
+  - Exactly 2 questions must have 4 correct options.
+- The combination of correct options MUST vary across questions. Do not use the same answer pattern more than once.
+- The correct answers (A, B, C, D) MUST be distributed as evenly as possible.
+- Before finishing, DOUBLE CHECK that your output follows the above distribution.
+
+Each question MUST follow this strict format:
+1. Start with the question number, level, and marks (e.g., "Q1: Level 2, 1 Mark").
+2. On the next line, write the question text.
+3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
+4. On the final line for that question, specify ALL correct answers using the format "Ans: A), C), D)" (list all correct answers, separated by comma).
+
+Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
+`;
+      } else {
+        // Descriptive
+        fullPromptForAI = `
+${baseInfo}
+Strictly follow these level definitions for every question:
+
+- Level 1: Foundation Easy & Medium
+  Instructions for Level 1 questions:
+  - These should be basic conceptual, recall, or direct application questions suitable for students beginning IIT/NEET Foundation training.
+  - Questions should be similar to the easier problems from IIT Foundation or NEET Foundation workbooks—not regular school textbook exercises.
+  - Use single concepts and avoid multi-step reasoning, but ensure questions are aligned with competitive exam styles (simple but focused).
+  - No direct copying from standard board textbooks.
+
+- Level 2: Foundation Difficult & Very Difficult
+  Instructions for Level 2 questions:
+  - These should involve moderate application of concepts, sometimes requiring two steps or combining two related ideas.
+  - Style should resemble typical 'tricky' questions seen in IIT/NEET Foundation practice sets, but not as complex as Olympiad or advanced NTSE questions.
+  - Use questions that encourage careful reading, analysis, or use of a formula in a less-direct way.
+  - Ensure questions are higher in challenge than standard Foundation Level 1, but not full Olympiad style.
+
+- Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
+  Instructions for Level 3 questions (for any class 6th–10th):
+  - Each question must require multi-step logical reasoning and should combine at least two different concepts.
+  - Questions should have non-standard twists or novel approaches, similar to those found in Olympiad, NTSE, or IIT Foundation exams.
+  - Do NOT include questions that are direct, single-step, formula-based, or similar to standard textbook problems for the selected class. Avoid straightforward calculation or memory-based questions.
+  - Whenever possible, take inspiration from previous Olympiad, NTSE, and JEE Foundation exam papers appropriate to the selected class and topic.
+  - Do not copy questions exactly; always change numbers, variables, or context to fit the chosen class level.
+  - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
+  - Ensure the questions remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions; avoid requiring methods, tricks, or knowledge from higher classes.
+  - Math equations must be written in LaTeX.
+
+**STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all questions for correctness and logic.
+- Check all calculations, facts, and reasoning in the question. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question if an error or ambiguity is found. Only output after confirming everything is correct.
+
+User request: "${originalPrompt}"
+
+Format each question strictly as:
+Q<num>: Level <Lvl>, <Marks> Marks
+<Question text>
+
+Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
+`;
+      }
+
+      const isCbse = /cbse/i.test(userPrompt);
+
+      if (isCbse) {
+        if (sessionParams.questionType === "Descriptive") {
+                   // CBSE DESCRIPTIVE prompt (NO options, NO "Ans:")
+fullPromptForAI = `
+${baseInfo}
+You must generate questions ONLY from the CBSE textbook content for the selected class, subject, and chapter. Do not use Foundation, IIT/NEET, or external material.
+Don’t forget to give strictly-from-textbook items (using NCERT’s exact data/Numbering). 
+For help use these websites: BYJU’S, LEARN CBSE, QMATH .IN, VEDANTU, NCERT.NIC.IN, SCRIBD.com, CUEMATH.com, allen.com. and all other related websites. 
+
+Assign a Level for each question:
+- Level 1: Knowledge/recall, direct textbook questions, or straightforward understanding.
+- Level 2: Application/interpretation within the CBSE chapter.
+- Level 3: HOTS (analysis/evaluation/synthesis) as per CBSE.
+
+**STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all questions for correctness and logic.
+- Check all calculations, facts, and reasoning in the question. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question if an error or ambiguity is found. Only output after confirming everything is correct.
+
+Format strictly:
+Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+<question text>
+
+Do not add options or "Ans:" lines.
+`;
+        } else {
+         // CBSE MCQ prompt (keeps options + Ans)
+            fullPromptForAI = `
+            ${baseInfo}
+            You must generate questions ONLY from the CBSE textbook content for the selected class, subject, and chapter.
+             Don’t forget to give strictly-from-textbook items (using NCERT’s exact data/Numbering). 
+            For help use these websites: BYJU’S, LEARN CBSE, QMATH .IN, VEDANTU, NCERT.NIC.IN, SCRIBD.com, CUEMATH.com, allen.com. and all other related websites..
+
+Assign a Level for each question:
+- Level 1: Knowledge/recall, direct textbook questions, or straightforward understanding.
+- Level 2: Application/interpretation within the CBSE chapter.
+- Level 3: HOTS (analysis/evaluation/synthesis) as per CBSE.
+
+**STRICT ACCURACY INSTRUCTIONS:**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all questions for correctness and logic.
+- Check all calculations, facts, and reasoning in the question. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question if an error or ambiguity is found. Only output after confirming everything is correct.
+
+Format the questions as requested by the user. Do not add any extra text or explanations.
+
+Format strictly:
+Q<num>: Level <1/2/3>, <Marks> [${sessionParams.questionType}]
+<question text>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: ...
+`;
+        }
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: fullPromptForAI })
+      });
+
+      result = await response.json();
+      if (!response.ok) throw new Error(result.error || "API error");
+    }
+
+    parseAndDisplayAiQuestions(result.result, messagesArea, sessionParams);
+
+  } catch (err) {
+    appendChatMessage(`Error: ${err.message}`, 'system-message', messagesArea);
+  } finally {
+    loadingMessage.remove();
+    sendBtn.innerHTML = `<i class="fas fa-paper-plane"></i>`;
+
+    if (didSendFile) {
+      stagedFile = null;
+      document.getElementById('file-preview-box').style.display = 'none';
+      document.getElementById('chat-upload-btn').style.color = '#54656f';
+    }
+
+    updateSendButtonState(chatPromptInput, sendBtn);
+  }
+}
+
+async function handleSendPrompt(sessionParams) {
+  const chatPromptInput = document.getElementById('chat-prompt-input');
+  const sendBtn         = document.getElementById('chat-send-btn');
+  const userPrompt      = chatPromptInput.value.trim();
+  const messagesArea    = document.getElementById('chat-messages-area');
+
+  if (!userPrompt && !stagedFile) return;
+
+// --- Stage 1: Get Confirmation ---
+sendBtn.disabled = true;
+sendBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+
+if (userPrompt) appendChatMessage(userPrompt, 'user', messagesArea);
+chatPromptInput.value = '';
+chatPromptInput.style.height = 'auto';
+
+const loadingMessage = appendChatMessage('Parsing instructions...', 'system-message', messagesArea);
+
+// This is the "meta-prompt" that asks the AI to summarize the teacher's request.
+const promptForSummary = `
+A teacher has provided the following instructions for creating. Re-write and structure these instructions clearly and concisely in a paragraph format for a confirmation message. Start with "You need to create a...". Do not add any conversational text, just the structured instructions.
+
+Teacher's instructions: "${userPrompt}"
+`;
+
+try {
+  // We use the same generation endpoint, but with our special summary prompt.
+  const response = await fetch(`${API_BASE_URL}/api/v1/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: promptForSummary })
+  });
+
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "API error");
+
+  // On success, remove "Parsing..." and show the confirmation modal
+  loadingMessage.remove();
+  showConfirmationModal(result.result, userPrompt, sessionParams);
+
+} catch (err) {
+  // If summary fails, show an error and re-enable the button
+  loadingMessage.remove();
+  appendChatMessage(`Error parsing instructions: ${err.message}. Please try again.`, 'system-message', messagesArea);
+  sendBtn.innerHTML = `<i class="fas fa-paper-plane"></i>`;
+    updateSendButtonState(chatPromptInput, sendBtn);
+}
+ }
+function handleFileUpload(event, sessionParams) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  stagedFile = file;
+
+  document.getElementById('file-preview-box').style.display = 'block';
+  document.getElementById('file-preview-name').textContent = file.name;
+  document.getElementById('chat-prompt-input').placeholder = "Describe the file or ask a question about it...";
+  document.getElementById('chat-upload-btn').style.color = '#1762a7';
+}
+
+async function saveSessionQuestions(sessionParams) {
+  const saveButton = document.getElementById('ai-save-all-btn');
+  if (saveButton.disabled) return;
+
+  if (!currentUserProfile || currentSessionQuestions.length === 0) {
+    alert("No new questions in this session to save.");
+    return;
+  }
+
+  saveButton.disabled = true;
+  saveButton.innerHTML = "⏳ Saving...";
+
+  let savedCount = 0,
+      skippedCount = 0;
+
+  const startNumber = await getNextQuestionNumber(
+    sessionParams.class,
+    sessionParams.subject,
+    sessionParams.chapter
+  );
+
+  for (let i = 0; i < currentSessionQuestions.length; i++) {
+    const qData = currentSessionQuestions[i];
+
+    // If comprehensive, use fullText for duplicate check, else parsedBody
+    // Normalize and join text for MCQ options as well
+    function normalizeQuestion(q) {
+      if (!q) return '';
+      return q
+        .replace(/\s+/g, ' ')
+        .replace(/<br\s*\/?>/gi, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    let compareText;
+
+    if (qData.options && qData.options.length) {
+      // For MCQ, compare question + options as one string
+      compareText = normalizeQuestion(
+        (qData.question || '') + ' ' + (qData.options || []).join(' ')
+      );
+    } else {
+      // For descriptive/comprehensive
+      compareText = normalizeQuestion(
+        (qData.parsedMeta && qData.parsedMeta.includes("[Comprehensive]"))
+          ? qData.fullText
+          : qData.parsedBody
+      );
+    }
+
+    const snapshot = await db
+      .collection("questions")
+      .where("subject", "==", qData.subject)
+      .where("chapter", "==", qData.chapter)
+      .get();
+
+    let isDuplicate = false;
+
+    snapshot.forEach(doc => {
+      let existingText;
+
+      if (doc.data().options && doc.data().options.length) {
+        // MCQ: compare question + options
+        existingText = normalizeQuestion(
+          (doc.data().question || '') + ' ' + (doc.data().options || []).join(' ')
+        );
+      } else {
+        // Descriptive/comprehensive
+        existingText = normalizeQuestion(
+          (doc.data().metaLine && doc.data().metaLine.includes("[Comprehensive]"))
+            ? doc.data().text
+            : doc.data().body
+        );
+      }
+
+      if (compareText === existingText) {
+        isDuplicate = true;
+      }
+    });
+
+    if (isDuplicate) {
+      skippedCount++;
+      continue;
+    }
+
+    const meta = parseMetaLine(qData.parsedMeta);
+    const currentQuestionNumber = startNumber + savedCount; // Increment based on successfully saved count
+    const __wrap = __fixLatex;
+
+    if (qData.parsedMeta && qData.parsedMeta.includes("[Comprehensive]")) {
+      // Wrap passage + each MCQ body before saving
+      const wrappedPassage = __wrap(qData.passage || '');
+      const wrappedMcqs = (qData.mcqs || []).map(m => ({
+        ...m,
+        body: __wrap(m.body || '')
+      }));
+      const wrappedFull = __wrap(qData.fullText || '');
+
+      await db.collection("questions").add({
+        type: "Comprehensive",
+        text: wrappedFull,
+        metaLine: qData.parsedMeta,
+        marks: 2,
+        passage: wrappedPassage,
+        mcqs: wrappedMcqs,
+        questionNumber: currentQuestionNumber,
+        class: qData.class,
+        subject: qData.subject,
+        chapter: qData.chapter,
+        createdBy: currentUserProfile.uid,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+    } else {
+      // Normal question save (single, multiple, descriptive) — wrap mathy text
+      const wrappedQuestion  = __wrap(qData.question || '');
+      const wrappedOptions   = (qData.options || []).map(o => __wrap(o || ''));
+      const wrappedBody      = __wrap(qData.parsedBody || '');
+      const wrappedFullText  = __wrap(qData.fullText || '');
+
+      let toSave = {
+        metaLine: qData.parsedMeta,
+        difficulty: meta.difficulty,
+        level: meta.level,
+        marks: meta.marks,
+        questionNumber: currentQuestionNumber,
+        class: qData.class,
+        subject: qData.subject,
+        chapter: qData.chapter,
+        createdBy: currentUserProfile.uid,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+          if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+        toSave.question = wrappedQuestion;
+        toSave.options  = wrappedOptions; // keep as array
+        toSave.answer   = qData.parsedAnswer; // letters unchanged
+        toSave.mcqType  = sessionParams.questionType;
+      } else {
+        toSave.text   = wrappedFullText;
+        toSave.body   = wrappedBody;
+        toSave.answer = qData.parsedAnswer;
+      }
+
+      await db.collection("questions").add(toSave);
+    }
+
+    savedCount++;
+  }
+
+  alert(`${savedCount} question(s) saved. ${skippedCount} duplicate(s) skipped.`);
+  saveButton.disabled = false;
+  saveButton.innerHTML = "💾 Save All";
+}
+
+function appendChatMessage(text, type, messagesArea) {
+  let messageElement;
+
+  if (type === 'user') {
+    messageElement = document.createElement('div');
+    messageElement.className = 'chat-bubble user-bubble';
+    messageElement.innerHTML = `<div class="bubble-text">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+  } else if (type === 'system-message') {
+    messageElement = document.createElement('div');
+    messageElement.className = 'message system-message';
+    messageElement.textContent = text;
+  } else if (type === 'ai') {
+    messageElement = document.createElement('div');
+    messageElement.className = 'message ai-message';
+    messageElement.innerHTML = `<div class="question-text-ai">${text}</div>`;
+  }
+
+  if (messageElement) {
+    messagesArea.appendChild(messageElement);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+    return messageElement;
+  }
+}
+
+// Convert LaTeX delimiters to Markdown math that ChatGPT renders well
+function __normalizeLatexDelimiters(s = '') {
+  return String(s)
+    // block: \[...\] -> $$...$$
+    .replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')
+    // inline: \(...\) -> $...$
+    .replace(/\\\(/g, '$').replace(/\\\)/g, '$')
+    // collapse accidental $$$ or extra spaces
+    .replace(/\${3,}/g, '$$')
+    .replace(/[ \t]+\n/g, '\n');
+}
+
+// Decode any HTML entities that might have slipped in from your UI rendering
+function __decodeEntities(s = '') {
+  const d = document.createElement('textarea');
+  d.innerHTML = s;
+  return d.value;
+}
+// Wrap ( ... ) as \( ... \) ONLY when the (...) contains a LaTeX command like \frac, \sqrt, \cdot, etc.
+function __fixLatex(s='') {
+  let t = String(s);
+
+  // 1) Normalize any $...$ / $$...$$ into \( ... \) / \[ ... \]
+  t = t.replace(/\$\$([\s\S]*?)\$\$/g, '\\[$1\\]');
+  t = t.replace(/\$([^\$]+)\$/g, '\\($1\\)');
+
+  // 2) Upgrade bare (...) that contain LaTeX commands into \( ... \)
+  //    (handles cases like: ( \angle A = 45^\circ ))
+  t = t.replace(/\(\s*((?:[^()]*\\[A-Za-z][^()]*)+)\s*\)/g, '\\($1\\)');
+
+  // 3) Collapse spaces right inside delimiters: \(  x \) -> \(x\)
+  t = t.replace(/\\\(\s+/g, '\\(').replace(/\s+\\\)/g, '\\)');
+  t = t.replace(/\\\[\s+/g, '\\[').replace(/\s+\\\]/g, '\\]');
+
+  // 4) Ensure common symbols use LaTeX commands (no Unicode)
+  t = t
+    .replace(/×/g, '\\times ')
+    .replace(/·/g, '\\cdot ')
+    .replace(/≤/g, '\\le ')
+    .replace(/≥/g, '\\ge ')
+    .replace(/≠/g, '\\neq ')
+    .replace(/°/g, '^{\\circ}');
+
+  // 5) Guard against stray half-delimiters by removing unmatched single $ 
+  //    (already converted above, this is just a safety net)
+  t = t.replace(/\$(?=\S)|(?<=\S)\$/g, '');
+
+  return t;
+}
+// Convert LaTeX-y input to plain math for ChatGPT prefill
+function __toPlainMath(s = '') {
+  let t = String(s);
+
+  // remove $ / $$ and \( \) \[ \]
+  t = t.replace(/\$\$?/g, '');
+  t = t.replace(/\\\(|\\\)|\\\[|\\\]/g, '');
+
+  // \frac{a}{b} -> (a)/(b)
+  t = t.replace(/\\frac\s*\{([^}]*)\}\s*\{([^}]*)\}/g, '($1)/($2)');
+
+  // exponents ^{...} -> ^...
+  t = t.replace(/\^\{([^}]+)\}/g, '^$1');
+
+  // common symbols
+  t = t
+    .replace(/\\times/g, '×')
+    .replace(/\\cdot/g, '·')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\geq/g, '≥')
+    .replace(/\\neq/g, '≠')
+    .replace(/\\pm/g, '±')
+    .replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+
+  // drop \left \right
+  t = t.replace(/\\left/g, '').replace(/\\right/g, '');
+
+  return t.replace(/[ \t]+\n/g, '\n').trim();
+}
+
+/* === ChatGPT handoff helpers (AI Generator) === */
+function __qb_toast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:100000;font-weight:600;letter-spacing:.2px;font-size:14px;opacity:0.98';
+  document.body.appendChild(t);
+
+  setTimeout(() => {
+    t.style.transition = 'opacity .35s';
+    t.style.opacity = '0';
+  }, 1200);
+
+  setTimeout(() => t.remove(), 1600);
+}
+
+function buildChatGptPromptFromQuestion(qData, sessionParams) {
+  const meta = qData.parsedMeta || '';
+
+  const headerBits = [
+    sessionParams?.subject && `Subject: ${sessionParams.subject}`,
+    sessionParams?.class && `Class: ${sessionParams.class}`,
+    sessionParams?.chapter && `Chapter: ${sessionParams.chapter}`
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  // decode & normalize math
+  const rawQ    = __decodeEntities((qData.question || '').trim());
+  const rawBody = __decodeEntities((qData.parsedBody || '').trim());
+
+      const qText = __fixLatex(rawQ);
+    const body  = __fixLatex(rawBody);
+
+  const hasOptions = Array.isArray(qData.options) && qData.options.length === 4;
+
+  let prompt = 'Please solve and explain clearly.\n';
+  if (headerBits) prompt += headerBits + '\n\n';
+
+  if (qText) {
+    prompt += `Question:\n${qText}\n`;
+
+    if (hasOptions) {
+      const opts = qData.options
+        .map((o, i) => {
+          const clean = __toPlainMath(
+            __decodeEntities(String(o || '').replace(/^[A-D][).]\s*/, ''))
+          );
+          return `${String.fromCharCode(65 + i)}) ${clean}`;
+        })
+        .join('\n');
+
+      prompt += `\nOptions:\n${opts}`;
+    }
+  } else {
+    prompt += `Question:\n${body}\n`;
+  }
+
+  prompt += hasOptions
+    ? `\n\nRespond with the correct option (A–D) and a step-by-step explanation.`
+    : `\n\nRespond with the final answer and a step-by-step explanation.`;
+
+  if (meta) prompt += `\n\nMeta: ${meta}`;
+
+  return prompt;
+}
+
+async function openInChatGptWithPrefill(prompt) {
+  let copied = false;
+
+  try {
+    await navigator.clipboard.writeText(prompt);
+    copied = true;
+  } catch (_) {
+    /* clipboard may be blocked; continue */
+  }
+
+  __qb_toast(copied ? 'Copied prompt. Opening ChatGPT…' : 'Opening ChatGPT… (paste prompt manually)');
+
+  const url = new URL('https://chatgpt.com/');
+  url.searchParams.set('q', prompt); // pre-fill message
+  window.open(url.toString(), '_blank', 'noopener');
+}
+
+/* === end helpers === */
+
+/* === Prompt builder for initial generation in ChatGPT (FOUNDATION + CBSE modes, strict rules) === */
+function buildChatGptGenerationPrompt(sessionParams) {
+   const cls   = sessionParams.class || '';
+  const board = sessionParams.board || '';
+  const subj  = sessionParams.subject || '';
+  const chap  = sessionParams.chapter || '';
+  const rawType = sessionParams.questionType || 'MCQ (Single)';
+const isTextbook = /Text Book/i.test(rawType);
+const isMultiple = /Multiple/i.test(rawType);
+
+// Meta tag label used in the example block
+const qtypeForFormat = isTextbook
+  ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
+  : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
+
+let qtype = rawType;
+const transcribeNote = isTextbook ? `
+TEXT BOOK MODE — IMPORTANT:
+• You will receive a page image or PDF from the school textbook.
+• First TRANSCRIBE the questions EXACTLY as printed (no rephrasing, no additions).
+• Keep original numbering/order, symbols, diagrams text, and notation.
+• For MCQs: copy all four options verbatim; don’t invent options.
+• Do NOT generate new questions; only extract from the provided page(s).
+` : '';
+  const plan  = (sessionParams.levelPlan || '').trim();
+  const count = sessionParams.numQuestions || 20;
+
+  const isCBSE = /cbse/i.test(plan) || /cbse/i.test(subj);
+
+  // ---- COMMON headings ----
+ const requestLine = isTextbook
+  ? 'Request: Transcribe questions from the uploaded textbook page(s).'
+  : `Request: ${plan || (count + ' questions')}`;
+
+const header = `
+Class: ${cls}
+Board: ${board}
+Subject: ${subj}
+Chapter: ${chap}
+${requestLine}
+`;
+
+  // ---- LEVEL DEFINITIONS ----
+  const foundationLevels = `
+Use these Level definitions STRICTLY (Foundation/IIT-NEET mode):
+- Level 1: Foundation Easy & Medium
+  • Basic conceptual/recall/direct application aligned to Foundation style (not board textbook drill).
+  • Single concept, avoid multi-step reasoning; competitive-exam style but simple/focused.
+- Level 2: Foundation Difficult & Very Difficult
+  • Moderate application; 1–2 steps or combine 2 related ideas.
+  • 'Tricky' Foundation practice style; higher challenge than L1; not full Olympiad.
+- Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
+  • Multi-step logical reasoning, combining ≥2 concepts, non-standard twists/novel approaches.
+  • Do NOT output direct single-step/formula/memory questions.
+  • Inspired by Olympiad/NTSE/IIT-Foundation papers but adapted to this class & syllabus (change numbers/contexts).
+  • Keep within the class syllabus; no higher-class methods required.
+`;
+
+  const cbseLevels = `
+  Important
+  *All questions should be directly from CBSE text book*
+  * All questions should cover entire chapter concepts*
+   *Don’t forget to give strictly-from-textbook items (using NCERT’s exact data/Numbering).* 
+   For help use these websites: BYJU’S, LEARN CBSE, QMATH .IN, VEDANTU, NCERT.NIC.IN, SCRIBD.com, CUEMATH.com, allen.com. and all other related websites.
+  Use these Level definitions STRICTLY (CBSE mode):
+- Level 1: Knowledge/Recall (direct textbook/comprehension)
+- Level 2: Application/Interpretation (within CBSE chapter)
+- Level 3: HOTS (analysis/evaluation/synthesis as per CBSE)
+`;
+
+  // ---- STRICT ACCURACY ----
+  const strictAccuracy = `
+STRICT ACCURACY (applies to all):
+• Ensure every question is clear, unambiguous, and correct.
+• Double-check all facts/calculations/options/answers.
+• If any issue is found, fix it before output.
+• All math MUST use LaTeX with proper delimiters: (But plain Numbers and letters should not be in LaTex)
+  – Inline: wrap EVERY expression as \\( ... \\) (never raw (...) or $...$)
+  – Display: wrap as \\[ ... \\] (never $$...$$)
+• Use LaTeX commands for symbols (\\angle, ^{\\circ}, \\times, \\cdot, \\le, \\ge, \\neq, \\frac{..}{..}, \\sqrt{..}, etc.). Do NOT output Unicode symbols (×, °, ≤, ≥, ≠).
+• Delimiters must be balanced (no stray \\( or \\) ). No output should contain patterns like "( \\angle A = 45^\\circ )" — it must be "\\( \\angle A = 45^{\\circ} \\)".
+`;
+
+  // ---- FORMAT RULES (base) ----
+  const numberingNote = isTextbook
+  ? `• Numbering must be continuous starting from Q1. Do not assume total; continue until the last question present in the image/PDF (Q1…QN).`
+  : `• Numbering must be continuous: Q1 to Q${count}.`;
+
+  // MCQ format
+ const quantityLine = isTextbook
+  ? 'Output ALL questions that appear in the uploaded page(s). Format each question EXACTLY as:'
+  : `Output EXACTLY ${count} questions. Format each question EXACTLY as:`;
+
+const mcqFormat = `
+${quantityLine}
+Q<num>: Level <1/2/3>, 1 Mark [${qtypeForFormat}]
+<Question text>
+A) <Option A>
+B) <Option B>
+C) <Option C>
+D) <Option D>
+Ans: <A) or B) or C) or D)>
+
+Rules:
+${numberingNote}
+• Include A)–D) for every MCQ and an "Ans: …" line.
+• Use ONLY content from the selected class/subject/chapter (and any subtopic names present in "Request").
+• No headings, introductions, comments, or explanations—questions only.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
+
+  // MCQ Multiple additional distribution rule (per 10)
+  const multiBlockRule = `
+Additional rules for MCQ (Multiple):
+• Some questions have multiple correct options (e.g., A), C)).
+• Spread correct letters across A–D; avoid patterns.
+• If total > 10, apply this distribution to EACH block of 10:
+  - Exactly 2 questions with 1 correct option
+  - Exactly 3 questions with 2 correct options
+  - Exactly 3 questions with 3 correct options
+  - Exactly 2 questions with 4 correct options
+• Before finishing, self-check that each 10-question block satisfies the distribution.
+`;
+
+  // DESCRIPTIVE format
+  const descFormat = `
+${isTextbook
+  ? 'Transcribe ALL descriptive questions that appear in the uploaded page(s). Format each question EXACTLY as:'
+  : `Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as:`}
+
+Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+<Question text>
+
+Rules:
+${numberingNote}
+• No options and no "Ans:" lines.
+• Use ONLY the selected chapter (and any subtopic names present in "Request").
+• No extra text—questions only.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
+
+  // ----- Assemble prompt by type/mode -----
+  if (/Descriptive/i.test(qtype)) {
+    const levelBlock = isCBSE ? cbseLevels : foundationLevels;
+    return (
+  `${header}
+${levelBlock}
+${transcribeNote}
+${descFormat}`
+);
+  }
+
+  // MCQ (Single or Multiple)
+const levelBlock = isCBSE ? cbseLevels : foundationLevels;
+const multiNote  = (/Multiple/i.test(qtype) && !isTextbook) ? `\n${multiBlockRule}` : '';
+
+return (
+`${header}
+${levelBlock}
+${transcribeNote}
+${mcqFormat}
+${multiNote}`.trim()
+);
+}
+
+function splitMcqOptions(body) {
+  if ((body.match(/^[A-D]\)/gm) || []).length >= 3) return body;
+
+  if (/A\).+B\).+C\).+D\)/.test(body)) {
+    const m = body.match(/A\)([^B]+)B\)([^C]+)C\)([^D]+)D\)(.+)/);
+    if (m) {
+      return [
+        "A)" + m[1].trim(),
+        "B)" + m[2].trim(),
+        "C)" + m[3].trim(),
+        "D)" + m[4].trim()
+      ].join('\n');
+    } else {
+      return body
+        .replace(/([A-D]\))/g, '\n$1')
+        .replace(/^\n/, '');
+    }
+  }
+
+  return body;
+}
+/* ========= NEW: Shuffle utilities for MCQs ========= */
+
+/** Strip leading "A)"/"B)"/"C)"/"D)" labels and trim */
+function __normalizeOptionText(s) {
+  return String(s || '').replace(/^[A-D][).]\s*/, '').trim();
+}
+
+/** Fisher–Yates shuffle; returns a new shuffled copy */
+function __shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Randomize options A–D and remap the Ans: letters.
+ * Works for Single (one letter) and Multiple (several letters).
+ * Mutates qData: { options, parsedBody, parsedAnswer, fullText }
+ */
+function shuffleOptionsForQuestion(qData) {
+  if (!qData || !Array.isArray(qData.options) || qData.options.length !== 4) return;
+
+  // Normalize existing options (remove labels like "A) ")
+  const old = qData.options.map(__normalizeOptionText);
+
+  // Build permutation mapping: perm[newIndex] = oldIndex
+  const oldIndices = [0, 1, 2, 3];
+  const shuffledOldIndices = __shuffleArray(oldIndices);
+
+  // Reorder options by shuffled indices
+  const newOptions = shuffledOldIndices.map(idx => old[idx]);
+
+  // Remap answers (if present)
+  let newAnsLine = qData.parsedAnswer || null;
+  const foundLetters = newAnsLine ? [...newAnsLine.matchAll(/\b([A-D])\)/g)].map(m => m[1]) : [];
+
+  if (foundLetters.length > 0) {
+    const remappedLetters = foundLetters.map(letter => {
+      const oi = letter.charCodeAt(0) - 65; // original index 0..3
+      // find newIndex such that perm[newIndex] === oi
+      const ni = shuffledOldIndices.findIndex(orig => orig === oi);
+      return String.fromCharCode(65 + ni);
+    });
+
+    if (remappedLetters.length === 1) {
+      newAnsLine = `Ans: ${remappedLetters[0]})`;
+    } else {
+      newAnsLine = `Ans: ${remappedLetters.map(L => `${L})`).join(', ')}`;
+    }
+  }
+
+  // Rebuild parsedBody with new A)/B)/C)/D) order
+  const rebuilt = [
+    (qData.question || '').trim(),
+    `A) ${newOptions[0]}`,
+    `B) ${newOptions[1]}`,
+    `C) ${newOptions[2]}`,
+    `D) ${newOptions[3]}`
+  ].join('\n');
+
+  // Mutate qData consistently
+  qData.options = newOptions.slice(); // store de-labeled texts
+  qData.parsedBody = rebuilt;
+  if (newAnsLine) qData.parsedAnswer = newAnsLine;
+
+  qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}`;
+}
+
+/* ======== END NEW shuffle utilities ======== */
+
+
+/* ========== FINAL SET parser (for Paste Zone) ========== */
+
+/**
+ * Normalize “Ans:” letters into a clean array of A-D, keeping order.
+ * Accepts: "Ans: C)", "Ans: A), C)", "Ans: B),D)"
+ */
+function __extractAnswerLetters(ansLine = '') {
+  const m = String(ansLine).match(/Ans\s*:\s*([A-D\)\s,]+)/i);
+  if (!m) return [];
+  const letters = [];
+  (m[1].match(/[A-D]\)/gi) || []).forEach(tok => {
+    const L = tok[0].toUpperCase();
+    if (!letters.includes(L)) letters.push(L);
+  });
+  return letters;
+}
+
+/** Remove “Qn:” header line and return {meta, body} */
+function __splitMetaAndBody(block) {
+  const lines = String(block).split('\n');
+  const first = lines.shift() || '';
+  return { meta: first.trim(), body: lines.join('\n').trim() };
+}
+
+/** Ensure options are split into 4 lines starting with A) B) C) D) */
+function __forceOptionLines(body) {
+  // already line-broken?
+  if ((body.match(/^[A-D]\)/gm) || []).length >= 3) return body;
+
+  // try to split inline A)…B)…C)…D)…
+  if (/A\).+B\).+C\).+D\)/.test(body)) {
+    const m = body.match(/A\)([^B]+)B\)([^C]+)C\)([^D]+)D\)(.+)/s);
+    if (m) {
+      return [
+        `A) ${m[1].trim()}`,
+        `B) ${m[2].trim()}`,
+        `C) ${m[3].trim()}`,
+        `D) ${m[4].trim()}`
+      ].join('\n');
+    }
+    return body.replace(/([A-D]\))/g, '\n$1').replace(/^\n/, '');
+  }
+
+  return body;
+}
+
+/**
+ * Parse a pasted FINAL SET block into our session question objects.
+ * Respects the current sessionParams.questionType (MCQ Single/Multiple/Descriptive)
+ */
+function parseFinalSetIntoQuestions(text, sessionParams) {
+  // keep only from first Qn onward (ignore any chatty intro)
+  const startIdx = text.search(/\bQ\s*1\s*:/i);
+  const cleaned = startIdx >= 0 ? text.slice(startIdx) : text;
+
+  const blocks = cleaned
+    .split(/\n(?=Q\s*\d+\s*:)/g)
+    .map(s => s.trim())
+    .filter(s => /^Q\s*\d+\s*:/i.test(s));
+
+  const out = [];
+
+  for (const b of blocks) {
+    const { meta, body } = __splitMetaAndBody(b);
+
+    // Build base qData
+    const qData = {
+      fullText: b,
+      class: sessionParams.class,
+      subject: sessionParams.subject,
+      chapter: sessionParams.chapter,
+      parsedMeta: meta, // temporary; will be renumbered on render
+      question: '',
+      options: [],
+      parsedAnswer: null,
+      parsedBody: ''
+    };
+
+   if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+      // split body into Q text, options, and Ans
+      const ansMatch = body.match(/Ans\s*:\s*.*$/im);
+      const ansLine = ansMatch ? ansMatch[0].trim() : null;
+      const withoutAns = ansMatch ? body.replace(ansMatch[0], '').trim() : body.trim();
+
+      // first line is the question text, the rest are options (may be inline)
+      const lines = withoutAns.split('\n').map(l => l.trim()).filter(Boolean);
+      const qText = lines.length ? lines[0] : '';
+
+      let optBlock = lines.slice(1).join('\n');
+      optBlock = __forceOptionLines(optBlock);
+
+      const optLines = optBlock.split('\n').map(x => x.trim()).filter(Boolean);
+
+      // Ensure we have exactly 4 options
+      const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
+      const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
+      const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
+      const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
+
+      qData.question = qText;
+      qData.options = [A, B, C, D].map(s => s.replace(/^[A-D]\)\s*/, '').trim());
+
+      qData.parsedAnswer = ansLine
+        ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
+        : null;
+
+      qData.parsedBody = [
+        qText,
+        `A) ${qData.options[0]}`,
+        `B) ${qData.options[1]}`,
+        `C) ${qData.options[2]}`,
+        `D) ${qData.options[3]}`
+      ].join('\n');
+
+      // Store consistent fullText
+      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}`;
+
+    } else {
+      // Descriptive: meta + body (no options/Ans)
+      qData.question = body.split('\n')[0] || '';
+      qData.options = [];
+      qData.parsedAnswer = null;
+      qData.parsedBody = body;
+      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}`;
+    }
+
+    out.push(qData);
+  }
+
+  // Normalize meta to our UI style (Level, Marks, Type); renumber later in rerender
+ let TYPE = sessionParams.questionType;
+if (TYPE === 'Text Book (MCQ Single)')   TYPE = 'Text (Single)';
+if (TYPE === 'Text Book (MCQ Multiple)') TYPE = 'Text (Multiple)';
+
+  for (let i = 0; i < out.length; i++) {
+    const m = out[i].parsedMeta;
+
+    // Level
+    const lvl = (m.match(/Level\s*([1-3])/i) || [, '?'])[1];
+
+    // Marks
+    const mkMatch = m.match(/(\d+)\s*Mark/i);
+    const marks = mkMatch ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}` : (TYPE.startsWith('MCQ') ? '1 Mark' : '');
+
+    out[i].parsedMeta = `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
+
+    // Rebuild fullText using normalized meta
+    out[i].fullText = `${out[i].parsedMeta}\n${out[i].parsedBody}${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}`;
+  }
+
+  return out;
+}
+
+/* ========== END FINAL SET parser ========== */
+
+function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
+  // The original logic (leave as-is for MCQ/Descriptive):
+  const questionBlocks = responseText
+    .split(/\n(?=Q\s*\d+:)/g)
+    .map(q => q.trim())
+    .filter(q => q.match(/^Q\s*\d+:/));
+
+  if (questionBlocks.length === 0 && responseText) {
+    // fallback: show as plain text ONLY if parsing failed
+    appendChatMessage(responseText, 'ai', messagesArea);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  questionBlocks.forEach((qText) => {
+    const questionData = {
+      fullText: qText,
+      class: sessionParams.class,
+      subject: sessionParams.subject,
+      chapter: sessionParams.chapter
+    };
+
+    const metaMatch = qText.match(/^(Q\s*\d+:.*)/);
+    if (!metaMatch) {
+      console.warn("Skipping a block that is not a valid question:", qText);
+      return;
+    }
+
+    let originalMeta = metaMatch[1];
+    let level = "";
+    let marks = "";
+
+    let levelMatch = originalMeta.match(/Level\s*([1-3])/i);
+    if (levelMatch) {
+      level = `Level ${levelMatch[1]}`;
+    } else {
+      level = "Level ?";
+    }
+
+    const marksMatch = originalMeta.match(/(\d+)\s*Mark/i);
+    if (marksMatch) {
+      marks = `${marksMatch[1]} Mark${marksMatch[1] === "1" ? "" : "s"}`;
+    } else {
+      marks = sessionParams.questionType.startsWith("MCQ") ? "1 Mark" : "";
+    }
+
+   const metaType = (sessionParams.questionType === 'Text Book (MCQ Single)') ? 'Text (Single)'
+  : (sessionParams.questionType === 'Text Book (MCQ Multiple)') ? 'Text (Multiple)'
+  : sessionParams.questionType;
+questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${marks} [${metaType}]`;
+
+    let rawBody = qText.substring(originalMeta.length).trim();
+    const answerRegex = /(.*)(Ans:\s*.*)/s;
+    const answerMatch = rawBody.match(answerRegex);
+
+    if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+      if (answerMatch) {
+        const questionAndOptions = answerMatch[1].trim();
+        const lines = questionAndOptions
+          .split('\n')
+          .map(x => x.trim())
+          .filter(x => x && x !== '<br>' && x !== '');
+
+        questionData.question = lines[0] || '';
+        questionData.options = lines.slice(1, 5).map(x => x || '');
+        questionData.parsedAnswer = answerMatch[2].trim();
+        questionData.parsedBody = lines.join('\n');
+      } else {
+        questionData.question = rawBody.split('\n')[0].trim();
+        questionData.options = rawBody.split('\n').slice(1, 5).map(x => x.trim());
+        questionData.parsedAnswer = null;
+        questionData.parsedBody = rawBody;
+      }
+
+      // Normalize LaTeX delimiters before any option shuffling
+        questionData.parsedBody   = __fixLatex(questionData.parsedBody || '');
+        questionData.parsedAnswer = __fixLatex(questionData.parsedAnswer || '');
+        questionData.parsedMeta   = __fixLatex(questionData.parsedMeta || '');
+
+// Randomize A/B/C/D and remap the Ans: letters accordingly
+shuffleOptionsForQuestion(questionData);
+    } else {
+      // DESCRIPTIVE: no options, no "Ans:"
+      questionData.question = rawBody.trim().split('\n')[0] || '';
+      questionData.options = [];
+      questionData.parsedAnswer = null;
+      questionData.parsedBody = rawBody.trim();
+    }
+
+    currentSessionQuestions.push(questionData);
+    const questionEl = createQuestionElement(questionData, currentSessionQuestions.length - 1);
+    fragment.appendChild(questionEl);
+  });
+
+  messagesArea.appendChild(fragment);
+  if (window.MathJax) MathJax.typesetPromise([messagesArea]);
+  messagesArea.scrollTop = messagesArea.scrollHeight;
+}
+
+function createQuestionElement(qData, index) {
+  const questionEl = document.createElement('div');
+  questionEl.className = 'message ai-question-item';
+  questionEl.dataset.sessionQuestionIndex = index;
+
+  questionEl.innerHTML = `
+    <div class="question-meta-ai">${qData.parsedMeta}</div>
+    <div class="question-text-ai">${__fixLatex(qData.parsedBody)}</div>
+    <div class="question-actions">
+      <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
+    </div>
+  `;
+
+  const actionButton = questionEl.querySelector('.q-action-btn');
+
+  actionButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    const existingMenu = document.querySelector('.actions-menu');
+    if (existingMenu) existingMenu.remove();
+
+    const menu = document.createElement('div');
+    menu.className = 'actions-menu';
+    menu.innerHTML = `
+      <button class="menu-show-answer-btn">Show Answer</button>
+      <button class="menu-edit-btn">Edit</button>
+      <button class="menu-delete-btn">Delete</button>
+    `;
+
+    const isAnswerShowing = questionEl.querySelector('.temp-answer');
+    if (isAnswerShowing) {
+      const buttonInMenu = menu.querySelector('.menu-show-answer-btn');
+      buttonInMenu.textContent = 'Hide Answer';
+    }
+
+    questionEl.appendChild(menu);
+
+    menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
+      event.stopPropagation();
+      try {
+        const q = currentSessionQuestions[index];
+        const prompt = buildChatGptPromptFromQuestion(q, lastSessionParams || {});
+        await openInChatGptWithPrefill(prompt);
+      } catch (err) {
+        __qb_toast('Could not open ChatGPT.');
+        console.error(err);
+      }
+      menu.remove();
+    };
+
+    menu.querySelector('.menu-edit-btn').onclick = () => {
+      showEditPopupForQuestion(index);
+      menu.remove();
+    };
+
+    menu.querySelector('.menu-delete-btn').onclick = () => {
+      if (confirm('Are you sure you want to delete this question?')) {
+        currentSessionQuestions.splice(index, 1);
+        rerenderAllQuestions();
+      }
+      menu.remove();
+    };
+  });
+
+  return questionEl;
+}
+
+function rerenderAllQuestions() {
+  const messagesArea = document.getElementById('chat-messages-area');
+  messagesArea.querySelectorAll('.ai-question-item').forEach(item => item.remove());
+
+  const fragment = document.createDocumentFragment();
+
+  currentSessionQuestions.forEach((q, i) => {
+    // For comprehensives, we need a different renderer
+    if (q.parsedMeta && q.parsedMeta.includes("[Comprehensive]")) {
+      // Renumber meta
+      const metaPartsMatch = q.parsedMeta.match(/Q\s*\d+:\s*(.*)/i);
+      const details = metaPartsMatch ? metaPartsMatch[1] : '';
+      q.parsedMeta = `Q${i + 1}: ${details}`;
+
+      // Build element (copy from parseAndDisplayAiQuestions)
+      const blockEl = document.createElement('div');
+      blockEl.className = 'message ai-question-item';
+      blockEl.dataset.sessionQuestionIndex = i;
+
+      // Build MCQ HTMLs
+      const mcqHtml = q.mcqs.map((mcq, k) => {
+        // Remove leading Qn: from mcq.body if present (Q1:, Q2:, etc.)
+        let cleanBody = mcq.body.replace(/^Q\d+:\s*/i, '').replace(/Ans:.*/, '').trim();
+
+        return `
+          <div class="question-text-ai" style="margin-top:8px; text-align:left;">
+            <b>Q${k+1}.</b> ${__fixLatex(cleanBody.replace(/</g,"&lt;").replace(/>/g,"&gt;"))}
+            <div class="temp-answer" style="display:none; margin-top:3px; color:#5d4037;">
+              ${mcq.answer ? mcq.answer : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      blockEl.innerHTML = `
+        <div class="question-meta-ai">${q.parsedMeta}</div>
+        <div class="question-text-ai" style="white-space:pre-line; margin-bottom:8px;"><b>Passage:</b> ${__fixLatex(q.passage || '')}</div>
+        ${mcqHtml}
+        <div class="question-actions">
+          <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
+        </div>
+      `;
+
+      blockEl.querySelector('.q-action-btn').onclick = (e) => {
+        e.stopPropagation();
+
+        const existingMenu = document.querySelector('.actions-menu');
+        if (existingMenu) existingMenu.remove();
+
+        const menu = document.createElement('div');
+        menu.className = 'actions-menu';
+        menu.innerHTML = `
+          <button class="menu-show-answer-btn">Show Answer</button>
+          <button class="menu-edit-btn">Edit</button>
+          <button class="menu-delete-btn">Delete</button>
+        `;
+
+        blockEl.appendChild(menu);
+
+        menu.querySelector('.menu-show-answer-btn').onclick = () => {
+          const q = currentSessionQuestions[i]; // comprehensive data
+          const meta = q.parsedMeta || '';
+          const cls  = q.class  || (lastSessionParams && lastSessionParams.class)  || '';
+          const subj = q.subject|| (lastSessionParams && lastSessionParams.subject)|| '';
+          const chap = q.chapter|| (lastSessionParams && lastSessionParams.chapter)|| '';
+
+          let prompt = `Please solve and explain clearly.\n`;
+          const metaLineParts = [
+            cls  && `Class: ${cls}`,
+            subj && `Subject: ${subj}`,
+            chap && `Chapter: ${chap}`,
+            meta && meta.replace(/^Q\d+:\s*/, '').trim()
+          ].filter(Boolean).join(' · ');
+          if (metaLineParts) prompt += metaLineParts + `\n\n`;
+
+          prompt += `Passage:\n${q.passage}\n\n`;
+
+          if (Array.isArray(q.mcqs) && q.mcqs.length) {
+            prompt += `Questions:\n`;
+            q.mcqs.forEach((mcq, idx) => {
+              const cleanBody = (mcq.body || '').replace(/^Q\d+:\s*/i, '').trim();
+              prompt += `\nQ${idx + 1}.\n${cleanBody}\n`;
+              if (mcq.answer) {
+                prompt += `(If you know, the key says: ${mcq.answer})\n`;
+              }
+            });
+            prompt += `\nRespond with answers for each MCQ (e.g., A–D) and brief step-by-step explanations.`;
+          } else {
+            prompt += `Respond with the final answers and brief explanations.`;
+          }
+
+          openInChatGptWithPrefill(prompt);
+          menu.remove();
+        };
+
+        menu.querySelector('.menu-edit-btn').onclick = () => {
+          showEditPopupForComprehensive(i);
+          menu.remove();
+        };
+
+        menu.querySelector('.menu-delete-btn').onclick = () => {
+          if (confirm('Are you sure you want to delete this comprehensive?')) {
+            currentSessionQuestions.splice(i, 1);
+            rerenderAllQuestions();
+          }
+          menu.remove();
+        };
+      };
+
+      fragment.appendChild(blockEl);
+
+    } else {
+      // Normal question
+      const metaPartsMatch = q.parsedMeta.match(/Q\s*\d+:\s*(.*)/i);
+      const details = metaPartsMatch ? metaPartsMatch[1] : '';
+      q.parsedMeta = `Q${i + 1}: ${details}`;
+
+      const questionEl = createQuestionElement(q, i);
+      fragment.appendChild(questionEl);
+    }
+  });
+
+  messagesArea.appendChild(fragment);
+  if (window.MathJax) MathJax.typesetPromise([messagesArea]);
+}
+
+function parseMetaLine(metaLine) {
+  const meta = { difficulty: null, level: null, marks: null };
+  const diffMatch  = metaLine.match(/Q\s*\d+:\s*([^,/]+)/i);
+  const levelMatch = metaLine.match(/\/Level\s*(\d+)/i);
+  const marksMatch = metaLine.match(/(\d+)\s*Mark(s?)/i);
+
+  if (diffMatch)  meta.difficulty = diffMatch[1].trim();
+  if (levelMatch) meta.level      = parseInt(levelMatch[1], 10);
+  if (marksMatch) meta.marks      = parseInt(marksMatch[1], 10);
+
+  return meta;
+}
+
+async function getNextQuestionNumber(className, subjectName, chapterName) {
+  const query = db.collection("questions")
+    .where("class", "==", className)
+    .where("subject", "==", subjectName)
+    .where("chapter", "==", chapterName)
+    .orderBy("questionNumber", "desc")
+    .limit(1);
+
+  const snapshot = await query.get();
+  if (snapshot.empty) return 1;
+
+  const lastQuestion = snapshot.docs[0].data();
+  return (lastQuestion.questionNumber || 0) + 1;
+}
+
+function getTextSimilarity(a, b) {
+  if (!a || !b) return 0; // If either is missing, return 0 similarity
+
+  a = String(a).toLowerCase().replace(/\s+/g, ' ').trim();
+  b = String(b).toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const aWords = new Set(a.split(' '));
+  const bWords = new Set(b.split(' '));
+  const common = [...aWords].filter(w => bWords.has(w));
+
+  return common.length / Math.max(aWords.size, bWords.size);
+}
+
+document.addEventListener('click', function (event) {
+  document.querySelectorAll('.custom-dropdown.open').forEach(dropdown => {
+    if (!dropdown.contains(event.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
+
+  const existingMenu = document.querySelector('.actions-menu');
+  if (existingMenu && !existingMenu.contains(event.target) && !event.target.closest('.q-action-btn')) {
+    existingMenu.remove();
+  }
+});
+
+function showEditPopupForQuestion(index) {
+  const qData = currentSessionQuestions[index];
+
+  // Remove existing popup if any
+  document.querySelectorAll('.edit-popup').forEach(p => p.remove());
+
+  // Prepare default values
+  const options = (qData.options && qData.options.length === 4) ? qData.options : ["", "", "", ""];
+  const answerVal = qData.parsedAnswer ? qData.parsedAnswer.replace(/^Ans:\s*/i, "") : "";
+
+  // Create popup
+  const popup = document.createElement('div');
+  popup.className = 'edit-popup';
+  popup.innerHTML = `
+    <h3>Edit Question</h3>
+
+    <label>Question:</label>
+    <textarea id="edit-q-text" rows="2">${qData.question || ''}</textarea>
+
+    <label>Option A:</label>
+    <input type="text" id="edit-q-optA" value="${options[0] || ''}">
+
+    <label>Option B:</label>
+    <input type="text" id="edit-q-optB" value="${options[1] || ''}">
+
+    <label>Option C:</label>
+    <input type="text" id="edit-q-optC" value="${options[2] || ''}">
+
+    <label>Option D:</label>
+    <input type="text" id="edit-q-optD" value="${options[3] || ''}">
+
+    <label>Answer (e.g., "A)", or "A), C)" for multiple correct):</label>
+    <input type="text" id="edit-q-answer" value="${answerVal}">
+
+    <div class="popup-buttons">
+      <button id="edit-cancel">Cancel</button>
+      <button id="edit-save">Save</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+
+  // Cancel button logic
+  document.getElementById('edit-cancel').onclick = () => popup.remove();
+
+  // Save button logic
+  document.getElementById('edit-save').onclick = () => {
+    // Get edited values
+    const qText  = document.getElementById('edit-q-text').value.trim();
+    const optA   = document.getElementById('edit-q-optA').value.trim();
+    const optB   = document.getElementById('edit-q-optB').value.trim();
+    const optC   = document.getElementById('edit-q-optC').value.trim();
+    const optD   = document.getElementById('edit-q-optD').value.trim();
+    const answer = document.getElementById('edit-q-answer').value.trim();
+
+    // Simple validation (optional)
+    if (!qText || !optA || !optB || !optC || !optD || !answer) {
+      alert("All fields are required.");
+      return;
+    }
+
+    // Update data
+    qData.question = qText;
+    qData.options  = [optA, optB, optC, optD];
+    qData.parsedBody = [qText, `A) ${optA}`, `B) ${optB}`, `C) ${optC}`, `D) ${optD}`].join('\n');
+    qData.parsedAnswer = `Ans: ${answer}`;
+    qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}\n${qData.parsedAnswer}`;
+
+    // Close popup and re-render
+    popup.remove();
+    rerenderAllQuestions();
+  };
+}
+</script> 
+</body> 
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
