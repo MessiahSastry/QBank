@@ -646,7 +646,7 @@
           await saveUserProfile(cred.user, { name: nameValue, provider: 'password', role: 'teacher' });
           showStatus('Account created successfully. Redirecting...', 'success');
           setTimeout(() => {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'ai.html';
           }, 900);
         } catch (err) {
           showStatus(mapFirebaseError(err.code));
