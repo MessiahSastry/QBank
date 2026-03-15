@@ -1,0 +1,22 @@
+{
+  "name": "SciMentra QBank",
+  "short_name": "SciMentra",
+  "description": "SciMentra Question Bank web app for IIT & NEET Foundation.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f3d6b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./scimentra-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./scimentra-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
