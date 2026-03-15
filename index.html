@@ -61,10 +61,17 @@
       justify-content:space-between;
     }
     .brand-top{
-      display:flex;
-      align-items:center;
-      gap:14px;
-    }
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.brand-top-vertical{
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+  gap:12px;
+}
     .brand-logo{
       width:64px;height:64px;border-radius:18px;
       background:linear-gradient(135deg,var(--primary-2),var(--primary));
@@ -84,8 +91,22 @@
   color:transparent;
 }
     .brand-text p{
-      margin:4px 0 0;color:var(--muted);font-weight:600;
-    }
+  margin:4px 0 0;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.brand-text-centered{
+  text-align:center;
+}
+
+.brand-program-line{
+  margin-top:8px;
+  color:var(--primary);
+  font-weight:800;
+  font-size:1rem;
+  letter-spacing:.4px;
+}
     .hero{
       padding:30px 8px 28px 0;
       max-width:700px;
@@ -256,6 +277,7 @@
     }
     @media (max-width: 640px){
       .brand-top{justify-content:center;text-align:center}
+      .brand-top-vertical{gap:10px}
       .hero{text-align:center;padding-right:0}
       .feature-grid{grid-template-columns:1fr}
       .login-card{padding:22px 18px;border-radius:24px}
@@ -267,15 +289,16 @@
   <div class="page">
     <section class="left-panel">
       <div>
-        <div class="brand-top">
-         <div class="brand-logo" style="background:#fff;padding:0;overflow:hidden;">
-  <img src="scimentra-logo.png" alt="SciMentra Foundation Logo" style="width:88%;height:88%;object-fit:contain;display:block;margin:auto;">
+       <div class="brand-top brand-top-vertical">
+  <div class="brand-logo" style="background:#fff;padding:0;overflow:hidden;">
+    <img src="scimentra-logo.png" alt="SciMentra Foundation Logo" style="width:88%;height:88%;object-fit:contain;display:block;margin:auto;">
+  </div>
+  <div class="brand-text brand-text-centered">
+    <h1><span class="scimentra-word">SciMentra</span> Foundation</h1>
+    <p>Building Concepts, Shaping Futures</p>
+    <div class="brand-program-line">IIT &amp; NEET FOUNDATION PROGRAM</div>
+  </div>
 </div>
-          <div class="brand-text">
-        <h1><span class="scimentra-word">SciMentra</span> Foundation</h1>
-        <p>Building Concepts, Shaping Futures</p>
-      </div>
-        </div>
 
         <div class="hero">
           <div class="hero-badge"><i class="fa-solid fa-shield-halved"></i> Secure School Access Portal</div>
