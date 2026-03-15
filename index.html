@@ -646,7 +646,7 @@
           await saveUserProfile(cred.user, { name: nameValue, provider: 'password', role: 'teacher' });
           showStatus('Account created successfully. Redirecting...', 'success');
           setTimeout(() => {
-            window.location.href = 'ai.html';
+            window.location.href = 'dashboard.html';
           }, 900);
         } catch (err) {
           showStatus(mapFirebaseError(err.code));
@@ -662,7 +662,7 @@
         await auth.signInWithEmailAndPassword(emailValue, passwordValue);
         showStatus('Login successful. Redirecting...', 'success');
         setTimeout(() => {
-  window.location.href = 'ai.html';
+  window.location.href = 'dashboard.html';
 }, 700);
       } catch (err) {
         showStatus(mapFirebaseError(err.code));
@@ -704,7 +704,7 @@
         await saveUserProfile(result.user, { provider: 'google.com', role: 'teacher' });
         showStatus('Google login successful. Redirecting...', 'success');
         setTimeout(() => {
-  window.location.href = 'ai.html';
+  window.location.href = 'dashboard.html';
 }, 700);
       } catch (err) {
         showStatus(mapFirebaseError(err.code));
@@ -727,7 +727,7 @@
 
     auth.onAuthStateChanged((user) => {
   if (user) {
-    window.location.href = 'ai.html';
+    window.location.href = 'dashboard.html';
   }
 });
   </script>
