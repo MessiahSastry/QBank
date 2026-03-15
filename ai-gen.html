@@ -1342,7 +1342,10 @@ if (__qtypeOpts) __qtypeOpts.addEventListener('click', () => setTimeout(__syncMa
       document.getElementById("ai-setup-form").onsubmit = (e) => {
         e.preventDefault();
 
-       qTypeFinal = document.getElementById('qtype-value-ai').value;
+       let qTypeFinal = document.getElementById('qtype-value-ai').value;
+
+let derivedCount = 0;
+let planRaw = '';
 
 let derivedCount = 0;
 let planRaw = '';
@@ -1372,14 +1375,14 @@ if (qTypeFinal === 'Descriptive') {
 const otherSubject = (document.getElementById('subject-other-input')?.value || '').trim();
 const finalSubject = (rawSubject === 'Other') ? (otherSubject || 'Other') : rawSubject;
 
-let qTypeFinal = document.getElementById('qtype-value-ai').value;
+qTypeFinal = document.getElementById('qtype-value-ai').value;
 
 const sessionParams = {
   class: document.getElementById('class-value-ai').value,
   board: finalBoard,
   subject: finalSubject,
   questionType: qTypeFinal,
-  chapter: document.getElementById('chapter-value-ai').value,
+  chapter: document.getElementById('chapter-input-ai').value.trim(),
   levelPlan: planRaw,
   numQuestions: derivedCount,
   marks: (qTypeFinal === 'Descriptive')
@@ -1685,26 +1688,12 @@ if (subjectInput.value === 'Other') {
   });
 
   setupCustomDropdown('qtype-dropdown-ai', 'qtype-value-ai');
-  setupCustomDropdown('chapter-dropdown-ai', 'chapter-value-ai');
+  // Chapter is now a text input, so no custom dropdown setup is needed here.
 }
 
 function updateChapterDropdown(selectedClass, selectedSubject) {
-  const chapterDropdown = document.getElementById('chapter-dropdown-ai');
-  const chapterOptions = chapterDropdown.querySelector('.dropdown-options');
-  const chapterSelected = chapterDropdown.querySelector('.selected-option');
-  const chapterInput = document.getElementById('chapter-value-ai');
-
-  const chapters = (textbooks[selectedClass] && textbooks[selectedClass][selectedSubject])
-    ? textbooks[selectedClass][selectedSubject]
-    : [];
-
-  chapterOptions.innerHTML = chapters.map(ch => `<div data-value="${ch}">${ch}</div>`).join('');
-  chapterSelected.textContent = chapters[0] || 'Select Chapter';
-  chapterInput.value = chapters[0] || '';
-
-  optionsContainerListener(chapterOptions, chapterSelected, chapterInput, chapterDropdown, null);
+  // Chapter is now typed manually, so no dropdown update is needed.
 }
-
 function setupCustomDropdown(dropdownId, inputId, callback) {
   const dropdown = document.getElementById(dropdownId);
   if (!dropdown) return;
