@@ -2878,15 +2878,16 @@ STRICT ACCURACY (applies to all):
 • If any issue is found, fix it before output.
 • Write only real mathematical expressions in LaTeX.
 • Do NOT put plain numbers, plain words, plain labels, or normal option text inside LaTeX.
-• Inline math must use \( ... \).
-• Big equations written on a separate line must use \[ ... \].
+• Inline math must use \\( ... \\).
+• Big equations written on a separate line must use \\[ ... \\].
 • Never use raw brackets like ( ... ) as a substitute for LaTeX.
-• Use proper LaTeX commands for symbols and notation such as \frac{a}{b}, \sqrt{x}, x^2, \times, \cdot, \angle, ^{\circ}, \le, \ge, \neq.
+• Use proper LaTeX commands for symbols and notation such as \\frac{a}{b}, \\sqrt{x}, x^2, \\times, \\cdot, \\angle, ^{\\circ}, \\le, \\ge, \\neq.
 • Do NOT output Unicode math symbols like ×, °, ≤, ≥, ≠ inside equations; convert them to proper LaTeX commands.
 • Fractions, powers, roots, equations, algebraic expressions, coordinates, determinants, and matrices must be written in proper LaTeX.
-• All matrices must be written directly in proper LaTeX matrix format such as \( \begin{bmatrix} a & b \\ c & d \end{bmatrix} \).
+• All matrices must be written directly in proper LaTeX matrix format such as \\( \\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix} \\).
 • Never write multi-step expressions, matrices, or equations in plain text bracket style.
 • Delimiters must always be balanced correctly.
+`;
 
   // ---- FORMAT RULES (base) ----
   const numberingNote = isTextbook
