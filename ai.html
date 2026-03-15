@@ -634,15 +634,16 @@ body.chat-lock { overflow: hidden; height: 100vh; }
     const API_BASE_URL = 'https://question-bank-lqsu.onrender.com';
 
     const firebaseConfig = {
-      apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
-      authDomain: "stpatricks-questionbank.firebaseapp.com",
-      projectId: "stpatricks-questionbank",
-      storageBucket: "stpatricks-questionbank.appspot.com",
-      messagingSenderId: "917615322861",
-      appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
-    };
+  apiKey: "AIzaSyD3cF0OJ2oPk3P0YdnOG0vcjY5RKuVDjys",
+  authDomain: "sr-let-s-chat-aad4b.firebaseapp.com",
+  databaseURL: "https://sr-let-s-chat-aad4b-default-rtdb.firebaseio.com",
+  projectId: "sr-let-s-chat-aad4b",
+  storageBucket: "sr-let-s-chat-aad4b.firebasestorage.app",
+  messagingSenderId: "1042721824151",
+  appId: "1:1042721824151:web:463cbd7a7f921650aeb8d2"
+};
 
-   firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
