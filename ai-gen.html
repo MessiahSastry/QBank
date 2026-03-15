@@ -2145,9 +2145,22 @@ Provide ONLY the questions in this exact format. Do not add any other text, expl
 `;
       }
 
-      const isCbse = /cbse/i.test(userPrompt);
+      const selectedBoard = (sessionParams.board || '').trim().toLowerCase();
 
-      if (isCbse) {
+const isCBSE = selectedBoard === 'cbse';
+const isICSE = selectedBoard === 'icse';
+const isFoundation = selectedBoard === 'iit & neet foundation';
+const isOlympiad = selectedBoard === 'olympiad';
+const isJeeMains = selectedBoard === 'jee mains';
+const isJeeAdvance = selectedBoard === 'jee advance';
+const isNeet = selectedBoard === 'neet';
+const isApState = selectedBoard === 'ap state board (scert)';
+const isOtherBoard = selectedBoard === 'other';
+
+const isTextbookBoard = isCBSE || isICSE || isApState;
+const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet;
+
+      if (isTextbookBoard) {
         if (sessionParams.questionType === "Descriptive") {
                    // CBSE DESCRIPTIVE prompt (NO options, NO "Ans:")
 fullPromptForAI = `
@@ -2665,12 +2678,40 @@ TEXT BOOK MODE — IMPORTANT:
   const plan  = (sessionParams.levelPlan || '').trim();
   const count = sessionParams.numQuestions || 20;
 
-  const isCBSE = /cbse/i.test(plan) || /cbse/i.test(subj);
+  const selectedBoard = (sessionParams.board || '').trim().toLowerCase();
+
+const isCbse = selectedBoard === 'cbse';
+const isIcse = selectedBoard === 'icse';
+const isFoundation = selectedBoard === 'iit & neet foundation';
+const isOlympiad = selectedBoard === 'olympiad';
+const isJeeMains = selectedBoard === 'jee mains';
+const isJeeAdvance = selectedBoard === 'jee advance';
+const isNeet = selectedBoard === 'neet';
+const isApState = selectedBoard === 'ap state board (scert)';
+const isOtherBoard = selectedBoard === 'other';
+
+const isTextbookBoard = isCbse || isIcse || isApState;
+const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet;
 
   // ---- COMMON headings ----
- const requestLine = isTextbook
-  ? 'Request: Transcribe questions from the uploaded textbook page(s).'
-  : `Request: ${plan || (count + ' questions')}`;
+ const requestLine =
+  isJeeMains
+    ? `Request: Generate ${count} JEE Main style questions. ${plan ? `Distribution: ${plan}` : ''}`
+    : isJeeAdvance
+      ? `Request: Generate ${count} JEE Advanced style questions. ${plan ? `Distribution: ${plan}` : ''}`
+      : isNeet
+        ? `Request: Generate ${count} NEET style questions. ${plan ? `Distribution: ${plan}` : ''}`
+        : isOlympiad
+          ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
+          : isFoundation
+            ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
+            : isCbse
+              ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+              : isIcse
+                ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                : isApState
+                  ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                  : `Request: ${plan || (count + ' questions')}`;
 
 const header = `
 Class: ${cls}
@@ -2699,14 +2740,98 @@ Use these Level definitions STRICTLY (Foundation/IIT-NEET mode):
   const cbseLevels = `
   Important
   *All questions should be directly from CBSE text book*
-  * All questions should cover entire chapter concepts*
-   *Don’t forget to give strictly-from-textbook items (using NCERT’s exact data/Numbering).* 
-   For help use these websites: BYJU’S, LEARN CBSE, QMATH .IN, VEDANTU, NCERT.NIC.IN, SCRIBD.com, CUEMATH.com, allen.com. and all other related websites.
+  *All questions should cover entire chapter concepts*
+  *Don’t forget to give strictly-from-textbook items (using NCERT exact data/numbering).*
+  For help use CBSE/NCERT related sources.
+
   Use these Level definitions STRICTLY (CBSE mode):
 - Level 1: Knowledge/Recall (direct textbook/comprehension)
 - Level 2: Application/Interpretation (within CBSE chapter)
 - Level 3: HOTS (analysis/evaluation/synthesis as per CBSE)
 `;
+
+const icseLevels = `
+  Important
+  *All questions should be directly from ICSE syllabus content and prescribed textbook concepts.*
+  *All questions should cover entire chapter concepts.*
+  *Questions should reflect ICSE style: concept-rich, detailed, and language-accurate.*
+
+  Use these Level definitions STRICTLY (ICSE mode):
+- Level 1: Knowledge/Recall (direct concept/text understanding)
+- Level 2: Application/Interpretation
+- Level 3: Analytical/HOTS
+`;
+
+const apStateLevels = `
+  Important
+  *All questions should be directly from AP State Board (SCERT) textbook content.*
+  *All questions should cover entire chapter concepts.*
+  *Questions should follow AP State textbook style and terminology.*
+
+  Use these Level definitions STRICTLY (AP State Board mode):
+- Level 1: Knowledge/Recall
+- Level 2: Application/Interpretation
+- Level 3: Higher-order thinking
+`;
+
+const olympiadLevels = `
+  Important
+  *Questions should follow Olympiad style for the selected class and subject.*
+  *Questions should test reasoning, conceptual clarity, tricky application, and higher-order thinking.*
+  *Avoid purely textbook-direct and memory-only questions unless required as a base concept.*
+
+  Use these Level definitions STRICTLY (Olympiad mode):
+- Level 1: Strong concept-based direct questions
+- Level 2: Tricky application and reasoning
+- Level 3: Advanced Olympiad-style multi-step thinking
+`;
+
+const jeeMainsLevels = `
+  Important
+  *Questions should follow JEE Main style for the selected subject.*
+  *Questions should be objective, concept-based, application-oriented, and exam-relevant.*
+  *Questions must resemble JEE Main standard, not Foundation or school textbook style.*
+
+  Use these Level definitions STRICTLY (JEE Main mode):
+- Level 1: Direct formula/concept application
+- Level 2: Standard JEE Main application
+- Level 3: Moderate multi-concept JEE Main level
+`;
+
+const jeeAdvanceLevels = `
+  Important
+  *Questions should follow JEE Advanced style for the selected subject.*
+  *Questions should be deeper, multi-concept, analytical, and challenging.*
+  *Questions must resemble JEE Advanced standard, not Foundation or textbook-direct style.*
+
+  Use these Level definitions STRICTLY (JEE Advanced mode):
+- Level 1: Strong concept-based application
+- Level 2: Multi-step analytical problems
+- Level 3: Challenging JEE Advanced style multi-concept reasoning
+`;
+
+const neetLevels = `
+  Important
+  *Questions should follow NEET exam style for the selected subject.*
+  *Questions should be objective, syllabus-based, concept-accurate, and exam-relevant.*
+  *Biology questions should remain closely aligned to NCERT/NEET style wherever applicable.*
+
+  Use these Level definitions STRICTLY (NEET mode):
+- Level 1: Direct NCERT/concept-based questions
+- Level 2: Standard NEET application questions
+- Level 3: Higher-difficulty NEET-style concept integration
+`;
+
+  const levelBlock =
+  isCbse ? cbseLevels :
+  isIcse ? icseLevels :
+  isApState ? apStateLevels :
+  isFoundation ? foundationLevels :
+  isOlympiad ? olympiadLevels :
+  isJeeMains ? jeeMainsLevels :
+  isJeeAdvance ? jeeAdvanceLevels :
+  isNeet ? neetLevels :
+  foundationLevels;
 
   // ---- STRICT ACCURACY ----
   const strictAccuracy = `
@@ -2747,9 +2872,13 @@ ${numberingNote}
 • Use ONLY content from the selected class/subject/chapter (and any subtopic names present in "Request").
 • No headings, introductions, comments, or explanations—questions only.
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${isJeeMains ? '• Questions must match JEE Main standard: objective, concept-based, application-oriented, and exam-relevant. Avoid school-textbook direct questions unless they are properly converted into JEE Main style.' : ''}
+${isJeeAdvance ? '• Questions must match JEE Advanced standard: deeper, multi-concept, analytical, tricky, and non-routine. Avoid simple direct formula questions.' : ''}
+${isNeet ? '• Questions must match NEET standard: objective, syllabus-accurate, fast-solving, and exam-relevant. Biology should stay close to NCERT style wherever appropriate.' : ''}
+${isOlympiad ? '• Questions must match Olympiad standard: reasoning-heavy, concept-rich, and tricky. Avoid purely memory-based direct questions.' : ''}
+${isFoundation ? '• Questions must match IIT & NEET Foundation standard: concept-based and progressively challenging, but still suitable for the selected class.' : ''}
 ${strictAccuracy}
 `;
-
   // MCQ Multiple additional distribution rule (per 10)
   const multiBlockRule = `
 Additional rules for MCQ (Multiple):
@@ -2761,13 +2890,16 @@ Additional rules for MCQ (Multiple):
   - Exactly 3 questions with 3 correct options
   - Exactly 2 questions with 4 correct options
 • Before finishing, self-check that each 10-question block satisfies the distribution.
+${isJeeAdvance ? '• Questions must strongly reflect JEE Advanced multiple-correct style: analytical, tricky, multi-concept, and non-routine.' : ''}
+${isJeeMains ? '• Keep multiple-correct questions limited to concept/application style only if intentionally requested, since JEE Main is usually single-correct focused.' : ''}
+${isNeet ? '• Keep multiple-correct questions only if explicitly needed; NEET is usually single-correct focused and should remain syllabus-accurate.' : ''}
+${isOlympiad ? '• Multiple-correct questions should emphasize reasoning, careful concept checking, and tricky distinctions.' : ''}
+${isFoundation ? '• Multiple-correct questions should be suitable for IIT & NEET Foundation level of the selected class, not too advanced for the grade.' : ''}
 `;
 
   // DESCRIPTIVE format
-  const descFormat = `
-${isTextbook
-  ? 'Transcribe ALL descriptive questions that appear in the uploaded page(s). Format each question EXACTLY as:'
-  : `Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as:`}
+ const descFormat = `
+Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as:
 
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <Question text>
@@ -2778,12 +2910,19 @@ ${numberingNote}
 • Use ONLY the selected chapter (and any subtopic names present in "Request").
 • No extra text—questions only.
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${isCbse ? '• Questions must follow CBSE style: knowledge, application, and HOTS based on textbook concepts.' : ''}
+${isIcse ? '• Questions must follow ICSE style: concept-rich, precise, and slightly detailed in wording.' : ''}
+${isApState ? '• Questions must follow AP State Board (SCERT) style and textbook terminology.' : ''}
+${isOlympiad ? '• Questions must follow Olympiad style: reasoning-based, tricky, and higher-order thinking oriented.' : ''}
+${isFoundation ? '• Questions must follow IIT & NEET Foundation style: concept-based and progressively challenging for the selected class.' : ''}
+${isJeeMains ? '• Questions must reflect JEE Main level only where descriptive practice is intentionally needed; keep them concept-based and application-oriented.' : ''}
+${isJeeAdvance ? '• Questions must reflect JEE Advanced style: analytical, multi-step, and non-routine.' : ''}
+${isNeet ? '• Questions must reflect NEET-oriented conceptual depth, especially from syllabus-accurate core ideas.' : ''}
 ${strictAccuracy}
 `;
 
   // ----- Assemble prompt by type/mode -----
   if (/Descriptive/i.test(qtype)) {
-    const levelBlock = isCBSE ? cbseLevels : foundationLevels;
     return (
   `${header}
 ${levelBlock}
@@ -2793,7 +2932,6 @@ ${descFormat}`
   }
 
   // MCQ (Single or Multiple)
-const levelBlock = isCBSE ? cbseLevels : foundationLevels;
 const multiNote  = (/Multiple/i.test(qtype) && !isTextbook) ? `\n${multiBlockRule}` : '';
 
 return (
