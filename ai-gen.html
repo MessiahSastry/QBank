@@ -3305,7 +3305,7 @@ function createQuestionElement(qData, index) {
 
   questionEl.innerHTML = `
     <div class="question-meta-ai">${qData.parsedMeta}</div>
-    <div class="question-text-ai">${__fixLatex(qData.parsedBody)}</div>
+    <div class="question-text-ai">${(qData.parsedBody || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
     <div class="question-actions">
       <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
     </div>
