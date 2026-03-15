@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>QBank Login | St. Patrick's School</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root{
+      --primary:#0f3d6b;
+      --primary-2:#1762a7;
+      --light:#f4f8fc;
+      --line:#d8e6f5;
+      --text:#163a63;
+      --muted:#6d7f92;
+      --white:#ffffff;
+      --danger:#c82333;
+      --success:#198754;
+      --shadow:0 14px 40px rgba(10,40,90,.14);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:'Inter',system-ui,Arial,sans-serif;background:var(--light);color:var(--text);min-height:100%}
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(circle at top left, rgba(23,98,167,.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(15,61,107,.10), transparent 24%),
+        var(--light);
+    }
+    body::after{
+      content:"St. Patrick's School\A IIT & NEET FOUNDATION";
+      white-space:pre;
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      font-weight:800;
+      font-size:clamp(30px,4.8vw,72px);
+      line-height:1.15;
+      color:rgba(15,61,107,.045);
+      pointer-events:none;
+      z-index:0;
+    }
+    .page{
+      position:relative;
+      z-index:1;
+      min-height:100vh;
+      display:grid;
+      grid-template-columns:1.15fr .95fr;
+    }
+    .left-panel{
+      padding:42px 36px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+    .brand-top{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+    .brand-logo{
+      width:64px;height:64px;border-radius:18px;
+      background:linear-gradient(135deg,var(--primary-2),var(--primary));
+      color:#fff;display:flex;align-items:center;justify-content:center;
+      box-shadow:var(--shadow);
+      font-size:28px;
+    }
+    .brand-text h1{
+      margin:0;font-size:1.55rem;font-weight:800;letter-spacing:.2px;
+    }
+    .brand-text p{
+      margin:4px 0 0;color:var(--muted);font-weight:600;
+    }
+    .hero{
+      padding:30px 8px 28px 0;
+      max-width:700px;
+    }
+    .hero-badge{
+      display:inline-flex;align-items:center;gap:8px;
+      background:#fff;border:1px solid var(--line);border-radius:999px;
+      padding:9px 14px;font-size:.92rem;font-weight:700;color:var(--primary);
+      box-shadow:0 4px 16px rgba(16,58,102,.06);
+      margin-bottom:18px;
+    }
+    .hero h2{
+      margin:0 0 14px;
+      font-size:clamp(2rem,4vw,3.6rem);
+      line-height:1.08;
+      font-weight:800;
+      color:var(--primary);
+    }
+    .hero p{
+      margin:0;
+      font-size:1.02rem;
+      line-height:1.8;
+      color:#4e647c;
+      max-width:620px;
+    }
+    .feature-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+      margin-top:28px;
+      max-width:760px;
+    }
+    .feature-card{
+      background:rgba(255,255,255,.88);
+      backdrop-filter: blur(6px);
+      border:1px solid rgba(216,230,245,.95);
+      border-radius:20px;
+      padding:16px 15px;
+      box-shadow:0 10px 28px rgba(11,52,95,.08);
+    }
+    .feature-card i{
+      width:42px;height:42px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,var(--primary-2),var(--primary));
+      color:#fff;font-size:1.05rem;margin-bottom:12px;
+    }
+    .feature-card h3{margin:0 0 6px;font-size:1rem}
+    .feature-card p{margin:0;font-size:.88rem;line-height:1.55;color:var(--muted)}
+    .footer-note{
+      margin-top:26px;color:var(--muted);font-size:.9rem;font-weight:600;
+    }
+
+    .right-panel{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .login-card{
+      width:min(100%,470px);
+      background:rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+      border:1px solid rgba(216,230,245,.95);
+      border-radius:28px;
+      box-shadow:var(--shadow);
+      padding:28px;
+    }
+    .login-head{text-align:center;margin-bottom:18px}
+    .login-head .mini-logo{
+      width:74px;height:74px;margin:0 auto 14px;border-radius:24px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,var(--primary-2),var(--primary));
+      color:#fff;font-size:32px;box-shadow:0 12px 28px rgba(15,61,107,.22);
+    }
+    .login-head h3{margin:0;font-size:1.7rem;color:var(--primary);font-weight:800}
+    .login-head p{margin:8px 0 0;color:var(--muted);line-height:1.6}
+
+    .auth-tabs{
+      display:grid;grid-template-columns:1fr 1fr;gap:10px;
+      background:#eef4fb;border-radius:16px;padding:6px;margin:18px 0 18px;
+    }
+    .auth-tab{
+      border:none;background:transparent;border-radius:12px;padding:11px 12px;
+      font-weight:800;color:var(--primary);cursor:pointer;font-size:.95rem;
+    }
+    .auth-tab.active{background:#fff;box-shadow:0 4px 12px rgba(15,61,107,.08)}
+
+    .field{margin-bottom:15px}
+    .field label{display:block;margin-bottom:7px;font-weight:700;color:var(--primary)}
+    .input-wrap{position:relative}
+    .input-wrap i{
+      position:absolute;left:14px;top:50%;transform:translateY(-50%);
+      color:#6f86a0;font-size:.95rem;
+    }
+    .input-wrap input{
+      width:100%;height:52px;border:1.6px solid var(--line);border-radius:15px;
+      background:#f9fbfe;padding:0 46px 0 42px;font-size:1rem;outline:none;
+      transition:.2s border-color,.2s box-shadow,.2s background;
+    }
+    .input-wrap input:focus{
+      border-color:var(--primary-2);background:#fff;
+      box-shadow:0 0 0 4px rgba(23,98,167,.10);
+    }
+    .toggle-pass{
+      position:absolute;right:12px;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:#6f86a0;cursor:pointer;font-size:1rem;
+    }
+
+    .row-between{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin:2px 0 18px;
+    }
+    .remember{
+      display:flex;align-items:center;gap:8px;color:#50657b;font-weight:600;font-size:.94rem;
+    }
+    .remember input{accent-color:var(--primary)}
+    .link-btn{
+      background:none;border:none;padding:0;color:var(--primary-2);font-weight:800;cursor:pointer;
+      text-decoration:none;font-size:.94rem;
+    }
+
+    .primary-btn,.google-btn,.ghost-btn{
+      width:100%;border:none;border-radius:16px;height:52px;cursor:pointer;
+      font-weight:800;font-size:1rem;transition:transform .12s ease, box-shadow .2s ease, opacity .2s;
+    }
+    .primary-btn{
+      background:linear-gradient(90deg,var(--primary-2),var(--primary));
+      color:#fff;box-shadow:0 12px 24px rgba(15,61,107,.18);
+    }
+    .primary-btn:hover,.google-btn:hover,.ghost-btn:hover{transform:translateY(-1px)}
+    .primary-btn:disabled,.google-btn:disabled,.ghost-btn:disabled{opacity:.72;cursor:not-allowed;transform:none}
+    .divider{
+      display:flex;align-items:center;gap:12px;margin:16px 0;color:#7e90a3;font-weight:700;font-size:.9rem;
+    }
+    .divider::before,.divider::after{content:"";height:1px;background:var(--line);flex:1}
+    .google-btn{
+      background:#fff;color:#22384e;border:1.6px solid var(--line);
+      display:flex;align-items:center;justify-content:center;gap:10px;
+    }
+    .google-btn .google-g{
+      width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+      background:conic-gradient(from 210deg,#4285F4 0 25%,#34A853 25% 50%,#FBBC05 50% 75%,#EA4335 75% 100%);
+      color:#fff;font-size:.8rem;
+    }
+
+    .hidden{display:none!important}
+    .help-note{
+      margin-top:15px;padding:12px 13px;border-radius:14px;background:#f7fbff;border:1px solid #dfeaf6;
+      color:#5a7189;font-size:.9rem;line-height:1.6;
+    }
+    .status{
+      margin:14px 0 0;padding:12px 14px;border-radius:14px;font-weight:700;font-size:.94rem;display:none;
+    }
+    .status.show{display:block}
+    .status.error{background:#fff1f3;color:var(--danger);border:1px solid #ffd0d7}
+    .status.success{background:#eefcf3;color:var(--success);border:1px solid #ccefd7}
+
+    .bottom-switch{
+      margin-top:16px;text-align:center;color:#63788f;font-weight:600;font-size:.94rem;
+    }
+    .bottom-switch button{margin-left:6px}
+
+    @media (max-width: 1080px){
+      .page{grid-template-columns:1fr}
+      .left-panel{padding:26px 20px 10px}
+      .feature-grid{grid-template-columns:1fr 1fr}
+      .right-panel{padding:12px 16px 28px}
+    }
+    @media (max-width: 640px){
+      .brand-top{justify-content:center;text-align:center}
+      .hero{text-align:center;padding-right:0}
+      .feature-grid{grid-template-columns:1fr}
+      .login-card{padding:22px 18px;border-radius:24px}
+      .row-between{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="left-panel">
+      <div>
+        <div class="brand-top">
+          <div class="brand-logo"><i class="fa-solid fa-graduation-cap"></i></div>
+          <div class="brand-text">
+            <h1>St. Patrick's School</h1>
+            <p>IIT &amp; NEET FOUNDATION</p>
+          </div>
+        </div>
+
+        <div class="hero">
+          <div class="hero-badge"><i class="fa-solid fa-shield-halved"></i> Secure School Access Portal</div>
+          <h2>Official QBank Login</h2>
+          <p>
+            Sign in with your school email or continue with Google to access question generation,
+            question bank tools, exam workflows, and your own protected teaching data.
+          </p>
+
+          <div class="feature-grid">
+            <div class="feature-card">
+              <i class="fa-solid fa-layer-group"></i>
+              <h3>Question Bank</h3>
+              <p>Create, review, organize, and save academic content in one place.</p>
+            </div>
+            <div class="feature-card">
+              <i class="fa-solid fa-lock"></i>
+              <h3>Private Access</h3>
+              <p>Each user's records stay limited to that user after Firebase rules are applied.</p>
+            </div>
+            <div class="feature-card">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <h3>AI Workflow</h3>
+              <p>Generate MCQs, descriptive questions, and structured academic content faster.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-note">Official academic access for teachers and authorized staff.</div>
+    </section>
+
+    <section class="right-panel">
+      <div class="login-card">
+        <div class="login-head">
+          <div class="mini-logo"><i class="fa-solid fa-book-open-reader"></i></div>
+          <h3 id="card-title">Welcome Back</h3>
+          <p id="card-subtitle">Login to continue to your QBank dashboard.</p>
+        </div>
+
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="tab-login">Login</button>
+          <button type="button" class="auth-tab" id="tab-register">Register</button>
+        </div>
+
+        <form id="auth-form" novalidate>
+          <div class="field hidden" id="name-field">
+            <label for="fullName">Full Name</label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-user"></i>
+              <input type="text" id="fullName" placeholder="Enter your full name" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="email">Email Address</label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-envelope"></i>
+              <input type="email" id="email" placeholder="Enter your email address" autocomplete="email" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-lock"></i>
+              <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+              <button type="button" class="toggle-pass" id="toggle-password" aria-label="Show password">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="field hidden" id="confirm-password-field">
+            <label for="confirmPassword">Confirm Password</label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-shield"></i>
+              <input type="password" id="confirmPassword" placeholder="Re-enter password" autocomplete="new-password" />
+            </div>
+          </div>
+
+          <div class="row-between" id="login-options-row">
+            <label class="remember">
+              <input type="checkbox" id="rememberMe" checked />
+              Remember me
+            </label>
+            <button type="button" class="link-btn" id="forgot-password-btn">Forgot Password?</button>
+          </div>
+
+          <button type="submit" class="primary-btn" id="submit-btn">Login</button>
+        </form>
+
+        <div class="divider">or continue with</div>
+
+        <button type="button" class="google-btn" id="google-login-btn">
+          <span class="google-g"><i class="fa-solid fa-g"></i></span>
+          Continue with Google
+        </button>
+
+        <div class="help-note">
+          Use your registered school account. New users can create an account here, or sign in directly with Google if enabled in Firebase Authentication.
+        </div>
+
+        <div id="status-box" class="status"></div>
+
+        <div class="bottom-switch">
+          <span id="switch-text">New here?</span>
+          <button type="button" class="link-btn" id="switch-mode-btn">Create account</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3cF0OJ2oPk3P0YdnOG0vcjY5RKuVDjys",
+      authDomain: "sr-let-s-chat-aad4b.firebaseapp.com",
+      databaseURL: "https://sr-let-s-chat-aad4b-default-rtdb.firebaseio.com",
+      projectId: "sr-let-s-chat-aad4b",
+      storageBucket: "sr-let-s-chat-aad4b.firebasestorage.app",
+      messagingSenderId: "1042721824151",
+      appId: "1:1042721824151:web:463cbd7a7f921650aeb8d2"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const authForm = document.getElementById('auth-form');
+    const fullName = document.getElementById('fullName');
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const rememberMe = document.getElementById('rememberMe');
+
+    const nameField = document.getElementById('name-field');
+    const confirmPasswordField = document.getElementById('confirm-password-field');
+    const loginOptionsRow = document.getElementById('login-options-row');
+    const submitBtn = document.getElementById('submit-btn');
+    const googleLoginBtn = document.getElementById('google-login-btn');
+    const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+    const switchModeBtn = document.getElementById('switch-mode-btn');
+    const switchText = document.getElementById('switch-text');
+    const statusBox = document.getElementById('status-box');
+    const cardTitle = document.getElementById('card-title');
+    const cardSubtitle = document.getElementById('card-subtitle');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const togglePasswordBtn = document.getElementById('toggle-password');
+
+    let mode = 'login';
+
+    function showStatus(message, type = 'error') {
+      statusBox.textContent = message;
+      statusBox.className = `status show ${type}`;
+    }
+
+    function clearStatus() {
+      statusBox.textContent = '';
+      statusBox.className = 'status';
+    }
+
+    function setLoading(isLoading, buttonText) {
+      submitBtn.disabled = isLoading;
+      googleLoginBtn.disabled = isLoading;
+      forgotPasswordBtn.disabled = isLoading;
+      switchModeBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? buttonText : (mode === 'login' ? 'Login' : 'Create Account');
+    }
+
+    function updateMode(newMode) {
+      mode = newMode;
+      clearStatus();
+
+      const isRegister = mode === 'register';
+      nameField.classList.toggle('hidden', !isRegister);
+      confirmPasswordField.classList.toggle('hidden', !isRegister);
+      loginOptionsRow.classList.toggle('hidden', isRegister);
+
+      tabLogin.classList.toggle('active', !isRegister);
+      tabRegister.classList.toggle('active', isRegister);
+
+      cardTitle.textContent = isRegister ? 'Create Official Account' : 'Welcome Back';
+      cardSubtitle.textContent = isRegister
+        ? 'Register with your official details to access the QBank portal.'
+        : 'Login to continue to your QBank dashboard.';
+
+      submitBtn.textContent = isRegister ? 'Create Account' : 'Login';
+      switchText.textContent = isRegister ? 'Already have an account?' : 'New here?';
+      switchModeBtn.textContent = isRegister ? 'Login now' : 'Create account';
+
+      fullName.value = '';
+      password.value = '';
+      confirmPassword.value = '';
+    }
+
+    function mapFirebaseError(code) {
+      const errors = {
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/user-not-found': 'No user found with this email.',
+        'auth/wrong-password': 'Incorrect password. Please try again.',
+        'auth/email-already-in-use': 'This email is already registered.',
+        'auth/weak-password': 'Password should be at least 6 characters.',
+        'auth/popup-closed-by-user': 'Google login popup was closed before completion.',
+        'auth/cancelled-popup-request': 'Another popup request is already in progress.',
+        'auth/network-request-failed': 'Network issue detected. Please check your internet connection.',
+        'auth/too-many-requests': 'Too many attempts. Please wait a little and try again.'
+      };
+      return errors[code] || 'Something went wrong. Please try again.';
+    }
+
+    async function saveUserProfile(user, extra = {}) {
+      if (!user) return;
+      const docRef = db.collection('users').doc(user.uid);
+      const snap = await docRef.get();
+
+      const payload = {
+        uid: user.uid,
+        name: extra.name || user.displayName || '',
+        email: user.email || '',
+        provider: extra.provider || (user.providerData && user.providerData[0] ? user.providerData[0].providerId : 'password'),
+        role: extra.role || 'teacher',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (!snap.exists) {
+        payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      }
+
+      await docRef.set(payload, { merge: true });
+    }
+
+    async function setPersistenceFromCheckbox() {
+      const persistence = rememberMe.checked
+        ? firebase.auth.Auth.Persistence.LOCAL
+        : firebase.auth.Auth.Persistence.SESSION;
+      await auth.setPersistence(persistence);
+    }
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearStatus();
+
+      const emailValue = email.value.trim();
+      const passwordValue = password.value.trim();
+
+      if (!emailValue || !passwordValue) {
+        showStatus('Please enter both email and password.');
+        return;
+      }
+
+      if (mode === 'register') {
+        const nameValue = fullName.value.trim();
+        const confirmValue = confirmPassword.value.trim();
+
+        if (!nameValue) {
+          showStatus('Please enter your full name.');
+          return;
+        }
+        if (passwordValue.length < 6) {
+          showStatus('Password should be at least 6 characters.');
+          return;
+        }
+        if (passwordValue !== confirmValue) {
+          showStatus('Password and confirm password do not match.');
+          return;
+        }
+
+        try {
+          setLoading(true, 'Creating Account...');
+          await setPersistenceFromCheckbox();
+          const cred = await auth.createUserWithEmailAndPassword(emailValue, passwordValue);
+          await cred.user.updateProfile({ displayName: nameValue });
+          await saveUserProfile(cred.user, { name: nameValue, provider: 'password', role: 'teacher' });
+          showStatus('Account created successfully. Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = 'dashboard.html';
+          }, 900);
+        } catch (err) {
+          showStatus(mapFirebaseError(err.code));
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        setLoading(true, 'Logging In...');
+        await setPersistenceFromCheckbox();
+        await auth.signInWithEmailAndPassword(emailValue, passwordValue);
+        showStatus('Login successful. Redirecting...', 'success');
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 700);
+      } catch (err) {
+        showStatus(mapFirebaseError(err.code));
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    forgotPasswordBtn.addEventListener('click', async () => {
+      clearStatus();
+      const emailValue = email.value.trim();
+      if (!emailValue) {
+        showStatus('Enter your email address first, then tap Forgot Password.');
+        return;
+      }
+
+      try {
+        googleLoginBtn.disabled = true;
+        forgotPasswordBtn.disabled = true;
+        await auth.sendPasswordResetEmail(emailValue);
+        showStatus('Password reset email sent successfully. Please check your inbox.', 'success');
+      } catch (err) {
+        showStatus(mapFirebaseError(err.code));
+      } finally {
+        googleLoginBtn.disabled = false;
+        forgotPasswordBtn.disabled = false;
+      }
+    });
+
+    googleLoginBtn.addEventListener('click', async () => {
+      clearStatus();
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      try {
+        setLoading(true, 'Please wait...');
+        await setPersistenceFromCheckbox();
+        const result = await auth.signInWithPopup(provider);
+        await saveUserProfile(result.user, { provider: 'google.com', role: 'teacher' });
+        showStatus('Google login successful. Redirecting...', 'success');
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 700);
+      } catch (err) {
+        showStatus(mapFirebaseError(err.code));
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    switchModeBtn.addEventListener('click', () => updateMode(mode === 'login' ? 'register' : 'login'));
+    tabLogin.addEventListener('click', () => updateMode('login'));
+    tabRegister.addEventListener('click', () => updateMode('register'));
+
+    togglePasswordBtn.addEventListener('click', () => {
+      const isHidden = password.type === 'password';
+      password.type = isHidden ? 'text' : 'password';
+      togglePasswordBtn.innerHTML = isHidden
+        ? '<i class="fa-solid fa-eye-slash"></i>'
+        : '<i class="fa-solid fa-eye"></i>';
+    });
+
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        window.location.href = 'dashboard.html';
+      }
+    });
+  </script>
+</body>
+</html>
