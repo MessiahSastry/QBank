@@ -109,25 +109,27 @@
 }
    .hero{
   padding:30px 8px 28px 0;
-  max-width:900px;
+  max-width:760px;
 }
 
 .hero-layout{
   display:flex;
+  flex-direction:column;
   align-items:flex-start;
-  justify-content:space-between;
-  gap:24px;
+  gap:22px;
 }
 
 .hero-main{
-  flex:1;
-  min-width:280px;
+  width:100%;
+  max-width:760px;
 }
 
 .side-feature-grid{
   margin-top:0;
-  max-width:360px;
-  grid-template-columns:repeat(2,minmax(0,1fr));
+  width:100%;
+  max-width:760px;
+  grid-template-columns:repeat(2,minmax(240px,1fr));
+  gap:18px;
   align-self:flex-start;
 }
     .hero-badge{
@@ -138,12 +140,13 @@
       margin-bottom:18px;
     }
     .hero h2{
-      margin:0 0 14px;
-      font-size:clamp(2rem,4vw,3.6rem);
-      line-height:1.08;
-      font-weight:800;
-      color:var(--primary);
-    }
+  margin:0 0 14px;
+  font-size:clamp(2.7rem,5vw,4.3rem);
+  line-height:1.05;
+  font-weight:800;
+  color:var(--primary);
+  white-space:nowrap;
+}
     .hero p{
       margin:0;
       font-size:1.02rem;
@@ -158,22 +161,44 @@
       margin-top:28px;
       max-width:760px;
     }
-    .feature-card{
-      background:rgba(255,255,255,.88);
-      backdrop-filter: blur(6px);
-      border:1px solid rgba(216,230,245,.95);
-      border-radius:20px;
-      padding:16px 15px;
-      box-shadow:0 10px 28px rgba(11,52,95,.08);
-    }
-    .feature-card i{
-      width:42px;height:42px;border-radius:14px;
-      display:flex;align-items:center;justify-content:center;
-      background:linear-gradient(135deg,var(--primary-2),var(--primary));
-      color:#fff;font-size:1.05rem;margin-bottom:12px;
-    }
-    .feature-card h3{margin:0 0 6px;font-size:1rem}
-    .feature-card p{margin:0;font-size:.88rem;line-height:1.55;color:var(--muted)}
+   .feature-card{
+  background:rgba(255,255,255,.95);
+  backdrop-filter: blur(6px);
+  border:1px solid rgba(216,230,245,.95);
+  border-radius:20px;
+  padding:18px 16px;
+  box-shadow:0 10px 28px rgba(11,52,95,.08);
+  min-height:auto;
+}
+
+.feature-card .feature-head{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.feature-card i{
+  width:42px;height:42px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--primary-2),var(--primary));
+  color:#fff;font-size:1.05rem;
+  margin-bottom:0;
+  flex-shrink:0;
+}
+
+.feature-card h3{
+  margin:0;
+  font-size:1.15rem;
+  line-height:1.2;
+}
+
+.feature-card p{
+  margin:0;
+  font-size:.96rem;
+  line-height:1.6;
+  color:var(--muted);
+}
     .footer-note{
       margin-top:26px;color:var(--muted);font-size:.9rem;font-weight:600;
     }
@@ -288,21 +313,26 @@
     }
     .bottom-switch button{margin-left:6px}
 
-    @media (max-width: 1080px){
+   @media (max-width: 1080px){
   .page{grid-template-columns:1fr}
   .left-panel{padding:26px 20px 10px}
   .feature-grid{grid-template-columns:1fr 1fr}
   .side-feature-grid{max-width:100%}
-  .hero-layout{flex-direction:column}
   .right-panel{padding:12px 16px 28px}
 }
-   @media (max-width: 640px){
+  @media (max-width: 640px){
   .brand-top{justify-content:center;text-align:center}
   .brand-top-vertical{gap:10px}
   .hero{text-align:center;padding-right:0}
-  .hero-layout{flex-direction:column}
   .feature-grid{grid-template-columns:1fr}
-  .side-feature-grid{grid-template-columns:1fr}
+  .side-feature-grid{
+    grid-template-columns:1fr;
+    max-width:100%;
+    margin:18px auto 0;
+  }
+  .feature-card .feature-head{
+    justify-content:center;
+  }
   .login-card{padding:22px 18px;border-radius:24px}
   .row-between{flex-direction:column;align-items:flex-start}
 }
@@ -333,17 +363,21 @@
   </div>
 
   <div class="feature-grid side-feature-grid">
-    <div class="feature-card">
+  <div class="feature-card">
+    <div class="feature-head">
       <i class="fa-solid fa-layer-group"></i>
       <h3>Question Bank</h3>
-      <p>Create, review, organize, and save academic content in one place.</p>
     </div>
-    <div class="feature-card">
+    <p>Create, review, organize, and save academic content in one place.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-head">
       <i class="fa-solid fa-wand-magic-sparkles"></i>
       <h3>AI Workflow</h3>
-      <p>Generate MCQs, descriptive questions, and structured academic content faster.</p>
     </div>
+    <p>Generate MCQs, descriptive questions, and structured academic content faster.</p>
   </div>
+</div>
 </div>
       </div>
 
