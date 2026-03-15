@@ -2842,7 +2842,7 @@ STRICT ACCURACY (applies to all):
 • Do NOT put plain numbers, plain words, plain labels, or normal option text inside LaTeX.
 • Inline math must use \\( ... \\).
 • Big equations written on a separate line must use \\[ ... \\].
-• Never use raw brackets like ( ... ) as a substitute for LaTeX.
+• Never use raw brackets like ( ... ) as a substitute for LaTeX. Wrong: ( \frac{1}{7} ). Correct: \\( \\frac{1}{7} \\).
 • Use proper LaTeX commands for symbols and notation such as \\frac{a}{b}, \\sqrt{x}, x^2, \\times, \\cdot, \\angle, ^{\\circ}, \\le, \\ge, \\neq.
 • Do NOT output Unicode math symbols like ×, °, ≤, ≥, ≠ inside equations; convert them to proper LaTeX commands.
 • Fractions, powers, roots, equations, algebraic expressions, coordinates, determinants, and matrices must be written in proper LaTeX.
