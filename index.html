@@ -662,8 +662,8 @@
         await auth.signInWithEmailAndPassword(emailValue, passwordValue);
         showStatus('Login successful. Redirecting...', 'success');
         setTimeout(() => {
-          window.location.href = 'dashboard.html';
-        }, 700);
+  window.location.href = 'ai.html';
+}, 700);
       } catch (err) {
         showStatus(mapFirebaseError(err.code));
       } finally {
@@ -704,8 +704,8 @@
         await saveUserProfile(result.user, { provider: 'google.com', role: 'teacher' });
         showStatus('Google login successful. Redirecting...', 'success');
         setTimeout(() => {
-          window.location.href = 'dashboard.html';
-        }, 700);
+  window.location.href = 'ai.html';
+}, 700);
       } catch (err) {
         showStatus(mapFirebaseError(err.code));
       } finally {
