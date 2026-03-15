@@ -2009,7 +2009,18 @@ Strictly follow these level definitions for every question:
   - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
   - Ensure the questions remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions; avoid requiring methods, tricks, or knowledge from higher classes.
 
-- Math equations must be written in LaTeX.
+- All mathematical expressions must be written in proper LaTeX.
+- Do not wrap plain numbers, plain words, or simple option text in LaTeX.
+- Do not write matrices as [1 2 3 4].
+- Always write matrices in proper LaTeX matrix form.
+- Row matrix example: \(\begin{bmatrix} 1 & 2 & 3 \end{bmatrix}\)
+- Column matrix example: \(\begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix}\)
+- 2 × 2 matrix example: \(\begin{bmatrix} a & b \\ c & d \end{bmatrix}\)
+- Use & between columns and \\\\ between rows inside matrices.
+- Do not use ordinary brackets for matrices when matrix notation is required.
+- All matrices must be written directly in proper LaTeX matrix format.
+- If temporary plain format is unavoidable, separate rows with semicolons, like [1 2; 3 4].
+- Never write a multi-row matrix as [1 2 3 4].
 
 **STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
 - Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
@@ -2063,7 +2074,18 @@ Strictly follow these level definitions for every question:
 - Do not output any question or option if an error or ambiguity is found. Only output after confirming everything is correct.
 
 The user wants Multiple Choice Questions (MCQs) with more than one correct answer possible for each question (Multiple correct options).
-- Math equations must be written in LaTeX.
+- All mathematical expressions must be written in proper LaTeX.
+- Do not wrap plain numbers, plain words, or simple option text in LaTeX.
+- Do not write matrices as [1 2 3 4].
+- Always write matrices in proper LaTeX matrix form.
+- Row matrix example: \(\begin{bmatrix} 1 & 2 & 3 \end{bmatrix}\)
+- Column matrix example: \(\begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix}\)
+- 2 × 2 matrix example: \(\begin{bmatrix} a & b \\ c & d \end{bmatrix}\)
+- Use & between columns and \\\\ between rows inside matrices.
+- Do not use ordinary brackets for matrices when matrix notation is required.
+- All matrices must be written directly in proper LaTeX matrix format.
+- If temporary plain format is unavoidable, separate rows with semicolons, like [1 2; 3 4].
+- Never write a multi-row matrix as [1 2 3 4].
 
 ***STRICT RULES FOR ANSWERS:***
 • Answer-count distribution per batch of 10 MCQs:
@@ -2112,7 +2134,18 @@ Strictly follow these level definitions for every question:
   - Do not copy questions exactly; always change numbers, variables, or context to fit the chosen class level.
   - If no suitable past questions exist, create original problems of the same high standard—emphasizing higher-order thinking, application, and integration of multiple concepts.
   - Ensure the questions remain accessible to students of the selected class: use only concepts from their syllabus and logical extensions; avoid requiring methods, tricks, or knowledge from higher classes.
-  - Math equations must be written in LaTeX.
+  - All mathematical expressions must be written in proper LaTeX.
+- Do not wrap plain numbers, plain words, or simple option text in LaTeX.
+- Do not write matrices as [1 2 3 4].
+- Always write matrices in proper LaTeX matrix form.
+- Row matrix example: \(\begin{bmatrix} 1 & 2 & 3 \end{bmatrix}\)
+- Column matrix example: \(\begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix}\)
+- 2 × 2 matrix example: \(\begin{bmatrix} a & b \\ c & d \end{bmatrix}\)
+- Use & between columns and \\\\ between rows inside matrices.
+- Do not use ordinary brackets for matrices when matrix notation is required.
+- All matrices must be written directly in proper LaTeX matrix format.
+- If temporary plain format is unavoidable, separate rows with semicolons, like [1 2; 3 4].
+- Never write a multi-row matrix as [1 2 3 4].
 
 **STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
 - Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
@@ -2493,6 +2526,25 @@ function __decodeEntities(s = '') {
 // Wrap ( ... ) as \( ... \) ONLY when the (...) contains a LaTeX command like \frac, \sqrt, \cdot, etc.
 function __fixLatex(s='') {
   let t = String(s);
+      // Convert simple matrix-like text into proper LaTeX matrix form
+  // Example: [3 5; 2 7] -> \(\begin{bmatrix} 3 & 5 \\ 2 & 7 \end{bmatrix}\)
+  t = t.replace(/\[([^\[\]]+)\]/g, (match, content) => {
+    const raw = content.trim();
+
+    // Only treat it as a matrix if it looks like multiple values
+    if (!/[0-9a-zA-Z]/.test(raw)) return match;
+    if (!/[;\s]/.test(raw)) return match;
+
+    const rows = raw
+      .split(';')
+      .map(r => r.trim())
+      .filter(Boolean)
+      .map(r => r.split(/\s+/).filter(Boolean).join(' & '));
+
+    if (!rows.length) return match;
+
+    return `\\(\\begin{bmatrix} ${rows.join(' \\\\ ')} \\end{bmatrix}\\)`;
+  });
 
   // 1) Normalize any $...$ / $$...$$ into \( ... \) / \[ ... \]
   t = t.replace(/\$\$([\s\S]*?)\$\$/g, '\\[$1\\]');
@@ -2500,7 +2552,7 @@ function __fixLatex(s='') {
 
   // 2) Upgrade bare (...) that contain LaTeX commands into \( ... \)
   //    (handles cases like: ( \angle A = 45^\circ ))
-  t = t.replace(/\(\s*((?:[^()]*\\[A-Za-z][^()]*)+)\s*\)/g, '\\($1\\)');
+  // Do not auto-wrap normal parentheses into LaTeX.
 
   // 3) Collapse spaces right inside delimiters: \(  x \) -> \(x\)
   t = t.replace(/\\\(\s+/g, '\\(').replace(/\s+\\\)/g, '\\)');
@@ -2822,14 +2874,19 @@ const neetLevels = `
   const strictAccuracy = `
 STRICT ACCURACY (applies to all):
 • Ensure every question is clear, unambiguous, and correct.
-• Double-check all facts/calculations/options/answers.
+• Double-check all facts, calculations, options, and answers.
 • If any issue is found, fix it before output.
-• All math MUST use LaTeX with proper delimiters: (But plain Numbers and letters should not be in LaTex)
-  – Inline: wrap EVERY expression as \\( ... \\) (never raw (...) or $...$)
-  – Display: wrap as \\[ ... \\] (never $$...$$)
-• Use LaTeX commands for symbols (\\angle, ^{\\circ}, \\times, \\cdot, \\le, \\ge, \\neq, \\frac{..}{..}, \\sqrt{..}, etc.). Do NOT output Unicode symbols (×, °, ≤, ≥, ≠).
-• Delimiters must be balanced (no stray \\( or \\) ). No output should contain patterns like "( \\angle A = 45^\\circ )" — it must be "\\( \\angle A = 45^{\\circ} \\)".
-`;
+• Write only real mathematical expressions in LaTeX.
+• Do NOT put plain numbers, plain words, plain labels, or normal option text inside LaTeX.
+• Inline math must use \( ... \).
+• Big equations written on a separate line must use \[ ... \].
+• Never use raw brackets like ( ... ) as a substitute for LaTeX.
+• Use proper LaTeX commands for symbols and notation such as \frac{a}{b}, \sqrt{x}, x^2, \times, \cdot, \angle, ^{\circ}, \le, \ge, \neq.
+• Do NOT output Unicode math symbols like ×, °, ≤, ≥, ≠ inside equations; convert them to proper LaTeX commands.
+• Fractions, powers, roots, equations, algebraic expressions, coordinates, determinants, and matrices must be written in proper LaTeX.
+• All matrices must be written directly in proper LaTeX matrix format such as \( \begin{bmatrix} a & b \\ c & d \end{bmatrix} \).
+• Never write multi-step expressions, matrices, or equations in plain text bracket style.
+• Delimiters must always be balanced correctly.
 
   // ---- FORMAT RULES (base) ----
   const numberingNote = isTextbook
