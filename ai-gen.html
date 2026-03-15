@@ -2524,52 +2524,14 @@ function __decodeEntities(s = '') {
   return d.value;
 }
 // Wrap ( ... ) as \( ... \) ONLY when the (...) contains a LaTeX command like \frac, \sqrt, \cdot, etc.
-function __fixLatex(s='') {
-  let t = String(s);
-      // Convert simple matrix-like text into proper LaTeX matrix form
-  // Example: [3 5; 2 7] -> \(\begin{bmatrix} 3 & 5 \\ 2 & 7 \end{bmatrix}\)
-  t = t.replace(/\[([^\[\]]+)\]/g, (match, content) => {
-    const raw = content.trim();
+function __fixLatex(s = '') {
+  let t = String(s || '');
 
-    // Only treat it as a matrix if it looks like multiple values
-    if (!/[0-9a-zA-Z]/.test(raw)) return match;
-    if (!/[;\s]/.test(raw)) return match;
-
-    const rows = raw
-      .split(';')
-      .map(r => r.trim())
-      .filter(Boolean)
-      .map(r => r.split(/\s+/).filter(Boolean).join(' & '));
-
-    if (!rows.length) return match;
-
-    return `\\(\\begin{bmatrix} ${rows.join(' \\\\ ')} \\end{bmatrix}\\)`;
-  });
-
-  // 1) Normalize any $...$ / $$...$$ into \( ... \) / \[ ... \]
   t = t.replace(/\$\$([\s\S]*?)\$\$/g, '\\[$1\\]');
   t = t.replace(/\$([^\$]+)\$/g, '\\($1\\)');
 
-  // 2) Upgrade bare (...) that contain LaTeX commands into \( ... \)
-  //    (handles cases like: ( \angle A = 45^\circ ))
-  // Do not auto-wrap normal parentheses into LaTeX.
-
-  // 3) Collapse spaces right inside delimiters: \(  x \) -> \(x\)
   t = t.replace(/\\\(\s+/g, '\\(').replace(/\s+\\\)/g, '\\)');
   t = t.replace(/\\\[\s+/g, '\\[').replace(/\s+\\\]/g, '\\]');
-
-  // 4) Ensure common symbols use LaTeX commands (no Unicode)
-  t = t
-    .replace(/×/g, '\\times ')
-    .replace(/·/g, '\\cdot ')
-    .replace(/≤/g, '\\le ')
-    .replace(/≥/g, '\\ge ')
-    .replace(/≠/g, '\\neq ')
-    .replace(/°/g, '^{\\circ}');
-
-  // 5) Guard against stray half-delimiters by removing unmatched single $ 
-  //    (already converted above, this is just a safety net)
-  t = t.replace(/\$(?=\S)|(?<=\S)\$/g, '');
 
   return t;
 }
