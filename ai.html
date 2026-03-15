@@ -53,6 +53,7 @@
         align-items: center; justify-content: center; padding: 15px 10px 18px 10px;
         box-sizing: border-box; flex-shrink: 0;
         position: sticky; top: 0; z-index: 1200;
+        position: relative;
       }
       #header-logout-btn{
         position:absolute;
@@ -842,17 +843,6 @@ questionTypes: [
           }
         } else {
           window.location.href = 'login.html';
-        const logoutBtn = document.getElementById('header-logout-btn');
-        if (logoutBtn) {
-          logoutBtn.onclick = async () => {
-            try {
-              await auth.signOut();
-              window.location.href = 'login.html';
-            } catch (err) {
-              alert('Logout failed.');
-            }
-          };
-        }
         }
       });
 
@@ -895,10 +885,25 @@ questionTypes: [
       });
     });
 
-    function loadAiQuestionGeneratorForm() {
+   function setupHeaderLogout() {
+  const logoutBtn = document.getElementById('header-logout-btn');
+  if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+      try {
+        await auth.signOut();
+        window.location.href = 'login.html';
+      } catch (err) {
+        alert('Logout failed.');
+      }
+    };
+  }
+}
+
+function loadAiQuestionGeneratorForm() {
       currentPage = 'form';
       document.body.classList.remove('chat-lock');
-      document.getElementById('main-header').style.display = 'flex';
+            document.getElementById('main-header').style.display = 'flex';
+      setupHeaderLogout();
 
       const container = document.getElementById('ai-container');
       container.innerHTML = '<div class="setup-form-container"></div>';
@@ -1432,7 +1437,8 @@ if (sessionParams.questionType === 'Descriptive' && (!sessionParams.marks || ses
       currentPage = 'chat';
       lastSessionParams = sessionParams;
       document.body.classList.add('chat-lock');
-      document.getElementById('main-header').style.display = 'none';
+            document.getElementById('main-header').style.display = 'none';
+      setupHeaderLogout();
 
       const container = document.getElementById('ai-container');
       currentSessionQuestions = [];
