@@ -3,6 +3,7 @@
   "short_name": "SciMentra",
   "description": "SciMentra Question Bank web app for IIT & NEET Foundation.",
   "start_url": "./index.html",
+  "scope": "/QBank/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f3d6b",
