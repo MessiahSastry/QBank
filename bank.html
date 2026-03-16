@@ -419,7 +419,7 @@ const auth = firebase.auth();
   setupDropdowns();
   // Do NOT fetch on load; wait until Class + Subject are chosen
   document.getElementById('questions-display-area').innerHTML =
-    '<p class="no-questions-message">Select Class and Subject to view questions.</p>';
+    '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
   document.getElementById('download-pdf-btn').addEventListener('click', exportPDF);
 }
 
@@ -1583,7 +1583,7 @@ if (selQtypes.length > 0) {
      style="position:relative;">
 
               <div class="question-meta">
-                Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${data.mcqType ? ` [${data.mcqType}]` : ''}
+                Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
               </div>
               <div class="question-text">
                 ${
@@ -1851,6 +1851,7 @@ if (!window.__explainItBound) {
 
       const initMarks = (typeof data.marks === 'number' || /^[0-9]+$/.test(String(data.marks))) ? data.marks : '';
       const initLevel = data.difficulty || '';
+      const initBoard = data.board || '';
       const initChapter = data.chapter || '';
       const initQNo = (typeof data.questionNumber === 'number' || /^[0-9]+$/.test(String(data.questionNumber))) ? data.questionNumber : '';
 
@@ -1868,10 +1869,12 @@ if (!window.__explainItBound) {
             <div>
               <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question Type</label>
               <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-                <option value="Descriptive">Descriptive</option>
-                <option value="MCQ (Single)">MCQ (Single)</option>
-                <option value="MCQ (Multiple)">MCQ (Multiple)</option>
-              </select>
+              <option value="Descriptive">Descriptive</option>
+              <option value="MCQ (Single)">MCQ (Single)</option>
+              <option value="MCQ (Multiple)">MCQ (Multiple)</option>
+              <option value="Fill in the Blanks">Fill in the Blanks</option>
+              <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
+            </select>
             </div>
             <div>
               <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
@@ -1885,6 +1888,10 @@ if (!window.__explainItBound) {
                 <option value="Level 2">Level 2</option>
                 <option value="Level 3">Level 3</option>
               </select>
+            </div>
+            <div>
+              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Board</label>
+              <input id="edit-q-board" type="text" value="${initBoard.replace(/"/g,'&quot;')}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
             </div>
             <div>
               <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question No.</label>
@@ -1943,7 +1950,11 @@ if (!window.__explainItBound) {
 
       const mcqBlock = popup.querySelector('#edit-mcq-block');
       const toggleMCQBlock = () => {
-        mcqBlock.style.display = (selType.value === 'MCQ (Single)' || selType.value === 'MCQ (Multiple)') ? 'block' : 'none';
+       mcqBlock.style.display = (
+  selType.value === 'MCQ (Single)' ||
+  selType.value === 'MCQ (Multiple)' ||
+  selType.value === 'Assertion and Reason (MCQ Single)'
+) ? 'block' : 'none';
       };
       selType.addEventListener('change', toggleMCQBlock);
       toggleMCQBlock();
@@ -1955,6 +1966,7 @@ if (!window.__explainItBound) {
         const qText = popup.querySelector('#edit-q-text').value.trim();
         const marksRaw = popup.querySelector('#edit-q-marks').value.trim();
         const levelVal = selLevel.value || '';
+        const boardVal = popup.querySelector('#edit-q-board').value.trim();
         const chapterVal = popup.querySelector('#edit-q-chapter').value.trim();
         const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
 
@@ -1963,6 +1975,7 @@ if (!window.__explainItBound) {
         const updateObj = {
   question: qText,
   difficulty: levelVal || firebase.firestore.FieldValue.delete(),
+  board: boardVal || firebase.firestore.FieldValue.delete(),
   chapter: chapterVal || firebase.firestore.FieldValue.delete(),
 };
 
@@ -1991,7 +2004,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.questionNumber = qn;
         }
 
-        if (qType === 'Descriptive') {
+        if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
           updateObj.mcqType = firebase.firestore.FieldValue.delete();
           updateObj.options = firebase.firestore.FieldValue.delete();
           updateObj.body = qText;
