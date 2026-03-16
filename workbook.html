@@ -241,28 +241,33 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
-      authDomain: "stpatricks-questionbank.firebaseapp.com",
-      projectId: "stpatricks-questionbank",
-      storageBucket: "stpatricks-questionbank.appspot.com",
-      messagingSenderId: "917615322861",
-      appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
-    };
+    const scimentraConfig = {
+  apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+  authDomain: "scimentra-qbank.firebaseapp.com",
+  projectId: "scimentra-qbank",
+  storageBucket: "scimentra-qbank.firebasestorage.app",
+  messagingSenderId: "371409178675",
+  appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+  measurementId: "G-KV01PDN7QD"
+};
 
-    const authApp = firebase.initializeApp({
-      apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
-      authDomain: "scimentra-qbank.firebaseapp.com",
-      projectId: "scimentra-qbank",
-      storageBucket: "scimentra-qbank.firebasestorage.app",
-      messagingSenderId: "371409178675",
-      appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
-      measurementId: "G-KV01PDN7QD"
-    }, "authApp");
+const stpatricksConfig = {
+  apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
+  authDomain: "stpatricks-questionbank.firebaseapp.com",
+  projectId: "stpatricks-questionbank",
+  storageBucket: "stpatricks-questionbank.appspot.com",
+  messagingSenderId: "917615322861",
+  appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
+};
 
-    const dbApp = firebase.apps.find(app => app.name === "[DEFAULT]") || firebase.initializeApp(firebaseConfig);
-    const db = dbApp.firestore();
-    const auth = authApp.auth();
+const authApp = firebase.apps.find(app => app.name === "[DEFAULT]")
+  || firebase.initializeApp(scimentraConfig);
+
+const dbApp = firebase.apps.find(app => app.name === "stPatricksDB")
+  || firebase.initializeApp(stpatricksConfig, "stPatricksDB");
+
+const auth = authApp.auth();
+const db = dbApp.firestore();
 
 // CampusConnect custom alert (replaces window.alert)
 (function setupCampusConnectAlert(){
@@ -334,7 +339,7 @@
           currentUser = user;
           initializeApp();
         } else {
-          window.location.href = 'login.html';
+          window.location.replace('index.html');
         }
       });
 
