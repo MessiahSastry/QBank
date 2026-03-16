@@ -203,9 +203,13 @@
             <div id="class-dropdown" class="custom-dropdown"></div>
           </div>
           <div class="form-group">
-            <label>Subject:</label>
-            <div id="subject-dropdown" class="custom-dropdown"></div>
-          </div>
+          <label>Board:</label>
+          <div id="board-dropdown" class="custom-dropdown"></div>
+        </div>
+        <div class="form-group">
+          <label>Subject:</label>
+          <div id="subject-dropdown" class="custom-dropdown"></div>
+        </div>
           <div class="form-group">
             <label>Question Type:</label>
             <div id="qtype-dropdown" class="custom-dropdown"></div>
@@ -297,23 +301,99 @@ const auth = firebase.auth();
 
     const filterConfig = {
       classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"],
-      subjectMappings: {
-        "3rd Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
-        "4th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
-        "5th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
-        "6th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "7th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "8th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "9th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "10th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"]
+      boards: [
+        "CBSE",
+        "ICSE",
+        "Olympiad",
+        "IIT & NEET Foundation",
+        "JEE Mains",
+        "JEE Advance",
+        "NEET",
+        "AP State Board (SCERT)",
+        "Other"
+      ],
+      boardSubjectMappings: {
+        "CBSE": [
+          "English",
+          "Hindi",
+          "Mathematics",
+          "Science",
+          "Social Science",
+          "Computer Science / IT",
+          "Sanskrit",
+          "Physical Education",
+          "General Knowledge",
+          "Environmental Studies",
+          "Other"
+        ],
+        "ICSE": [
+          "English Language",
+          "English Literature",
+          "Second Language",
+          "Mathematics",
+          "Physics",
+          "Chemistry",
+          "Biology",
+          "History & Civics",
+          "Geography",
+          "Computer Applications",
+          "Environmental Education",
+          "Commercial Studies / Economics",
+          "Other"
+        ],
+        "Olympiad": [
+          "Mathematics",
+          "Science",
+          "English",
+          "Reasoning",
+          "General Knowledge",
+          "Cyber / Computer"
+        ],
+        "IIT & NEET Foundation": [
+          "Mathematics",
+          "Physics",
+          "Chemistry",
+          "Biology",
+          "Reasoning"
+        ],
+        "JEE Mains": [
+          "Physics",
+          "Chemistry",
+          "Mathematics"
+        ],
+        "JEE Advance": [
+          "Physics",
+          "Chemistry",
+          "Mathematics"
+        ],
+        "NEET": [
+          "Physics",
+          "Chemistry",
+          "Biology"
+        ],
+        "AP State Board (SCERT)": [
+          "Telugu",
+          "Hindi",
+          "English",
+          "Mathematics",
+          "Physical Science",
+          "Biological Science",
+          "Social Studies",
+          "General Science",
+          "Computer / ICT",
+          "Other"
+        ],
+        "Other": [
+          "Other"
+        ]
       },
       questionTypes: [
-      "MCQ (Single)",
-      "MCQ (Multiple)",
-      "Descriptive",
-      "Text Book (MCQ Single)",
-      "Text Book (MCQ Multiple)"
-    ],
+        "MCQ (Single)",
+        "MCQ (Multiple)",
+        "Fill in the Blanks",
+        "Assertion and Reason (MCQ Single)",
+        "Descriptive"
+      ],
       marks: Array.from({ length: 10 }, (_, i) => i + 1),
       levels: ["Level 1", "Level 2", "Level 3"]
     };
@@ -1230,6 +1310,10 @@ function getMultiSelected(idPrefix) {
       classDropdown.innerHTML = createDropdownHTML('class', filterConfig.classes, 'Select Class');
       document.getElementById('class-value').value = '';
 
+     const boardDropdown = document.getElementById('board-dropdown');
+      boardDropdown.innerHTML = createDropdownHTML('board', filterConfig.boards, 'Select Board');
+      document.getElementById('board-value').value = '';
+
       const subjectDropdown = document.getElementById('subject-dropdown');
       subjectDropdown.innerHTML = createDropdownHTML('subject', [], 'Select Subject');
       document.getElementById('subject-value').value = '';
@@ -1259,6 +1343,7 @@ levelDropdown.innerHTML = createMultiDropdownHTML('level', levelOpts, 'Select Le
 addMultiDropdownListener('level-dropdown', __debouncedFetch);
 
 addDropdownListener('class-dropdown', onClassChange);
+addDropdownListener('board-dropdown', onBoardChange);
 addDropdownListener('subject-dropdown', onSubjectChange);
 
     }
@@ -1285,8 +1370,30 @@ addDropdownListener('subject-dropdown', onSubjectChange);
     }
 
     function onClassChange() {
-      const className = document.getElementById('class-value').value;
-      const subjects = className && className !== 'All' ? filterConfig.subjectMappings[className] || [] : [];
+      const boardDropdown = document.getElementById('board-dropdown');
+      const boardInput = document.getElementById('board-value');
+      const boardSelected = boardDropdown.querySelector('.selected-option');
+
+      const subjectDropdown = document.getElementById('subject-dropdown');
+      subjectDropdown.innerHTML = createDropdownHTML('subject', [], 'Select Subject');
+      addDropdownListener('subject-dropdown', onSubjectChange);
+
+      const subjectInput = document.getElementById('subject-value');
+      const subjectSelected = subjectDropdown.querySelector('.selected-option');
+
+      boardInput.value = '';
+      boardSelected.textContent = 'Select Board';
+
+      subjectInput.value = '';
+      subjectSelected.textContent = 'Select Subject';
+
+      updateChapterDropdown();
+      fetchAndDisplayQuestions();
+    }
+
+   function onBoardChange() {
+      const boardName = document.getElementById('board-value').value;
+      const subjects = boardName && boardName !== 'All' ? filterConfig.boardSubjectMappings[boardName] || [] : [];
 
       const subjectDropdown = document.getElementById('subject-dropdown');
       subjectDropdown.innerHTML = createDropdownHTML('subject', subjects, 'Select Subject');
@@ -1294,6 +1401,7 @@ addDropdownListener('subject-dropdown', onSubjectChange);
 
       const subjectInput = document.getElementById('subject-value');
       const subjectSelected = subjectDropdown.querySelector('.selected-option');
+
       if (subjects.length > 0) {
         subjectInput.value = subjects[0];
         subjectSelected.textContent = subjects[0];
@@ -1301,7 +1409,9 @@ addDropdownListener('subject-dropdown', onSubjectChange);
         subjectInput.value = '';
         subjectSelected.textContent = 'Select Subject';
       }
-      onSubjectChange();
+
+      updateChapterDropdown();
+      fetchAndDisplayQuestions();
     }
 
     function onSubjectChange() {
@@ -1311,19 +1421,21 @@ addDropdownListener('subject-dropdown', onSubjectChange);
 
     async function updateChapterDropdown() {
       const classVal = document.getElementById('class-value').value;
+      const boardVal = document.getElementById('board-value').value;
       const subjectVal = document.getElementById('subject-value').value;
       const chapterDropdown = document.getElementById('chapter-dropdown');
 
-       if (!classVal || classVal === 'All' || !subjectVal || subjectVal === 'All') {
+       if (!classVal || classVal === 'All' || !boardVal || boardVal === 'All' || !subjectVal || subjectVal === 'All') {
     chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', [], 'Select Chapter');
     addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
     return;
   }
 
   try {
-   const q = db.collection('questions')
+    const q = db.collection('questions')
       .where('createdBy', '==', currentUser.uid)
       .where('class', '==', classVal)
+      .where('board', '==', boardVal)
       .where('subject', '==', subjectVal);
 
     const snapshot = await q.get();
@@ -1346,12 +1458,13 @@ addDropdownListener('subject-dropdown', onSubjectChange);
 
       const displayArea = document.getElementById('questions-display-area');
 
-      const classVal   = document.getElementById('class-value').value;
+     const classVal   = document.getElementById('class-value').value;
+      const boardVal   = document.getElementById('board-value').value;
       const subjectVal = document.getElementById('subject-value').value;
       
-      // Require Class + Subject before querying
-      if (!classVal || !subjectVal || classVal === 'All' || subjectVal === 'All') {
-        displayArea.innerHTML = '<p class="no-questions-message">Select Class and Subject to view questions.</p>';
+      // Require Class + Board + Subject before querying
+      if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
+        displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
         return;
       }
       
@@ -1368,6 +1481,9 @@ const selLevels   = getMultiSelected('level');            // array of "Level 1/2
 
 if (classVal && classVal !== 'Select Class' && classVal !== 'All') {
   query = query.where('class', '==', classVal);
+}
+if (boardVal && boardVal !== 'Select Board' && boardVal !== 'All') {
+  query = query.where('board', '==', boardVal);
 }
 if (subjectVal && subjectVal !== 'Select Subject' && subjectVal !== 'All') {
   query = query.where('subject', '==', subjectVal);
