@@ -2340,11 +2340,12 @@ async function saveSessionQuestions(sessionParams) {
   let savedCount = 0,
       skippedCount = 0;
 
-  const startNumber = await getNextQuestionNumber(
-    sessionParams.class,
-    sessionParams.subject,
-    sessionParams.chapter
-  );
+  try {
+    const startNumber = await getNextQuestionNumber(
+      sessionParams.class,
+      sessionParams.subject,
+      sessionParams.chapter
+    );
 
   for (let i = 0; i < currentSessionQuestions.length; i++) {
     const qData = currentSessionQuestions[i];
@@ -2480,11 +2481,15 @@ async function saveSessionQuestions(sessionParams) {
     savedCount++;
   }
 
-  alert(`${savedCount} question(s) saved. ${skippedCount} duplicate(s) skipped.`);
-  saveButton.disabled = false;
-  saveButton.innerHTML = "💾 Save All";
+      alert(`${savedCount} question(s) saved. ${skippedCount} duplicate(s) skipped.`);
+  } catch (err) {
+    console.error("Save failed:", err);
+    alert("Save failed: " + (err.message || err));
+  } finally {
+    saveButton.disabled = false;
+    saveButton.innerHTML = "💾 Save All";
+  }
 }
-
 function appendChatMessage(text, type, messagesArea) {
   let messageElement;
 
