@@ -242,13 +242,14 @@
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
-      authDomain: "stpatricks-questionbank.firebaseapp.com",
-      projectId: "stpatricks-questionbank",
-      storageBucket: "stpatricks-questionbank.appspot.com",
-      messagingSenderId: "917615322861",
-      appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
-    };
+  apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+  authDomain: "scimentra-qbank.firebaseapp.com",
+  projectId: "scimentra-qbank",
+  storageBucket: "scimentra-qbank.firebasestorage.app",
+  messagingSenderId: "371409178675",
+  appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+  measurementId: "G-KV01PDN7QD"
+};
     firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
@@ -295,7 +296,7 @@ const auth = firebase.auth();
     let currentUser = null;
 
     const filterConfig = {
-      classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class"],
+      classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"],
       subjectMappings: {
         "3rd Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
         "4th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
@@ -1320,7 +1321,8 @@ addDropdownListener('subject-dropdown', onSubjectChange);
   }
 
   try {
-    const q = db.collection('questions')
+   const q = db.collection('questions')
+      .where('createdBy', '==', currentUser.uid)
       .where('class', '==', classVal)
       .where('subject', '==', subjectVal);
 
@@ -1361,7 +1363,9 @@ const selQtypes   = getMultiSelected('qtype');            // array of types
 const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
 const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
 
-        let query = db.collection('questions');
+  let query = db.collection('questions')
+  .where('createdBy', '==', currentUser.uid);
+
 if (classVal && classVal !== 'Select Class' && classVal !== 'All') {
   query = query.where('class', '==', classVal);
 }
