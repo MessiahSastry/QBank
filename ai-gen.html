@@ -2463,15 +2463,17 @@ async function saveSessionQuestions(sessionParams) {
 
           if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
         toSave.question = wrappedQuestion;
-        toSave.options  = wrappedOptions; // keep as array
-        toSave.answer   = qData.parsedAnswer; // letters unchanged
+        toSave.options  = wrappedOptions;
+        toSave.answer   = qData.parsedAnswer;
+        toSave.parsedAnswer = qData.parsedAnswer;
         toSave.mcqType  = sessionParams.questionType;
       } else {
         toSave.text   = wrappedFullText;
         toSave.body   = wrappedBody;
         toSave.answer = qData.parsedAnswer;
+        toSave.parsedAnswer = qData.parsedAnswer;
+        toSave.type = sessionParams.questionType;
       }
-
       await db.collection("questions").add(toSave);
     }
 
@@ -3490,13 +3492,18 @@ function rerenderAllQuestions() {
 
 function parseMetaLine(metaLine) {
   const meta = { difficulty: null, level: null, marks: null };
-  const diffMatch  = metaLine.match(/Q\s*\d+:\s*([^,/]+)/i);
-  const levelMatch = metaLine.match(/\/Level\s*(\d+)/i);
+
+  const levelMatch = metaLine.match(/Level\s*(\d+)/i);
   const marksMatch = metaLine.match(/(\d+)\s*Mark(s?)/i);
 
-  if (diffMatch)  meta.difficulty = diffMatch[1].trim();
-  if (levelMatch) meta.level      = parseInt(levelMatch[1], 10);
-  if (marksMatch) meta.marks      = parseInt(marksMatch[1], 10);
+  if (levelMatch) {
+    meta.level = parseInt(levelMatch[1], 10);
+    meta.difficulty = `Level ${levelMatch[1]}`;
+  }
+
+  if (marksMatch) {
+    meta.marks = parseInt(marksMatch[1], 10);
+  }
 
   return meta;
 }
