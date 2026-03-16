@@ -2430,24 +2430,30 @@ async function saveSessionQuestions(sessionParams) {
       }));
       const wrappedFull = __wrap(qData.fullText || '');
 
-     console.log("ADDING COMPREHENSIVE QUESTION", i);
+    console.log("ADDING COMPREHENSIVE QUESTION", i);
 
-      await db.collection("questions").add({
-        type: "Comprehensive",
-        text: wrappedFull,
-        metaLine: qData.parsedMeta,
-        marks: 2,
-        passage: wrappedPassage,
-        mcqs: wrappedMcqs,
-        questionNumber: currentQuestionNumber,
-        class: qData.class,
-        board: qData.board,
-        subject: qData.subject,
-        chapter: qData.chapter,
-        createdBy: currentUserProfile.uid,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-console.log("ADDED COMPREHENSIVE QUESTION", i);
+      await Promise.race([
+        db.collection("questions").add({
+          type: "Comprehensive",
+          text: wrappedFull,
+          metaLine: qData.parsedMeta,
+          marks: 2,
+          passage: wrappedPassage,
+          mcqs: wrappedMcqs,
+          questionNumber: currentQuestionNumber,
+          class: qData.class,
+          board: qData.board,
+          subject: qData.subject,
+          chapter: qData.chapter,
+          createdBy: currentUserProfile.uid,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Firestore comprehensive add timeout after 10 seconds")), 10000)
+        )
+      ]);
+
+      console.log("ADDED COMPREHENSIVE QUESTION", i);
     } else {
       // Normal question save (single, multiple, descriptive) — wrap mathy text
       const wrappedQuestion  = __wrap(qData.question || '');
@@ -2482,8 +2488,15 @@ console.log("ADDED COMPREHENSIVE QUESTION", i);
         toSave.parsedAnswer = qData.parsedAnswer;
         toSave.type = sessionParams.questionType;
       }
-      console.log("ADDING NORMAL QUESTION", i, toSave);
-      await db.collection("questions").add(toSave);
+     console.log("ADDING NORMAL QUESTION", i, toSave);
+
+      await Promise.race([
+        db.collection("questions").add(toSave),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Firestore add timeout after 10 seconds")), 10000)
+        )
+      ]);
+
       console.log("ADDED NORMAL QUESTION", i);
     }
 
