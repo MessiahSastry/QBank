@@ -2348,6 +2348,7 @@ async function saveSessionQuestions(sessionParams) {
     );
 
   for (let i = 0; i < currentSessionQuestions.length; i++) {
+    console.log("SAVE LOOP START", i, currentSessionQuestions[i]);
     const qData = currentSessionQuestions[i];
 
     // If comprehensive, use fullText for duplicate check, else parsedBody
@@ -2377,11 +2378,15 @@ async function saveSessionQuestions(sessionParams) {
       );
     }
 
+    console.log("CHECKING DUPLICATES FOR", i, qData.subject, qData.chapter);
+
     const snapshot = await db
       .collection("questions")
       .where("subject", "==", qData.subject)
       .where("chapter", "==", qData.chapter)
       .get();
+
+    console.log("DUPLICATE CHECK DONE", i, snapshot.size);
 
     let isDuplicate = false;
 
@@ -2425,6 +2430,8 @@ async function saveSessionQuestions(sessionParams) {
       }));
       const wrappedFull = __wrap(qData.fullText || '');
 
+     console.log("ADDING COMPREHENSIVE QUESTION", i);
+
       await db.collection("questions").add({
         type: "Comprehensive",
         text: wrappedFull,
@@ -2440,7 +2447,7 @@ async function saveSessionQuestions(sessionParams) {
         createdBy: currentUserProfile.uid,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
-
+console.log("ADDED COMPREHENSIVE QUESTION", i);
     } else {
       // Normal question save (single, multiple, descriptive) — wrap mathy text
       const wrappedQuestion  = __wrap(qData.question || '');
@@ -2475,7 +2482,9 @@ async function saveSessionQuestions(sessionParams) {
         toSave.parsedAnswer = qData.parsedAnswer;
         toSave.type = sessionParams.questionType;
       }
+      console.log("ADDING NORMAL QUESTION", i, toSave);
       await db.collection("questions").add(toSave);
+      console.log("ADDED NORMAL QUESTION", i);
     }
 
     savedCount++;
