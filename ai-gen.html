@@ -2433,6 +2433,7 @@ async function saveSessionQuestions(sessionParams) {
         mcqs: wrappedMcqs,
         questionNumber: currentQuestionNumber,
         class: qData.class,
+        board: qData.board,
         subject: qData.subject,
         chapter: qData.chapter,
         createdBy: currentUserProfile.uid,
@@ -2453,6 +2454,7 @@ async function saveSessionQuestions(sessionParams) {
         marks: meta.marks,
         questionNumber: currentQuestionNumber,
         class: qData.class,
+        board: qData.board,
         subject: qData.subject,
         chapter: qData.chapter,
         createdBy: currentUserProfile.uid,
@@ -3105,9 +3107,10 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
     const qData = {
       fullText: b,
       class: sessionParams.class,
+      board: sessionParams.board,
       subject: sessionParams.subject,
       chapter: sessionParams.chapter,
-      parsedMeta: meta, // temporary; will be renumbered on render
+      parsedMeta: meta,
       question: '',
       options: [],
       parsedAnswer: null,
@@ -3210,6 +3213,7 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
     const questionData = {
       fullText: qText,
       class: sessionParams.class,
+      board: sessionParams.board,
       subject: sessionParams.subject,
       chapter: sessionParams.chapter
     };
