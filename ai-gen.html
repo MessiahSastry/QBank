@@ -2840,15 +2840,6 @@ STRICT ACCURACY (applies to all):
 • If any issue is found, fix it before output.
 • Write only real mathematical expressions in LaTeX.
 • Do NOT put plain numbers, plain words, plain labels, or normal option text inside LaTeX.
-• Inline math must use \\( ... \\).
-• Big equations written on a separate line must use \\[ ... \\].
-• Never use raw brackets like ( ... ) as a substitute for LaTeX. Wrong: ( \frac{1}{7} ). Correct: \\( \\frac{1}{7} \\).
-• Use proper LaTeX commands for symbols and notation such as \\frac{a}{b}, \\sqrt{x}, x^2, \\times, \\cdot, \\angle, ^{\\circ}, \\le, \\ge, \\neq.
-• Do NOT output Unicode math symbols like ×, °, ≤, ≥, ≠ inside equations; convert them to proper LaTeX commands.
-• Fractions, powers, roots, equations, algebraic expressions, coordinates, determinants, and matrices must be written in proper LaTeX.
-• All matrices must be written directly in proper LaTeX matrix format such as \\( \\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix} \\).
-• Never write multi-step expressions, matrices, or equations in plain text bracket style.
-• Delimiters must always be balanced correctly.
 `;
 
   // ---- FORMAT RULES (base) ----
@@ -2877,6 +2868,7 @@ ${numberingNote}
 • Use ONLY content from the selected class/subject/chapter (and any subtopic names present in "Request").
 • No headings, introductions, comments, or explanations—questions only.
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+• When I ask for the final set, give me the final set in inline LaTex COPY CODE only
 ${isJeeMains ? '• Questions must match JEE Main standard: objective, concept-based, application-oriented, and exam-relevant. Avoid school-textbook direct questions unless they are properly converted into JEE Main style.' : ''}
 ${isJeeAdvance ? '• Questions must match JEE Advanced standard: deeper, multi-concept, analytical, tricky, and non-routine. Avoid simple direct formula questions.' : ''}
 ${isNeet ? '• Questions must match NEET standard: objective, syllabus-accurate, fast-solving, and exam-relevant. Biology should stay close to NCERT style wherever appropriate.' : ''}
@@ -2915,6 +2907,7 @@ ${numberingNote}
 • Use ONLY the selected chapter (and any subtopic names present in "Request").
 • No extra text—questions only.
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+• When I ask for the final set, give me the final set in inline LaTex COPY CODE only
 ${isCbse ? '• Questions must follow CBSE style: knowledge, application, and HOTS based on textbook concepts.' : ''}
 ${isIcse ? '• Questions must follow ICSE style: concept-rich, precise, and slightly detailed in wording.' : ''}
 ${isApState ? '• Questions must follow AP State Board (SCERT) style and textbook terminology.' : ''}
