@@ -249,9 +249,20 @@
       messagingSenderId: "917615322861",
       appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
     };
-    firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+
+    const authApp = firebase.initializeApp({
+      apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+      authDomain: "scimentra-qbank.firebaseapp.com",
+      projectId: "scimentra-qbank",
+      storageBucket: "scimentra-qbank.firebasestorage.app",
+      messagingSenderId: "371409178675",
+      appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+      measurementId: "G-KV01PDN7QD"
+    }, "authApp");
+
+    const dbApp = firebase.apps.find(app => app.name === "[DEFAULT]") || firebase.initializeApp(firebaseConfig);
+    const db = dbApp.firestore();
+    const auth = authApp.auth();
 
 // CampusConnect custom alert (replaces window.alert)
 (function setupCampusConnectAlert(){
@@ -323,7 +334,7 @@ const auth = firebase.auth();
           currentUser = user;
           initializeApp();
         } else {
-          window.location.href = 'login.html';
+          window.location.href = 'index.html';
         }
       });
 
