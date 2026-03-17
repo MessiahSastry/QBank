@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz Results | SciMentra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --brand1:#1762a7;
+      --brand2:#0f3d6b;
+      --bg:#f4f8fc;
+      --card:#fff;
+      --line:#d9e6f5;
+      --text:#194475;
+      --muted:#607080;
+      --ok:#1f7a39;
+      --warn:#9c6a00;
+      --bad:#b72d2d;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      padding:0;
+      font-family:'Segoe UI', Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    body::after{
+      content:"SciMentra\A QUIZ RESULTS";
+      white-space:pre;
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      font-size:5vw;
+      font-weight:bold;
+      color:rgba(15,61,107,0.04);
+      z-index:-1;
+      text-align:center;
+      pointer-events:none;
+      line-height:1.2;
+    }
+
+    #main-header{
+      background:linear-gradient(90deg, var(--brand1), var(--brand2));
+      color:#fff;
+      border-bottom-left-radius:28px;
+      border-bottom-right-radius:28px;
+      min-height:90px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      padding:15px 10px 18px 10px;
+      box-sizing:border-box;
+      position:sticky;
+      top:0;
+      z-index:50;
+    }
+
+    .school-title{
+      font-size:1.8em;
+      font-weight:bold;
+      margin:0;
+      text-align:center;
+    }
+
+    .subtitle{
+      font-size:1.03em;
+      color:#e0eaff;
+      margin-top:5px;
+      text-align:center;
+    }
+
+    main{
+      max-width:1320px;
+      margin:0 auto;
+      padding:20px 14px 30px 14px;
+    }
+
+    .top-panel{
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 4px 18px rgba(0,27,68,.09);
+      padding:18px 16px;
+      margin-bottom:18px;
+    }
+
+    .panel-title{
+      font-size:1.18em;
+      font-weight:800;
+      color:#0f3d6b;
+      margin:0 0 14px 0;
+    }
+
+    .filters{
+      display:grid;
+      grid-template-columns:2fr 1fr 1fr 1fr auto;
+      gap:12px;
+      align-items:end;
+    }
+
+    .form-group label{
+      display:block;
+      margin-bottom:6px;
+      font-weight:700;
+      color:#185496;
+      font-size:.98em;
+    }
+
+    .form-control{
+      width:100%;
+      padding:11px 12px;
+      border:1.3px solid #bcd6ef;
+      border-radius:8px;
+      background:#f7fafd;
+      color:#12416c;
+      font-size:1em;
+      outline:none;
+    }
+
+    .btn{
+      border:none;
+      border-radius:10px;
+      padding:11px 14px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:.98em;
+      transition:background .14s;
+    }
+
+    .btn-primary{
+      background:var(--brand1);
+      color:#fff;
+    }
+    .btn-primary:hover{ background:#144e83; }
+
+    .btn-light{
+      background:#eef4fb;
+      color:#1a4b78;
+    }
+
+    .btn-green{
+      background:#0f8b6d;
+      color:#fff;
+    }
+
+    .stats-row{
+      display:grid;
+      grid-template-columns:repeat(5, 1fr);
+      gap:14px;
+      margin-bottom:18px;
+    }
+
+    .stat-card{
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 4px 18px rgba(0,27,68,.08);
+      padding:16px 14px;
+    }
+
+    .stat-label{
+      color:#607080;
+      font-size:.95em;
+      font-weight:700;
+      margin-bottom:8px;
+    }
+
+    .stat-value{
+      color:#0f3d6b;
+      font-size:1.45em;
+      font-weight:800;
+    }
+
+    .content-grid{
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:18px;
+      align-items:start;
+    }
+
+    .card{
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 4px 18px rgba(0,27,68,.09);
+      padding:16px;
+    }
+
+    .assignments-list{
+      max-height:72vh;
+      overflow-y:auto;
+      padding-right:4px;
+    }
+
+    .assignment-item{
+      border:1.4px solid #dbe8f6;
+      border-radius:14px;
+      padding:12px 12px;
+      margin-bottom:12px;
+      background:#fbfdff;
+      cursor:pointer;
+      transition:.15s;
+    }
+
+    .assignment-item:hover{
+      box-shadow:0 4px 14px rgba(15,61,107,.08);
+      transform:translateY(-1px);
+    }
+
+    .assignment-item.active{
+      border:2px solid var(--brand1);
+      background:#f2f8ff;
+    }
+
+    .assignment-title{
+      font-weight:800;
+      color:#0f3d6b;
+      font-size:1.02em;
+      line-height:1.4;
+      margin-bottom:6px;
+    }
+
+    .assignment-meta{
+      color:#496174;
+      font-size:.93em;
+      line-height:1.55;
+    }
+
+    .status-pill{
+      display:inline-block;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:.85em;
+      font-weight:800;
+      letter-spacing:.02em;
+      margin-top:8px;
+    }
+
+    .status-live{ background:#e8f8ee; color:var(--ok); }
+    .status-upcoming{ background:#fff8e6; color:var(--warn); }
+    .status-closed{ background:#ffecec; color:var(--bad); }
+
+    .detail-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:14px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+
+    .detail-title{
+      font-size:1.2em;
+      font-weight:800;
+      color:#0f3d6b;
+      line-height:1.45;
+    }
+
+    .detail-sub{
+      color:#496174;
+      line-height:1.6;
+      font-size:.96em;
+      margin-top:6px;
+    }
+
+    .detail-btns{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .mini-stats{
+      display:grid;
+      grid-template-columns:repeat(6, 1fr);
+      gap:12px;
+      margin:14px 0 18px 0;
+    }
+
+    .mini-box{
+      background:#f7fbff;
+      border:1.2px solid #dbe8f6;
+      border-radius:14px;
+      padding:12px 10px;
+      text-align:center;
+    }
+
+    .mini-box .label{
+      font-size:.86em;
+      color:#607080;
+      font-weight:700;
+      margin-bottom:6px;
+    }
+
+    .mini-box .value{
+      font-size:1.15em;
+      color:#0f3d6b;
+      font-weight:800;
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border:1px solid #dbe8f6;
+      border-radius:14px;
+      background:#fff;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:900px;
+    }
+
+    thead th{
+      background:#f4f8ff;
+      color:#134579;
+      font-size:.95em;
+      font-weight:800;
+      padding:12px 10px;
+      border-bottom:1px solid #dbe8f6;
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    tbody td{
+      padding:11px 10px;
+      border-bottom:1px solid #edf3fa;
+      color:#294a68;
+      font-size:.95em;
+      white-space:nowrap;
+    }
+
+    tbody tr:hover{
+      background:#fafcff;
+    }
+
+    .empty-state{
+      padding:26px 16px;
+      text-align:center;
+      color:#607080;
+      font-weight:600;
+    }
+
+    .rank-badge{
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      min-width:34px;
+      height:34px;
+      border-radius:50%;
+      background:#0f3d6b;
+      color:#fff;
+      font-weight:800;
+    }
+
+    .small-note{
+      color:#6a7f90;
+      font-size:.9em;
+      margin-top:8px;
+    }
+
+    @media (max-width: 1050px){
+      .filters{ grid-template-columns:1fr 1fr; }
+      .stats-row{ grid-template-columns:repeat(2, 1fr); }
+      .content-grid{ grid-template-columns:1fr; }
+      .mini-stats{ grid-template-columns:repeat(3, 1fr); }
+    }
+
+    @media (max-width: 620px){
+      .filters{ grid-template-columns:1fr; }
+      .stats-row{ grid-template-columns:1fr; }
+      .mini-stats{ grid-template-columns:repeat(2, 1fr); }
+      .detail-btns{ width:100%; }
+      .detail-btns .btn{ width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <header id="main-header">
+    <h1 class="school-title">SciMentra</h1>
+    <div class="subtitle">Teacher Quiz Results Dashboard</div>
+  </header>
+
+  <main>
+    <div class="top-panel">
+      <div class="panel-title">Quiz Results</div>
+
+      <div class="filters">
+        <div class="form-group">
+          <label>Search Quiz / Section</label>
+          <input id="search-input" class="form-control" type="text" placeholder="Search by title, class, section, subject">
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+          <select id="status-filter" class="form-control">
+            <option value="">All Status</option>
+            <option value="live">live</option>
+            <option value="upcoming">upcoming</option>
+            <option value="closed">closed</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Class</label>
+          <select id="class-filter" class="form-control">
+            <option value="">All Classes</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Section</label>
+          <select id="section-filter" class="form-control">
+            <option value="">All Sections</option>
+          </select>
+        </div>
+
+        <button id="refresh-btn" class="btn btn-primary" type="button">
+          <i class="fa-solid fa-rotate-right"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Assignments</div>
+        <div class="stat-value" id="stat-total-assignments">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Live Assignments</div>
+        <div class="stat-value" id="stat-live">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Attempts</div>
+        <div class="stat-value" id="stat-total-attempts">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Average Score %</div>
+        <div class="stat-value" id="stat-avg-score">0%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Highest Score %</div>
+        <div class="stat-value" id="stat-highest-score">0%</div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <div class="panel-title" style="margin-bottom:10px;">Assignments</div>
+        <div id="assignments-list" class="assignments-list">
+          <div class="empty-state">Loading assignments...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="details-wrap">
+          <div class="empty-state">Select an assignment to see results.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+      authDomain: "scimentra-qbank.firebaseapp.com",
+      projectId: "scimentra-qbank",
+      storageBucket: "scimentra-qbank.firebasestorage.app",
+      messagingSenderId: "371409178675",
+      appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+      measurementId: "G-KV01PDN7QD"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let allAssignments = [];
+    let filteredAssignments = [];
+    let selectedAssignment = null;
+    let selectedAssignmentResults = [];
+    let selectedAssignedStudentCount = 0;
+
+    function esc(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '-';
+      try {
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toLocaleString();
+      } catch {
+        return '-';
+      }
+    }
+
+    function formatShortDate(ts) {
+      if (!ts) return '-';
+      try {
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toLocaleDateString();
+      } catch {
+        return '-';
+      }
+    }
+
+    function formatMinutes(seconds) {
+      const s = Number(seconds || 0);
+      if (!s) return '0 min';
+      const mins = Math.max(1, Math.ceil(s / 60));
+      return mins + ' min';
+    }
+
+    function statusClass(status) {
+      const s = String(status || '').toLowerCase();
+      if (s === 'live') return 'status-live';
+      if (s === 'upcoming') return 'status-upcoming';
+      return 'status-closed';
+    }
+
+    function getPercentage(score, total) {
+      score = Number(score || 0);
+      total = Number(total || 0);
+      if (!total) return 0;
+      return Math.round((score / total) * 100);
+    }
+
+    async function initializePage() {
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          window.location.href = 'login.html';
+          return;
+        }
+        currentUser = user;
+        bindTopFilters();
+        await loadAssignments();
+        await loadOverallStats();
+      });
+    }
+
+    function bindTopFilters() {
+      document.getElementById('search-input').addEventListener('input', applyFilters);
+      document.getElementById('status-filter').addEventListener('change', applyFilters);
+      document.getElementById('class-filter').addEventListener('change', applyFilters);
+      document.getElementById('section-filter').addEventListener('change', applyFilters);
+      document.getElementById('refresh-btn').addEventListener('click', async () => {
+        await loadAssignments();
+        await loadOverallStats();
+      });
+    }
+
+    async function loadAssignments() {
+      const listEl = document.getElementById('assignments-list');
+      listEl.innerHTML = '<div class="empty-state">Loading assignments...</div>';
+
+      try {
+        const snap = await db.collection('quizAssignments')
+          .where('createdBy', '==', currentUser.uid)
+          .get();
+
+        allAssignments = [];
+        snap.forEach(doc => {
+          allAssignments.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        allAssignments.sort((a, b) => {
+          const at = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().getTime() : 0;
+          const bt = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().getTime() : 0;
+          return bt - at;
+        });
+
+        fillFilterDropdowns();
+        applyFilters();
+
+        const params = new URLSearchParams(window.location.search);
+        const preselect = params.get('assignment');
+        if (preselect) {
+          const found = allAssignments.find(x => x.id === preselect);
+          if (found) {
+            await selectAssignment(found.id);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        listEl.innerHTML = '<div class="empty-state" style="color:#c82333;">Failed to load assignments.</div>';
+      }
+    }
+
+    function fillFilterDropdowns() {
+      const classFilter = document.getElementById('class-filter');
+      const sectionFilter = document.getElementById('section-filter');
+
+      const classes = Array.from(new Set(allAssignments.map(a => a.className || a.class || '').filter(Boolean))).sort();
+      const sections = Array.from(new Set(allAssignments.map(a => a.sectionName || '').filter(Boolean))).sort();
+
+      classFilter.innerHTML = `<option value="">All Classes</option>` +
+        classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+      sectionFilter.innerHTML = `<option value="">All Sections</option>` +
+        sections.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    }
+
+    function applyFilters() {
+      const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+      const status = (document.getElementById('status-filter').value || '').trim().toLowerCase();
+      const cls = (document.getElementById('class-filter').value || '').trim().toLowerCase();
+      const sec = (document.getElementById('section-filter').value || '').trim().toLowerCase();
+
+      filteredAssignments = allAssignments.filter(a => {
+        const hay = [
+          a.quizTitle,
+          a.className,
+          a.class,
+          a.sectionName,
+          a.subject,
+          a.chapter,
+          a.schoolName
+        ].join(' ').toLowerCase();
+
+        if (q && !hay.includes(q)) return false;
+        if (status && String(a.quizStatus || '').toLowerCase() !== status) return false;
+        if (cls && String(a.className || a.class || '').toLowerCase() !== cls) return false;
+        if (sec && String(a.sectionName || '').toLowerCase() !== sec) return false;
+        return true;
+      });
+
+      renderAssignmentsList();
+    }
+
+    function renderAssignmentsList() {
+      const listEl = document.getElementById('assignments-list');
+
+      if (!filteredAssignments.length) {
+        listEl.innerHTML = '<div class="empty-state">No assignments match this filter.</div>';
+        return;
+      }
+
+      listEl.innerHTML = filteredAssignments.map(a => `
+        <div class="assignment-item ${selectedAssignment && selectedAssignment.id === a.id ? 'active' : ''}" data-id="${a.id}">
+          <div class="assignment-title">${esc(a.quizTitle || 'Untitled Quiz')}</div>
+          <div class="assignment-meta">
+            <div><b>School:</b> ${esc(a.schoolName || 'SciMentra')}</div>
+            <div><b>Class:</b> ${esc(a.className || a.class || '-')}</div>
+            <div><b>Section:</b> ${esc(a.sectionName || '-')}</div>
+            <div><b>Subject:</b> ${esc(a.subject || '-')}</div>
+            <div><b>Questions:</b> ${Number(a.totalQuestions || 0)}</div>
+            <div><b>Created:</b> ${esc(formatShortDate(a.createdAt))}</div>
+          </div>
+          <span class="status-pill ${statusClass(a.quizStatus)}">${esc(a.quizStatus || 'live')}</span>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('.assignment-item').forEach(item => {
+        item.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          await selectAssignment(id);
+        };
+      });
+    }
+
+    async function selectAssignment(assignmentId) {
+      selectedAssignment = allAssignments.find(a => a.id === assignmentId) || null;
+      renderAssignmentsList();
+
+      if (!selectedAssignment) return;
+
+      const [results, assignedCount] = await Promise.all([
+        loadAssignmentResults(selectedAssignment.id),
+        loadAssignedStudentCount(selectedAssignment)
+      ]);
+
+      selectedAssignmentResults = results;
+      selectedAssignedStudentCount = assignedCount;
+
+      renderAssignmentDetails();
+    }
+
+    async function loadAssignmentResults(assignmentId) {
+      try {
+        const snap = await db.collection('quizResults')
+          .where('createdBy', '==', currentUser.uid)
+          .where('assignmentId', '==', assignmentId)
+          .get();
+
+        const rows = [];
+        snap.forEach(doc => {
+          rows.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        rows.sort((a, b) => {
+          const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          return Number(a.timeTakenSeconds || 0) - Number(b.timeTakenSeconds || 0);
+        });
+
+        return rows;
+      } catch (err) {
+        console.error(err);
+        return [];
+      }
+    }
+
+    async function loadAssignedStudentCount(a) {
+      try {
+        const snap = await db.collection('students')
+          .where('createdBy', '==', currentUser.uid)
+          .where('className', '==', String(a.className || a.class || ''))
+          .where('sectionName', '==', String(a.sectionName || ''))
+          .get();
+
+        return snap.size;
+      } catch (err) {
+        console.error(err);
+        return 0;
+      }
+    }
+
+    function renderAssignmentDetails() {
+      const wrap = document.getElementById('details-wrap');
+
+      if (!selectedAssignment) {
+        wrap.innerHTML = '<div class="empty-state">Select an assignment to see results.</div>';
+        return;
+      }
+
+      const a = selectedAssignment;
+      const rows = selectedAssignmentResults;
+
+      const attempted = rows.length;
+      const totalAssigned = selectedAssignedStudentCount;
+      const notAttempted = Math.max(0, totalAssigned - attempted);
+
+      const percentages = rows.map(r => getPercentage(r.score, r.totalQuestions));
+      const avgPct = percentages.length
+        ? Math.round(percentages.reduce((x, y) => x + y, 0) / percentages.length)
+        : 0;
+      const highestPct = percentages.length ? Math.max(...percentages) : 0;
+      const lowestPct = percentages.length ? Math.min(...percentages) : 0;
+
+      const topper = rows.length ? rows[0] : null;
+
+      wrap.innerHTML = `
+        <div class="detail-head">
+          <div>
+            <div class="detail-title">${esc(a.quizTitle || 'Untitled Quiz')}</div>
+            <div class="detail-sub">
+              <div><b>School:</b> ${esc(a.schoolName || 'SciMentra')}</div>
+              <div><b>Class:</b> ${esc(a.className || a.class || '-')} &nbsp; | &nbsp; <b>Section:</b> ${esc(a.sectionName || '-')}</div>
+              <div><b>Subject:</b> ${esc(a.subject || '-')} &nbsp; | &nbsp; <b>Chapter:</b> ${esc(a.chapter || '-')}</div>
+              <div><b>Status:</b> <span class="status-pill ${statusClass(a.quizStatus)}">${esc(a.quizStatus || 'live')}</span></div>
+              <div><b>Start:</b> ${esc(formatDate(a.startTime))} &nbsp; | &nbsp; <b>End:</b> ${esc(formatDate(a.endTime))}</div>
+            </div>
+          </div>
+
+          <div class="detail-btns">
+            <button id="download-pdf-btn" class="btn btn-primary" type="button">
+              <i class="fa-solid fa-file-pdf"></i> Download PDF
+            </button>
+            <button id="download-excel-btn" class="btn btn-green" type="button">
+              <i class="fa-solid fa-file-excel"></i> Download Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="mini-stats">
+          <div class="mini-box">
+            <div class="label">Assigned Students</div>
+            <div class="value">${totalAssigned}</div>
+          </div>
+          <div class="mini-box">
+            <div class="label">Attempted</div>
+            <div class="value">${attempted}</div>
+          </div>
+          <div class="mini-box">
+            <div class="label">Not Attempted</div>
+            <div class="value">${notAttempted}</div>
+          </div>
+          <div class="mini-box">
+            <div class="label">Average %</div>
+            <div class="value">${avgPct}%</div>
+          </div>
+          <div class="mini-box">
+            <div class="label">Highest %</div>
+            <div class="value">${highestPct}%</div>
+          </div>
+          <div class="mini-box">
+            <div class="label">Lowest %</div>
+            <div class="value">${lowestPct}%</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;color:#35506b;font-weight:700;">
+          Topper: ${topper ? esc(topper.studentName || 'Student') + ' (' + getPercentage(topper.score, topper.totalQuestions) + '%)' : 'No attempts yet'}
+        </div>
+
+        <div class="table-wrap">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Student Name</th>
+                <th>Phone</th>
+                <th>Score</th>
+                <th>Total</th>
+                <th>Percentage</th>
+                <th>Time Taken</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                rows.length
+                  ? rows.map((r, i) => `
+                    <tr>
+                      <td><span class="rank-badge">${i + 1}</span></td>
+                      <td>${esc(r.studentName || '-')}</td>
+                      <td>${esc(r.phoneNumber || '-')}</td>
+                      <td>${Number(r.score || 0)}</td>
+                      <td>${Number(r.totalQuestions || 0)}</td>
+                      <td>${getPercentage(r.score, r.totalQuestions)}%</td>
+                      <td>${esc(formatMinutes(r.timeTakenSeconds))}</td>
+                      <td>${esc(formatDate(r.updatedAt || r.createdAt))}</td>
+                    </tr>
+                  `).join('')
+                  : `<tr><td colspan="8"><div class="empty-state">No student has attempted this assignment yet.</div></td></tr>`
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="small-note">
+          Results are ranked by score first, then lower time taken.
+        </div>
+      `;
+
+      document.getElementById('download-pdf-btn').onclick = downloadSelectedAssignmentPDF;
+      document.getElementById('download-excel-btn').onclick = downloadSelectedAssignmentExcel;
+    }
+
+    async function loadOverallStats() {
+      try {
+        const [assignSnap, resultSnap] = await Promise.all([
+          db.collection('quizAssignments').where('createdBy', '==', currentUser.uid).get(),
+          db.collection('quizResults').where('createdBy', '==', currentUser.uid).get()
+        ]);
+
+        const assignments = [];
+        const results = [];
+
+        assignSnap.forEach(doc => assignments.push(doc.data() || {}));
+        resultSnap.forEach(doc => results.push(doc.data() || {}));
+
+        const liveCount = assignments.filter(a => String(a.quizStatus || '').toLowerCase() === 'live').length;
+        const pcts = results.map(r => getPercentage(r.score, r.totalQuestions));
+        const avg = pcts.length ? Math.round(pcts.reduce((x, y) => x + y, 0) / pcts.length) : 0;
+        const high = pcts.length ? Math.max(...pcts) : 0;
+
+        document.getElementById('stat-total-assignments').textContent = assignments.length;
+        document.getElementById('stat-live').textContent = liveCount;
+        document.getElementById('stat-total-attempts').textContent = results.length;
+        document.getElementById('stat-avg-score').textContent = avg + '%';
+        document.getElementById('stat-highest-score').textContent = high + '%';
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function getSelectedRowsForExport() {
+      return selectedAssignmentResults.map((r, i) => ({
+        Rank: i + 1,
+        Student: r.studentName || '',
+        Phone: r.phoneNumber || '',
+        Score: Number(r.score || 0),
+        Total: Number(r.totalQuestions || 0),
+        Percentage: getPercentage(r.score, r.totalQuestions) + '%',
+        "Time Taken": formatMinutes(r.timeTakenSeconds),
+        "Updated At": formatDate(r.updatedAt || r.createdAt)
+      }));
+    }
+
+    function downloadSelectedAssignmentPDF() {
+      if (!selectedAssignment) return;
+      const rows = getSelectedRowsForExport();
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'pt', 'a4');
+
+      const a = selectedAssignment;
+      const title = a.quizTitle || 'Quiz Results';
+
+      doc.setFontSize(18);
+      doc.text('SciMentra - Quiz Results', 40, 40);
+
+      doc.setFontSize(11);
+      doc.text(`School: ${a.schoolName || 'SciMentra'}`, 40, 65);
+      doc.text(`Quiz: ${title}`, 40, 82);
+      doc.text(`Class: ${a.className || a.class || '-'}   Section: ${a.sectionName || '-'}`, 40, 99);
+      doc.text(`Subject: ${a.subject || '-'}   Chapter: ${a.chapter || '-'}`, 40, 116);
+      doc.text(`Status: ${a.quizStatus || 'live'}`, 40, 133);
+
+      doc.autoTable({
+        startY: 155,
+        head: [[
+          'Rank', 'Student', 'Phone', 'Score', 'Total', '%', 'Time', 'Updated'
+        ]],
+        body: rows.map(r => [
+          r.Rank,
+          r.Student,
+          r.Phone,
+          r.Score,
+          r.Total,
+          r.Percentage,
+          r['Time Taken'],
+          r['Updated At']
+        ]),
+        styles: {
+          fontSize: 9,
+          cellPadding: 5
+        },
+        headStyles: {
+          fillColor: [23, 98, 167]
+        }
+      });
+
+      const fileName = `${title.replace(/[^\w\- ]+/g, '').replace(/\s+/g, '_')}_Results.pdf`;
+      doc.save(fileName);
+    }
+
+    function downloadSelectedAssignmentExcel() {
+      if (!selectedAssignment) return;
+      const rows = getSelectedRowsForExport();
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Results');
+
+      const title = (selectedAssignment.quizTitle || 'Quiz Results')
+        .replace(/[^\w\- ]+/g, '')
+        .replace(/\s+/g, '_');
+
+      XLSX.writeFile(wb, `${title}_Results.xlsx`);
+    }
+
+    initializePage();
+  </script>
+</body>
+</html>
