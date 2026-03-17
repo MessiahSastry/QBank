@@ -2712,8 +2712,347 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
   };
 }
 
+function __qbEscapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function __qbNormalizeOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options.map((opt, i) => {
+    const clean = String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
+    return `${String.fromCharCode(65 + i)}) ${clean}`;
+  });
+}
+
+function __qbShuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function __qbShuffleQuestionOptions(questionObj) {
+  if (!questionObj || !Array.isArray(questionObj.options) || questionObj.options.length !== 4) {
+    return questionObj;
+  }
+
+  const rawOptions = questionObj.options.map(opt =>
+    String(opt || '').replace(/^[A-D][).]\s*/, '').trim()
+  );
+
+  const originalAnswer = String(questionObj.answer || '').toUpperCase().replace(/\s+/g, '');
+  const answerLetters = originalAnswer
+    .split(',')
+    .map(x => x.trim())
+    .filter(x => /^[A-D]$/.test(x));
+
+  const indexed = rawOptions.map((text, index) => ({
+    oldLetter: String.fromCharCode(65 + index),
+    text
+  }));
+
+  const shuffled = __qbShuffleArray(indexed);
+
+  const newOptions = shuffled.map((item, idx) => {
+    return `${String.fromCharCode(65 + idx)}) ${item.text}`;
+  });
+
+  const newAnswerLetters = shuffled
+    .map((item, idx) => answerLetters.includes(item.oldLetter) ? String.fromCharCode(65 + idx) : null)
+    .filter(Boolean);
+
+  return {
+    ...questionObj,
+    options: newOptions,
+    answer: newAnswerLetters.join(', ')
+  };
+}
+
+async function __qbLoadTeacherSections() {
+  const snap = await db.collection('sections')
+    .where('createdBy', '==', currentUser.uid)
+    .orderBy('className')
+    .orderBy('sectionName')
+    .get();
+
+  const sections = [];
+  snap.forEach(doc => {
+    const d = doc.data() || {};
+    sections.push({
+      id: doc.id,
+      className: d.className || '',
+      sectionName: d.sectionName || '',
+      label: `${d.className || ''} - ${d.sectionName || ''}`
+    });
+  });
+  return sections;
+}
+
+async function __qbOpenAssignmentPopup(quizPayload) {
+  return new Promise(async (resolve) => {
+    document.querySelectorAll('.quiz-assignment-popup').forEach(el => el.remove());
+
+    let sections = [];
+    try {
+      sections = await __qbLoadTeacherSections();
+    } catch (err) {
+      alert('Could not load sections: ' + err.message);
+      resolve(null);
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'quiz-assignment-popup';
+
+    const sectionsHtml = sections.length
+      ? sections.map(sec => `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #edf3fa;cursor:pointer;">
+            <input type="checkbox" class="quiz-assign-section-chk" value="${__qbEscapeHtml(sec.id)}"
+              data-class="${__qbEscapeHtml(sec.className)}"
+              data-section="${__qbEscapeHtml(sec.sectionName)}">
+            <span style="color:#12416c;font-weight:600;">${__qbEscapeHtml(sec.label)}</span>
+          </label>
+        `).join('')
+      : `<div style="padding:10px;color:#6b7b8c;text-align:center;">No sections found. Please create sections first.</div>`;
+
+    modal.innerHTML = `
+      <div style="
+        position:fixed;top:0;left:0;width:100vw;height:100vh;
+        background:rgba(12,29,68,0.16);z-index:100000;
+        display:flex;align-items:center;justify-content:center;
+        padding:16px;box-sizing:border-box;">
+        
+        <div style="
+          background:#fff;border-radius:18px;padding:22px 18px;
+          width:100%;max-width:560px;max-height:92vh;overflow-y:auto;
+          box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+          
+          <div style="font-size:1.18em;font-weight:700;color:#0f3d6b;margin-bottom:6px;text-align:center;">
+            Assign Practice Quiz
+          </div>
+          <div style="font-size:0.96em;color:#4b5b6b;text-align:center;margin-bottom:16px;line-height:1.5;">
+            Choose sections, quiz status, and optional timing.
+          </div>
+
+          <div style="border:1px solid #d9e8f7;border-radius:12px;padding:12px;background:#f9fcff;margin-bottom:14px;">
+            <div style="font-weight:700;color:#0f3d6b;margin-bottom:8px;">Quiz Summary</div>
+            <div style="font-size:0.95em;color:#35506b;line-height:1.6;">
+              <div><b>School:</b> ${__qbEscapeHtml(quizPayload.schoolName || '')}</div>
+              <div><b>Title:</b> ${__qbEscapeHtml(quizPayload.quizTitle || '')}</div>
+              <div><b>Class:</b> ${__qbEscapeHtml(quizPayload.class || '')}</div>
+              <div><b>Board:</b> ${__qbEscapeHtml(quizPayload.board || '')}</div>
+              <div><b>Subject:</b> ${__qbEscapeHtml(quizPayload.subject || '')}</div>
+              <div><b>Chapter:</b> ${__qbEscapeHtml(quizPayload.chapter || '')}</div>
+              <div><b>Level:</b> ${__qbEscapeHtml(quizPayload.level || '')}</div>
+              <div><b>Total Questions:</b> ${Number(quizPayload.totalQuestions || 0)}</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-weight:700;color:#185496;margin-bottom:8px;">Assign to Sections</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <button type="button" id="quiz-assign-select-all" style="border:none;border-radius:8px;padding:8px 12px;background:#1762a7;color:#fff;font-weight:600;cursor:pointer;">Select All</button>
+              <button type="button" id="quiz-assign-clear-all" style="border:none;border-radius:8px;padding:8px 12px;background:#eef4fb;color:#1a4b78;font-weight:600;cursor:pointer;">Clear</button>
+            </div>
+            <div id="quiz-assign-section-wrap" style="max-height:220px;overflow-y:auto;border:1.2px solid #d9e6f5;border-radius:10px;background:#fff;">
+              ${sectionsHtml}
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Quiz Status</label>
+              <select id="quiz-assign-status" style="width:100%;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
+                <option value="live">live</option>
+                <option value="upcoming">upcoming</option>
+                <option value="closed">closed</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Attempt Rule</label>
+              <select id="quiz-assign-attempt-rule" style="width:100%;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
+                <option value="single">One Final Attempt</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Start Time (optional)</label>
+              <input id="quiz-assign-start" type="datetime-local"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">End Time (optional)</label>
+              <input id="quiz-assign-end" type="datetime-local"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Duration in Minutes (optional)</label>
+            <input id="quiz-assign-duration" type="number" min="1" step="1" placeholder="Example: 30"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;">
+              <input id="quiz-assign-show-leaderboard" type="checkbox" checked>
+              <span style="font-weight:600;color:#12416c;">Allow Leaderboard</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;">
+              <input id="quiz-assign-auto-submit" type="checkbox">
+              <span style="font-weight:600;color:#12416c;">Auto Submit Later</span>
+            </label>
+          </div>
+
+          <div id="quiz-assign-status-msg" style="font-size:0.94em;color:#35506b;text-align:center;margin-bottom:10px;"></div>
+
+          <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button type="button" id="quiz-assign-cancel" style="border:none;border-radius:10px;padding:10px 16px;background:#eef3f9;color:#35506b;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+            <button type="button" id="quiz-assign-save" style="border:none;border-radius:10px;padding:10px 16px;background:#1762a7;color:#fff;font-weight:700;cursor:pointer;">
+              Save Quiz & Assign
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = (value) => {
+      modal.remove();
+      resolve(value);
+    };
+
+    document.getElementById('quiz-assign-cancel').onclick = () => closeModal(null);
+
+    document.getElementById('quiz-assign-select-all').onclick = () => {
+      modal.querySelectorAll('.quiz-assign-section-chk').forEach(cb => cb.checked = true);
+    };
+
+    document.getElementById('quiz-assign-clear-all').onclick = () => {
+      modal.querySelectorAll('.quiz-assign-section-chk').forEach(cb => cb.checked = false);
+    };
+
+    document.getElementById('quiz-assign-save').onclick = () => {
+      const statusEl = document.getElementById('quiz-assign-status-msg');
+      const checked = Array.from(modal.querySelectorAll('.quiz-assign-section-chk:checked'));
+
+      if (!checked.length) {
+        statusEl.textContent = 'Please select at least one section.';
+        return;
+      }
+
+      const startTime = (document.getElementById('quiz-assign-start').value || '').trim();
+      const endTime = (document.getElementById('quiz-assign-end').value || '').trim();
+      const durationRaw = (document.getElementById('quiz-assign-duration').value || '').trim();
+
+      if (startTime && endTime && new Date(endTime) <= new Date(startTime)) {
+        statusEl.textContent = 'End time must be greater than start time.';
+        return;
+      }
+
+      const durationMinutes = durationRaw ? Number(durationRaw) : null;
+      if (durationRaw && (!Number.isInteger(durationMinutes) || durationMinutes < 1)) {
+        statusEl.textContent = 'Duration must be a positive whole number.';
+        return;
+      }
+
+      closeModal({
+        assignedSections: checked.map(cb => ({
+          sectionId: cb.value,
+          className: cb.getAttribute('data-class') || '',
+          sectionName: cb.getAttribute('data-section') || ''
+        })),
+        quizStatus: document.getElementById('quiz-assign-status').value || 'live',
+        startTime: startTime || null,
+        endTime: endTime || null,
+        durationMinutes: durationMinutes || null,
+        attemptRule: document.getElementById('quiz-assign-attempt-rule').value || 'single',
+        allowLeaderboard: !!document.getElementById('quiz-assign-show-leaderboard').checked,
+        autoSubmitEnabled: !!document.getElementById('quiz-assign-auto-submit').checked
+      });
+    };
+  });
+}
+
+function __qbOpenShareModal(payload) {
+  document.querySelectorAll('.quiz-share-modal').forEach(el => el.remove());
+
+  const { schoolName, quizTitle, className, subjectName, chapterName, levelName, totalQuestions, assignmentLinks } = payload;
+
+  const linkLines = (assignmentLinks || []).map((item, idx) => {
+    return `${idx + 1}. ${item.className} - ${item.sectionName}\n${item.link}`;
+  }).join('\n\n');
+
+  const message = `*${schoolName}*
+*IIT & NEET FOUNDATION*
+*${String(quizTitle || '').toUpperCase()}*
+
+Dear Students,
+You have a new online practice quiz!
+
+*Class:* ${className}
+*Subject:* ${subjectName}
+*Chapter:* ${chapterName}
+*Level:* ${levelName}
+*Total Questions:* ${totalQuestions}
+
+*Section Links:*
+${linkLines}
+
+Please open the correct section link and attend the quiz.
+
+All the Best`;
+
+  const modal = document.createElement('div');
+  modal.className = 'quiz-share-modal';
+  modal.innerHTML = `
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;background:rgba(12,29,68,0.12);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;">
+      <div style="background:#fff;padding:24px 18px 16px 18px;border-radius:14px;max-width:94vw;width:460px;box-shadow:0 6px 22px rgba(23,98,167,0.14);display:flex;flex-direction:column;align-items:center;">
+        <div style="font-weight:bold;font-size:1.16em;color:#175799;text-align:center;margin-bottom:14px;">Quiz and Assignment Links Saved</div>
+        <textarea id="quiz-share-textarea"
+          style="width:100%;height:290px;font-size:1.03em;padding:10px 8px;border-radius:8px;border:1.1px solid #bcd6ef;background:#f9fcff;resize:none;margin-bottom:14px;font-family:'Times New Roman', Times, serif;text-align:left;"
+          readonly>${message}</textarea>
+
+        <div style="width:100%;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button id="copy-quiz-message-btn" style="padding:10px 20px;font-size:1em;border:none;border-radius:7px;background:#1762a7;color:#fff;font-weight:600;cursor:pointer;">Copy Message</button>
+          <button id="close-quiz-message-btn" style="background:#eee;border:none;border-radius:7px;padding:10px 20px;font-weight:500;color:#134579;cursor:pointer;">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('copy-quiz-message-btn').onclick = function() {
+    const textarea = document.getElementById('quiz-share-textarea');
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    this.textContent = "Copied!";
+    setTimeout(() => { this.textContent = "Copy Message"; }, 1300);
+  };
+
+  document.getElementById('close-quiz-message-btn').onclick = function() {
+    modal.remove();
+  };
+}
+
 function showQuizSelectionModePopup() {
   document.querySelectorAll('.quiz-selection-popup').forEach(el => el.remove());
+
+  const displayArea = document.getElementById('questions-display-area');
+  const totalDisplayed = displayArea.querySelectorAll('.question-item').length;
 
   const modal = document.createElement('div');
   modal.className = 'quiz-selection-popup';
@@ -2726,15 +3065,19 @@ function showQuizSelectionModePopup() {
       
       <div style="
         background:#fff;border-radius:18px;padding:24px 18px;
-        width:100%;max-width:420px;
+        width:100%;max-width:470px;
         box-shadow:0 8px 28px rgba(0,0,0,0.18);
         text-align:center;">
         
         <div style="font-size:1.18em;font-weight:700;color:#0f3d6b;margin-bottom:8px;">
           Create Practice Quiz
         </div>
-        <div style="font-size:0.98em;color:#4b5b6b;margin-bottom:18px;line-height:1.5;">
+        <div style="font-size:0.98em;color:#4b5b6b;margin-bottom:10px;line-height:1.5;">
           Choose how you want to select questions for this quiz.
+        </div>
+
+        <div style="margin-bottom:14px;padding:10px 12px;border:1px solid #d9e8f7;border-radius:10px;background:#f9fcff;color:#12416c;font-weight:700;">
+          Total Available Questions: <span id="quiz-total-available">${totalDisplayed}</span>
         </div>
 
         <button id="quiz-mode-all" style="
@@ -2744,7 +3087,7 @@ function showQuizSelectionModePopup() {
           Use All Displayed Questions
         </button>
 
-      <button id="quiz-mode-manual" style="
+        <button id="quiz-mode-manual" style="
           width:100%;padding:12px 14px;margin-bottom:10px;
           border:1.5px solid #1762a7;border-radius:10px;background:#fff;color:#1762a7;
           font-weight:700;cursor:pointer;">
@@ -2752,11 +3095,22 @@ function showQuizSelectionModePopup() {
         </button>
 
         <button id="quiz-mode-random" style="
-          width:100%;padding:12px 14px;margin-bottom:10px;
+          width:100%;padding:12px 14px;margin-bottom:14px;
           border:1.5px solid #0f8b6d;border-radius:10px;background:#fff;color:#0f8b6d;
           font-weight:700;cursor:pointer;">
           Randomly Choose by Count
         </button>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;text-align:left;">
+            <input id="quiz-shuffle-question-order" type="checkbox">
+            <span style="font-weight:600;color:#12416c;">Shuffle Question Order</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;text-align:left;">
+            <input id="quiz-shuffle-options" type="checkbox">
+            <span style="font-weight:600;color:#12416c;">Shuffle MCQ Options</span>
+          </label>
+        </div>
 
         <button id="quiz-mode-cancel" style="
           width:100%;padding:11px 14px;
@@ -2769,13 +3123,22 @@ function showQuizSelectionModePopup() {
   `;
   document.body.appendChild(modal);
 
+  const closeModal = () => modal.remove();
+
   document.getElementById('quiz-mode-cancel').onclick = function() {
-    modal.remove();
+    closeModal();
   };
 
+  function __saveQuizModeSettings(mode, randomCount = null) {
+    window.__quizSelectionMode = mode;
+    window.__quizRandomCount = randomCount;
+    window.__quizShuffleQuestionOrder = !!document.getElementById('quiz-shuffle-question-order').checked;
+    window.__quizShuffleOptions = !!document.getElementById('quiz-shuffle-options').checked;
+  }
+
   document.getElementById('quiz-mode-all').onclick = function() {
-    modal.remove();
-    window.__quizSelectionMode = 'all';
+    closeModal();
+    __saveQuizModeSettings('all', null);
     document.getElementById('quiz-spinner').style.display = 'flex';
     setTimeout(() => {
       document.getElementById('quiz-spinner').style.display = 'none';
@@ -2784,8 +3147,8 @@ function showQuizSelectionModePopup() {
   };
 
   document.getElementById('quiz-mode-manual').onclick = function() {
-    modal.remove();
-    window.__quizSelectionMode = 'manual';
+    closeModal();
+    __saveQuizModeSettings('manual', null);
     fetchAndDisplayQuestions();
     setTimeout(() => {
       alert('Now tick the questions you want, then click Create Practice Quiz again.');
@@ -2793,16 +3156,13 @@ function showQuizSelectionModePopup() {
   };
 
   document.getElementById('quiz-mode-random').onclick = function() {
-    const displayArea = document.getElementById('questions-display-area');
-    const total = displayArea.querySelectorAll('.question-item').length;
-
-    if (!total) {
-      modal.remove();
+    if (!totalDisplayed) {
+      closeModal();
       alert('No questions are available to choose randomly.');
       return;
     }
 
-    const raw = prompt('How many questions do you want to choose randomly?\\n\\nAvailable: ' + total, '');
+    const raw = prompt('How many questions do you want to choose randomly?\n\nAvailable: ' + totalDisplayed, '');
     if (raw === null) return;
 
     const count = Number(raw);
@@ -2810,185 +3170,255 @@ function showQuizSelectionModePopup() {
       alert('Please enter a valid positive number.');
       return;
     }
-    if (count > total) {
+    if (count > totalDisplayed) {
       alert('You entered more than available questions.');
       return;
     }
 
-    modal.remove();
-    window.__quizSelectionMode = 'random';
-    window.__quizRandomCount = count;
-    document.getElementById('create-quiz-btn').click();
+    closeModal();
+    __saveQuizModeSettings('random', count);
+    document.getElementById('quiz-spinner').style.display = 'flex';
+    setTimeout(() => {
+      document.getElementById('quiz-spinner').style.display = 'none';
+      document.getElementById('create-quiz-btn').click();
+    }, 100);
   };
 }
 
 // --- Create Practice Quiz Button Handler ---
-    document.getElementById('create-quiz-btn').addEventListener('click', async function() {
+document.getElementById('create-quiz-btn').addEventListener('click', async function() {
   if (!window.__quizSelectionMode) {
     showQuizSelectionModePopup();
     return;
   }
-      // spinner will be shown later after selection mode is chosen
-      try {
-        const displayArea = document.getElementById('questions-display-area');
-        const allNodes = Array.from(displayArea.querySelectorAll('.question-item'));
-        let nodes = allNodes;
 
-       if (window.__quizSelectionMode === 'manual') {
-          nodes = allNodes.filter(item => {
-            const cb = item.querySelector('.quiz-question-checkbox');
-            return cb && cb.checked;
-          });
-        }
+  const spinner = document.getElementById('quiz-spinner');
+  spinner.style.display = 'flex';
 
-        if (window.__quizSelectionMode === 'random') {
-          const shuffled = [...allNodes];
-          for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-          }
-          nodes = shuffled.slice(0, Number(window.__quizRandomCount || 0));
-        }
+  try {
+    const displayArea = document.getElementById('questions-display-area');
+    const allNodes = Array.from(displayArea.querySelectorAll('.question-item'));
+    let nodes = allNodes;
 
-                if (nodes.length < 1) {
-          alert(
-            window.__quizSelectionMode === 'manual'
-              ? "Please select at least one question for this quiz!"
-              : "No questions found for this quiz!"
-          );
-          window.__quizSelectionMode = null;
-          window.__quizRandomCount = null;
-          updateManualQuizToolbar();
-          document.getElementById('quiz-spinner').style.display = 'none';
-          return;
-        }
+    if (window.__quizSelectionMode === 'manual') {
+      nodes = allNodes.filter(item => {
+        const cb = item.querySelector('.quiz-question-checkbox');
+        return cb && cb.checked;
+      });
+    }
 
-        const confirmMsg =
-          window.__quizSelectionMode === 'manual'
-            ? `Create quiz with ${nodes.length} selected question(s)?`
-            : window.__quizSelectionMode === 'random'
-              ? `Create quiz with ${nodes.length} randomly chosen question(s)?`
-              : `Create quiz with all ${nodes.length} displayed question(s)?`;
+    if (window.__quizSelectionMode === 'random') {
+      const shuffled = __qbShuffleArray(allNodes);
+      nodes = shuffled.slice(0, Number(window.__quizRandomCount || 0));
+    }
 
-        if (!confirm(confirmMsg)) {
-          document.getElementById('quiz-spinner').style.display = 'none';
-          return;
-        }
+    if (window.__quizSelectionMode === 'all' && window.__quizShuffleQuestionOrder) {
+      nodes = __qbShuffleArray(nodes);
+    }
+    if (window.__quizSelectionMode === 'manual' && window.__quizShuffleQuestionOrder) {
+      nodes = __qbShuffleArray(nodes);
+    }
+    if (window.__quizSelectionMode === 'random' && window.__quizShuffleQuestionOrder) {
+      nodes = __qbShuffleArray(nodes);
+    }
 
-        const questions = [];
-        for (let item of nodes) {
-          const docId = item.getAttribute('data-id');
-          const snap = await db.collection('questions').doc(docId).get();
-          const data = snap.data();
-          questions.push({
-            question: data.question,
-            options: data.options,
-            answer: data.parsedAnswer || data.answer || "",
-            level: data.level || ""
-          });
-        }
+    if (nodes.length < 1) {
+      alert(
+        window.__quizSelectionMode === 'manual'
+          ? "Please select at least one question for this quiz!"
+          : "No questions found for this quiz!"
+      );
+      window.__quizSelectionMode = null;
+      window.__quizRandomCount = null;
+      window.__quizShuffleQuestionOrder = false;
+      window.__quizShuffleOptions = false;
+      updateManualQuizToolbar();
+      spinner.style.display = 'none';
+      return;
+    }
 
-               const classVal = document.getElementById('class-value').value;
-        const subjectVal = document.getElementById('subject-value').value;
-        const chapterVal = (getMultiSelected('chapter').join(', ') || 'All');
-        const levelVal = (getMultiSelected('level').join(', ') || 'Mixed');
+    const confirmMsg =
+      window.__quizSelectionMode === 'manual'
+        ? `Total available: ${allNodes.length}\nSelected: ${nodes.length}\n\nCreate quiz with selected questions?`
+        : window.__quizSelectionMode === 'random'
+          ? `Total available: ${allNodes.length}\nRandomly selected: ${nodes.length}\n\nCreate quiz now?`
+          : `Total available: ${allNodes.length}\nSelected: ${nodes.length}\n\nCreate quiz with all displayed questions?`;
 
-                const schoolName = prompt("Enter School Name", "SciMentra");
-        if (schoolName === null) {
-          document.getElementById('quiz-spinner').style.display = 'none';
-          return;
-        }
-        const finalSchoolName = (schoolName || '').trim() || 'SciMentra';
+    if (!confirm(confirmMsg)) {
+      spinner.style.display = 'none';
+      return;
+    }
 
-        const quizTitleInput = prompt("Enter Quiz Title", `${subjectVal} Practice Quiz`);
-        if (quizTitleInput === null) {
-          document.getElementById('quiz-spinner').style.display = 'none';
-          return;
-        }
-        const finalQuizTitle = (quizTitleInput || '').trim() || `${subjectVal} Practice Quiz`;
+    const questions = [];
+    for (const item of nodes) {
+      const docId = item.getAttribute('data-id');
+      if (!docId) continue;
 
-        const quizDoc = await db.collection('quizzes').add({
-          createdBy: currentUser.uid,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    schoolName: finalSchoolName,
-          quizTitle: finalQuizTitle,
-          class: classVal,
-          board: document.getElementById('board-value').value || '',
-          subject: subjectVal,
-          chapter: chapterVal,
-          level: levelVal,
-          selectionMode: window.__quizSelectionMode || 'all',
-          randomCount: window.__quizSelectionMode === 'random' ? Number(window.__quizRandomCount || 0) : null,
-                             totalQuestions: questions.length,
-          questions: questions
-        });
+      const snap = await db.collection('questions').doc(docId).get();
+      const data = snap.data() || {};
 
-                const quizId = quizDoc.id;
-        const quizLink = `${window.location.origin}/Question-Bank/quiz.html?quiz=${quizId}`;
+      let qObj = {
+        questionId: docId,
+        question: data.question || data.body || data.text || '',
+        options: __qbNormalizeOptions(data.options || []),
+        answer: data.parsedAnswer || data.answer || '',
+        level: data.difficulty || data.level || '',
+        marks: Number(data.marks || 0),
+        chapter: data.chapter || '',
+        type: data.mcqType || data.type || (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive'),
+        board: data.board || '',
+        subject: data.subject || '',
+        image: data.image || '',
+        originalQuestionNumber: data.questionNumber ?? null
+      };
 
-        const message = `*${finalSchoolName}*
-*IIT & NEET FOUNDATION*
-*${finalQuizTitle.toUpperCase()}*
-
-Dear Students,
-You have a new online practice quiz!
-
-   *• Class: ${classVal}*
-   *• Subject: ${subjectVal}*
-   *• Chapter: ${chapterVal}*
-   *• Level: ${levelVal}*
-   *• Total Questions: ${questions.length}*
-
-Please click the link below to start your quiz:
-${quizLink}
-
-All the Best`;
-
-        document.querySelectorAll('.quiz-share-modal').forEach(el => el.remove());
-
-        const modal = document.createElement('div');
-        modal.className = 'quiz-share-modal';
-        modal.innerHTML = `
-          <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(12,29,68,0.12);display:flex;align-items:center;justify-content:center;">
-            <div style="background:#fff;padding:28px 22px 18px 22px;border-radius:14px;max-width:94vw;width:410px;box-shadow:0 6px 22px rgba(23,98,167,0.14);display:flex;flex-direction:column;align-items:center;">
-              <div style="font-weight:bold;font-size:1.19em;color:#175799;text-align:center;margin-bottom:16px;">Share this message with students</div>
-              <textarea id="quiz-share-textarea"
-                style="width:100%;height:210px;font-size:1.15em;
-                       padding:10px 8px;
-                       border-radius:8px;
-                       border:1.1px solid #bcd6ef;
-                       background:#f9fcff;
-                       resize:none;
-                       margin-bottom:18px;
-                       font-family:'Times New Roman', Times, serif;
-                       text-align:left;"
-                readonly>${message}</textarea>
-              <button id="copy-quiz-message-btn" style="padding:10px 24px;font-size:1em;border:none;border-radius:7px;background:#1762a7;color:#fff;font-weight:600;cursor:pointer;margin-bottom:8px;">Copy</button>
-              <button id="close-quiz-message-btn" style="background:#eee;border:none;border-radius:7px;padding:7px 20px;font-weight:500;color:#134579;cursor:pointer;">Close</button>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
-
-        document.getElementById('copy-quiz-message-btn').onclick = function() {
-          const textarea = document.getElementById('quiz-share-textarea');
-          textarea.select();
-          textarea.setSelectionRange(0, 99999);
-          document.execCommand('copy');
-          this.textContent = "Copied!";
-          setTimeout(() => { this.textContent = "Copy"; }, 1300);
-        };
-
-        document.getElementById('close-quiz-message-btn').onclick = function() {
-          modal.remove();
-        };
-
-      } catch (err) {
-        alert("Quiz creation failed: " + err.message);
+      if (window.__quizShuffleOptions) {
+        qObj = __qbShuffleQuestionOptions(qObj);
       }
 
-      document.getElementById('quiz-spinner').style.display = 'none';
+      questions.push(qObj);
+    }
+
+    if (!questions.length) {
+      alert('No valid questions were prepared for this quiz.');
+      spinner.style.display = 'none';
+      return;
+    }
+
+    const classVal = document.getElementById('class-value').value || '';
+    const boardVal = document.getElementById('board-value').value || '';
+    const subjectVal = document.getElementById('subject-value').value || '';
+    const chapterVal = (getMultiSelected('chapter').join(', ') || 'All');
+    const levelVal = (getMultiSelected('level').join(', ') || 'Mixed');
+    const qtypeVal = (getMultiSelected('qtype').join(', ') || 'All');
+    const marksVal = (getMultiSelected('marks').join(', ') || 'All');
+
+    const schoolName = prompt("Enter School Name", "SciMentra");
+    if (schoolName === null) {
+      spinner.style.display = 'none';
+      return;
+    }
+    const finalSchoolName = (schoolName || '').trim() || 'SciMentra';
+
+    const quizTitleInput = prompt("Enter Quiz Title", `${subjectVal} Practice Quiz`);
+    if (quizTitleInput === null) {
+      spinner.style.display = 'none';
+      return;
+    }
+    const finalQuizTitle = (quizTitleInput || '').trim() || `${subjectVal} Practice Quiz`;
+
+    const quizPayload = {
+      createdBy: currentUser.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      schoolName: finalSchoolName,
+      quizTitle: finalQuizTitle,
+      class: classVal,
+      board: boardVal,
+      subject: subjectVal,
+      chapter: chapterVal,
+      level: levelVal,
+      questionType: qtypeVal,
+      marksFilter: marksVal,
+      selectionMode: window.__quizSelectionMode || 'all',
+      randomCount: window.__quizSelectionMode === 'random' ? Number(window.__quizRandomCount || 0) : null,
+      shuffleQuestionOrder: !!window.__quizShuffleQuestionOrder,
+      shuffleOptions: !!window.__quizShuffleOptions,
+      totalAvailableBeforeSelection: allNodes.length,
+      totalQuestions: questions.length,
+      questions: questions,
+      assignmentReady: true
+    };
+
+    const assignmentSettings = await __qbOpenAssignmentPopup(quizPayload);
+    if (!assignmentSettings) {
+      spinner.style.display = 'none';
+      return;
+    }
+
+    const quizDoc = await db.collection('quizzes').add({
+      ...quizPayload,
+      quizStatus: assignmentSettings.quizStatus,
+      startTime: assignmentSettings.startTime || null,
+      endTime: assignmentSettings.endTime || null,
+      durationMinutes: assignmentSettings.durationMinutes || null,
+      attemptRule: assignmentSettings.attemptRule || 'single',
+      allowLeaderboard: !!assignmentSettings.allowLeaderboard,
+      autoSubmitEnabled: !!assignmentSettings.autoSubmitEnabled,
+      assignedSectionIds: assignmentSettings.assignedSections.map(x => x.sectionId),
+      assignedSections: assignmentSettings.assignedSections
     });
+
+    const quizId = quizDoc.id;
+    const assignmentLinks = [];
+
+    for (const sec of assignmentSettings.assignedSections) {
+      const assignmentDoc = await db.collection('quizAssignments').add({
+        createdBy: currentUser.uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        quizId: quizId,
+        schoolName: finalSchoolName,
+        quizTitle: finalQuizTitle,
+        class: classVal,
+        board: boardVal,
+        subject: subjectVal,
+        chapter: chapterVal,
+        level: levelVal,
+        totalQuestions: questions.length,
+        sectionId: sec.sectionId,
+        className: sec.className,
+        sectionName: sec.sectionName,
+        quizStatus: assignmentSettings.quizStatus,
+        startTime: assignmentSettings.startTime || null,
+        endTime: assignmentSettings.endTime || null,
+        durationMinutes: assignmentSettings.durationMinutes || null,
+        attemptRule: assignmentSettings.attemptRule || 'single',
+        allowLeaderboard: !!assignmentSettings.allowLeaderboard,
+        autoSubmitEnabled: !!assignmentSettings.autoSubmitEnabled,
+        isActive: assignmentSettings.quizStatus !== 'closed'
+      });
+
+      const assignmentId = assignmentDoc.id;
+      const quizLink = `${window.location.origin}/QBank/quiz.html?quiz=${encodeURIComponent(quizId)}&assignment=${encodeURIComponent(assignmentId)}`;
+
+      await assignmentDoc.update({
+        assignmentLink: quizLink
+      });
+
+      assignmentLinks.push({
+        assignmentId,
+        className: sec.className,
+        sectionName: sec.sectionName,
+        link: quizLink
+      });
+    }
+
+    __qbOpenShareModal({
+      schoolName: finalSchoolName,
+      quizTitle: finalQuizTitle,
+      className: classVal,
+      subjectName: subjectVal,
+      chapterName: chapterVal,
+      levelName: levelVal,
+      totalQuestions: questions.length,
+      assignmentLinks
+    });
+
+    if (window.__quizSelectionMode === 'manual') {
+      document.querySelectorAll('.quiz-question-checkbox').forEach(cb => cb.checked = false);
+    }
+
+    window.__quizSelectionMode = null;
+    window.__quizRandomCount = null;
+    window.__quizShuffleQuestionOrder = false;
+    window.__quizShuffleOptions = false;
+    updateManualQuizToolbar();
+
+  } catch (err) {
+    alert("Quiz creation failed: " + err.message);
+  }
+
+  spinner.style.display = 'none';
+});
   </script>
 
   <!-- Quiz Creation Spinner -->
@@ -3004,21 +3434,3 @@ All the Best`;
   </div>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
