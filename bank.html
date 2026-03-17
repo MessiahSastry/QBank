@@ -118,7 +118,23 @@
     }
     .main-btn:hover { background: #144e83; }
 
-    .question-actions { position: absolute; top: 12px; right: 10px; z-index: 10; }
+    .question-select-box{
+  position:absolute;
+  top:12px;
+  left:10px;
+  z-index:11;
+  display:none;
+}
+.question-select-box input[type="checkbox"]{
+  width:18px;
+  height:18px;
+  accent-color:#1762a7;
+  cursor:pointer;
+}
+.question-item.manual-select-mode .question-select-box{
+  display:block;
+}
+.question-actions { position: absolute; top: 12px; right: 10px; z-index: 10; }
     .q-action-btn {
       background: none; border: none; color: #54656f; font-size: 1.18em; cursor: pointer;
       padding: 5px; border-radius: 50%; width: 32px; height: 32px; line-height: 22px;
@@ -231,10 +247,21 @@
         <div id="export-btns">
           <button id="download-pdf-btn"><i class="fa-solid fa-file-pdf"></i> Download Worksheet</button>
           <button id="create-quiz-btn" class="main-btn" style="margin-top:16px;"><i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz</button>
+<button id="manage-students-btn" class="main-btn" style="margin-top:12px; background:#0f8b6d;"><i class="fa-solid fa-users"></i> Manage Classes & Students</button>
         </div>
       </div>
 
-      <div id="questions-display-area">
+      <div id="manual-quiz-toolbar" style="display:none; width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+          <div style="color:#0f3d6b; font-weight:700;">Selected Questions: <span id="manual-selected-count">0</span></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="manual-select-all-btn" style="border:none; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; background:#1762a7; color:#fff;">Select All</button>
+            <button type="button" id="manual-unselect-all-btn" style="border:none; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; background:#eef4fb; color:#1a4b78;">Unselect All</button>
+          </div>
+        </div>
+      </div>
+
+           <div id="questions-display-area">
         <p class="no-questions-message">Select filters to view questions.</p>
       </div>
     </main>
@@ -421,6 +448,7 @@ const auth = firebase.auth();
   document.getElementById('questions-display-area').innerHTML =
     '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
   document.getElementById('download-pdf-btn').addEventListener('click', exportPDF);
+  document.getElementById('manage-students-btn').addEventListener('click', showClassSectionStudentPopup);
 }
 
     // PDF EXPORT USING html2pdf.js
@@ -1581,6 +1609,9 @@ if (selQtypes.length > 0) {
      data-chapter="${data.chapter || ''}"
      data-marks="${(data.marks ?? '')}"
      style="position:relative;">
+              <div class="question-select-box">
+                <input type="checkbox" class="quiz-question-checkbox" data-id="${doc.id}">
+              </div>
 
               <div class="question-meta">
                 Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
@@ -1627,6 +1658,19 @@ if (selQtypes.length > 0) {
 
           if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
 
+if (window.__quizSelectionMode === 'manual') {
+  document.querySelectorAll('.question-item').forEach(item => {
+    item.classList.add('manual-select-mode');
+  });
+} else {
+  document.querySelectorAll('.question-item').forEach(item => {
+    item.classList.remove('manual-select-mode');
+    const cb = item.querySelector('.quiz-question-checkbox');
+    if (cb) cb.checked = false;
+  });
+}
+
+bindManualQuizToolbar();
 /* ==== Explain It (AI) — open directly in ChatGPT (copy prompt + toast + open tab) ==== */
 if (!window.__explainItBound) {
   window.__explainItBound = true;
@@ -1755,7 +1799,61 @@ if (!window.__explainItBound) {
       }
     }
 
-    function autoLatexAll(str) {
+   function updateManualQuizToolbar() {
+  const toolbar = document.getElementById('manual-quiz-toolbar');
+  const countEl = document.getElementById('manual-selected-count');
+  const quizBtn = document.getElementById('create-quiz-btn');
+  if (!toolbar || !countEl) return;
+
+  const isManual = window.__quizSelectionMode === 'manual';
+  if (!isManual) {
+    toolbar.style.display = 'none';
+    countEl.textContent = '0';
+    if (quizBtn) {
+      quizBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz';
+    }
+    return;
+  }
+
+  toolbar.style.display = 'block';
+  const checked = document.querySelectorAll('.quiz-question-checkbox:checked').length;
+  countEl.textContent = checked;
+
+  if (quizBtn) {
+    quizBtn.innerHTML = `<i class="fa-solid fa-check-double"></i> Create Quiz with Selected (${checked})`;
+  }
+}
+function bindManualQuizToolbar() {
+  const selectAllBtn = document.getElementById('manual-select-all-btn');
+  const unselectAllBtn = document.getElementById('manual-unselect-all-btn');
+
+  if (selectAllBtn && !selectAllBtn.dataset.bound) {
+    selectAllBtn.dataset.bound = '1';
+    selectAllBtn.onclick = function() {
+      document.querySelectorAll('.quiz-question-checkbox').forEach(cb => cb.checked = true);
+      updateManualQuizToolbar();
+    };
+  }
+
+  if (unselectAllBtn && !unselectAllBtn.dataset.bound) {
+    unselectAllBtn.dataset.bound = '1';
+    unselectAllBtn.onclick = function() {
+      document.querySelectorAll('.quiz-question-checkbox').forEach(cb => cb.checked = false);
+      updateManualQuizToolbar();
+    };
+  }
+
+  document.querySelectorAll('.quiz-question-checkbox').forEach(cb => {
+    if (!cb.dataset.bound) {
+      cb.dataset.bound = '1';
+      cb.addEventListener('change', updateManualQuizToolbar);
+    }
+  });
+
+  updateManualQuizToolbar();
+}
+
+function autoLatexAll(str) {
       if (!str) return '';
       let match = str.match(/(\$[^\$]+\$)/g);
       if (match && match.length >= 2) {
@@ -2046,15 +2144,733 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
       };
     }
 
-    // --- Create Practice Quiz Button Handler ---
-    document.getElementById('create-quiz-btn').addEventListener('click', async function() {
-      document.getElementById('quiz-spinner').style.display = 'flex';
+    function showClassSectionStudentPopup() {
+  document.querySelectorAll('.class-student-popup').forEach(el => el.remove());
 
+  const modal = document.createElement('div');
+  modal.className = 'class-student-popup';
+  modal.innerHTML = `
+    <div style="
+      position:fixed;top:0;left:0;width:100vw;height:100vh;
+      background:rgba(12,29,68,0.16);z-index:99999;
+      display:flex;align-items:center;justify-content:center;
+      padding:16px;box-sizing:border-box;">
+      
+      <div style="
+        background:#fff;border-radius:18px;padding:22px 18px;
+        width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+        box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+        
+        <div style="font-size:1.2em;font-weight:700;color:#0f3d6b;margin-bottom:14px;text-align:center;">
+          Manage Classes & Students
+        </div>
+
+        <div style="display:grid;gap:12px;">
+            <div style="border:1.2px solid #d9e6f5;border-radius:12px;padding:12px;background:#f9fcff;">
+            <label style="display:block;font-weight:700;color:#0f3d6b;margin-bottom:8px;">Create Class</label>
+            <div style="display:flex;gap:10px;">
+              <input id="student-mgr-new-class" type="text" placeholder="Example: 8th Class"
+                style="flex:1;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+              <button id="student-mgr-add-class-btn" type="button" style="
+                border:none;border-radius:10px;padding:10px 14px;
+                background:#0f8b6d;color:#fff;font-weight:700;cursor:pointer;">
+                Create Class
+              </button>
+            </div>
+
+            <div style="margin-top:10px;">
+              <div style="font-size:0.96em;font-weight:700;color:#185496;margin-bottom:6px;">Saved Classes</div>
+              <div id="student-mgr-class-list" style="
+                max-height:120px;overflow-y:auto;border:1.2px solid #d9e6f5;
+                border-radius:10px;background:#fff;padding:8px;">
+                <div style="color:#6b7b8c;text-align:center;">No classes loaded.</div>
+              </div>
+            </div>
+          </div>
+
+                    <div>
+            <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Class Name</label>
+            <select id="student-mgr-class"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
+              <option value="">Select Class</option>
+            </select>
+          </div>
+
+                              <div style="border:1.2px solid #d9e6f5;border-radius:12px;padding:12px;background:#f9fcff;">
+            <label style="display:block;font-weight:700;color:#0f3d6b;margin-bottom:8px;">Create Section</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;">
+              <input id="student-mgr-new-section-class" type="text" placeholder="Class Name"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+              <input id="student-mgr-new-section" type="text" placeholder="Section Name"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+              <button id="student-mgr-add-section-btn" type="button" style="
+                border:none;border-radius:10px;padding:10px 14px;
+                background:#1762a7;color:#fff;font-weight:700;cursor:pointer;">
+                Create Section
+              </button>
+            </div>
+
+            <div style="margin-top:10px;">
+              <div style="font-size:0.96em;font-weight:700;color:#185496;margin-bottom:6px;">Saved Sections</div>
+              <div id="student-mgr-section-list" style="
+                max-height:140px;overflow-y:auto;border:1.2px solid #d9e6f5;
+                border-radius:10px;background:#fff;padding:8px;">
+                <div style="color:#6b7b8c;text-align:center;">No sections loaded.</div>
+              </div>
+            </div>
+          </div>
+                    <div>
+            <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Section Name</label>
+            <select id="student-mgr-section"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
+              <option value="">Select Section</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Student Name</label>
+            <input id="student-mgr-name" type="text" placeholder="Student full name"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Roll Number</label>
+              <input id="student-mgr-roll" type="text" placeholder="Roll No."
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Phone Number</label>
+              <input id="student-mgr-phone" type="text" placeholder="Phone"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+          </div>
+
+                    <div style="display:flex;gap:10px;">
+            <button id="student-mgr-save-btn" type="button" style="
+              flex:1;border:none;border-radius:10px;padding:12px 14px;
+              background:#1762a7;color:#fff;font-weight:700;cursor:pointer;">
+              Save Student
+            </button>
+
+            <button id="student-mgr-cancel-edit-btn" type="button" style="
+              display:none;flex:1;border:none;border-radius:10px;padding:12px 14px;
+              background:#eef3f9;color:#35506b;font-weight:700;cursor:pointer;">
+              Cancel Edit
+            </button>
+          </div>
+
+          <div id="student-mgr-status" style="font-size:0.95em;color:#35506b;text-align:center;"></div>
+        </div>
+
+                <div style="margin-top:18px;border-top:1px solid #e3edf8;padding-top:14px;">
+          <div style="font-size:1.05em;font-weight:700;color:#0f3d6b;margin-bottom:10px;">
+            Saved Students
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <input id="student-mgr-filter-class" type="text" placeholder="Filter by Class"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            <input id="student-mgr-filter-section" type="text" placeholder="Filter by Section"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+          </div>
+
+          <button id="student-mgr-load-btn" type="button" style="
+            border:none;border-radius:10px;padding:10px 14px;
+            background:#0f8b6d;color:#fff;font-weight:700;cursor:pointer;
+            margin-bottom:10px;width:100%;">
+            Load Students
+          </button>
+
+          <div id="student-mgr-list" style="
+            max-height:240px;overflow-y:auto;border:1.2px solid #d9e6f5;
+            border-radius:10px;background:#f9fcff;padding:10px;">
+            <div style="color:#6b7b8c;text-align:center;">No students loaded.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <button id="student-mgr-close-btn" type="button" style="
+            border:none;border-radius:10px;padding:10px 16px;
+            background:#eef3f9;color:#35506b;font-weight:600;cursor:pointer;">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+      document.getElementById('student-mgr-close-btn').onclick = function() {
+    modal.remove();
+  };
+
+  document.getElementById('student-mgr-cancel-edit-btn').onclick = function() {
+    document.getElementById('student-mgr-class').value = '';
+    document.getElementById('student-mgr-section').value = '';
+    document.getElementById('student-mgr-name').value = '';
+    document.getElementById('student-mgr-roll').value = '';
+    document.getElementById('student-mgr-phone').value = '';
+
+    const saveBtn = document.getElementById('student-mgr-save-btn');
+    saveBtn.removeAttribute('data-edit-id');
+    saveBtn.textContent = 'Save Student';
+
+    document.getElementById('student-mgr-cancel-edit-btn').style.display = 'none';
+    document.getElementById('student-mgr-status').textContent = '';
+  };
+
+    async function loadManagedClasses() {
+    const listEl = document.getElementById('student-mgr-class-list');
+    if (!listEl) return;
+
+    try {
+      listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">Loading classes...</div>';
+
+      const snap = await db.collection('classes')
+        .where('createdBy', '==', currentUser.uid)
+        .orderBy('className')
+        .get();
+
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">No classes found.</div>';
+        return;
+      }
+
+            let html = '';
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        html += `
+          <div style="border-bottom:1px solid #e3edf8;padding:8px 4px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <div style="color:#0f3d6b;font-weight:600;">${d.className || ''}</div>
+            <button type="button" class="student-mgr-delete-class-btn" data-id="${doc.id}" style="
+              border:none;border-radius:8px;padding:6px 10px;
+              background:#c82333;color:#fff;font-weight:600;cursor:pointer;">
+              Delete
+            </button>
+          </div>
+        `;
+      });
+
+            listEl.innerHTML = html;
+
+      listEl.querySelectorAll('.student-mgr-delete-class-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          if (!confirm('Delete this class?')) return;
+
+          try {
+            await db.collection('classes').doc(id).delete();
+            loadManagedClasses();
+          } catch (err) {
+            alert('Failed to delete class: ' + err.message);
+          }
+        };
+      });
+    } catch (err) {
+      listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load classes.</div>';
+    }
+  }
+
+    async function loadManagedSections() {
+    const listEl = document.getElementById('student-mgr-section-list');
+    if (!listEl) return;
+
+    try {
+      listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">Loading sections...</div>';
+
+      const snap = await db.collection('sections')
+        .where('createdBy', '==', currentUser.uid)
+        .orderBy('className')
+        .orderBy('sectionName')
+        .get();
+
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">No sections found.</div>';
+        return;
+      }
+
+           let html = '';
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        html += `
+          <div style="border-bottom:1px solid #e3edf8;padding:8px 4px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <div style="color:#0f3d6b;font-weight:600;">
+              ${(d.className || '')} - ${(d.sectionName || '')}
+            </div>
+            <button type="button" class="student-mgr-delete-section-btn" data-id="${doc.id}" style="
+              border:none;border-radius:8px;padding:6px 10px;
+              background:#c82333;color:#fff;font-weight:600;cursor:pointer;">
+              Delete
+            </button>
+          </div>
+        `;
+      });
+
+            listEl.innerHTML = html;
+
+      listEl.querySelectorAll('.student-mgr-delete-section-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          if (!confirm('Delete this section?')) return;
+
+          try {
+            await db.collection('sections').doc(id).delete();
+            loadManagedSections();
+          } catch (err) {
+            alert('Failed to delete section: ' + err.message);
+          }
+        };
+      });
+    } catch (err) {
+      listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load sections.</div>';
+    }
+  }
+
+  async function loadManagedStudents() {
+    const classFilter = (document.getElementById('student-mgr-filter-class').value || '').trim().toLowerCase();
+    const sectionFilter = (document.getElementById('student-mgr-filter-section').value || '').trim().toLowerCase();
+    const listEl = document.getElementById('student-mgr-list');
+
+    try {
+      listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">Loading students...</div>';
+
+      const snap = await db.collection('students')
+        .where('createdBy', '==', currentUser.uid)
+        .orderBy('className')
+        .orderBy('sectionName')
+        .orderBy('rollNumber')
+        .get();
+
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">No students found.</div>';
+        return;
+      }
+
+      let html = '';
+      let count = 0;
+
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        const cls = String(d.className || '');
+        const sec = String(d.sectionName || '');
+        const name = String(d.studentName || '');
+        const roll = String(d.rollNumber || '');
+        const phone = String(d.phoneNumber || '');
+
+        if (classFilter && !cls.toLowerCase().includes(classFilter)) return;
+        if (sectionFilter && !sec.toLowerCase().includes(sectionFilter)) return;
+
+        count++;
+                html += `
+          <div style="border-bottom:1px solid #e3edf8;padding:8px 4px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;color:#0f3d6b;">${name}</div>
+                <div style="font-size:0.94em;color:#35506b;">
+                  Class: ${cls} | Section: ${sec} | Roll: ${roll}
+                </div>
+                <div style="font-size:0.92em;color:#5d6d7e;">Phone: ${phone}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button type="button" class="student-edit-btn" data-id="${doc.id}" style="
+                  border:none;border-radius:8px;padding:6px 10px;
+                  background:#1762a7;color:#fff;font-weight:600;cursor:pointer;">
+                  Edit
+                </button>
+                <button type="button" class="student-delete-btn" data-id="${doc.id}" style="
+                  border:none;border-radius:8px;padding:6px 10px;
+                  background:#c82333;color:#fff;font-weight:600;cursor:pointer;">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+           listEl.innerHTML = count
+        ? html
+        : '<div style="color:#6b7b8c;text-align:center;">No students match this filter.</div>';
+
+            listEl.querySelectorAll('.student-delete-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          if (!confirm('Delete this student?')) return;
+
+          try {
+            await db.collection('students').doc(id).delete();
+            loadManagedStudents();
+          } catch (err) {
+            alert('Failed to delete student: ' + err.message);
+          }
+        };
+      });
+
+      listEl.querySelectorAll('.student-edit-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+
+          try {
+            const snap = await db.collection('students').doc(id).get();
+            const d = snap.data() || {};
+
+            document.getElementById('student-mgr-class').value = d.className || '';
+            document.getElementById('student-mgr-section').value = d.sectionName || '';
+            document.getElementById('student-mgr-name').value = d.studentName || '';
+            document.getElementById('student-mgr-roll').value = d.rollNumber || '';
+            document.getElementById('student-mgr-phone').value = d.phoneNumber || '';
+
+                        document.getElementById('student-mgr-save-btn').setAttribute('data-edit-id', id);
+            document.getElementById('student-mgr-save-btn').textContent = 'Update Student';
+            document.getElementById('student-mgr-status').textContent = 'Editing selected student.';
+            document.getElementById('student-mgr-cancel-edit-btn').style.display = 'block';
+          } catch (err) {
+            alert('Failed to load student for editing: ' + err.message);
+          }
+        };
+      });
+    } catch (err) {
+      listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load students.</div>';
+    }
+  }
+
+  document.getElementById('student-mgr-load-btn').onclick = loadManagedStudents;
+  document.getElementById('student-mgr-filter-class').addEventListener('input', loadManagedStudents);
+  document.getElementById('student-mgr-filter-section').addEventListener('input', loadManagedStudents);
+
+  loadManagedStudents();
+  loadManagedClasses();
+  loadManagedSections();
+
+    document.getElementById('student-mgr-add-class-btn').onclick = async function() {
+    const newClassEl = document.getElementById('student-mgr-new-class');
+    const statusEl = document.getElementById('student-mgr-status');
+    const className = (newClassEl.value || '').trim();
+
+    if (!className) {
+      statusEl.textContent = 'Please enter a class name.';
+      return;
+    }
+
+    try {
+      statusEl.textContent = 'Creating class...';
+
+      const dupSnap = await db.collection('classes')
+        .where('createdBy', '==', currentUser.uid)
+        .where('className', '==', className)
+        .get();
+
+      if (!dupSnap.empty) {
+        statusEl.textContent = 'This class already exists.';
+        return;
+      }
+
+      await db.collection('classes').add({
+        createdBy: currentUser.uid,
+        className: className,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      newClassEl.value = '';
+      statusEl.textContent = 'Class created successfully.';
+      loadManagedClasses();
+    } catch (err) {
+      statusEl.textContent = 'Failed to create class: ' + err.message;
+    }
+  };
+
+  document.getElementById('student-mgr-add-section-btn').onclick = async function() {
+    const classEl = document.getElementById('student-mgr-new-section-class');
+    const sectionEl = document.getElementById('student-mgr-new-section');
+    const statusEl = document.getElementById('student-mgr-status');
+
+    const className = (classEl.value || '').trim();
+    const sectionName = (sectionEl.value || '').trim();
+
+    if (!className || !sectionName) {
+      statusEl.textContent = 'Please enter class name and section name.';
+      return;
+    }
+
+    try {
+      statusEl.textContent = 'Creating section...';
+
+      const dupSnap = await db.collection('sections')
+        .where('createdBy', '==', currentUser.uid)
+        .where('className', '==', className)
+        .where('sectionName', '==', sectionName)
+        .get();
+
+      if (!dupSnap.empty) {
+        statusEl.textContent = 'This section already exists for that class.';
+        return;
+      }
+
+      await db.collection('sections').add({
+        createdBy: currentUser.uid,
+        className: className,
+        sectionName: sectionName,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+            classEl.value = '';
+      sectionEl.value = '';
+      statusEl.textContent = 'Section created successfully.';
+      loadManagedSections();
+    } catch (err) {
+      statusEl.textContent = 'Failed to create section: ' + err.message;
+    }
+  };
+
+  document.getElementById('student-mgr-save-btn').onclick = async function() {
+    const saveBtn = document.getElementById('student-mgr-save-btn');
+    const editId = saveBtn.getAttribute('data-edit-id') || '';
+    const className = (document.getElementById('student-mgr-class').value || '').trim();
+    const sectionName = (document.getElementById('student-mgr-section').value || '').trim();
+    const studentName = (document.getElementById('student-mgr-name').value || '').trim();
+    const rollNumber = (document.getElementById('student-mgr-roll').value || '').trim();
+    const phoneNumber = (document.getElementById('student-mgr-phone').value || '').trim();
+    const statusEl = document.getElementById('student-mgr-status');
+
+    if (!className || !sectionName || !studentName || !rollNumber || !phoneNumber) {
+      statusEl.textContent = 'Please fill Class, Section, Student Name, Roll Number, and Phone Number.';
+      return;
+    }
+
+       try {
+      statusEl.textContent = editId ? 'Updating...' : 'Saving...';
+
+      const duplicateSnap = await db.collection('students')
+        .where('createdBy', '==', currentUser.uid)
+        .where('className', '==', className)
+        .where('sectionName', '==', sectionName)
+        .where('rollNumber', '==', rollNumber)
+        .get();
+
+      let duplicateFound = false;
+      duplicateSnap.forEach(doc => {
+        if (doc.id !== editId) duplicateFound = true;
+      });
+
+      if (duplicateFound) {
+        statusEl.textContent = 'A student with this roll number already exists in this class and section.';
+        return;
+      }
+
+      if (editId) {
+        await db.collection('students').doc(editId).update({
+          className: className,
+          sectionName: sectionName,
+          studentName: studentName,
+          rollNumber: rollNumber,
+          phoneNumber: phoneNumber,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        await db.collection('students').add({
+          createdBy: currentUser.uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          className: className,
+          sectionName: sectionName,
+          studentName: studentName,
+          rollNumber: rollNumber,
+          phoneNumber: phoneNumber
+        });
+      }
+
+      document.getElementById('student-mgr-class').value = '';
+      document.getElementById('student-mgr-section').value = '';
+      document.getElementById('student-mgr-name').value = '';
+      document.getElementById('student-mgr-roll').value = '';
+      document.getElementById('student-mgr-phone').value = '';
+
+                 saveBtn.removeAttribute('data-edit-id');
+      saveBtn.textContent = 'Save Student';
+      document.getElementById('student-mgr-cancel-edit-btn').style.display = 'none';
+
+      statusEl.textContent = editId ? 'Student updated successfully.' : 'Student saved successfully.';
+      loadManagedStudents();
+
+      setTimeout(() => {
+        if (document.getElementById('student-mgr-save-btn')) {
+          document.getElementById('student-mgr-save-btn').removeAttribute('data-edit-id');
+          document.getElementById('student-mgr-save-btn').textContent = 'Save Student';
+        }
+      }, 100);
+    } catch (err) {
+      statusEl.textContent = 'Failed to save student: ' + err.message;
+    }
+  };
+      statusEl.textContent = 'Failed to save student: ' + err.message;
+    }
+  };
+}
+
+function showQuizSelectionModePopup() {
+  document.querySelectorAll('.quiz-selection-popup').forEach(el => el.remove());
+
+  const modal = document.createElement('div');
+  modal.className = 'quiz-selection-popup';
+  modal.innerHTML = `
+    <div style="
+      position:fixed;top:0;left:0;width:100vw;height:100vh;
+      background:rgba(12,29,68,0.14);z-index:99999;
+      display:flex;align-items:center;justify-content:center;
+      padding:16px;box-sizing:border-box;">
+      
+      <div style="
+        background:#fff;border-radius:18px;padding:24px 18px;
+        width:100%;max-width:420px;
+        box-shadow:0 8px 28px rgba(0,0,0,0.18);
+        text-align:center;">
+        
+        <div style="font-size:1.18em;font-weight:700;color:#0f3d6b;margin-bottom:8px;">
+          Create Practice Quiz
+        </div>
+        <div style="font-size:0.98em;color:#4b5b6b;margin-bottom:18px;line-height:1.5;">
+          Choose how you want to select questions for this quiz.
+        </div>
+
+        <button id="quiz-mode-all" style="
+          width:100%;padding:12px 14px;margin-bottom:10px;
+          border:none;border-radius:10px;background:#1762a7;color:#fff;
+          font-weight:700;cursor:pointer;">
+          Use All Displayed Questions
+        </button>
+
+      <button id="quiz-mode-manual" style="
+          width:100%;padding:12px 14px;margin-bottom:10px;
+          border:1.5px solid #1762a7;border-radius:10px;background:#fff;color:#1762a7;
+          font-weight:700;cursor:pointer;">
+          Select Questions Manually
+        </button>
+
+        <button id="quiz-mode-random" style="
+          width:100%;padding:12px 14px;margin-bottom:10px;
+          border:1.5px solid #0f8b6d;border-radius:10px;background:#fff;color:#0f8b6d;
+          font-weight:700;cursor:pointer;">
+          Randomly Choose by Count
+        </button>
+
+        <button id="quiz-mode-cancel" style="
+          width:100%;padding:11px 14px;
+          border:none;border-radius:10px;background:#eef3f9;color:#35506b;
+          font-weight:600;cursor:pointer;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('quiz-mode-cancel').onclick = function() {
+    modal.remove();
+  };
+
+  document.getElementById('quiz-mode-all').onclick = function() {
+    modal.remove();
+    window.__quizSelectionMode = 'all';
+    document.getElementById('quiz-spinner').style.display = 'flex';
+    setTimeout(() => {
+      document.getElementById('quiz-spinner').style.display = 'none';
+      document.getElementById('create-quiz-btn').click();
+    }, 100);
+  };
+
+  document.getElementById('quiz-mode-manual').onclick = function() {
+    modal.remove();
+    window.__quizSelectionMode = 'manual';
+    fetchAndDisplayQuestions();
+    setTimeout(() => {
+      alert('Now tick the questions you want, then click Create Practice Quiz again.');
+    }, 250);
+  };
+
+  document.getElementById('quiz-mode-random').onclick = function() {
+    const displayArea = document.getElementById('questions-display-area');
+    const total = displayArea.querySelectorAll('.question-item').length;
+
+    if (!total) {
+      modal.remove();
+      alert('No questions are available to choose randomly.');
+      return;
+    }
+
+    const raw = prompt('How many questions do you want to choose randomly?\\n\\nAvailable: ' + total, '');
+    if (raw === null) return;
+
+    const count = Number(raw);
+    if (!Number.isInteger(count) || count < 1) {
+      alert('Please enter a valid positive number.');
+      return;
+    }
+    if (count > total) {
+      alert('You entered more than available questions.');
+      return;
+    }
+
+    modal.remove();
+    window.__quizSelectionMode = 'random';
+    window.__quizRandomCount = count;
+    document.getElementById('create-quiz-btn').click();
+  };
+}
+
+// --- Create Practice Quiz Button Handler ---
+    document.getElementById('create-quiz-btn').addEventListener('click', async function() {
+  if (!window.__quizSelectionMode) {
+    showQuizSelectionModePopup();
+    return;
+  }
+      // spinner will be shown later after selection mode is chosen
       try {
         const displayArea = document.getElementById('questions-display-area');
-        const nodes = displayArea.querySelectorAll('.question-item');
-        if (nodes.length < 1) {
-          alert("No questions found for this quiz!");
+        const allNodes = Array.from(displayArea.querySelectorAll('.question-item'));
+        let nodes = allNodes;
+
+       if (window.__quizSelectionMode === 'manual') {
+          nodes = allNodes.filter(item => {
+            const cb = item.querySelector('.quiz-question-checkbox');
+            return cb && cb.checked;
+          });
+        }
+
+        if (window.__quizSelectionMode === 'random') {
+          const shuffled = [...allNodes];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          nodes = shuffled.slice(0, Number(window.__quizRandomCount || 0));
+        }
+
+                if (nodes.length < 1) {
+          alert(
+            window.__quizSelectionMode === 'manual'
+              ? "Please select at least one question for this quiz!"
+              : "No questions found for this quiz!"
+          );
+          window.__quizSelectionMode = null;
+          window.__quizRandomCount = null;
+          updateManualQuizToolbar();
+          document.getElementById('quiz-spinner').style.display = 'none';
+          return;
+        }
+
+        const confirmMsg =
+          window.__quizSelectionMode === 'manual'
+            ? `Create quiz with ${nodes.length} selected question(s)?`
+            : window.__quizSelectionMode === 'random'
+              ? `Create quiz with ${nodes.length} randomly chosen question(s)?`
+              : `Create quiz with all ${nodes.length} displayed question(s)?`;
+
+        if (!confirm(confirmMsg)) {
           document.getElementById('quiz-spinner').style.display = 'none';
           return;
         }
@@ -2072,22 +2888,47 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           });
         }
 
+               const classVal = document.getElementById('class-value').value;
+        const subjectVal = document.getElementById('subject-value').value;
+        const chapterVal = (getMultiSelected('chapter').join(', ') || 'All');
+        const levelVal = (getMultiSelected('level').join(', ') || 'Mixed');
+
+                const schoolName = prompt("Enter School Name", "SciMentra");
+        if (schoolName === null) {
+          document.getElementById('quiz-spinner').style.display = 'none';
+          return;
+        }
+        const finalSchoolName = (schoolName || '').trim() || 'SciMentra';
+
+        const quizTitleInput = prompt("Enter Quiz Title", `${subjectVal} Practice Quiz`);
+        if (quizTitleInput === null) {
+          document.getElementById('quiz-spinner').style.display = 'none';
+          return;
+        }
+        const finalQuizTitle = (quizTitleInput || '').trim() || `${subjectVal} Practice Quiz`;
+
         const quizDoc = await db.collection('quizzes').add({
           createdBy: currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          level: (getMultiSelected('level').join(', ') || "Mixed"),
+                    schoolName: finalSchoolName,
+          quizTitle: finalQuizTitle,
+          class: classVal,
+          board: document.getElementById('board-value').value || '',
+          subject: subjectVal,
+          chapter: chapterVal,
+          level: levelVal,
+          selectionMode: window.__quizSelectionMode || 'all',
+          randomCount: window.__quizSelectionMode === 'random' ? Number(window.__quizRandomCount || 0) : null,
+                             totalQuestions: questions.length,
           questions: questions
         });
-        const quizId = quizDoc.id;
+
+                const quizId = quizDoc.id;
         const quizLink = `${window.location.origin}/Question-Bank/quiz.html?quiz=${quizId}`;
 
-        const classVal = document.getElementById('class-value').value;
-        const subjectVal = document.getElementById('subject-value').value;
-        const chapterVal = (getMultiSelected('chapter').join(', ') || 'All');
-    const levelVal = (getMultiSelected('level').join(', ') || 'Mixed');
-        const message = `*St. PATRICK'S SCHOOL*
+        const message = `*${finalSchoolName}*
 *IIT & NEET FOUNDATION*
-*QUIZ*
+*${finalQuizTitle.toUpperCase()}*
 
 Dear Students,
 You have a new online practice quiz!
@@ -2096,6 +2937,7 @@ You have a new online practice quiz!
    *• Subject: ${subjectVal}*
    *• Chapter: ${chapterVal}*
    *• Level: ${levelVal}*
+   *• Total Questions: ${questions.length}*
 
 Please click the link below to start your quiz:
 ${quizLink}
