@@ -1859,6 +1859,7 @@ B) <Option B>
 C) <Option C>
 D) <Option D>
 Ans: <A), B), C), or D) — only one>
+Explanation: <Step-by-step explanation>
 
 List all MCQ (Single) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
@@ -1904,6 +1905,7 @@ B) <Option B>
 C) <Option C>
 D) <Option D>
 Ans: <All correct options, e.g., "A), C), D)" — two or more, comma separated>
+Explanation: <Step-by-step explanation>
 
 List all MCQ (Multiple) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
@@ -1932,6 +1934,8 @@ Q<num>: Level <Level>, <Marks> [Descriptive]
 For descriptive questions, each question must be formatted exactly as:
 Q<num>: Level <Level>, <Marks> [Descriptive]
 <Question text>
+Answer: <Final answer>
+Explanation: <Step-by-step explanation>
 
 List all descriptive questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
@@ -2034,9 +2038,10 @@ Each question MUST follow this strict format:
 1. Start with the question number, level, and marks (e.g., "Q1: Level 2, 1 Mark").
 2. On the next line, write the question text.
 3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
-4. On the final line for that question, specify the correct answer using the format "Ans: C)" (only ONE letter).
+4. On the next line after options, specify the correct answer using the format "Ans: C)" (only ONE letter).
+5. On the next line, write: "Explanation: <Step-by-step explanation>"
 
-Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
+Provide ONLY the questions in this exact format. Do not add any other text, introduction, or extra commentary.
 `;
       } else if (sessionParams.questionType === "MCQ (Multiple)" || isTextBookMultiple) {
         fullPromptForAI = `
@@ -2101,9 +2106,10 @@ Each question MUST follow this strict format:
 1. Start with the question number, level, and marks (e.g., "Q1: Level 2, 1 Mark").
 2. On the next line, write the question text.
 3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
-4. On the final line for that question, specify ALL correct answers using the format "Ans: A), C), D)" (list all correct answers, separated by comma).
+4. On the next line after options, specify ALL correct answers using the format "Ans: A), C), D)" (list all correct answers, separated by comma).
+5. On the next line, write: "Explanation: <Step-by-step explanation>"
 
-Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
+Provide ONLY the questions in this exact format. Do not add any other text, introduction, or extra commentary.
 `;
       } else {
         // Descriptive
@@ -2158,6 +2164,8 @@ User request: "${originalPrompt}"
 Format each question strictly as:
 Q<num>: Level <Lvl>, <Marks> Marks
 <Question text>
+Answer: <Final answer>
+Explanation: <Step-by-step explanation>
 
 Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
 `;
@@ -2201,8 +2209,10 @@ Assign a Level for each question:
 Format strictly:
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <question text>
+Answer: <Final answer>
+Explanation: <Step-by-step explanation>
 
-Do not add options or "Ans:" lines.
+Do not add options.
 `;
         } else {
          // CBSE MCQ prompt (keeps options + Ans)
@@ -2233,6 +2243,7 @@ B) ...
 C) ...
 D) ...
 Ans: ...
+Explanation: <Step-by-step explanation>
 `;
         }
       }
@@ -2433,13 +2444,14 @@ async function saveSessionQuestions(sessionParams) {
     console.log("ADDING COMPREHENSIVE QUESTION", i);
 
       await Promise.race([
-        db.collection("questions").add({
+                db.collection("questions").add({
           type: "Comprehensive",
           text: wrappedFull,
           metaLine: qData.parsedMeta,
           marks: 2,
           passage: wrappedPassage,
           mcqs: wrappedMcqs,
+          explanation: __wrap(qData.explanation || ''),
           questionNumber: currentQuestionNumber,
           class: qData.class,
           board: qData.board,
@@ -2461,7 +2473,7 @@ async function saveSessionQuestions(sessionParams) {
       const wrappedBody      = __wrap(qData.parsedBody || '');
       const wrappedFullText  = __wrap(qData.fullText || '');
 
-      let toSave = {
+           let toSave = {
         metaLine: qData.parsedMeta,
         difficulty: meta.difficulty,
         level: meta.level,
@@ -2471,10 +2483,10 @@ async function saveSessionQuestions(sessionParams) {
         board: qData.board,
         subject: qData.subject,
         chapter: qData.chapter,
+        explanation: __wrap(qData.explanation || ''),
         createdBy: currentUserProfile.uid,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
-
           if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
         toSave.question = wrappedQuestion;
         toSave.options  = wrappedOptions;
@@ -2892,6 +2904,7 @@ B) <Option B>
 C) <Option C>
 D) <Option D>
 Ans: <A) or B) or C) or D)>
+Explanation: <Step-by-step explanation>
 
 Rules:
 ${numberingNote}
@@ -2931,6 +2944,8 @@ Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as
 
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <Question text>
+Answer: <Final answer>
+Explanation: <Step-by-step explanation>
 
 Rules:
 ${numberingNote}
@@ -3061,7 +3076,7 @@ function shuffleOptionsForQuestion(qData) {
   qData.parsedBody = rebuilt;
   if (newAnsLine) qData.parsedAnswer = newAnsLine;
 
-  qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}`;
+    qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
 }
 
 /* ======== END NEW shuffle utilities ======== */
@@ -3133,7 +3148,7 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
     const { meta, body } = __splitMetaAndBody(b);
 
     // Build base qData
-    const qData = {
+        const qData = {
       fullText: b,
       class: sessionParams.class,
       board: sessionParams.board,
@@ -3143,16 +3158,21 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       question: '',
       options: [],
       parsedAnswer: null,
-      parsedBody: ''
+      parsedBody: '',
+      explanation: ''
     };
 
-   if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
-      // split body into Q text, options, and Ans
-      const ansMatch = body.match(/Ans\s*:\s*.*$/im);
-      const ansLine = ansMatch ? ansMatch[0].trim() : null;
-      const withoutAns = ansMatch ? body.replace(ansMatch[0], '').trim() : body.trim();
+     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+      const bodyWithoutExplanation = explanationMatch
+        ? body.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
+        : body;
 
-      // first line is the question text, the rest are options (may be inline)
+      const ansMatch = bodyWithoutExplanation.match(/Ans\s*:\s*.*$/im);
+      const ansLine = ansMatch ? ansMatch[0].trim() : null;
+      const withoutAns = ansMatch ? bodyWithoutExplanation.replace(ansMatch[0], '').trim() : bodyWithoutExplanation.trim();
+
       const lines = withoutAns.split('\n').map(l => l.trim()).filter(Boolean);
       const qText = lines.length ? lines[0] : '';
 
@@ -3161,7 +3181,6 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
 
       const optLines = optBlock.split('\n').map(x => x.trim()).filter(Boolean);
 
-      // Ensure we have exactly 4 options
       const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
       const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
       const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
@@ -3174,6 +3193,8 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
         ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
         : null;
 
+      qData.explanation = explanationText;
+
       qData.parsedBody = [
         qText,
         `A) ${qData.options[0]}`,
@@ -3182,16 +3203,27 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
         `D) ${qData.options[3]}`
       ].join('\n');
 
-      // Store consistent fullText
-      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}`;
+      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
 
     } else {
-      // Descriptive: meta + body (no options/Ans)
-      qData.question = body.split('\n')[0] || '';
+      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+      const bodyWithoutExplanation = explanationMatch
+        ? body.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
+        : body;
+
+      const finalAnswerMatch = bodyWithoutExplanation.match(/Answer\s*:\s*([\s\S]*)$/i);
+      const finalAnswerText = finalAnswerMatch ? finalAnswerMatch[1].trim() : '';
+      const bodyWithoutAnswer = finalAnswerMatch
+        ? bodyWithoutExplanation.replace(/Answer\s*:\s*[\s\S]*$/i, '').trim()
+        : bodyWithoutExplanation;
+
+      qData.question = bodyWithoutAnswer.split('\n')[0] || '';
       qData.options = [];
-      qData.parsedAnswer = null;
-      qData.parsedBody = body;
-      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}`;
+      qData.parsedAnswer = finalAnswerText ? `Answer: ${finalAnswerText}` : null;
+      qData.parsedBody = bodyWithoutAnswer;
+      qData.explanation = explanationText;
+      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
     }
 
     out.push(qData);
@@ -3240,12 +3272,13 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
 
   questionBlocks.forEach((qText) => {
     const questionData = {
-      fullText: qText,
-      class: sessionParams.class,
-      board: sessionParams.board,
-      subject: sessionParams.subject,
-      chapter: sessionParams.chapter
-    };
+  fullText: qText,
+  class: sessionParams.class,
+  board: sessionParams.board,
+  subject: sessionParams.subject,
+  chapter: sessionParams.chapter,
+  explanation: ''
+};
 
     const metaMatch = qText.match(/^(Q\s*\d+:.*)/);
     if (!metaMatch) {
@@ -3276,11 +3309,17 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
   : sessionParams.questionType;
 questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${marks} [${metaType}]`;
 
-    let rawBody = qText.substring(originalMeta.length).trim();
-    const answerRegex = /(.*)(Ans:\s*.*)/s;
-    const answerMatch = rawBody.match(answerRegex);
+       let rawBody = qText.substring(originalMeta.length).trim();
 
     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+      const bodyWithoutExplanation = explanationMatch
+        ? rawBody.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
+        : rawBody;
+
+      const answerMatch = bodyWithoutExplanation.match(/(.*)(Ans:\s*.*)/s);
+
       if (answerMatch) {
         const questionAndOptions = answerMatch[1].trim();
         const lines = questionAndOptions
@@ -3293,25 +3332,41 @@ questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${m
         questionData.parsedAnswer = answerMatch[2].trim();
         questionData.parsedBody = lines.join('\n');
       } else {
-        questionData.question = rawBody.split('\n')[0].trim();
-        questionData.options = rawBody.split('\n').slice(1, 5).map(x => x.trim());
+        questionData.question = bodyWithoutExplanation.split('\n')[0].trim();
+        questionData.options = bodyWithoutExplanation.split('\n').slice(1, 5).map(x => x.trim());
         questionData.parsedAnswer = null;
-        questionData.parsedBody = rawBody;
+        questionData.parsedBody = bodyWithoutExplanation;
       }
 
-      // Normalize LaTeX delimiters before any option shuffling
-        questionData.parsedBody   = questionData.parsedBody || '';
-questionData.parsedAnswer = questionData.parsedAnswer || '';
-questionData.parsedMeta   = questionData.parsedMeta || '';
+      questionData.explanation = explanationText;
 
-// Randomize A/B/C/D and remap the Ans: letters accordingly
-shuffleOptionsForQuestion(questionData);
+      // Normalize LaTeX delimiters before any option shuffling
+      questionData.parsedBody = questionData.parsedBody || '';
+      questionData.parsedAnswer = questionData.parsedAnswer || '';
+      questionData.parsedMeta = questionData.parsedMeta || '';
+      questionData.explanation = questionData.explanation || '';
+
+      // Randomize A/B/C/D and remap the Ans: letters accordingly
+      shuffleOptionsForQuestion(questionData);
     } else {
-      // DESCRIPTIVE: no options, no "Ans:"
-      questionData.question = rawBody.trim().split('\n')[0] || '';
+      // DESCRIPTIVE
+      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+      const bodyWithoutExplanation = explanationMatch
+        ? rawBody.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
+        : rawBody;
+
+      const finalAnswerMatch = bodyWithoutExplanation.match(/Answer\s*:\s*([\s\S]*)$/i);
+      const finalAnswerText = finalAnswerMatch ? finalAnswerMatch[1].trim() : '';
+      const bodyWithoutAnswer = finalAnswerMatch
+        ? bodyWithoutExplanation.replace(/Answer\s*:\s*[\s\S]*$/i, '').trim()
+        : bodyWithoutExplanation;
+
+      questionData.question = bodyWithoutAnswer.trim().split('\n')[0] || '';
       questionData.options = [];
-      questionData.parsedAnswer = null;
-      questionData.parsedBody = rawBody.trim();
+      questionData.parsedAnswer = finalAnswerText ? `Answer: ${finalAnswerText}` : null;
+      questionData.parsedBody = bodyWithoutAnswer.trim();
+      questionData.explanation = explanationText;
     }
 
     currentSessionQuestions.push(questionData);
@@ -3332,6 +3387,8 @@ function createQuestionElement(qData, index) {
   questionEl.innerHTML = `
     <div class="question-meta-ai">${qData.parsedMeta}</div>
     <div class="question-text-ai">${(qData.parsedBody || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+    ${qData.parsedAnswer ? `<div class="temp-answer" style="display:block; margin-top:8px;"><b>${qData.parsedAnswer.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b></div>` : ''}
+    ${qData.explanation ? `<div class="temp-answer" style="display:block; margin-top:8px;"><b>Explanation:</b> ${(qData.explanation || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : ''}
     <div class="question-actions">
       <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
     </div>
@@ -3641,7 +3698,7 @@ function showEditPopupForQuestion(index) {
     qData.options  = [optA, optB, optC, optD];
     qData.parsedBody = [qText, `A) ${optA}`, `B) ${optB}`, `C) ${optC}`, `D) ${optD}`].join('\n');
     qData.parsedAnswer = `Ans: ${answer}`;
-    qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}\n${qData.parsedAnswer}`;
+        qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}\n${qData.parsedAnswer}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
 
     // Close popup and re-render
     popup.remove();
