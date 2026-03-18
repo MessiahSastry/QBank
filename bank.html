@@ -2234,19 +2234,25 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
                     <div>
             <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Class Name</label>
-            <select id="student-mgr-class"
-              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
-              <option value="">Select Class</option>
-            </select>
+           <div id="student-mgr-class-dropdown" class="custom-dropdown">
+  <input type="hidden" id="student-mgr-class" value="">
+  <div class="selected-option">Select Class</div>
+  <div class="dropdown-options">
+    <div data-value="">Select Class</div>
+  </div>
+</div>
           </div>
 
                               <div style="border:1.2px solid #d9e6f5;border-radius:12px;padding:12px;background:#f9fcff;">
             <label style="display:block;font-weight:700;color:#0f3d6b;margin-bottom:8px;">Create Section</label>
             <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;">
-  <select id="student-mgr-new-section-class"
-    style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
-    <option value="">Select Class</option>
-  </select>
+  <div id="student-mgr-new-section-class-dropdown" class="custom-dropdown">
+  <input type="hidden" id="student-mgr-new-section-class" value="">
+  <div class="selected-option">Select Class</div>
+  <div class="dropdown-options">
+    <div data-value="">Select Class</div>
+  </div>
+</div>
   <input id="student-mgr-new-section" type="text" placeholder="Section Name"
     style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
   <button id="student-mgr-add-section-btn" type="button" style="
@@ -2267,10 +2273,13 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           </div>
                     <div>
             <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Section Name</label>
-            <select id="student-mgr-section"
-              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
-              <option value="">Select Section</option>
-            </select>
+            <div id="student-mgr-section-dropdown" class="custom-dropdown">
+  <input type="hidden" id="student-mgr-section" value="">
+  <div class="selected-option">Select Section</div>
+  <div class="dropdown-options">
+    <div data-value="">Select Section</div>
+  </div>
+</div>
           </div>
 
           <div>
@@ -2400,28 +2409,35 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
             listEl.innerHTML = html;
 
-const classSelect = document.getElementById('student-mgr-class');
-const sectionClassSelect = document.getElementById('student-mgr-new-section-class');
+const classHidden = document.getElementById('student-mgr-class');
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+const classOptions = classDropdown ? classDropdown.querySelector('.dropdown-options') : null;
 
-if (classSelect) {
-  classSelect.innerHTML = '<option value="">Select Class</option>';
-}
-if (sectionClassSelect) {
-  sectionClassSelect.innerHTML = '<option value="">Select Class</option>';
-}
+const sectionClassHidden = document.getElementById('student-mgr-new-section-class');
+const sectionClassDropdown = document.getElementById('student-mgr-new-section-class-dropdown');
+const sectionClassSelected = sectionClassDropdown ? sectionClassDropdown.querySelector('.selected-option') : null;
+const sectionClassOptions = sectionClassDropdown ? sectionClassDropdown.querySelector('.dropdown-options') : null;
+
+if (classHidden) classHidden.value = '';
+if (classSelected) classSelected.textContent = 'Select Class';
+if (classOptions) classOptions.innerHTML = '<div data-value="">Select Class</div>';
+
+if (sectionClassHidden) sectionClassHidden.value = '';
+if (sectionClassSelected) sectionClassSelected.textContent = 'Select Class';
+if (sectionClassOptions) sectionClassOptions.innerHTML = '<div data-value="">Select Class</div>';
 
 snap.forEach(doc => {
   const d = doc.data() || {};
   const className = d.className || '';
 
-  if (classSelect) {
-    classSelect.innerHTML += `<option value="${className}">${className}</option>`;
+  if (classOptions) {
+    classOptions.innerHTML += `<div data-value="${className}">${className}</div>`;
   }
-  if (sectionClassSelect) {
-    sectionClassSelect.innerHTML += `<option value="${className}">${className}</option>`;
+  if (sectionClassOptions) {
+    sectionClassOptions.innerHTML += `<div data-value="${className}">${className}</div>`;
   }
 });
-
       listEl.querySelectorAll('.student-mgr-delete-class-btn').forEach(btn => {
         btn.onclick = async function() {
           const id = this.getAttribute('data-id');
@@ -2608,9 +2624,40 @@ snap.forEach(doc => {
   document.getElementById('student-mgr-filter-class').addEventListener('input', loadManagedStudents);
   document.getElementById('student-mgr-filter-section').addEventListener('input', loadManagedStudents);
 
-  loadManagedStudents();
+ loadManagedStudents();
 loadManagedClasses();
 loadManagedSections();
+
+addDropdownListener('student-mgr-class-dropdown');
+addDropdownListener('student-mgr-new-section-class-dropdown');
+addDropdownListener('student-mgr-section-dropdown');
+
+document.getElementById('student-mgr-class-dropdown').querySelector('.dropdown-options').addEventListener('click', async function(e) {
+  if (!e.target.dataset.value && e.target.dataset.value !== '') return;
+
+  const selectedClass = e.target.dataset.value;
+  const sectionHidden = document.getElementById('student-mgr-section');
+  const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+  const sectionSelected = sectionDropdown.querySelector('.selected-option');
+  const sectionOptions = sectionDropdown.querySelector('.dropdown-options');
+
+  sectionHidden.value = '';
+  sectionSelected.textContent = 'Select Section';
+  sectionOptions.innerHTML = '<div data-value="">Select Section</div>';
+
+  if (!selectedClass) return;
+
+  const snap = await db.collection('sections')
+    .where('createdBy', '==', currentUser.uid)
+    .where('className', '==', selectedClass)
+    .get();
+
+  snap.forEach(doc => {
+    const d = doc.data() || {};
+    const sectionName = d.sectionName || '';
+    sectionOptions.innerHTML += `<div data-value="${sectionName}">${sectionName}</div>`;
+  });
+});
 
 document.getElementById('student-mgr-class').addEventListener('change', async function() {
   const selectedClass = this.value;
