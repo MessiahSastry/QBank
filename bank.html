@@ -285,8 +285,8 @@
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// CampusConnect custom alert (replaces window.alert)
-(function setupCampusConnectAlert(){
+// SciMentra custom alert (replaces window.alert)
+(function setupSciMentraAlert(){
   const dlgId = 'dlgAppAlert';
   if (document.getElementById(dlgId)) return;
 
@@ -294,7 +294,7 @@ const auth = firebase.auth();
   wrapper.innerHTML = `
     <dialog id="dlgAppAlert" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
       <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
-        CampusConnect
+        SciMentra
       </div>
       <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
         <p id="appAlertText" style="margin:0 0 12px 0;"></p>
