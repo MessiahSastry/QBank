@@ -2373,10 +2373,21 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
   document.getElementById('student-mgr-cancel-edit-btn').onclick = function() {
     document.getElementById('student-mgr-class').value = '';
-    document.getElementById('student-mgr-section').value = '';
-    document.getElementById('student-mgr-name').value = '';
-    document.getElementById('student-mgr-roll').value = '';
-    document.getElementById('student-mgr-phone').value = '';
+document.getElementById('student-mgr-section').value = '';
+document.getElementById('student-mgr-name').value = '';
+document.getElementById('student-mgr-roll').value = '';
+document.getElementById('student-mgr-phone').value = '';
+
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+if (classSelected) classSelected.textContent = 'Select Class';
+
+const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+const sectionOptions = sectionDropdown ? sectionDropdown.querySelector('.dropdown-options') : null;
+
+if (sectionSelected) sectionSelected.textContent = 'Select Section';
+if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Section</div>';
 
     const saveBtn = document.getElementById('student-mgr-save-btn');
     saveBtn.removeAttribute('data-edit-id');
@@ -2611,10 +2622,20 @@ snap.forEach(doc => {
             const d = snap.data() || {};
 
             document.getElementById('student-mgr-class').value = d.className || '';
-            document.getElementById('student-mgr-section').value = d.sectionName || '';
-            document.getElementById('student-mgr-name').value = d.studentName || '';
-            document.getElementById('student-mgr-roll').value = d.rollNumber || '';
-            document.getElementById('student-mgr-phone').value = d.phoneNumber || '';
+document.getElementById('student-mgr-name').value = d.studentName || '';
+document.getElementById('student-mgr-roll').value = d.rollNumber || '';
+document.getElementById('student-mgr-phone').value = d.phoneNumber || '';
+
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+if (classSelected) classSelected.textContent = d.className || 'Select Class';
+
+await loadStudentMgrSectionsForClass(d.className || '');
+
+document.getElementById('student-mgr-section').value = d.sectionName || '';
+const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+if (sectionSelected) sectionSelected.textContent = d.sectionName || 'Select Section';
 
                         document.getElementById('student-mgr-save-btn').setAttribute('data-edit-id', id);
             document.getElementById('student-mgr-save-btn').textContent = 'Update Student';
@@ -2638,18 +2659,19 @@ snap.forEach(doc => {
 loadManagedClasses();
 loadManagedSections();
 
-addDropdownListener('student-mgr-class-dropdown', null, 'student-mgr-class', 'Select Class');
+addDropdownListener('student-mgr-class-dropdown', async function(value) {
+  await loadStudentMgrSectionsForClass(value);
+}, 'student-mgr-class', 'Select Class');
 addDropdownListener('student-mgr-new-section-class-dropdown', null, 'student-mgr-new-section-class', 'Select Class');
 addDropdownListener('student-mgr-section-dropdown', null, 'student-mgr-section', 'Select Section');
 
-document.getElementById('student-mgr-class-dropdown').querySelector('.dropdown-options').addEventListener('click', async function(e) {
-  if (!e.target.dataset.value && e.target.dataset.value !== '') return;
-
-  const selectedClass = e.target.dataset.value;
+async function loadStudentMgrSectionsForClass(selectedClass) {
   const sectionHidden = document.getElementById('student-mgr-section');
   const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
-  const sectionSelected = sectionDropdown.querySelector('.selected-option');
-  const sectionOptions = sectionDropdown.querySelector('.dropdown-options');
+  const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+  const sectionOptions = sectionDropdown ? sectionDropdown.querySelector('.dropdown-options') : null;
+
+  if (!sectionHidden || !sectionDropdown || !sectionSelected || !sectionOptions) return;
 
   sectionHidden.value = '';
   sectionSelected.textContent = 'Select Section';
@@ -2657,36 +2679,23 @@ document.getElementById('student-mgr-class-dropdown').querySelector('.dropdown-o
 
   if (!selectedClass) return;
 
-  const snap = await db.collection('sections')
-    .where('createdBy', '==', currentUser.uid)
-    .where('className', '==', selectedClass)
-    .get();
+  try {
+    const snap = await db.collection('sections')
+      .where('createdBy', '==', currentUser.uid)
+      .where('className', '==', selectedClass)
+      .get();
 
-  snap.forEach(doc => {
-    const d = doc.data() || {};
-    const sectionName = d.sectionName || '';
-    sectionOptions.innerHTML += `<div data-value="${sectionName}">${sectionName}</div>`;
-  });
-});
-
-document.getElementById('student-mgr-class').addEventListener('change', async function() {
-  const selectedClass = this.value;
-  const sectionSelect = document.getElementById('student-mgr-section');
-  sectionSelect.innerHTML = '<option value="">Select Section</option>';
-
-  if (!selectedClass) return;
-
-  const snap = await db.collection('sections')
-    .where('createdBy', '==', currentUser.uid)
-    .where('className', '==', selectedClass)
-    .get();
-
-  snap.forEach(doc => {
-    const d = doc.data() || {};
-    const sectionName = d.sectionName || '';
-    sectionSelect.innerHTML += `<option value="${sectionName}">${sectionName}</option>`;
-  });
-});
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const sectionName = d.sectionName || '';
+      if (sectionName) {
+        sectionOptions.innerHTML += `<div data-value="${sectionName}">${sectionName}</div>`;
+      }
+    });
+  } catch (err) {
+    console.error('FAILED TO LOAD SECTIONS FOR CLASS', err);
+  }
+}
 
    document.getElementById('student-mgr-add-class-btn').onclick = async function() {
   const newClassEl = document.getElementById('student-mgr-new-class');
@@ -2842,10 +2851,21 @@ document.getElementById('student-mgr-class').addEventListener('change', async fu
       }
 
       document.getElementById('student-mgr-class').value = '';
-      document.getElementById('student-mgr-section').value = '';
-      document.getElementById('student-mgr-name').value = '';
-      document.getElementById('student-mgr-roll').value = '';
-      document.getElementById('student-mgr-phone').value = '';
+document.getElementById('student-mgr-section').value = '';
+document.getElementById('student-mgr-name').value = '';
+document.getElementById('student-mgr-roll').value = '';
+document.getElementById('student-mgr-phone').value = '';
+
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+if (classSelected) classSelected.textContent = 'Select Class';
+
+const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+const sectionOptions = sectionDropdown ? sectionDropdown.querySelector('.dropdown-options') : null;
+
+if (sectionSelected) sectionSelected.textContent = 'Select Section';
+if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Section</div>';
 
                  saveBtn.removeAttribute('data-edit-id');
       saveBtn.textContent = 'Save Student';
