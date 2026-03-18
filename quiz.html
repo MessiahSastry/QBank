@@ -580,8 +580,7 @@
 
   <div id="quiz-auth-modal">
     <div id="quiz-auth-modal-inner">
-      <button id="close-auth-modal-btn" type="button" aria-label="Close" style="position:sticky;top:0;float:right;background:#fff;border:none;color:#1762a7;font-size:1.7em;font-weight:bold;cursor:pointer;line-height:1;z-index:20;">&times;</button>
-      <h2>Student Access</h2>
+        <h2>Student Access</h2>
       <div class="auth-subtitle">
         Verify your section, phone number and PIN to start the assigned practice quiz.
       </div>
@@ -1752,13 +1751,7 @@ document.getElementById('auth-status-line').innerHTML =
         document.getElementById('login-btn').onclick = loginStudentPin;
         document.getElementById('start-quiz-btn').onclick = startQuizNow;
 
-const closeAuthBtn = document.getElementById('close-auth-modal-btn');
-if (closeAuthBtn) {
-  closeAuthBtn.onclick = function() {
-    const modal = document.getElementById('quiz-auth-modal');
-    if (modal) modal.style.display = 'none';
-  };
-}
+
       } catch (err) {
         console.error(err);
         document.getElementById('quiz-main').innerHTML =
