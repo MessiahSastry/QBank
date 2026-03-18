@@ -56,21 +56,35 @@
       display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;
     }
     @media (max-width: 560px) {
-      #filter-form { grid-template-columns: 1fr; gap: 15px; }
-    }
+  #filter-form { grid-template-columns: 1fr; gap: 15px; }
+
+  #student-mgr-section-dropdown .dropdown-options,
+  #student-mgr-class-dropdown .dropdown-options,
+  #student-mgr-new-section-class-dropdown .dropdown-options {
+    max-height: 180px;
+  }
+
+  #student-mgr-section-dropdown.open .dropdown-options {
+    top: auto;
+    bottom: calc(100% + 2px);
+    border-top: 1.3px solid #bcd6ef;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+  }
+}
     .form-group label {
       font-weight: 600; margin-bottom: 5px; color: #185496; display: block;
     }
-    .custom-dropdown { position: relative; }
+    .custom-dropdown { position: relative; z-index: 20; }
     .selected-option {
       padding: 10px 12px; color: #12416c; background: #f7fafd; border-radius: 6px;
       border: 1.3px solid #bcd6ef; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .dropdown-options {
-      display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff;
-      border: 1.3px solid #bcd6ef; border-top: none; border-radius: 0 0 6px 6px;
-      box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1); z-index: 1000; max-height: 200px; overflow-y: auto;
-    }
+  display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: #fff;
+  border: 1.3px solid #bcd6ef; border-top: none; border-radius: 0 0 6px 6px;
+  box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1); z-index: 99999; max-height: 220px; overflow-y: auto;
+}
     .custom-dropdown.open .dropdown-options { display: block; }
     .dropdown-options div[data-value] { padding: 10px 15px; cursor: pointer; }
     .dropdown-options div[data-value]:hover { background: #e0eaff; }
@@ -2210,10 +2224,10 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
       display:flex;align-items:center;justify-content:center;
       padding:16px;box-sizing:border-box;">
       
-      <div style="
+      <div id="student-mgr-modal-card" style="
         background:#fff;border-radius:18px;padding:22px 18px;
-        width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
-        box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+        width:100%;max-width:520px;max-height:90vh;overflow-y:auto;overflow-x:visible;
+        box-shadow:0 8px 28px rgba(0,0,0,0.18);position:relative;">
         
         <div style="font-size:1.2em;font-weight:700;color:#0f3d6b;margin-bottom:14px;text-align:center;">
           Manage Classes & Students
@@ -2354,7 +2368,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           </div>
         </div>
 
-        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;padding-bottom:80px;">
           <button id="student-mgr-close-btn" type="button" style="
             border:none;border-radius:10px;padding:10px 16px;
             background:#eef3f9;color:#35506b;font-weight:600;cursor:pointer;">
