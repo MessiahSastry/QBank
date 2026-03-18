@@ -3011,10 +3011,7 @@ function __qbShuffleQuestionOptions(questionObj) {
 async function __qbLoadTeacherSections() {
   const snap = await db.collection('sections')
     .where('createdBy', '==', currentUser.uid)
-    .orderBy('className')
-    .orderBy('sectionName')
     .get();
-
   const sections = [];
   snap.forEach(doc => {
     const d = doc.data() || {};
@@ -3025,6 +3022,13 @@ async function __qbLoadTeacherSections() {
       label: `${d.className || ''} - ${d.sectionName || ''}`
     });
   });
+
+  sections.sort((a, b) => {
+    const classCompare = String(a.className || '').localeCompare(String(b.className || ''));
+    if (classCompare !== 0) return classCompare;
+    return String(a.sectionName || '').localeCompare(String(b.sectionName || ''));
+  });
+
   return sections;
 }
 
@@ -3362,13 +3366,15 @@ function showQuizSelectionModePopup() {
     closeModal();
   };
 
-  function __saveQuizModeSettings(mode, randomCount = null) {
+ function __saveQuizModeSettings(mode, randomCount = null) {
+    const shuffleQuestionEl = document.getElementById('quiz-shuffle-question-order');
+    const shuffleOptionsEl = document.getElementById('quiz-shuffle-options');
+
     window.__quizSelectionMode = mode;
     window.__quizRandomCount = randomCount;
-    window.__quizShuffleQuestionOrder = !!document.getElementById('quiz-shuffle-question-order').checked;
-    window.__quizShuffleOptions = !!document.getElementById('quiz-shuffle-options').checked;
+    window.__quizShuffleQuestionOrder = !!(shuffleQuestionEl && shuffleQuestionEl.checked);
+    window.__quizShuffleOptions = !!(shuffleOptionsEl && shuffleOptionsEl.checked);
   }
-
   document.getElementById('quiz-mode-all').onclick = function() {
     closeModal();
     __saveQuizModeSettings('all', null);
