@@ -580,16 +580,16 @@
 
   <div id="quiz-auth-modal">
     <div id="quiz-auth-modal-inner">
+      <button id="close-auth-modal-btn" type="button" aria-label="Close" style="position:sticky;top:0;float:right;background:#fff;border:none;color:#1762a7;font-size:1.7em;font-weight:bold;cursor:pointer;line-height:1;z-index:20;">&times;</button>
       <h2>Student Access</h2>
       <div class="auth-subtitle">
         Verify your section, phone number and PIN to start the assigned practice quiz.
       </div>
 
       <div class="info-box">
-        <div style="margin-bottom:6px;"><b>App:</b> SciMentra</div>
         <div id="auth-school-line" style="margin-bottom:6px;"><b>School:</b> Loading...</div>
-        <div id="auth-quiz-line" style="margin-bottom:6px;"><b>Quiz:</b> Loading...</div>
-        <div id="auth-status-line"><b>Status:</b> Loading...</div>
+<div id="auth-quiz-line" style="margin-bottom:6px;"><b>Quiz:</b> Loading...</div>
+<div id="auth-status-line"><b>Status:</b> Loading...</div>
       </div>
 
       <div class="form-group">
@@ -915,9 +915,9 @@
       const status = (assignment && assignment.quizStatus) || 'live';
 
       document.getElementById('auth-school-line').innerHTML = `<b>School:</b> ${__escapeHtml(school)}`;
-      document.getElementById('auth-quiz-line').innerHTML = `<b>Quiz:</b> ${__escapeHtml(title)}`;
-      document.getElementById('auth-status-line').innerHTML =
-        `<b>Status:</b> <span class="status-chip ${getQuizStatusClass(status)}">${__escapeHtml(status)}</span>`;
+document.getElementById('auth-quiz-line').innerHTML = `<b>${__escapeHtml(school)} Quiz:</b> ${__escapeHtml(title)}`;
+document.getElementById('auth-status-line').innerHTML =
+  `<b>Status:</b> <span class="status-chip ${getQuizStatusClass(status)}">${__escapeHtml(status)}</span>`;
 
       document.getElementById('header-school-name').textContent = school;
       document.getElementById('quiz-page-title').textContent = title;
@@ -1751,6 +1751,14 @@
         document.getElementById('activate-btn').onclick = activateStudentPin;
         document.getElementById('login-btn').onclick = loginStudentPin;
         document.getElementById('start-quiz-btn').onclick = startQuizNow;
+
+const closeAuthBtn = document.getElementById('close-auth-modal-btn');
+if (closeAuthBtn) {
+  closeAuthBtn.onclick = function() {
+    const modal = document.getElementById('quiz-auth-modal');
+    if (modal) modal.style.display = 'none';
+  };
+}
       } catch (err) {
         console.error(err);
         document.getElementById('quiz-main').innerHTML =
