@@ -2392,9 +2392,10 @@ snap.forEach(doc => {
           }
         };
       });
-    } catch (err) {
-      listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load classes.</div>';
-    }
+   } catch (err) {
+  console.error('LOAD CLASSES ERROR', err);
+  listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load classes.</div>';
+}
   }
 
     async function loadManagedSections() {
@@ -2447,8 +2448,9 @@ snap.forEach(doc => {
         };
       });
     } catch (err) {
-      listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load sections.</div>';
-    }
+  console.error('LOAD SECTIONS ERROR', err);
+  listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load sections.</div>';
+}
   }
 
   async function loadManagedStudents() {
@@ -2585,86 +2587,103 @@ document.getElementById('student-mgr-class').addEventListener('change', async fu
   });
 });
 
-    document.getElementById('student-mgr-add-class-btn').onclick = async function() {
-    const newClassEl = document.getElementById('student-mgr-new-class');
-    const statusEl = document.getElementById('student-mgr-status');
-    const className = (newClassEl.value || '').trim();
+   document.getElementById('student-mgr-add-class-btn').onclick = async function() {
+  const newClassEl = document.getElementById('student-mgr-new-class');
+  const statusEl = document.getElementById('student-mgr-status');
+  const className = (newClassEl.value || '').trim();
 
-    if (!className) {
-      statusEl.textContent = 'Please enter a class name.';
+  if (!className) {
+    statusEl.textContent = 'Please enter a class name.';
+    alert('Please enter a class name.');
+    return;
+  }
+
+  try {
+    statusEl.textContent = 'Creating class...';
+    console.log('CREATE CLASS START', className, currentUser && currentUser.uid);
+
+    const dupSnap = await db.collection('classes')
+      .where('createdBy', '==', currentUser.uid)
+      .where('className', '==', className)
+      .get();
+
+    if (!dupSnap.empty) {
+      statusEl.textContent = 'This class already exists.';
+      alert('This class already exists.');
       return;
     }
 
-    try {
-      statusEl.textContent = 'Creating class...';
+    const docRef = await db.collection('classes').add({
+      createdBy: currentUser.uid,
+      className: className,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 
-      const dupSnap = await db.collection('classes')
-        .where('createdBy', '==', currentUser.uid)
-        .where('className', '==', className)
-        .get();
+    console.log('CLASS CREATED', docRef.id);
 
-      if (!dupSnap.empty) {
-        statusEl.textContent = 'This class already exists.';
-        return;
-      }
+    newClassEl.value = '';
+    statusEl.textContent = 'Class created successfully.';
+    alert('Class created successfully.');
 
-      await db.collection('classes').add({
-        createdBy: currentUser.uid,
-        className: className,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    await loadManagedClasses();
+  } catch (err) {
+    console.error('FAILED TO CREATE CLASS', err);
+    statusEl.textContent = 'Failed to create class: ' + err.message;
+    alert('Failed to create class: ' + err.message);
+  }
+};
 
-      newClassEl.value = '';
-      statusEl.textContent = 'Class created successfully.';
-      loadManagedClasses();
-    } catch (err) {
-      statusEl.textContent = 'Failed to create class: ' + err.message;
-    }
-  };
+ document.getElementById('student-mgr-add-section-btn').onclick = async function() {
+  const classEl = document.getElementById('student-mgr-new-section-class');
+  const sectionEl = document.getElementById('student-mgr-new-section');
+  const statusEl = document.getElementById('student-mgr-status');
 
-  document.getElementById('student-mgr-add-section-btn').onclick = async function() {
-    const classEl = document.getElementById('student-mgr-new-section-class');
-    const sectionEl = document.getElementById('student-mgr-new-section');
-    const statusEl = document.getElementById('student-mgr-status');
+  const className = (classEl.value || '').trim();
+  const sectionName = (sectionEl.value || '').trim();
 
-    const className = (classEl.value || '').trim();
-    const sectionName = (sectionEl.value || '').trim();
+  if (!className || !sectionName) {
+    statusEl.textContent = 'Please enter class name and section name.';
+    alert('Please enter class name and section name.');
+    return;
+  }
 
-    if (!className || !sectionName) {
-      statusEl.textContent = 'Please enter class name and section name.';
+  try {
+    statusEl.textContent = 'Creating section...';
+    console.log('CREATE SECTION START', className, sectionName, currentUser && currentUser.uid);
+
+    const dupSnap = await db.collection('sections')
+      .where('createdBy', '==', currentUser.uid)
+      .where('className', '==', className)
+      .where('sectionName', '==', sectionName)
+      .get();
+
+    if (!dupSnap.empty) {
+      statusEl.textContent = 'This section already exists for that class.';
+      alert('This section already exists for that class.');
       return;
     }
 
-    try {
-      statusEl.textContent = 'Creating section...';
+    const docRef = await db.collection('sections').add({
+      createdBy: currentUser.uid,
+      className: className,
+      sectionName: sectionName,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
 
-      const dupSnap = await db.collection('sections')
-        .where('createdBy', '==', currentUser.uid)
-        .where('className', '==', className)
-        .where('sectionName', '==', sectionName)
-        .get();
+    console.log('SECTION CREATED', docRef.id);
 
-      if (!dupSnap.empty) {
-        statusEl.textContent = 'This section already exists for that class.';
-        return;
-      }
+    classEl.value = '';
+    sectionEl.value = '';
+    statusEl.textContent = 'Section created successfully.';
+    alert('Section created successfully.');
 
-      await db.collection('sections').add({
-        createdBy: currentUser.uid,
-        className: className,
-        sectionName: sectionName,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-            classEl.value = '';
-      sectionEl.value = '';
-      statusEl.textContent = 'Section created successfully.';
-      loadManagedSections();
-    } catch (err) {
-      statusEl.textContent = 'Failed to create section: ' + err.message;
-    }
-  };
-
+    await loadManagedSections();
+  } catch (err) {
+    console.error('FAILED TO CREATE SECTION', err);
+    statusEl.textContent = 'Failed to create section: ' + err.message;
+    alert('Failed to create section: ' + err.message);
+  }
+};
   document.getElementById('student-mgr-save-btn').onclick = async function() {
     const saveBtn = document.getElementById('student-mgr-save-btn');
     const editId = saveBtn.getAttribute('data-edit-id') || '';
