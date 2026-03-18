@@ -55,7 +55,7 @@
     #filter-form {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;
     }
-    @media (max-width: 560px) {
+   @media (max-width: 560px) {
   #filter-form { grid-template-columns: 1fr; gap: 15px; }
 
   #student-mgr-section-dropdown .dropdown-options,
@@ -63,19 +63,11 @@
   #student-mgr-new-section-class-dropdown .dropdown-options {
     max-height: 180px;
   }
-
-  #student-mgr-section-dropdown.open .dropdown-options {
-    top: auto;
-    bottom: calc(100% + 2px);
-    border-top: 1.3px solid #bcd6ef;
-    border-bottom: none;
-    border-radius: 6px 6px 0 0;
-  }
 }
     .form-group label {
       font-weight: 600; margin-bottom: 5px; color: #185496; display: block;
     }
-    .custom-dropdown { position: relative; z-index: 20; }
+    .custom-dropdown { position: relative; z-index: 5000; }
     .selected-option {
       padding: 10px 12px; color: #12416c; background: #f7fafd; border-radius: 6px;
       border: 1.3px solid #bcd6ef; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -83,7 +75,7 @@
     .dropdown-options {
   display: none; position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: #fff;
   border: 1.3px solid #bcd6ef; border-top: none; border-radius: 0 0 6px 6px;
-  box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1); z-index: 99999; max-height: 220px; overflow-y: auto;
+  box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1); z-index: 999999; max-height: 220px; overflow-y: auto;
 }
     .custom-dropdown.open .dropdown-options { display: block; }
     .dropdown-options div[data-value] { padding: 10px 15px; cursor: pointer; }
@@ -2227,7 +2219,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
       <div id="student-mgr-modal-card" style="
         background:#fff;border-radius:18px;padding:22px 18px;
         width:100%;max-width:520px;max-height:90vh;overflow-y:auto;overflow-x:visible;
-        box-shadow:0 8px 28px rgba(0,0,0,0.18);position:relative;">
+        box-shadow:0 8px 28px rgba(0,0,0,0.18);position:relative;z-index:1000;">
         
         <div style="font-size:1.2em;font-weight:700;color:#0f3d6b;margin-bottom:14px;text-align:center;">
           Manage Classes & Students
@@ -2258,7 +2250,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
                     <div>
             <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Class Name</label>
-           <div id="student-mgr-class-dropdown" class="custom-dropdown">
+           <div id="student-mgr-class-dropdown" class="custom-dropdown" style="z-index:7000;">
   <input type="hidden" id="student-mgr-class" value="">
   <div class="selected-option">Select Class</div>
   <div class="dropdown-options">
@@ -2270,7 +2262,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
                               <div style="border:1.2px solid #d9e6f5;border-radius:12px;padding:12px;background:#f9fcff;">
             <label style="display:block;font-weight:700;color:#0f3d6b;margin-bottom:8px;">Create Section</label>
             <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;">
-  <div id="student-mgr-new-section-class-dropdown" class="custom-dropdown">
+  <div id="student-mgr-new-section-class-dropdown" class="custom-dropdown" style="z-index:7000;">
   <input type="hidden" id="student-mgr-new-section-class" value="">
   <div class="selected-option">Select Class</div>
   <div class="dropdown-options">
@@ -2297,7 +2289,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           </div>
                     <div>
             <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Section Name</label>
-            <div id="student-mgr-section-dropdown" class="custom-dropdown">
+            <div id="student-mgr-section-dropdown" class="custom-dropdown" style="z-index:7000;">
   <input type="hidden" id="student-mgr-section" value="">
   <div class="selected-option">Select Section</div>
   <div class="dropdown-options">
@@ -2387,10 +2379,15 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
   document.getElementById('student-mgr-cancel-edit-btn').onclick = function() {
     document.getElementById('student-mgr-class').value = '';
-    document.getElementById('student-mgr-section').value = '';
-    document.getElementById('student-mgr-name').value = '';
-    document.getElementById('student-mgr-roll').value = '';
-    document.getElementById('student-mgr-phone').value = '';
+document.getElementById('student-mgr-section').value = '';
+document.getElementById('student-mgr-name').value = '';
+document.getElementById('student-mgr-roll').value = '';
+document.getElementById('student-mgr-phone').value = '';
+
+const classDd = document.getElementById('student-mgr-class-dropdown');
+const sectionDd = document.getElementById('student-mgr-section-dropdown');
+if (classDd) classDd.querySelector('.selected-option').textContent = 'Select Class';
+if (sectionDd) sectionDd.querySelector('.selected-option').textContent = 'Select Section';
 
     const saveBtn = document.getElementById('student-mgr-save-btn');
     saveBtn.removeAttribute('data-edit-id');
@@ -2625,10 +2622,15 @@ snap.forEach(doc => {
             const d = snap.data() || {};
 
             document.getElementById('student-mgr-class').value = d.className || '';
-            document.getElementById('student-mgr-section').value = d.sectionName || '';
-            document.getElementById('student-mgr-name').value = d.studentName || '';
-            document.getElementById('student-mgr-roll').value = d.rollNumber || '';
-            document.getElementById('student-mgr-phone').value = d.phoneNumber || '';
+document.getElementById('student-mgr-section').value = d.sectionName || '';
+document.getElementById('student-mgr-name').value = d.studentName || '';
+document.getElementById('student-mgr-roll').value = d.rollNumber || '';
+document.getElementById('student-mgr-phone').value = d.phoneNumber || '';
+
+const classDd = document.getElementById('student-mgr-class-dropdown');
+const sectionDd = document.getElementById('student-mgr-section-dropdown');
+if (classDd) classDd.querySelector('.selected-option').textContent = d.className || 'Select Class';
+if (sectionDd) sectionDd.querySelector('.selected-option').textContent = d.sectionName || 'Select Section';
 
                         document.getElementById('student-mgr-save-btn').setAttribute('data-edit-id', id);
             document.getElementById('student-mgr-save-btn').textContent = 'Update Student';
@@ -2683,25 +2685,7 @@ document.getElementById('student-mgr-class-dropdown').querySelector('.dropdown-o
   });
 });
 
-document.getElementById('student-mgr-class').addEventListener('change', async function() {
-  const selectedClass = this.value;
-  const sectionSelect = document.getElementById('student-mgr-section');
-  sectionSelect.innerHTML = '<option value="">Select Section</option>';
-
-  if (!selectedClass) return;
-
-  const snap = await db.collection('sections')
-    .where('createdBy', '==', currentUser.uid)
-    .where('className', '==', selectedClass)
-    .get();
-
-  snap.forEach(doc => {
-    const d = doc.data() || {};
-    const sectionName = d.sectionName || '';
-    sectionSelect.innerHTML += `<option value="${sectionName}">${sectionName}</option>`;
-  });
-});
-
+/* removed wrong hidden-input change handler */
    document.getElementById('student-mgr-add-class-btn').onclick = async function() {
   const newClassEl = document.getElementById('student-mgr-new-class');
   const statusEl = document.getElementById('student-mgr-status');
@@ -2855,11 +2839,16 @@ document.getElementById('student-mgr-class').addEventListener('change', async fu
         });
       }
 
-      document.getElementById('student-mgr-class').value = '';
-      document.getElementById('student-mgr-section').value = '';
-      document.getElementById('student-mgr-name').value = '';
-      document.getElementById('student-mgr-roll').value = '';
-      document.getElementById('student-mgr-phone').value = '';
+     document.getElementById('student-mgr-class').value = '';
+document.getElementById('student-mgr-section').value = '';
+document.getElementById('student-mgr-name').value = '';
+document.getElementById('student-mgr-roll').value = '';
+document.getElementById('student-mgr-phone').value = '';
+
+const classDd = document.getElementById('student-mgr-class-dropdown');
+const sectionDd = document.getElementById('student-mgr-section-dropdown');
+if (classDd) classDd.querySelector('.selected-option').textContent = 'Select Class';
+if (sectionDd) sectionDd.querySelector('.selected-option').textContent = 'Select Section';
 
                  saveBtn.removeAttribute('data-edit-id');
       saveBtn.textContent = 'Save Student';
