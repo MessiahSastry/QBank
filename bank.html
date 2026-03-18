@@ -350,7 +350,7 @@ const auth = firebase.auth();
     const okBtn2 = dialog2.querySelector('#btnAppConfirmOk');
     const cancelBtn2 = dialog2.querySelector('#btnAppConfirmCancel');
 
-    window.appConfirm = function(msg){
+   window.appConfirm = function(msg){
       return new Promise(resolve => {
         if (textEl2) textEl2.textContent = msg;
         dialog2.showModal();
@@ -363,6 +363,65 @@ const auth = firebase.auth();
         cancelBtn2.onclick = () => {
           dialog2.close();
           resolve(false);
+        };
+      });
+    };
+  }
+
+  if (!document.getElementById('dlgAppPrompt')) {
+    const wrapper3 = document.createElement('div');
+    wrapper3.innerHTML = `
+      <dialog id="dlgAppPrompt" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
+        <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
+          SciMentra
+        </div>
+        <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
+          <p id="appPromptText" style="margin:0 0 12px 0;"></p>
+          <input id="appPromptInput" type="text"
+                 style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;">
+          <div style="text-align:right;margin-top:4px;display:flex;justify-content:flex-end;gap:8px;">
+            <button id="btnAppPromptCancel"
+                    style="background:#eef3f9;color:#35506b;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+            <button id="btnAppPromptOk"
+                    style="background:#0f3d6b;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              OK
+            </button>
+          </div>
+        </div>
+      </dialog>
+    `;
+    const dialog3 = wrapper3.firstElementChild;
+    document.body.appendChild(dialog3);
+
+    const textEl3 = dialog3.querySelector('#appPromptText');
+    const inputEl3 = dialog3.querySelector('#appPromptInput');
+    const okBtn3 = dialog3.querySelector('#btnAppPromptOk');
+    const cancelBtn3 = dialog3.querySelector('#btnAppPromptCancel');
+
+    window.appPrompt = function(msg, defaultValue = ''){
+      return new Promise(resolve => {
+        if (textEl3) textEl3.textContent = msg;
+        if (inputEl3) inputEl3.value = defaultValue || '';
+        dialog3.showModal();
+
+        setTimeout(() => {
+          if (inputEl3) {
+            inputEl3.focus();
+            inputEl3.select();
+          }
+        }, 0);
+
+        okBtn3.onclick = () => {
+          const val = inputEl3 ? inputEl3.value : '';
+          dialog3.close();
+          resolve(val);
+        };
+
+        cancelBtn3.onclick = () => {
+          dialog3.close();
+          resolve(null);
         };
       });
     };
@@ -3329,14 +3388,14 @@ function showQuizSelectionModePopup() {
     }, 250);
   };
 
-  document.getElementById('quiz-mode-random').onclick = function() {
+  document.getElementById('quiz-mode-random').onclick = async function() {
     if (!totalDisplayed) {
       closeModal();
       alert('No questions are available to choose randomly.');
       return;
     }
 
-    const raw = prompt('How many questions do you want to choose randomly?\n\nAvailable: ' + totalDisplayed, '');
+    const raw = await appPrompt('How many questions do you want to choose randomly?\n\nAvailable: ' + totalDisplayed, '');
     if (raw === null) return;
 
     const count = Number(raw);
@@ -3467,14 +3526,14 @@ document.getElementById('create-quiz-btn').addEventListener('click', async funct
     const qtypeVal = (getMultiSelected('qtype').join(', ') || 'All');
     const marksVal = (getMultiSelected('marks').join(', ') || 'All');
 
-    const schoolName = prompt("Enter School Name", "SciMentra");
+    const schoolName = await appPrompt("Enter School Name", "SciMentra");
     if (schoolName === null) {
       spinner.style.display = 'none';
       return;
     }
     const finalSchoolName = (schoolName || '').trim() || 'SciMentra';
 
-    const quizTitleInput = prompt("Enter Quiz Title", `${subjectVal} Practice Quiz`);
+    const quizTitleInput = await appPrompt("Enter Quiz Title", `${subjectVal} Practice Quiz`);
     if (quizTitleInput === null) {
       spinner.style.display = 'none';
       return;
