@@ -1414,33 +1414,43 @@ const levelOpts = filterConfig.levels.filter(l => l !== 'Mixed');
 levelDropdown.innerHTML = createMultiDropdownHTML('level', levelOpts, 'Select Level');
 addMultiDropdownListener('level-dropdown', __debouncedFetch);
 
-addDropdownListener('class-dropdown', onClassChange);
-addDropdownListener('board-dropdown', onBoardChange);
-addDropdownListener('subject-dropdown', onSubjectChange);
+addDropdownListener('class-dropdown', onClassChange, 'class-value', 'Select Class');
+addDropdownListener('board-dropdown', onBoardChange, 'board-value', 'Select Board');
+addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Select Subject');
 
     }
 
-    function addDropdownListener(dropdownId, callback) {
-      const dropdown = document.getElementById(dropdownId);
-      const input = document.getElementById(`${dropdownId.split('-')[0]}-value`);
-      const selectedDisplay = dropdown.querySelector('.selected-option');
+    function addDropdownListener(dropdownId, callback, hiddenInputId = null, defaultText = 'Select') {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
 
-      dropdown.querySelector('.selected-option').addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('open');
-      });
+  const input = hiddenInputId
+    ? document.getElementById(hiddenInputId)
+    : document.getElementById(`${dropdownId.split('-')[0]}-value`);
 
-      dropdown.querySelector('.dropdown-options').addEventListener('click', (e) => {
-        if (e.target && e.target.dataset.value) {
-          const value = e.target.dataset.value;
-          input.value = value;
-          selectedDisplay.textContent = value;
-          dropdown.classList.remove('open');
-          if (callback) callback();
-        }
-      });
-    }
+  const selectedDisplay = dropdown.querySelector('.selected-option');
+  if (!selectedDisplay) return;
 
+  selectedDisplay.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  });
+
+  const optionsWrap = dropdown.querySelector('.dropdown-options');
+  if (!optionsWrap) return;
+
+  optionsWrap.addEventListener('click', (e) => {
+    if (!e.target || !('value' in e.target.dataset)) return;
+
+    const value = e.target.dataset.value;
+
+    if (input) input.value = value;
+    selectedDisplay.textContent = value || defaultText;
+    dropdown.classList.remove('open');
+
+    if (callback) callback(value);
+  });
+}
     function onClassChange() {
       const boardDropdown = document.getElementById('board-dropdown');
       const boardInput = document.getElementById('board-value');
@@ -2628,9 +2638,9 @@ snap.forEach(doc => {
 loadManagedClasses();
 loadManagedSections();
 
-addDropdownListener('student-mgr-class-dropdown');
-addDropdownListener('student-mgr-new-section-class-dropdown');
-addDropdownListener('student-mgr-section-dropdown');
+addDropdownListener('student-mgr-class-dropdown', null, 'student-mgr-class', 'Select Class');
+addDropdownListener('student-mgr-new-section-class-dropdown', null, 'student-mgr-new-section-class', 'Select Class');
+addDropdownListener('student-mgr-section-dropdown', null, 'student-mgr-section', 'Select Section');
 
 document.getElementById('student-mgr-class-dropdown').querySelector('.dropdown-options').addEventListener('click', async function(e) {
   if (!e.target.dataset.value && e.target.dataset.value !== '') return;
