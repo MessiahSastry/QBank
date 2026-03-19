@@ -180,7 +180,7 @@
 <body>
 <div class="page-wrapper">
   <header id="main-header">
-    <div class="school-title">St. Patrick's School</div>
+    <div class="school-title">SciMentra</div>
     <div class="subtitle">IIT & NEET FOUNDATION</div>
   </header>
   <main>
@@ -820,12 +820,20 @@ window.onload = renderExam;
 document.getElementById('preview-btn').onclick = function() {
   saveEdits();
   const paper = getExamPaper();
-  if (paper) {
-    sessionStorage.setItem('finalExamData', JSON.stringify(paper));
-    window.location.href = 'exam-preview.html';
-  } else {
+
+  if (!paper) {
     alert('No exam paper found!');
+    return;
   }
+
+  const schoolName = prompt('Enter School Name', paper.schoolName || 'SciMentra');
+  if (schoolName === null) return;
+
+  paper.schoolName = (schoolName || '').trim() || 'SciMentra';
+
+  sessionStorage.setItem('examPaper', JSON.stringify(paper));
+  sessionStorage.setItem('finalExamData', JSON.stringify(paper));
+  window.location.href = 'exam-preview.html';
 };
 
 // --- Add this code at the end of your <script> ---
