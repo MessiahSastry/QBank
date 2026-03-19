@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <meta charset="UTF-8" />
+    <title>Exam Builder - Multi Subject | St. Patrick's School</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<!-- NEW: DOCX to text -->
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #0f3d6b;
+            --secondary-blue: #1762a7;
+            --light-blue-bg: #f4f8fc;
+            --border-color: #bcd6ef;
+            --text-dark: #12416c;
+            --text-light: #54656f;
+        }
+        html { height: -webkit-fill-available; }
+        body {
+            margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f8fc;
+            height: 100vh; height: -webkit-fill-available;
+        }
+        body::after {
+            content: "St. Patrick's\A IIT & NEET FOUNDATION";
+            white-space: pre; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 5vw; font-weight: bold;
+            color: rgba(15, 61, 107, 0.04); z-index: -1; text-align: center;
+            pointer-events: none; line-height: 1.2;
+        }
+        .page-wrapper { display: flex; flex-direction: column; height: 100vh; }
+        #main-header {
+            background: linear-gradient(90deg, #1762a7, #0f3d6b);
+            color: #fff; border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;
+            min-height: 60px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 15px 10px 18px 10px;
+            box-sizing: border-box; flex-shrink: 0; position: sticky; top: 0; z-index: 10;
+        }
+        #main-header .school-title { font-size: 1.8em; font-weight: bold; margin: 0;}
+        #main-header .subtitle { font-size: 1.05em; color: #e0eaff; margin-top: 5px; }
+        main {
+            flex: 1 1 0%;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        .setup-form-container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 20px auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 18px rgba(0, 27, 68, 0.1);
+            padding: 25px 16px;
+            flex-shrink: 0;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        .setup-form-container h2 { text-align: center; color: var(--primary-blue); margin-top: 0; margin-bottom: 25px; }
+        #exam-setup-form h3 {
+            margin-top: 25px; margin-bottom: 15px;
+            color: var(--secondary-blue); border-bottom: 2px solid #e0eaff; padding-bottom: 10px;
+            font-size: 1.2em; display: flex; align-items: center; gap: 10px;
+        }
+        #exam-setup-form h3:first-of-type { margin-top: 0; }
+        .form-grid-1-col, .form-grid-2-col { display: grid; gap: 15px; }
+        .form-grid-1-col { grid-template-columns: 1fr; }
+        .form-grid-2-col { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 600px) {
+            main { padding-top: 20px; }
+            .form-grid-2-col { grid-template-columns: 1fr; }
+        }
+        .form-group { margin-bottom: 0; }
+        .form-group label {
+            font-weight: 600; margin-bottom: 5px;
+            color: #185496; display: block;
+        }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="date"],
+        .form-group textarea, .custom-dropdown .selected-option {
+            width: 100%; padding: 10px 12px; border-radius: 6px;
+            border: 1.3px solid #bcd6ef; font-size: 1em; background: #f7fafd;
+            box-sizing: border-box; height: 42px;
+        }
+        .form-group textarea { height: auto; min-height: 80px; }
+        .custom-dropdown { position: relative; }
+        .custom-dropdown .selected-option { cursor: pointer; }
+        .dropdown-options {
+            display: none; position: absolute; top: 100%; left: 0; right: 0;
+            background: #fff; border: 1.3px solid #bcd6ef; border-top: none;
+            border-radius: 0 0 6px 6px; box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1);
+            z-index: 1000; max-height: 200px; overflow-y: auto;
+        }
+        .custom-dropdown.open .dropdown-options { display: block; }
+        .dropdown-options div[data-value] { padding: 10px 15px; cursor: pointer; }
+        .dropdown-options div[data-value]:hover { background: #e0eaff; }
+        .multi-select-dropdown .dropdown-options div { display: flex; align-items: center; padding: 10px 15px; }
+        .multi-select-dropdown .dropdown-options div:hover { background: #e0eaff; }
+        .multi-select-dropdown input[type="checkbox"] { margin-right: 10px; }
+        .multi-select-dropdown .selected-chapters-display {
+            min-height: 42px; height: auto; padding: 10px 12px;
+            background: #f7fafd; border-radius: 6px;
+            border: 1.3px solid #bcd6ef;
+            line-height: 1.5; cursor: pointer;
+        }
+        .placeholder { font-style: normal; color: #5a7a9b; }
+        .subject-block {
+            margin: 24px 0 32px 0;
+            padding: 20px 18px;
+            border-radius: 14px;
+            background: #f4f8fc;
+            border: 1.3px solid #d2e3f7;
+            box-shadow: 0 2px 14px #112a4c0e;
+        }
+        .subject-block-title {
+            font-size: 1.19em;
+            color: #0f3d6b;
+            font-weight: bold;
+            margin-bottom: 16px;
+            margin-top: 2px;
+        }
+        #add-section-btn {
+            background: none; border: 1px dashed #1762a7; color: #1762a7;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
+        }
+        .submit-btn {
+            background: linear-gradient(90deg, #1762a7, #0f3d6b);
+            color: #fff; font-weight: bold; cursor: pointer; padding: 12px 0;
+            margin-top: 25px; width: 100%; border-radius: 8px; border: none; font-size: 1.05em;
+        }
+        .section-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 10px;
+            border: 1.3px solid #bcd6ef;
+            border-radius: 12px;
+            background: #fff;
+            margin-bottom: 12px;
+            min-height: 42px;
+            box-shadow: 0 2px 12px rgba(0, 27, 68, 0.07);
+        }
+        .section-logic-fields {
+            flex: 1 1 260px;
+            min-width: 220px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .internal-choice-pairs { width: 100%; margin-top: 6px; margin-bottom: 2px; }
+        .drag-handle { cursor: grab; color: #5a7a9b; }
+        .remove-section-btn { background: none; border: none; color: #c82333; cursor: pointer; font-size: 1.1em; }
+        .section-item .remove-section-btn {
+            background: #f7dede;
+            border: none;
+            color: #c82333;
+            cursor: pointer;
+            font-size: 1.1em;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+        }
+        .section-item .remove-section-btn:hover { background: #fbbcbc; }
+        .section-item select,
+            .section-item input[type="number"],
+            .section-item input[type="text"] {
+                width: auto;
+                min-width: 90px;
+                padding: 9px 12px;
+                border-radius: 6px;
+                border: 1.3px solid #bcd6ef;
+                font-size: 1em;
+                background: #f7fafd;
+                color: #12416c;
+                outline: none;
+                transition: border-color 0.2s;
+                margin-bottom: 6px;
+            }
+            .section-item select:focus,
+            .section-item input[type="number"]:focus,
+            .section-item input[type="text"]:focus {
+                border-color: #1762a7;
+            }
+            .section-item label {
+                font-weight: 600;
+                color: #185496;
+                font-size: 0.97em;
+                margin-bottom: 2px;
+            }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <header id="main-header">
+            <h1 class="school-title">St. Patrick's School</h1>
+            <div class="subtitle">IIT & NEET FOUNDATION</div>
+        </header>
+        <main>
+            <div class="setup-form-container">
+                <h2>Exam Builder (Multi-Subject)</h2>
+                <form id="exam-setup-form">
+                    <h3><i class="fas fa-file-alt"></i> Basic Information</h3>
+                    <div class="form-grid-2-col">
+                        <div class="form-group">
+                            <label>Class</label>
+                            <div id="class-dropdown" class="custom-dropdown"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Subjects (select one or more)</label>
+                            <div id="subjects-multiselect" class="multi-select-dropdown custom-dropdown">
+                                <div class="selected-chapters-display placeholder">Select class to see subjects</div>
+                                <div class="dropdown-options"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <h3><i class="fas fa-list-ol"></i> Exam Details</h3>
+                    <div class="form-group">
+                        <label>Exam Name</label>
+                        <input type="text" id="exam-name-input" placeholder="e.g., FA2 / Revision Test 3"
+                       spellcheck="true" autocapitalize="characters" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Marks</label>
+                        <input type="number" id="max-marks-input" placeholder="e.g. 100">
+                    </div>
+                    <div class="form-group">
+                        <label>Time (in minutes)</label>
+                        <input type="number" id="time-input" value="90">
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="date-input">
+                    </div>
+                    
+                    <!-- NEW: Global Source selector -->
+                    <div class="form-group">
+                        <label>Question Source</label>
+                        <div id="exam-source-dropdown" class="custom-dropdown"></div>
+                    </div>
+                    
+                    <!-- NEW: Paste UI (hidden by default) -->
+                    <div class="form-group" id="global-paste-wrap" style="display:none;">
+                        <label>Paste all questions (in order)</label>
+                        <textarea id="global-paste-area" placeholder="Paste raw questions here, one per line or separated by blank lines."
+                                  style="width:100%;min-height:140px;border:1.3px solid #bcd6ef;border-radius:8px;padding:10px;background:#f7fafd;"></textarea>
+                        <div id="global-paste-count" style="color:#54656f;font-size:.9em;margin-top:6px;"></div>
+                    </div>
+                    
+                    <!-- NEW: Upload .docx UI (hidden by default) -->
+                   <div class="form-group" id="global-upload-wrap" style="display:none;">
+                    <label>Upload a .docx file (all questions in order)</label>
+                    <input type="file" id="global-docx-input" accept=".docx" />
+                    <div id="global-docx-status" style="color:#54656f;font-size:.9em;margin-top:6px;">No file chosen</div>
+                </div>
+                
+                <!-- NEW: Paste/.docx shuffling controls -->
+                <div class="form-group" id="paste-docx-shuffle" style="display:none;">
+                    <label>Arrangement</label>
+                    <div style="margin-top:6px;">
+                        <label><input type="checkbox" id="chk-shuffle-questions" checked> Shuffle questions</label>
+                        <label style="margin-left:16px;"><input type="checkbox" id="chk-shuffle-options" checked> Shuffle options (MCQ)</label>
+                    </div>
+                </div>
+                    <div class="form-group">
+                        <label>Difficulty Level</label>
+                        <div id="difficulty-dropdown" class="custom-dropdown"></div>
+                    </div>
+
+                    <div id="subjects-sections-area">
+                        <!-- JS will generate subject blocks here, one per selected subject -->
+                    </div>
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label>Instructions (Optional)</label>
+                        <textarea id="instructions-input" placeholder="e.g., All questions are compulsory..."></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn">Build Exam Draft</button>
+                </form>
+            </div>
+        </main>
+    </div>
+    <div id="toast" style="
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #0f3d6b;
+        color: #fff;
+        padding: 14px 28px;
+        border-radius: 8px;
+        display: none;
+        z-index: 9999;
+        font-weight: bold;
+        font-size: 1.1em;
+        box-shadow: 0 6px 24px rgba(0, 27, 68, 0.18);
+    "></div>
+    <div id="modal-prompt" style="
+        display:none;
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(20,40,80,0.18);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;">
+        <div style="
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px #17386855;
+            max-width: 340px;
+            margin: auto;
+            padding: 36px 22px 22px 22px;
+            border: 2px solid #c82333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;">
+            <div id="modal-prompt-message" style="color: #c82333; font-weight: bold; font-size: 1.13em; text-align: center; margin-bottom: 26px;"></div>
+            <button id="modal-prompt-ok" style="
+                padding: 8px 26px;
+                background: #1762a7;
+                color: #fff;
+                border-radius: 7px;
+                border: none;
+                font-weight: 600;
+                font-size: 1.06em;
+                cursor: pointer;">OK</button>
+        </div>
+    </div>
+<script>
+// --- FIREBASE INIT (leave this unchanged if already at top) ---
+const firebaseConfig = {
+    apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
+    authDomain: "stpatricks-questionbank.firebaseapp.com",
+    projectId: "stpatricks-questionbank",
+    storageBucket: "stpatricks-questionbank.appspot.com",
+    messagingSenderId: "917615322861",
+    appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
+};
+firebase.initializeApp(firebaseConfig);
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.background = type === 'error' ? '#c82333' : '#0f3d6b';
+    toast.style.display = 'block';
+    clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 2300);
+}
+function showModalPrompt(message) {
+    const modal = document.getElementById('modal-prompt');
+    const msgBox = document.getElementById('modal-prompt-message');
+    const okBtn = document.getElementById('modal-prompt-ok');
+    msgBox.innerHTML = message;
+    modal.style.display = 'flex';
+    okBtn.onclick = () => { modal.style.display = 'none'; };
+}
+
+// --- CONFIG ---
+const config = {
+    classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class"],
+    subjectMappings: {
+        "3rd Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
+        "4th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
+        "5th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
+        "6th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+        "7th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+        "8th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+        "9th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+        "10th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"]
+    },
+    examNames: ["Slip Test", "Fortnightly Exam", "Formative Assessment 1", "Formative Assessment 2", "Formative Assessment 3", "Formative Assessment 4", "Summative Assessment 1", "Summative Assessment 2"],
+    examTypes: ["MCQs", "Descriptive", "Both"],
+    difficultyLevels: ["Level 1", "Level 2", "Level 3", "Mixed"],
+    sectionLabels: ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"],
+    sectionTypes: ["Answer all", "Answer any", "Internal choice"],
+    sectionTypeKeys: ["all", "any", "internal"]
+};
+
+// --- Helpers for MCQ logic (keep as-is) ---
+function extractMCQOptions(q) {
+  // Returns [A,B,C,D] or null
+  if (Array.isArray(q?.options) && q.options.length === 4) return q.options;
+
+  let s = String(q?.question || q?.text || '');
+  s = s.replace(/\r/g, ''); // normalize
+
+  // Find label positions for A)/B)/C)/D) OR A./B./C./D. (case-insensitive)
+  const labelRe = /(^|\s)([ABCD])[\)\.]\s/gi;
+  const hits = [];
+  let m;
+  while ((m = labelRe.exec(s)) !== null) {
+    // start index after the label token (e.g., after "A) " or "B. ")
+    hits.push({ letter: m[2].toUpperCase(), i: m.index + m[0].length });
+  }
+
+  // Need exactly A,B,C,D in order
+  const need = ['A', 'B', 'C', 'D'];
+  const map = {};
+  for (const h of hits) {
+    if (!(h.letter in map)) map[h.letter] = h.i;
+  }
+  if (!need.every(L => map[L] != null)) return null;
+
+  const endA = map['B'];
+  const endB = map['C'];
+  const endC = map['D'];
+  const ansIdx = (s.match(/\bAns?\s*:/i)?.index) ?? s.length;
+  const endD = ansIdx;
+
+  const A = s.slice(map['A'], endA).trim();
+  const B = s.slice(map['B'], endB).trim();
+  const C = s.slice(map['C'], endC).trim();
+  const D = s.slice(map['D'], endD).trim();
+
+  return [A, B, C, D];
+}
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+}
+function shuffleMCQQuestion(questionObj) {
+    if (!questionObj.options || !questionObj.options.length) return questionObj;
+    let { options, answer } = questionObj;
+    let correctIndices = [];
+    if (typeof answer === 'string') {
+      const ansMatches = String(answer).toUpperCase().match(/[A-D]/g);
+      if (ansMatches) correctIndices = ansMatches.map(l => "ABCD".indexOf(l));
+    } else if (Array.isArray(answer)) {
+      if (answer.length && typeof answer[0] === 'string') {
+        correctIndices = answer
+          .map(l => "ABCD".indexOf(String(l).toUpperCase()))
+          .filter(i => i >= 0);
+      } else {
+        correctIndices = answer; // assume indices
+      }
+    }
+    const optPairs = options.map((opt, idx) => ({ opt, idx }));
+    shuffleArray(optPairs);
+    const newOptions = optPairs.map(p => p.opt);
+    const newCorrectIndices = optPairs.map((p, newIdx) => (correctIndices.includes(p.idx) ? newIdx : null)).filter(x => x !== null);
+    const ansStr = "Ans: " + newCorrectIndices.map(i => "ABCD"[i] + ")").join(", ");
+    return { ...questionObj, options: newOptions, answer: ansStr };
+}
+function splitCounts(total, percents) {
+    let result = percents.map(p => Math.floor(total * p / 100));
+    let sum = result.reduce((a, b) => a + b, 0);
+    let diff = total - sum;
+    for (let i = 0; diff > 0; i++, diff--) result[i % result.length]++;
+    return result;
+}
+    // NEW: HTML → plain text (handles <p>, <br>, lists, entities)
+function htmlToPlainText(html) {
+  if (!html) return '';
+  let s = String(html);
+
+  // normalize line breaks for block-ish tags
+  s = s.replace(/<\/p\s*>/gi, '\n')
+       .replace(/<br\s*\/?>/gi, '\n')
+       .replace(/<\/li\s*>/gi, '\n')
+       .replace(/<\/h[1-6]\s*>/gi, '\n');
+
+  // strip remaining tags
+  s = s.replace(/<[^>]+>/g, ' ');
+
+  // decode basic entities & nbsp
+  s = s.replace(/&nbsp;/gi, ' ')
+       .replace(/&amp;/gi, '&')
+       .replace(/&lt;/gi, '<')
+       .replace(/&gt;/gi, '>')
+       .replace(/&#39;/gi, "'")
+       .replace(/&quot;/gi, '"');
+
+  // collapse whitespace
+  s = s.replace(/\r/g, '')
+     .replace(/\u00A0/g, ' ')
+     .replace(/[ \t]+\n/g, '\n')     // keep the newline
+     .replace(/[ \t]{2,}/g, ' ')     // collapse spaces/tabs ONLY
+     .replace(/\n{2,}/g, '\n\n')     // keep blank-line separators
+     .trim();
+
+  // restore paragraph-ish breaks a little
+  s = s.replace(/\n/g, '\n');
+  return s;
+}
+
+// NEW: turn a pasted or extracted text into an ordered pool of question strings
+function parsePastedQuestionsToPool(raw) {
+  if (!raw) return [];
+  let text = String(raw);
+
+  // If it looks like HTML, flatten it first
+  if (/<[a-z][\s\S]*>/i.test(text)) {
+    text = htmlToPlainText(text);
+  } else {
+    text = text.replace(/\r/g, '').trim();
+  }
+  if (!text) return [];
+
+  // Merge lonely number lines like "8." / "8)" into the next line
+  const lines = text.split('\n');
+  const merged = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].trim();
+    if (/^(?:Q\.?\s*)?\d+\s*[\.\)]?$/.test(cur) && i + 1 < lines.length) {
+      lines[i + 1] = `${cur} ${lines[i + 1]}`;
+      continue;
+    }
+    merged.push(lines[i]);
+  }
+  const norm = merged.join('\n');
+
+  // Header at start of line:
+  //   Q1. / Q.1) / 1) / 1.  (with at least one space after)
+  const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[\.\)]|\s)\s*/gmi;
+
+  // Collect all starts (no monotonic filtering; many docs restart numbering per section)
+  const starts = [];
+  let m;
+  while ((m = headerRe.exec(norm)) !== null) {
+    starts.push(m.index);
+  }
+  if (!starts.length) {
+  // split by blank lines so multi-line questions stay together
+  const byLines = norm.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+  return byLines.length ? byLines : [norm.trim()];
+}
+
+  // Build blocks from each header to the next
+  const blocks = [];
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i];
+    const end = i + 1 < starts.length ? starts[i + 1] : norm.length;
+    const slice = norm.slice(start, end);
+    // strip leading header only
+    const cleaned = slice.replace(/^[ \t]*(?:Q\.?\s*)?\d+(?:[\.\)]|\s)\s*/, '').trim();
+    if (cleaned) blocks.push(cleaned);
+  }
+  return blocks;
+}
+
+function allocateSequentiallyAcrossSections(subjectsData, pool, { shuffleQuestions = true, shuffleOptions = true } = {}) {
+  const errors = [];
+  let index = 0;
+  const stripLead = s => String(s || '').replace(/^\s*(?:Q?\s*\d+[\.\)]\s*)/, '').trim();
+
+  for (const subj of subjectsData) {
+    for (const sec of subj.sections) {
+      if (sec.type === 'internal') {
+  const needPairs = Number(sec.numPairs || 0);
+  const marks     = Number(sec.marksPerQuestion || 0);
+  const pairs     = [];
+
+  // helper to take next cleaned stem from pool
+  const takeCleanStem = () => {
+    if (index >= pool.length) return null;
+    const rawBlock = stripLead(pool[index++]) || '';
+
+    // base stem: strip trailing "Ans: ..." if present
+    let stem = rawBlock.replace(/\bAns?\s*:\s*.*$/i, '').trim();
+
+    // if inline A) ... D) options exist, cut them off from the stem
+    const extracted = extractMCQOptions({ question: rawBlock });
+    if (Array.isArray(extracted) && extracted.length === 4) {
+      const aLabelIdx = stem.search(/(^|\s)A[)\.]\s/i);
+      if (aLabelIdx !== -1) stem = stem.slice(0, aLabelIdx).trim();
+    }
+
+    // drop any leading A/a labels only at the very start (keep inner (a),(b) etc.)
+    stem = stem.replace(/^\s*(?:\(?[Aa]\)?[.)]|(?:\(A\))|A[.)])\s+/, '');
+
+    // also drop any leftover leading "a)" / "a." variants
+    stem = stem.replace(/^\s*[aA][.)]\s+/, '');
+
+    return stem || null;
+  };
+
+  for (let p = 0; p < needPairs; p++) {
+    const aStem = takeCleanStem();
+    const bStem = takeCleanStem();
+    if (!aStem || !bStem) break;
+
+    // Render as:
+    //  (A) text
+    //  (OR)   [centered]
+    //  (B) text
+    const htmlPair =
+      `(A) ${aStem}<br>` +
+      `<div style="text-align:center;"><b>(OR)</b></div>` +
+      `(B) ${bStem}`;
+
+    pairs.push({
+      number: p + 1,             // preview will continue global numbering
+      text: htmlPair,            // HTML so "(OR)" centers nicely
+      marks: marks,
+      options: [],
+      answer: ""
+    });
+  }
+
+  if (pairs.length < needPairs) {
+    errors.push(`${subj.subject} - ${sec.label}: Only ${pairs.length} of ${needPairs} pairs available from source.`);
+  }
+
+  sec.questions = pairs;
+  continue;
+}
+      const need = Number(sec.numQuestions || 0);
+      const marks = Number(sec.marksPerQuestion || 0);
+      const pick = [];
+      for (let i = 0; i < need; i++) {
+  if (index >= pool.length) break;
+
+  // 1) Take raw block and clean leading numbering
+const rawBlock = stripLead(pool[index++]) || '';
+
+// Separate stem from any trailing "Ans: ..." (kept only for answer detection)
+let stemNoAns = rawBlock.replace(/\bAns?\s*:\s*.*$/i, '').trim();
+
+// 2) Try to extract inline A) ... D) options from the block
+const extracted = extractMCQOptions({ question: rawBlock }); // uses your helper
+
+// --- NEW: if options exist, remove the whole A/B/C/D block from the stem ---
+if (Array.isArray(extracted) && extracted.length === 4) {
+  // find the first "A) " or "A. " and cut everything after it
+  const aLabelIdx = stemNoAns.search(/(^|\s)A[)\.]\s/i);
+  if (aLabelIdx !== -1) {
+    stemNoAns = stemNoAns.slice(0, aLabelIdx).trim();
+  }
+}
+
+  if (Array.isArray(extracted) && extracted.length === 4) {
+    // 3) Clean option texts (drop any leading A)/B)/C)/D) in case they’re present)
+    const cleanOpts = extracted.map(o => String(o)
+  // drop a *leading* label like "A) " or "B. "
+  .replace(/^[A-D][)\.]\s*/i, '')
+  // drop any *trailing* orphan label like " D)" or " C." that leaked into the text
+  .replace(/\s+[A-D][)\.]?\s*$/i, '')
+  // tidy spaces
+  .replace(/\s{2,}/g, ' ')
+  .trim()
+);
+
+    // 4) Try to read provided answer letters from the raw block (single or multiple)
+    const ansMatch = String(rawBlock).toUpperCase().match(/\bANS?\s*:\s*([A-D](?:\s*,\s*[A-D])*)/);
+    const ansLetters = ansMatch ? ansMatch[1].match(/[A-D]/g) : [];
+
+    // 5) Shuffle options and remap answers accordingly
+    let outOptions = cleanOpts.slice();
+let outAnswerLetters = (ansLetters && ansLetters.length) ? ansLetters.slice() : [];
+
+// shuffle options only if enabled
+if (shuffleOptions) {
+  const shuffled = shuffleMCQQuestion({
+    question: stemNoAns,
+    options: cleanOpts,
+    answer: outAnswerLetters
+  });
+  outOptions = shuffled.options || cleanOpts;
+  outAnswerLetters = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []);
+}
+
+const letterAns = (outAnswerLetters || []).join(',');
+
+pick.push({
+  number: i + 1,
+  text: stemNoAns,
+  marks: marks,
+  options: outOptions,
+  answer: letterAns
+});
+  } else {
+    // Not an MCQ with A–D options → keep as descriptive
+    pick.push({
+      number: i + 1,
+      text: stemNoAns,
+      marks: marks,
+      options: [],
+      answer: ""
+    });
+  }
+}
+            if (pick.length < need) {
+        errors.push(`${subj.subject} - ${sec.label}: Only ${pick.length} of ${need} questions available from source.`);
+      }
+
+      // NEW: shuffle question order in the section (Paste/.docx only) if enabled
+      if (shuffleQuestions && pick.length > 1) {
+        shuffleArray(pick);
+      }
+
+      sec.questions = pick;
+    }
+  }
+  return { errors };
+}
+
+
+// --- DEDUPE HELPERS (new) ---
+function normalizeText(s) {
+  if (!s) return '';
+  let t = String(s);
+
+  // strip HTML tags
+  t = t.replace(/<[^>]+>/g, ' ');
+
+  // HTML entities & non-breaking spaces
+  t = t.replace(/&nbsp;/gi, ' ').replace(/\u00A0/g, ' ');
+
+  // Unicode canonicalization
+  try { t = t.normalize('NFKC'); } catch (e) {}
+
+  // remove zero-width/invisible characters
+  t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+  // unify dashes & minus (en/em/hyphen/minus → '-')
+  t = t.replace(/[\u2010-\u2015\u2212]/g, '-');
+
+  // unify quotes
+  t = t.replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+       .replace(/[\u201C\u201D\u2033]/g, '"');
+
+  // unify multiplication sign × to 'x'
+  t = t.replace(/\u00D7/g, 'x');
+
+  // collapse whitespace
+  t = t.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  // ignore trivial trailing punctuation differences
+  t = t.replace(/[.,;:!?]+$/g, '');
+
+  return t;
+}
+
+// === STEM-ONLY de-dupe key (ignores options/answers). Adds marks for stability ===
+function makeStemKey(q) {
+  let raw = String(q?.question || q?.text || '');
+
+  // strip HTML + common prefixes/suffixes
+  raw = raw.replace(/<[^>]+>/g, ' ');
+  raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, ''); // "Q4: Level 1, 1 Mark ..."
+  raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');                           // trailing "Ans: ..."
+  raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');            // cut inline options from "A)" onward
+
+  const stemNorm = normalizeText(raw);
+  const marks = (q && q.marks != null) ? String(q.marks) : '';
+  return stemNorm + '|m=' + String(marks ?? '');
+}
+
+// Build a stable de-dupe key from a question object
+function makeDeDupeKey(q) {
+  // 1) Base stem (strip html, inline options, answers)
+  let raw = String(q?.question || q?.text || '');
+  raw = raw.replace(/<[^>]+>/g, ' ');                          // drop HTML
+  raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, ''); // drop "Q4: [..]" prefixes
+  raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');                  // remove trailing "Ans: ..."
+  raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');   // remove inline options from first "A)" onward
+  const stemNorm = normalizeText(raw);                         // your existing normalizer
+
+  // 2) MCQ type (canonical)
+  const typeNorm = normalizeMcqType(q?.mcqType);
+
+  // 3) Options (canonicalize BEFORE any shuffle)
+  //    Prefer q.options; else parse inline via your existing extractor.
+  const rawOpts = Array.isArray(q?.options) ? q.options.slice(0, 4) : (extractMCQOptions(q) || []);
+  const optNormsInOrder = rawOpts.map(o => normalizeChoice(o)).filter(Boolean);
+
+  // 4) Correct answer(s) as texts (use letters if present)
+  const ansLetters = extractAnswerLetters(q?.answer); // ["A"], ["A","C"], or []
+  const ansTexts = ansLetters.length && optNormsInOrder.length === 4
+    ? ansLetters.map(L => {
+        const idx = "ABCD".indexOf(L);
+        return idx >= 0 ? optNormsInOrder[idx] : '';
+      }).filter(Boolean).sort()
+    : []; // if unknown, leave empty
+
+  // 5) Option signature as a SET (order-independent)
+  const optionSet = Array.from(new Set(optNormsInOrder)).sort();
+
+  // 6) Build fingerprint (no marks here; uniqueByIdOrText appends marks)
+  //    Include type+options+answers so different variants won’t collapse.
+  const key =
+    stemNorm +
+    '||t=' + (typeNorm || '') +
+    '||opts=' + optionSet.join('|') +
+    '||ans=' + ansTexts.join('|');
+
+  return key;
+}
+
+// Helpers used above
+function normalizeChoice(s) {
+  if (!s) return '';
+  let t = String(s);
+  t = t.replace(/^[A-D][\)\.]\s*/i, '');         // require ) or . after A–D
+  t = t.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\u00A0/g, ' ');
+  try { t = t.normalize('NFKC'); } catch (e) {}
+  t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');    // zero-width
+  t = t.replace(/[\u2010-\u2015\u2212]/g, '-');   // dashes
+  t = t.replace(/[\u2018\u2019\u201A\u2032]/g, "'").replace(/[\u201C\u201D\u2033]/g, '"');
+  t = t.replace(/\u00D7/g, 'x');                  // × → x
+  t = t.replace(/\s+/g, ' ').trim().toLowerCase();
+  t = t.replace(/[.,;:!?]+$/g, '');
+  return t;
+}
+function extractAnswerLetters(ans) {
+  if (!ans) return [];
+  if (Array.isArray(ans)) {
+    return ans.map(x => String(x)).map(s => s.toUpperCase()).filter(s => /^[ABCD]$/.test(s));
+  }
+  const m = String(ans).toUpperCase().match(/[A-D]/g);
+  return m ? m : [];
+}
+function normalizeMcqType(s) {
+  const t = String(s || '').trim().toLowerCase();
+  if (!t) return 'Descriptive';                 // keep your old behavior for missing type
+  if (t.includes('single'))   return 'MCQ (Single)';
+  if (t.includes('multiple') || t.includes('multi')) return 'MCQ (Multiple)';
+  if (t.includes('desc'))     return 'Descriptive';
+  return s; // unknown → leave as-is
+}
+
+// NEW: robust type inference (used everywhere we filter by MCQ type)
+function inferMcqType(d){
+  const norm = normalizeMcqType(d?.mcqType);
+  if (norm === 'MCQ (Single)' || norm === 'MCQ (Multiple)' || norm === 'Descriptive') return norm;
+
+  // Fallback by inspecting answer/options
+  const letters = String(d?.answer || '').toUpperCase().match(/[A-D]/g) || [];
+  if (letters.length > 1) return 'MCQ (Multiple)';
+  if (Array.isArray(d?.options) && d.options.length === 4) return 'MCQ (Single)';
+  return 'Descriptive';
+}
+// --- DEBUG: list items with their canonical key (no behavior change) ---
+function _debugList(list, label) {
+  try {
+    const rows = (list || []).map(d => {
+      const text = String(d.question || d.text || '');
+      return {
+        id: d.id || '',
+        diff: d.difficulty || '',
+        chapter: d.chapter || '',
+        marks: d.marks,
+        mcqType: d.mcqType || '',
+        key: makeDeDupeKey({ text }).slice(0, 80),
+        snippet: text.slice(0, 120)
+      };
+    });
+    console.group(label);
+    console.table(rows);
+    console.log('count:', rows.length);
+    console.groupEnd();
+  } catch (e) {
+    console.warn('debugList error:', e);
+  }
+}
+function uniqueByIdOrText(arr) {
+  const seenIds = new Set();
+  const seenStem = new Set();
+  const out = [];
+  for (const q of (arr || [])) {
+    const id  = q && q.id;
+    const key = makeStemKey(q); // STEM + marks only
+    if ((id && seenIds.has(id)) || (key && seenStem.has(key))) continue;
+    if (id)  seenIds.add(id);
+    if (key) seenStem.add(key);
+    out.push(q);
+  }
+  return out;
+}
+
+// --- Firebase/Firestore fetch helpers ---
+const db = {
+    getChapters: async (selectedClass, selectedSubject) => {
+        try {
+            const firestore = firebase.firestore();
+            const snapshot = await firestore.collection("questions")
+                .where("class", "==", selectedClass)
+                .where("subject", "==", selectedSubject)
+                .get();
+            if (snapshot.empty) return [];
+            const chapterSet = new Set();
+            snapshot.forEach(doc => { const data = doc.data(); if (data.chapter) chapterSet.add(data.chapter); });
+            return Array.from(chapterSet);
+        } catch (error) { console.error("Error fetching chapters from Firestore:", error); return []; }
+    }
+};
+
+async function fetchQuestions({
+  selectedClass,
+  selectedSubject,
+  chapters,
+  marksPerQuestion,
+  mcqType,
+  count,
+  forceDifficulty
+}) {
+  const firestore = firebase.firestore();
+
+  const base = firestore.collection("questions")
+    .where("class", "==", selectedClass)
+    .where("subject", "==", selectedSubject);
+
+  // Apply all non-chapter filters here
+  const applyNonChapterFilters = (q) => {
+  if (forceDifficulty) {
+    q = q.where("difficulty", "==", forceDifficulty);
+  } else if (window.difficultyFilter && window.difficultyFilter !== "Mixed") {
+    q = q.where("difficulty", "==", window.difficultyFilter);
+  }
+  if (marksPerQuestion) q = q.where("marks", "==", parseInt(marksPerQuestion));
+  // Do NOT add mcqType equality here; we’ll filter after fetch using normalizeMcqType().
+  return q;
+};
+
+  const selectedChapters = Array.isArray(chapters) ? chapters.filter(Boolean) : [];
+  let allQuestions = [];
+
+  if (selectedChapters.length > 10) {
+    // Batch by 10 to respect Firestore "in" limit
+    for (const batch of chunk(selectedChapters, 10)) {
+      let q = applyNonChapterFilters(base.where("chapter", "in", batch));
+      const snap = await q.get();
+      snap.forEach(doc => allQuestions.push({ id: doc.id, ...doc.data() }));
+      // Optional soft cap to avoid pulling thousands before shuffle/dedupe
+      if (count && allQuestions.length >= count * 3) { break; }
+    }
+  } else {
+    let q = applyNonChapterFilters(base);
+    if (selectedChapters.length) q = q.where("chapter", "in", selectedChapters);
+    const snap = await q.get();
+    snap.forEach(doc => allQuestions.push({ id: doc.id, ...doc.data() }));
+  }
+
+  // Filter by type in memory using robust inference
+if (mcqType === "Descriptive") {
+  allQuestions = allQuestions.filter(d => inferMcqType(d) === "Descriptive");
+} else if (mcqType === "MCQ (Single)") {
+  allQuestions = allQuestions.filter(d => inferMcqType(d) === "MCQ (Single)");
+} else if (mcqType === "MCQ (Multiple)") {
+  allQuestions = allQuestions.filter(d => inferMcqType(d) === "MCQ (Multiple)");
+}
+
+  // De-dupe by ID or by normalized text, then shuffle and cap
+  allQuestions = uniqueByIdOrText(allQuestions);
+  shuffleArray(allQuestions);
+  return allQuestions.slice(0, count);
+}
+async function fetchQuestionsWithMarksFallback({
+  selectedClass,
+  selectedSubject,
+  chapters,
+  marksPerQuestion,
+  mcqType,          // "MCQ (Single)" | "MCQ (Multiple)" | "Descriptive"
+  count,
+  forceDifficulty   // "Level 1" | "Level 2" | "Level 3" | null
+}) {
+  const firestore = firebase.firestore();
+  const wantedMarks = parseInt(marksPerQuestion);
+  const marksOrder = buildMarksFallbackOrder(wantedMarks);
+
+  const picked   = [];
+  const usedIds  = new Set();
+  const usedKeys = new Set();
+
+  const base = firestore.collection("questions")
+    .where("class", "==", selectedClass)
+    .where("subject", "==", selectedSubject);
+
+  const isAllowedType = (d) => {
+  const typ = inferMcqType(d);
+  if (mcqType === "MCQ (Single)")   return typ === "MCQ (Single)";
+  if (mcqType === "MCQ (Multiple)") return typ === "MCQ (Multiple)";
+  if (mcqType === "Descriptive")    return typ === "Descriptive";
+  return true;
+};
+
+  const applyFilters = (q, { marks } = {}) => {
+  let qq = q;
+  if (typeof marks !== "undefined") qq = qq.where("marks", "==", marks);
+  // Do NOT filter mcqType at query time — schemas vary; we’ll filter after fetch.
+  return qq; // no difficulty here
+};
+
+
+  const normDiff = s => {
+  let t = String(s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
+  // unify common aliases
+  t = t.replace(/^level[-_]?(\d)$/, 'level$1');
+  t = t.replace(/^l(\d)$/, 'level$1');
+  return t;
+};
+const runAndFilter = async (qq, chapterList, difficulty /* new */) => {
+  const collected = [];
+  if (chapterList && chapterList.length > 10) {
+    for (const batch of chunk(chapterList, 10)) {
+      const snap = await qq.where("chapter", "in", batch).get();
+      snap.forEach(doc => {
+        const d = { id: doc.id, ...doc.data() };
+        if (isAllowedType(d)) collected.push(d);
+      });
+    }
+  } else {
+    let q2 = qq;
+    if (chapterList && chapterList.length) q2 = q2.where("chapter", "in", chapterList);
+    const snap = await q2.get();
+    snap.forEach(doc => {
+      const d = { id: doc.id, ...doc.data() };
+      if (isAllowedType(d)) collected.push(d);
+    });
+  }
+
+  if (!difficulty) return collected;
+  const want = normDiff(difficulty);
+  return collected.filter(d => normDiff(d.difficulty) === want);
+};
+
+const dedupAppend = (arr, docs) => {
+  for (const d of docs) {
+    if (d.id && usedIds.has(d.id)) continue; // id-only here
+    if (d.id) usedIds.add(d.id);
+    arr.push(d);
+    if (arr.length >= count) break;
+  }
+};
+
+  // Try each marks value as number AND string to handle mixed Firestore schemas.
+  for (const marks of marksOrder) {
+  const variants = Number.isFinite(marks) ? [marks, String(marks)] : [marks];
+
+  for (const mv of variants) {
+    // (1) exact difficulty first
+    if (forceDifficulty) {
+      const q1   = applyFilters(base, { marks: mv });
+      const docs1 = await runAndFilter(q1, chapters, forceDifficulty);
+      dedupAppend(picked, docs1);
+      if (picked.length >= count) return picked.slice(0, count);
+    }
+    // (2) relax difficulty
+    const q2   = applyFilters(base, { marks: mv });
+    const docs2 = await runAndFilter(q2, chapters, null);
+    dedupAppend(picked, docs2);
+    if (picked.length >= count) return picked.slice(0, count);
+  }
+}
+
+  // Still short — return what we have.
+  return picked.slice(0, count);
+}
+
+   
+    // Small util to split an array into chunks of given size
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+// Build a sensible marks fallback order, preferring the requested value first.
+function buildMarksFallbackOrder(wanted) {
+  const w = parseInt(wanted || 0);
+  const universe = [1,2,3,4,5,6,8,10]; // adjust to your data if needed
+  if (!w || !universe.includes(w)) return universe;
+  // put wanted first, then the rest by nearest distance
+  const rest = universe.filter(m => m !== w).sort((a,b) => Math.abs(a-w) - Math.abs(b-w));
+  return [w, ...rest];
+}
+
+// --- CHAPTER-BALANCED HELPERS (new) ---
+function splitEvenAcrossChapters(total, chapters) {
+  const n = Math.max(1, (chapters || []).length);
+  const base = Math.floor(total / n);
+  const rem  = total - base * n;
+  const out = Array(n).fill(base);
+  for (let i = 0; i < rem; i++) out[i] += 1; // distribute leftovers from start
+  return out;
+}
+
+function takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, secMarks) {
+  const out = [];
+  const mPerQ = Number(secMarks ?? 0);
+  for (const d of (pool || [])) {
+    const id  = d && d.id;
+    const key = makeStemKey({ text: d.question || d.text || '', marks: mPerQ });
+    if ((id && usedIds.has(id)) || (key && usedKeys.has(key)) || (key && subjectSeenKeys.has(key))) continue;
+    if (id)  usedIds.add(id);
+    if (key) usedKeys.add(key);
+    out.push(d);
+    if (out.length >= need) break;
+  }
+  return out;
+}
+
+/**
+ * Chapter-balanced fetch for a section.
+ * - Enforces equal split across chapters.
+ * - Respects mcqType, difficulty (including Mixed 40/30/30), and 4→3 mark fallback.
+ * - Borrows from other chapters if a chapter is short.
+ * Returns { items, errors }
+ */
+async function fetchBalancedAcrossChapters({
+  selectedClass,
+  subject,
+  chapters,              // array of chapter names (can be empty/undefined)
+  marksPerQuestion,      // number
+  mcqType,               // "MCQ (Single)" | "MCQ (Multiple)" | "Descriptive"
+  requestedCount,        // number
+  difficultyValue,       // "Level 1" | "Level 2" | "Level 3" | "Mixed" | undefined
+  subjectSeenKeys,       // Set to avoid repeats across sections of the same subject
+  globalMixBudget        // NEW: { L1, L2, L3 } in MARKS, or null
+}) {
+  const errors = [];
+  const items  = [];
+  const usedIds  = new Set();
+  const usedKeys = new Set();
+
+  const chs = Array.isArray(chapters) ? chapters.slice() : [];
+
+  // Helper: fetch using our existing fallback function with a chapter constraint
+  async function fetchFor(chapterList, count, forceDifficulty) {
+    if (!count) return [];
+    let docs = await fetchQuestionsWithMarksFallback({
+      selectedClass,
+      selectedSubject: subject,
+      chapters: chapterList && chapterList.length ? chapterList : undefined,
+      marksPerQuestion,
+      mcqType,
+      count: Math.max(count * 2, count + 2), // small buffer to reduce dupes
+      forceDifficulty: forceDifficulty || undefined
+    });
+    return uniqueByIdOrText(docs);
+  }
+
+  // Borrowing helper: try from other chapters, same difficulty first, then any difficulty
+  async function borrow(need, sameDifficulty) {
+    if (need <= 0) return [];
+    let pool = [];
+    // Try same difficulty across all chapters
+    if (sameDifficulty) {
+      pool = await fetchFor(chs, need, sameDifficulty);
+      let picked = takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+      need -= picked.length;
+      if (need <= 0) return picked;
+
+      // Try ANY difficulty across all chapters
+      const pool2 = await fetchFor(chs, need, null);
+      picked = picked.concat(takeUniqueFromPool(pool2, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion));
+      return picked;
+    } else {
+      // Any difficulty directly
+      pool = await fetchFor(chs, need, null);
+      return takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+    }
+  }
+
+  // === Non-Mixed difficulty path ===
+  async function fillNonMixed(totalNeed, forceDiff) {
+  // No chapter filter → old behavior
+  if (!chs.length) {
+    const pool = await fetchFor(null, totalNeed, forceDiff);
+    items.push(...takeUniqueFromPool(pool, totalNeed, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion));
+    return;
+  }
+
+  // If we are asking for <= number of chapters, do a strict one-per-chapter pass.
+  const strictOneEach = totalNeed <= chs.length;
+if (strictOneEach) {
+  for (let i = 0; i < chs.length && items.length < totalNeed; i++) {
+    let pool = await fetchFor([chs[i]], 1, forceDiff);
+    let picked = takeUniqueFromPool(pool, 1, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+    if (!picked.length) {
+      // same chapter, any difficulty
+      pool = await fetchFor([chs[i]], 1, null);
+      picked = takeUniqueFromPool(pool, 1, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+    }
+    if (picked.length) items.push(...picked);
+  }
+  // Borrow across chapters to fill the remainder before erroring
+  let remaining = totalNeed - items.length;
+  if (remaining > 0) {
+    const borrowedSame = await borrow(remaining, forceDiff);
+    items.push(...borrowedSame);
+    remaining = totalNeed - items.length;
+  }
+  if (remaining > 0) {
+    const borrowedAny = await borrow(remaining, null);
+    items.push(...borrowedAny);
+  }
+  if (items.length < totalNeed) {
+    errors.push(`${subject}: Could not pick one per selected chapter; only ${items.length} of ${totalNeed} found.`);
+  }
+  return;
+}
+
+  // Otherwise (we need more questions than chapters), do the even split + borrow fallback.
+  const perChapter = splitEvenAcrossChapters(totalNeed, chs);
+  for (let i = 0; i < chs.length; i++) {
+    const need = perChapter[i];
+    if (!need) continue;
+    const pool = await fetchFor([chs[i]], need, forceDiff);
+    const picked = takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+    items.push(...picked);
+    perChapter[i] -= picked.length;
+  }
+
+  // Borrow to fill any remaining, first same difficulty, then any.
+  let remaining = perChapter.reduce((a, b) => a + b, 0);
+  if (remaining > 0) {
+    const borrowedSame = await borrow(remaining, forceDiff);
+    items.push(...borrowedSame);
+    remaining = totalNeed - items.length;
+  }
+  if (remaining > 0) {
+    const borrowedAny = await borrow(remaining, null);
+    items.push(...borrowedAny);
+  }
+
+  if (items.length < totalNeed) {
+    errors.push(`${subject}: Only ${items.length} of ${totalNeed} questions found (after chapter balance).`);
+  }
+}
+
+    // Mixed difficulty: first ensure per-chapter coverage when possible, then fall back.
+async function fillMixed(totalNeed) {
+  // totalNeed here is number of QUESTIONS for THIS section
+  // We enforce 40/30/30 by MARKS across the WHOLE paper via globalMixBudget.
+  const diffs = ["Level 1", "Level 2", "Level 3"];
+  const mPerQ = Number(marksPerQuestion || 0);
+  const sectionMarks = (Number(totalNeed || 0) * mPerQ);
+
+  // Desired marks for this SECTION (local target) using 40/30/30
+  const desiredByMarks = splitCounts(sectionMarks, [40, 30, 30]); // [L1, L2, L3] in MARKS
+
+  // Helper to consume from global budget strictly (no relax).
+  function takeFromBudget(level, wantedMarks) {
+    if (!globalMixBudget) return wantedMarks; // if no budget set, behave as pre-budget (but still strict by level)
+    const key = (level === "Level 1") ? "L1" : (level === "Level 2") ? "L2" : "L3";
+    const canGive = Math.max(0, Math.min(globalMixBudget[key] || 0, wantedMarks));
+    // convert to integer multiple of marks-per-question
+    const qCount = Math.floor(canGive / Math.max(1, mPerQ));
+    const givenMarks = qCount * mPerQ;
+    globalMixBudget[key] = (globalMixBudget[key] || 0) - givenMarks;
+    return givenMarks;
+  }
+
+  // Compute strict marks-per-level we will try to pick for THIS section
+  const wantL1m = takeFromBudget("Level 1", desiredByMarks[0]);
+  const wantL2m = takeFromBudget("Level 2", desiredByMarks[1]);
+  const wantL3m = takeFromBudget("Level 3", desiredByMarks[2]);
+
+  // Convert marks → question counts for this section (strict)
+  let wantL1q = Math.floor(wantL1m / Math.max(1, mPerQ));
+  let wantL2q = Math.floor(wantL2m / Math.max(1, mPerQ));
+  let wantL3q = Math.floor(wantL3m / Math.max(1, mPerQ));
+
+  // Ensure total does not exceed totalNeed
+  const capTotal = Math.min(totalNeed, wantL1q + wantL2q + wantL3q);
+  const scaleDown = (wantL1q + wantL2q + wantL3q) > 0 ? capTotal / (wantL1q + wantL2q + wantL3q) : 0;
+  if (scaleDown > 0 && scaleDown < 1) {
+    wantL1q = Math.floor(wantL1q * scaleDown);
+    wantL2q = Math.floor(wantL2q * scaleDown);
+    wantL3q = Math.floor(wantL3q * scaleDown);
+    // distribute remainder by L1→L2→L3
+    let rem = capTotal - (wantL1q + wantL2q + wantL3q);
+    const order = ["L1","L2","L3"];
+    for (const k of order) {
+      if (!rem) break;
+      if (k === "L1") wantL1q++;
+      else if (k === "L2") wantL2q++;
+      else wantL3q++;
+      rem--;
+    }
+  }
+
+  // Fetch strictly per level (no difficulty relax, no borrow)
+  async function pickStrict(count, level, chapterList) {
+    if (count <= 0) return [];
+    const pool = await fetchFor(chapterList || null, count, level);
+    return takeUniqueFromPool(pool, count, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+  }
+
+  if (!chs.length) {
+    const p1 = await pickStrict(wantL1q, "Level 1", null);
+    const p2 = await pickStrict(wantL2q, "Level 2", null);
+    const p3 = await pickStrict(wantL3q, "Level 3", null);
+    items.push(...p1, ...p2, ...p3);
+
+    if (p1.length < wantL1q) errors.push(`${subject}: Mixed(strict, marks) needs ${wantL1q} L1, got ${p1.length}.`);
+    if (p2.length < wantL2q) errors.push(`${subject}: Mixed(strict, marks) needs ${wantL2q} L2, got ${p2.length}.`);
+    if (p3.length < wantL3q) errors.push(`${subject}: Mixed(strict, marks) needs ${wantL3q} L3, got ${p3.length}.`);
+    return;
+  }
+
+  // With chapters: split each level’s question count evenly across chapters (strict, no cross-borrow)
+  function splitEven(count) { return splitEvenAcrossChapters(count, chs); }
+
+  const L1PerCh = splitEven(wantL1q);
+  const L2PerCh = splitEven(wantL2q);
+  const L3PerCh = splitEven(wantL3q);
+
+  for (let i = 0; i < chs.length; i++) {
+    const ch = chs[i];
+    const c1 = await pickStrict(L1PerCh[i], "Level 1", [ch]);
+    const c2 = await pickStrict(L2PerCh[i], "Level 2", [ch]);
+    const c3 = await pickStrict(L3PerCh[i], "Level 3", [ch]);
+    items.push(...c1, ...c2, ...c3);
+
+    if (c1.length < L1PerCh[i]) errors.push(`${subject} / ${ch}: Mixed(strict, marks) needs ${L1PerCh[i]} L1, got ${c1.length}.`);
+    if (c2.length < L2PerCh[i]) errors.push(`${subject} / ${ch}: Mixed(strict, marks) needs ${L2PerCh[i]} L2, got ${c2.length}.`);
+    if (c3.length < L3PerCh[i]) errors.push(`${subject} / ${ch}: Mixed(strict, marks) needs ${L3PerCh[i]} L3, got ${c3.length}.`);
+  }
+}
+
+  if (difficultyValue === "Mixed") {
+    await fillMixed(requestedCount);
+  } else if (difficultyValue && difficultyValue !== "Mixed") {
+    await fillNonMixed(requestedCount, difficultyValue);
+  } else {
+    await fillNonMixed(requestedCount, null);
+  }
+
+  return { items: items.slice(0, requestedCount), errors };
+}
+
+// --- DROPDOWN HELPERS (multi, single, sections, etc.) ---
+function createDropdown(containerId, options, placeholder) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
+    container.innerHTML = `<div class="selected-option">${placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+    container.dataset.value = '';
+    container.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== container) d.classList.remove('open'); });
+        container.classList.toggle('open');
+        if (e.target.dataset.value) {
+            const selectedValue = e.target.dataset.value;
+            container.querySelector('.selected-option').textContent = selectedValue;
+            container.dataset.value = selectedValue;
+            container.classList.remove('open');
+            container.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+}
+function createMultiSelectDropdown(containerId, options, placeholder, onChange) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const optionsHTML = options.map(opt => `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`).join('');
+    container.innerHTML = `<div class="selected-chapters-display placeholder">${placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+    container.classList.remove('open');
+
+    // Helper to update display
+    function updateDisplay() {
+        const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        const display = container.querySelector('.selected-chapters-display');
+        if (checked.length) {
+            display.textContent = checked.join(', ');
+            display.classList.remove('placeholder');
+        } else {
+            display.textContent = placeholder;
+            display.classList.add('placeholder');
+        }
+    }
+
+    container.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (e.target.closest('.selected-chapters-display')) container.classList.toggle('open');
+        if (e.target.type === 'checkbox') {
+            updateDisplay();
+            if (onChange) onChange();
+        }
+    });
+
+    // Always close dropdown on outside click
+    document.addEventListener('click', () => { container.classList.remove('open'); });
+
+    // Initial call to update display
+    updateDisplay();
+}
+// --- SUBJECT & SECTION LOGIC ---
+function renderSubjectsSectionsArea(subjects, selectedClass) {
+    const area = document.getElementById('subjects-sections-area');
+    area.innerHTML = '';
+    subjects.forEach((subject, sIdx) => {
+        // Subject Block
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = "subject-block";
+        subjectDiv.style = "margin-bottom:32px;padding:16px;border:1.3px solid #bcd6ef;border-radius:13px;background:#f9fbfd;";
+
+        subjectDiv.innerHTML = `
+            <h3 style="color:#185496;margin-bottom:10px;font-size:1.1em;"><i class="fas fa-book"></i> ${subject}</h3>
+                 <div class="form-group">
+                <label>Chapters (select one or more)</label>
+                <div id="chapters-multiselect-${sIdx}" class="multi-select-dropdown custom-dropdown" data-sidx="${sIdx}">
+                    <div class="selected-chapters-display placeholder">Select subject to see chapters</div>
+                    <div class="dropdown-options"></div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:14px;">
+                <label>Sections (Add, set type, and drag to reorder)</label>
+                <div class="subject-sections-list" id="sections-list-${sIdx}"></div>
+                <button type="button" class="add-section-btn" data-sidx="${sIdx}" style="margin-top: 10px;">+ Add Section</button>
+            </div>
+         `;
+        subjectDiv.dataset.subject = subject;
+        area.appendChild(subjectDiv);
+
+        // Chapters fetch & display logic
+        (async () => {
+            const chapterDropdown = subjectDiv.querySelector(`#chapters-multiselect-${sIdx}`);
+            const optionsContainer = chapterDropdown.querySelector('.dropdown-options');
+            const display = chapterDropdown.querySelector('.selected-chapters-display');
+            display.textContent = 'Loading chapters...';
+            display.classList.add('placeholder');
+            const chapters = await db.getChapters(selectedClass, subject);
+            if (chapters.length > 0) {
+                optionsContainer.innerHTML = chapters.map(opt => `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`).join('');
+                display.textContent = 'Select one or more chapters';
+            } else {
+                optionsContainer.innerHTML = '<div style="padding: 10px; font-style: italic;">No chapters found.</div>';
+                display.textContent = 'No chapters found';
+            }
+            display.classList.add('placeholder');
+            // update display on change
+            chapterDropdown.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (e.target.closest('.selected-chapters-display')) chapterDropdown.classList.toggle('open');
+                if (e.target.type === 'checkbox') updateSelectedChaptersDisplay(chapterDropdown);
+            });
+        })();
+
+        // Add first section for this subject
+        setTimeout(() => addSectionForSubject(sIdx), 100); // delay for element to exist
+
+        // Add Section button logic
+        subjectDiv.querySelector('.add-section-btn').onclick = () => addSectionForSubject(sIdx);
+    });
+}
+function addSectionForSubject(sIdx) {
+    const list = document.getElementById(`sections-list-${sIdx}`);
+    const sectionCount = list.children.length;
+    // Create Section Item (re-use same as your logic above, but unique IDs/classes for each subject)
+    const newItem = document.createElement('div');
+    newItem.className = 'section-item';
+    // Section Label Dropdown
+    const sectionLabelDropdown = createSectionDropdown(
+        config.sectionLabels, "Select Section",
+        config.sectionLabels[sectionCount % config.sectionLabels.length], null
+    );
+    sectionLabelDropdown.classList.add('section-label-dropdown');
+    sectionLabelDropdown.style.width = "120px";
+    sectionLabelDropdown.style.marginRight = "8px";
+    // MCQ Type Dropdown
+    const mcqTypeOptions = ["MCQ (Single)", "MCQ (Multiple)", "Descriptive"];
+    const mcqTypeDropdown = createSectionDropdown(mcqTypeOptions, "MCQ Type", mcqTypeOptions[0], null);
+    mcqTypeDropdown.classList.add('mcq-type-dropdown');
+    mcqTypeDropdown.style.width = "150px";
+    mcqTypeDropdown.style.marginRight = "10px";
+    // Section Type Dropdown
+    const sectionTypeDropdown = createSectionDropdown(
+        config.sectionTypes, "Select Type", config.sectionTypes[0],
+        (val) => updateSectionLogicFields(newItem, config.sectionTypeKeys[config.sectionTypes.indexOf(val)])
+    );
+    sectionTypeDropdown.classList.add('section-type-dropdown');
+    sectionTypeDropdown.style.width = "140px";
+    sectionTypeDropdown.style.marginRight = "10px";
+   
+const logicFields = document.createElement('span');
+logicFields.className = "section-logic-fields";
+
+    // Remove button
+    const removeBtn = document.createElement('button');
+    removeBtn.type = "button";
+    removeBtn.className = "remove-section-btn";
+    removeBtn.style.marginLeft = "8px";
+    removeBtn.innerHTML = "&times;";
+    removeBtn.onclick = () => newItem.remove();
+    // Drag handle
+    const dragHandle = document.createElement('span');
+    dragHandle.className = "drag-handle";
+    dragHandle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+    // Build
+    newItem.appendChild(dragHandle);
+newItem.appendChild(sectionLabelDropdown);
+newItem.appendChild(mcqTypeDropdown);
+newItem.appendChild(sectionTypeDropdown);
+newItem.appendChild(logicFields);
+newItem.appendChild(removeBtn);
+    // Init logic fields
+    updateSectionLogicFields(newItem, config.sectionTypeKeys[0]);
+    list.appendChild(newItem);
+    // Drag support (optional)
+    if (window.Sortable) new Sortable(list, { animation: 150, handle: '.drag-handle' });
+}
+function createSectionDropdown(options, placeholder, defaultValue, onChange) {
+    const dropdown = document.createElement('div');
+    dropdown.className = 'custom-dropdown';
+    const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
+    dropdown.innerHTML = `<div class="selected-option">${defaultValue || placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+    dropdown.dataset.value = defaultValue || '';
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== dropdown) d.classList.remove('open'); });
+        dropdown.classList.toggle('open');
+        if (e.target.dataset.value) {
+            const val = e.target.dataset.value;
+            dropdown.querySelector('.selected-option').textContent = val;
+            dropdown.dataset.value = val;
+            dropdown.classList.remove('open');
+            if (onChange) onChange(val);
+        }
+    });
+    return dropdown;
+}
+function updateSectionLogicFields(sectionItem, typeKey) {
+    const logicFields = sectionItem.querySelector('.section-logic-fields');
+    logicFields.innerHTML = '';
+    if (typeKey === 'all') {
+        logicFields.innerHTML = `
+            <label style="font-size:0.97em;">
+                Number of questions:
+                <input type="number" class="num-questions-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:14px;">
+                Marks per question:
+                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+        `;
+    } else if (typeKey === 'any') {
+        logicFields.innerHTML = `
+            <label style="font-size:0.97em;">
+                Total questions:
+                <input type="number" class="num-questions-input" min="1" value="1" style="width:50px; margin:0 6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:18px;">
+                Attempt any:
+                <input type="number" class="attempt-any-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:14px;">
+                Marks per question:
+                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+        `;
+    } else if (typeKey === 'internal') {
+        logicFields.innerHTML = `
+            <label style="font-size:0.97em;">
+                Number of pairs:
+                <input type="number" class="num-pairs-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:14px;">
+                Marks per pair:
+                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <div class="internal-choice-pairs"></div>
+        `;
+        generateInternalPairs(sectionItem);
+        sectionItem.querySelector('.num-pairs-input').addEventListener('input', () => generateInternalPairs(sectionItem));
+    }
+}
+function generateInternalPairs(sectionItem) {
+    const pairCount = parseInt(sectionItem.querySelector('.num-pairs-input').value) || 1;
+    const pairsDiv = sectionItem.querySelector('.internal-choice-pairs');
+    pairsDiv.innerHTML = '';
+    for (let i = 1; i <= pairCount; i++) {
+        const pairDiv = document.createElement('div');
+        pairDiv.style.margin = '6px 0';
+        pairDiv.style.display = 'flex';
+        pairDiv.style.alignItems = 'center';
+        pairDiv.innerHTML = `<label style="margin-right:10px;">Pair ${i}:</label>
+            <input class="pair-chapter-a" placeholder="Chapter (a)" style="width:110px;margin-right:7px;">
+            <input class="pair-chapter-b" placeholder="Chapter (b)" style="width:110px;">`;
+        pairsDiv.appendChild(pairDiv);
+    }
+}
+function updateSelectedChaptersDisplay(chapterDropdown) {
+    const display = chapterDropdown.querySelector('.selected-chapters-display');
+    const checkedChapters = Array.from(chapterDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
+    if (checkedChapters.length === 0) {
+        display.textContent = 'Select one or more chapters';
+        display.classList.add('placeholder');
+    } else {
+        display.textContent = checkedChapters.join(', ');
+        display.classList.remove('placeholder');
+    }
+}
+function buildSectionInstructions(sec) {
+  if (sec.type === "all") {
+    const n = Number(sec.numQuestions) || 0;
+    return n ? `Answer all ${n} questions` : `Answer all the questions`;
+  }
+  if (sec.type === "any") {
+    const anyN = Number(sec.attemptAny) || 0;
+    return anyN ? `Answer any ${anyN} questions` : `Answer any questions`;
+  }
+  if (sec.type === "internal") {
+  const p = Number(sec.numPairs) || 0;
+  const n = p || 0;
+  const plural = n === 1 ? "question" : "questions";
+  // Example: "Answer all 2 questions. Choose either (A) or (B) in each."
+  return n
+    ? `Answer all ${n} ${plural}. Choose either (A) or (B) in each.`
+    : `Answer all questions. Choose either (A) or (B) in each.`;
+}
+  return "";
+}
+
+// --- MAIN EVENT HANDLERS ---
+document.addEventListener('DOMContentLoaded', () => {
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (!user) { window.location.href = "login.html"; return; }
+        // DROPDOWNS
+        createDropdown('class-dropdown', config.classes, 'Select Class');
+
+// NEW: global source (Bank / Paste / Upload .docx)
+createDropdown('exam-source-dropdown', ["Question Bank","Paste","Upload .docx"], 'Question Bank');
+(function wireGlobalSourceUI(){
+  const dd = document.getElementById('exam-source-dropdown');
+const pasteWrap = document.getElementById('global-paste-wrap');
+const uploadWrap = document.getElementById('global-upload-wrap');
+const pasteArea = document.getElementById('global-paste-area');
+const pasteCount = document.getElementById('global-paste-count');
+const docxInput  = document.getElementById('global-docx-input');
+const docxStatus = document.getElementById('global-docx-status');
+
+// NEW: shuffle controls & defaults
+const shuffleBlock = document.getElementById('paste-docx-shuffle');
+const chkSQ = document.getElementById('chk-shuffle-questions');
+const chkSO = document.getElementById('chk-shuffle-options');
+window._shuffleQuestions = true;
+window._shuffleOptions  = true;
+
+window._globalDocxArrayBuffer = null;
+
+function toggle() {
+  const v = dd.dataset.value || 'Question Bank';
+  const isBank  = (v === 'Question Bank');
+  const isPaste = (v === 'Paste');
+  const isWord  = (v === 'Upload .docx');
+
+  // show paste/word areas
+  pasteWrap.style.display  = isPaste ? 'block' : 'none';
+  uploadWrap.style.display = isWord  ? 'block' : 'none';
+
+  // show shuffle controls only for Paste/.docx
+  if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
+
+  // hide/show Difficulty (its enclosing .form-group)
+  const diffGroup = document.getElementById('difficulty-dropdown')?.closest('.form-group');
+  if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
+
+  // hide/show Chapters group for every subject (its enclosing .form-group)
+  document.querySelectorAll('[id^="chapters-multiselect-"]').forEach(el => {
+    const grp = el.closest('.form-group');
+    if (grp) grp.style.display = isBank ? '' : 'none';
+  });
+}
+dd.addEventListener('change', toggle);
+toggle();
+
+// NEW: keep flags in sync
+if (chkSQ) chkSQ.addEventListener('change', () => { window._shuffleQuestions = !!chkSQ.checked; });
+if (chkSO) chkSO.addEventListener('change', () => { window._shuffleOptions  = !!chkSO.checked; });
+  pasteArea?.addEventListener('input', () => {
+    const t = (pasteArea.value || '').trim();
+    const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[\.\)]|\s)\s*/gmi;
+const nums = [];
+let m;
+while ((m = headerRe.exec(t)) !== null) nums.push(parseInt(m[1], 10));
+let approx = 0, last = -Infinity;
+for (const n of nums) { if (n >= last + 1) { approx++; last = n; } }
+if (!approx && nums.length) approx = nums.length;
+pasteCount.textContent = approx ? `~${approx} question blocks detected` : '';
+  });
+
+  docxInput?.addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) { docxStatus.textContent = 'No file chosen'; window._globalDocxArrayBuffer = null; return; }
+    docxStatus.textContent = `Reading ${f.name}...`;
+    try {
+      window._globalDocxArrayBuffer = await f.arrayBuffer();
+      docxStatus.textContent = `Ready: ${f.name}`;
+    } catch (err) {
+      window._globalDocxArrayBuffer = null;
+      docxStatus.textContent = `Read failed: ${err}`;
+    }
+  });
+})();
+
+createDropdown('difficulty-dropdown', config.difficultyLevels, 'Select Difficulty');
+document.getElementById('date-input').valueAsDate = new Date();
+
+        // Multi-Subject Dropdown Logic
+        document.getElementById('class-dropdown').addEventListener('change', function () {
+            const selectedClass = this.dataset.value;
+            const subjects = config.subjectMappings[selectedClass] || [];
+            createMultiSelectDropdown('subjects-multiselect', subjects, 'Select Subject(s)', updateSubjectsSectionsArea);
+        });
+        // Listen for subject multi-select changes and render sections per subject
+        function updateSubjectsSectionsArea() {
+            const allSubjectsCbs = Array.from(document.querySelectorAll('#subjects-multiselect input[type="checkbox"]'));
+            const selectedSubjects = allSubjectsCbs.filter(cb => cb.checked).map(cb => cb.value);
+            const selectedClass = document.getElementById('class-dropdown').dataset.value;
+            if (!selectedClass || selectedSubjects.length === 0) {
+                document.getElementById('subjects-sections-area').innerHTML = '';
+                return;
+            }
+            renderSubjectsSectionsArea(selectedSubjects, selectedClass);
+        // re-apply source-based visibility after new chapter widgets were created
+        document.getElementById('exam-source-dropdown')
+          ?.dispatchEvent(new Event('change'));
+
+        }
+        // Form submit
+        document.getElementById('exam-setup-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const btn = document.querySelector('.submit-btn');
+            btn.disabled = true;
+            btn.textContent = "Building Paper...";
+            try {
+                const selectedClass = document.getElementById('class-dropdown').dataset.value;
+                const examName = ((document.getElementById('exam-name-input').value || '').trim()).toUpperCase();
+                const maxMarks = document.getElementById('max-marks-input').value;
+                const time = document.getElementById('time-input').value;
+                const date = document.getElementById('date-input').value;
+                const instructions = document.getElementById('instructions-input').value;
+                const difficultyValue = document.getElementById('difficulty-dropdown').dataset.value;
+                // Collect subjects and sections
+                const subjectBlocks = document.querySelectorAll('.subject-block');
+                const subjectsData = [];
+                for (let sb of subjectBlocks) {
+                    const subjectTitle = sb.dataset.subject;
+                    const chapterDropdown = sb.querySelector('.multi-select-dropdown');
+                    const chapters = Array.from(chapterDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
+                    const sectionsList = sb.querySelectorAll('.section-item');
+                    const sections = [];
+                    for (let section of sectionsList) {
+                                                const label = section.querySelector('.section-label-dropdown').dataset.value;
+                        const mcqType = section.querySelector('.mcq-type-dropdown').dataset.value;
+                        const typeLabel = section.querySelector('.section-type-dropdown').dataset.value;
+                        const typeIndex = config.sectionTypes.indexOf(typeLabel);
+                        const type = config.sectionTypeKeys[typeIndex];
+
+                        const sec = { label, mcqType, type };
+
+                        if (type === "all") {
+                            sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
+                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                        } else if (type === "any") {
+                            sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
+                            sec.attemptAny = parseInt(section.querySelector('.attempt-any-input').value);
+                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                        } else if (type === "internal") {
+                            sec.numPairs = parseInt(section.querySelector('.num-pairs-input').value);
+                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                            sec.pairs = [];
+                            const pairDivs = section.querySelectorAll('.internal-choice-pairs > div');
+                            pairDivs.forEach(div => {
+                                const chapterA = div.querySelector('.pair-chapter-a').value;
+                                const chapterB = div.querySelector('.pair-chapter-b').value;
+                                sec.pairs.push({ chapterA, chapterB });
+                            });
+                        }
+
+                        sections.push(sec);
+
+                    }
+                    subjectsData.push({ subject: subjectTitle, chapters, sections });
+                    console.log('BUILD INPUT →', subjectTitle, 'chapters:', chapters, 'sections:', sections.length);                 
+                }
+                // Final structure for paper
+                const finalPaper = {
+                    class: selectedClass,
+                    examName,
+                    date,
+                    time,
+                    maxMarks,
+                    instructions,
+                    subjects: [] // Each with: subject, chapters, sections
+                };
+
+              
+              // --- Build all subjects/sections based on GLOBAL SOURCE ---
+// --- Build all subjects/sections based on GLOBAL SOURCE ---
+let allSectionErrors = [];
+const sourceTypeGlobal = (document.getElementById('exam-source-dropdown')?.dataset?.value) || 'Question Bank';
+
+if (sourceTypeGlobal === 'Question Bank') {
+  // ===== BANK FLOW =====
+ // If “Mixed”, build a tolerant (slot-aware) plan by MARKS (40/30/30)
+let strictSlots = [];
+// NOTE: declare once at this scope so later code can safely read them
+var _mixedTargets = { L1:0, L2:0, L3:0 };
+var _mixedActual  = { L1:0, L2:0, L3:0 };
+var _mixedG = 1;
+
+if (difficultyValue === "Mixed") {
+
+  const allSlots = [];
+  subjectsData.forEach((sd, sIdx) => {
+    sd.sections.forEach((sec, secIdx) => {
+      if (sec.type === "all" || sec.type === "any") {
+        const n = Number(sec.numQuestions || 0);
+        const m = Number(sec.marksPerQuestion || 0);
+        for (let i = 0; i < n; i++) allSlots.push({ sIdx, secIdx, subject: sd.subject, label: sec.label, marksPerQuestion: m });
+      }
+    });
+  });
+
+  const totalMarks = allSlots.reduce((s, sl) => s + (sl.marksPerQuestion || 0), 0);
+
+  // gcd of slot sizes
+  const _gcd = (a,b)=> b===0?Math.abs(a):_gcd(b,a%b);
+  _mixedG = allSlots.reduce((g, sl) => _gcd(g, sl.marksPerQuestion||0), 0) || 1;
+
+  // raw 40/30/30 (integers via splitCounts), then quantize to multiples of gcd
+  const wantRaw = splitCounts(totalMarks, [40,30,30]); // e.g., [19,14,13] for 46
+  const labels = ["L1","L2","L3"];
+  const rounded = wantRaw.map(v => Math.round(v / _mixedG) * _mixedG);
+
+  // balance to keep sum === totalMarks using largest-remainder style fixes
+  const errs = wantRaw.map((v,i) => v - rounded[i]);
+  let curSum = rounded.reduce((a,b)=>a+b,0);
+  while (curSum !== totalMarks) {
+    // choose index with largest |err| towards fixing the direction
+    let idx = 0, best = -Infinity;
+    for (let i=0;i<3;i++){
+      const dir = (totalMarks > curSum) ? 1 : -1;
+      const score = dir * errs[i]; // prefer adding where we rounded down most, or removing where we rounded up most
+      if (score > best) { best = score; idx = i; }
+    }
+    rounded[idx] += (totalMarks > curSum) ? _mixedG : -_mixedG;
+    errs[idx] += (totalMarks > curSum) ? _mixedG : -_mixedG;
+    curSum = rounded.reduce((a,b)=>a+b,0);
+  }
+   _mixedTargets = { L1: rounded[0], L2: rounded[1], L3: rounded[2] };
+
+  // assign each slot ...
+  allSlots.sort((a,b)=> (b.marksPerQuestion||0) - (a.marksPerQuestion||0));
+  _mixedActual = { L1:0, L2:0, L3:0 };
+  strictSlots = allSlots.map(sl => {
+    const m = sl.marksPerQuestion || 0;
+    const deficits = [
+      { k:"L1", d: (_mixedTargets.L1 - _mixedActual.L1) },
+      { k:"L2", d: (_mixedTargets.L2 - _mixedActual.L2) },
+      { k:"L3", d: (_mixedTargets.L3 - _mixedActual.L3) },
+    ].sort((x,y)=> y.d - x.d);
+    const pick = deficits[0].k; // choose the biggest gap
+    _mixedActual[pick] += m;
+    return { ...sl, assigned: pick };
+  });
+
+  // If quantization changed the exact 40/30/30 split, warn (non-blocking)
+  const wantTxt = `${wantRaw[0]}/${wantRaw[1]}/${wantRaw[2]}`;
+  const gotTxt  = `${_mixedTargets.L1}/${_mixedTargets.L2}/${_mixedTargets.L3}`;
+  if (wantTxt !== gotTxt) {
+    showToast(`Mixed: snapped to representable totals (gcd=${_mixedG}). Targets L1/L2/L3 → ${gotTxt}`, 'info');
+  }
+}
+
+  // Build paper from bank
+  for (let sIdx = 0; sIdx < subjectsData.length; sIdx++) {
+    const subjData = subjectsData[sIdx];
+    const subjectSeenKeys = new Set();
+    const subjectBlock = { subject: subjData.subject, chapters: subjData.chapters, sections: [] };
+
+    for (let secIdx = 0; secIdx < subjData.sections.length; secIdx++) {
+      const sec = subjData.sections[secIdx];
+      let questions = [];
+      let sectionErrors = [];
+
+      if (sec.type === "all" || sec.type === "any") {
+        const requestedCount = Number(sec.numQuestions || 0);
+        const mPerQ = Number(sec.marksPerQuestion || 0);
+
+        if (difficultyValue !== "Mixed") {
+          // normal balanced fetch (non-mixed)
+          const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
+            selectedClass,
+            subject: subjData.subject,
+            chapters: subjData.chapters,
+            marksPerQuestion: sec.marksPerQuestion,
+            mcqType: sec.mcqType,
+            requestedCount,
+            difficultyValue,
+            subjectSeenKeys,
+            globalMixBudget: null
+          });
+          if (balanceErrors?.length) sectionErrors = sectionErrors.concat(balanceErrors);
+
+          const pool = Array.isArray(rawItems) ? rawItems.slice(0, requestedCount) : [];
+          const mapped = pool.map(q => {
+            const opts = extractMCQOptions(q);
+            const stem = q.question || q.text || '';
+            if ((sec.mcqType === "MCQ (Single)" || sec.mcqType === "MCQ (Multiple)") && Array.isArray(opts) && opts.length === 4) {
+              const clean = opts.map(o =>
+                  o.replace(/^\s*\(?[A-D][\)\.]\s+/, '').trim()
+                );
+                  const shuffled = shuffleMCQQuestion({ ...q, options: clean, question: stem, answer: q.answer });
+              const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+              return { number: 0, text: shuffled.question || "", marks: mPerQ, options: shuffled.options || [], answer: letterAns };
+            }
+            return { number: 0, text: stem, marks: mPerQ, options: Array.isArray(opts) ? opts : [], answer: (String(q.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',') };
+          });
+
+          const filtered = [];
+const sectionSeen = new Set();
+for (const item of mapped) {
+  const k = makeStemKey({ text: item.text, marks: mPerQ });
+  if (k && (subjectSeenKeys.has(k) || sectionSeen.has(k))) continue;
+  if (k) { subjectSeenKeys.add(k); sectionSeen.add(k); }
+  filtered.push(item);
+}
+
+          questions = filtered.map((it, i) => ({ ...it, number: i + 1 }));
+        } else {
+          // Mixed(strict): use strictSlots plan
+          const mySlots = strictSlots.filter(sl => sl.sIdx === sIdx && sl.secIdx === secIdx && sl.marksPerQuestion === mPerQ);
+// tolerate any mismatch; just iterate over available slots
+const takeCount = Math.min(requestedCount, mySlots.length);
+
+for (let i = 0; i < takeCount; i++) {
+  const slot = mySlots[i];
+
+  // Build a level try-order: prefer slot.assigned, then by largest remaining global deficit
+  const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
+const _act = (typeof _mixedActual  !== 'undefined' && _mixedActual)  ? _mixedActual  : { L1:0, L2:0, L3:0 };
+const deficits = [
+  { k:"L1", d: (_tgt.L1 - _act.L1) },
+  { k:"L2", d: (_tgt.L2 - _act.L2) },
+  { k:"L3", d: (_tgt.L3 - _act.L3) },
+].sort((a,b)=> b.d - a.d).map(x=>x.k);
+  const preferred = slot?.assigned || deficits[0];
+  const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)];
+
+  let picked = null, pickedLevel = null;
+
+  for (const lv of levelsTry) {
+    const forceDiff = lv === 'L1' ? "Level 1" : (lv === 'L2' ? "Level 2" : "Level 3");
+    const docs = await fetchQuestionsWithMarksFallback({
+  selectedClass,
+  selectedSubject: subjData.subject,
+  chapters: subjData.chapters,
+  marksPerQuestion: mPerQ,
+  mcqType: sec.mcqType,
+  count: Math.max(40, requestedCount * 2),
+  forceDifficulty: forceDiff
+});
+
+    const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
+    for (const d of uniqueByIdOrText(docs)) {
+      const k = makeStemKey({ text: d.question || d.text || '', marks: mPerQ });
+      if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
+      picked = d; pickedLevel = lv; break;
+    }
+    if (picked) break;
+  }
+
+  // Last resort: try without forcing difficulty
+  if (!picked) {
+   const docs = await fetchQuestionsWithMarksFallback({
+  selectedClass,
+  selectedSubject: subjData.subject,
+  chapters: subjData.chapters,
+  marksPerQuestion: mPerQ,
+  mcqType: sec.mcqType,
+  count: Math.max(40, requestedCount * 2),
+  forceDifficulty: null
+});
+    const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
+    for (const d of uniqueByIdOrText(docs)) {
+      const k = makeStemKey({ text: d.question || d.text || '', marks: mPerQ });
+      if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
+      picked = d; pickedLevel = preferred; break;
+    }
+  }
+
+  if (!picked) {
+    sectionErrors.push(`${subjData.subject} - ${sec.label}: no bank question available for one ${mPerQ}-mark slot.`);
+    continue;
+  }
+
+  const opts = extractMCQOptions(picked);
+  const stem = picked.question || picked.text || '';
+  let out;
+  if ((sec.mcqType === "MCQ (Single)" || sec.mcqType === "MCQ (Multiple)") && Array.isArray(opts) && opts.length === 4) {
+    const clean = opts.map(o => o.replace(/^[A-D][).]\s*/i, '').trim());
+    const shuffled = shuffleMCQQuestion({ ...picked, options: clean, question: stem, answer: picked.answer });
+    const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+    out = { number: 0, text: shuffled.question || "", marks: mPerQ, options: shuffled.options || [], answer: letterAns };
+  } else {
+    out = { number: 0, text: stem, marks: mPerQ, options: Array.isArray(opts) ? opts : [], answer: (String(picked.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',') };
+  }
+  out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
+  const key = makeStemKey({ text: out.text, marks: mPerQ });
+// In Mixed MCQ mode we de-dupe within the section (handled by sectionSeen)
+// but we do NOT block the same stem across the whole subject.
+  questions.push({ ...out, number: questions.length + 1 });
+
+  // update global actual after successful pick
+  if (_mixedActual && out._assignedLevel) {
+    _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+  }
+}
+        }
+      } else if (sec.type === "internal") {
+        let missingPairs = 0;
+        for (let p = 0; p < (sec.pairs || []).length; p++) {
+          const qA = await fetchQuestions({ selectedClass, selectedSubject: subjData.subject, chapters: [sec.pairs[p].chapterA], marksPerQuestion: sec.marksPerQuestion, count: 1 });
+          const qB = await fetchQuestions({ selectedClass, selectedSubject: subjData.subject, chapters: [sec.pairs[p].chapterB], marksPerQuestion: sec.marksPerQuestion, count: 1 });
+          if (!qA.length || !qB.length) { missingPairs++; continue; }
+          questions.push({ number: p + 1, text: `a) ${qA[0].question || qA[0].text}<br>b) ${qB[0].question || qB[0].text}`, marks: sec.marksPerQuestion, image: qA[0].image || qB[0].image || null });
+        }
+        if (missingPairs > 0 || questions.length < sec.numPairs) {
+          sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${questions.length} of ${sec.numPairs} pairs found.`);
+        }
+      }
+
+      const patchedSec = { ...sec };
+      if (sec.type === "all" || sec.type === "any") patchedSec.numQuestions = (questions || []).length;
+      if (sec.type === "internal")                 patchedSec.numPairs     = (questions || []).length;
+
+      subjectBlock.sections.push({ ...patchedSec, questions, instructions: buildSectionInstructions(patchedSec) });
+      if (sectionErrors.length) allSectionErrors = allSectionErrors.concat(sectionErrors);
+    }
+    finalPaper.subjects.push(subjectBlock);
+  }
+
+} else {
+  // ===== PASTE / .DOCX FLOW =====
+  let rawText = '';
+  const pasteText = (document.getElementById('global-paste-area')?.value || '').trim();
+  const hasPaste = pasteText.length > 0;
+  const hasDocx  = !!window._globalDocxArrayBuffer;
+  let effective  = sourceTypeGlobal;
+  if (effective === 'Upload .docx' && !hasDocx && hasPaste) effective = 'Paste';
+  if (effective === 'Paste' && !hasPaste && hasDocx)       effective = 'Upload .docx';
+
+  if (effective === 'Paste') {
+    rawText = pasteText;
+  } else if (effective === 'Upload .docx') {
+    if (!hasDocx) {
+      allSectionErrors.push('No .docx file selected.');
+    } else {
+      try {
+        const result = await window.mammoth.convertToHtml(
+          { arrayBuffer: window._globalDocxArrayBuffer },
+          {
+            convertImage: mammoth.images.inline(img => img.read("base64").then(b64 => ({ src: `data:${img.contentType};base64,${b64}` })))
+          }
+        );
+        rawText = htmlToPlainText(result?.value || '');
+      } catch {
+        allSectionErrors.push('Failed to read .docx file.');
+      }
+    }
+  }
+  if ((effective === 'Paste' || effective === 'Upload .docx') && !rawText) {
+    allSectionErrors.push('No questions detected in the provided source.');
+  }
+
+  const pool = parsePastedQuestionsToPool(rawText);
+  const { errors: allocErrors } = allocateSequentiallyAcrossSections(
+  subjectsData,
+  pool,
+  {
+    shuffleQuestions: !!window._shuffleQuestions,
+    shuffleOptions:  !!window._shuffleOptions
+  }
+);
+  if (allocErrors?.length) allSectionErrors = allSectionErrors.concat(allocErrors);
+
+  for (const subjData of subjectsData) {
+    const subjectBlock = { subject: subjData.subject, chapters: [], sections: [] };
+    for (const sec of subjData.sections) {
+      const patched = { ...sec };
+      if (sec.type === 'all' || sec.type === 'any') patched.numQuestions = (sec.questions || []).length;
+      subjectBlock.sections.push({ ...patched, instructions: buildSectionInstructions(patched) });
+    }
+    finalPaper.subjects.push(subjectBlock);
+  }
+}
+// --- END replacement block ---
+
+// Show errors if any
+if (allSectionErrors.length > 0) {
+  showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${allSectionErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
+  btn.disabled = false; btn.textContent = "Build Exam Draft";
+  return;
+}
+
+// === FINAL TOLERANT CHECK for Mixed: allow ±gcd deviation; never block ===
+if (sourceTypeGlobal === 'Question Bank' && difficultyValue === "Mixed") {
+  const actual = { L1: 0, L2: 0, L3: 0 };
+  for (const subj of finalPaper.subjects || []) {
+    for (const sec of subj.sections || []) {
+      if (sec.type === "all" || sec.type === "any") {
+        for (const q of (sec.questions || [])) {
+          if (q._assignedLevel === 'L1') actual.L1 += (q.marks || 0);
+          if (q._assignedLevel === 'L2') actual.L2 += (q.marks || 0);
+          if (q._assignedLevel === 'L3') actual.L3 += (q.marks || 0);
+        }
+      }
+    }
+  }
+  const g = (typeof _mixedG !== 'undefined' && _mixedG) ? _mixedG : 1;
+const tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
+  const d1 = Math.abs((actual.L1||0) - (tgt.L1||0));
+  const d2 = Math.abs((actual.L2||0) - (tgt.L2||0));
+  const d3 = Math.abs((actual.L3||0) - (tgt.L3||0));
+  const ok = (d1 <= g) && (d2 <= g) && (d3 <= g);
+  if (!ok) {
+    showToast(`Mixed: totals L1/L2/L3 achieved ${actual.L1}/${actual.L2}/${actual.L3} (target ${tgt.L1}/${tgt.L2}/${tgt.L3}, ±${g} allowed)`, 'info');
+    // proceed without blocking
+  }
+}
+
+// Save and continue as before — but FIRST run a duplicate diagnostic
+function _finalStemKey(raw, marks) {
+  let t = String(raw || '');
+
+  // drop any leading numbering like: Q1 / 1. / 1) / Q. 3
+  t = t.replace(/^\s*(?:Q\.?\s*)?\d+\s*[:.)-]?\s*/i, '');
+
+  // remove HTML, inline options (A) ...), and trailing "Ans: ..."
+  t = t.replace(/<img[^>]*>/gi, ' ')
+       .replace(/<[^>]+>/g, ' ')
+       .replace(/\s+[A-D][).:][\s\S]*$/i, '')
+       .replace(/\bAns?\s*:\s*.*$/i, '');
+
+  // normalize (also handles MathJax spacing)
+  try { t = t.normalize('NFKC'); } catch (e) {}
+  t = t.replace(/[\u200B-\u200D\uFEFF]/g, '')
+       .replace(/[\u2010-\u2015\u2212]/g, '-')
+       .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+       .replace(/[\u201C\u201D\u2033]/g, '"')
+       .replace(/\u00A0/g, ' ')
+       .replace(/\s+/g, ' ')
+       .trim()
+       .toLowerCase()
+       .replace(/[.,;:!?]+$/g, '');
+  return t ? (t + '||m=' + (marks ?? '')) : '';
+}
+(function () {
+  const dupNotes = [];
+  for (const subj of finalPaper.subjects || []) {
+    for (const sec of subj.sections || []) {
+      const counts = {};
+      for (const q of sec.questions || []) {
+        const k = makeDeDupeKey({ text: q.text || q.question || '' });
+        counts[k] = (counts[k] || 0) + 1;
+      }
+      const dupes = Object.entries(counts).filter(([_, c]) => c > 1);
+      if (dupes.length) dupNotes.push(`${subj.subject} / ${sec.label}: ${dupes.length} duplicate key(s)`);
+    }
+  }
+  if (dupNotes.length) {
+    console.warn('BUILDER: duplicates EXIST before saving:', dupNotes);
+  } else {
+    console.warn('BUILDER: NO duplicates in finalPaper before saving');
+  }
+})();
+// HARD de-dupe (by normalized stem + marks) and renumber right before save
+try {
+  // For Question Bank builds: keep original strict de-dup.
+  // For Paste / Upload .docx: NO de-dup at all — keep everything as pasted.
+  const sourceTypeGlobal =
+    (document.getElementById('exam-source-dropdown')?.dataset?.value) || 'Question Bank';
+
+  if (sourceTypeGlobal === 'Question Bank') {
+    (finalPaper.subjects || []).forEach(s => {
+      const subjectSeen = new Set(); // avoid repeats across sections of the same subject
+      (s.sections || []).forEach(sec => {
+        const perSectionSeen = new Set();
+        const out = [];
+        const fallbackMarks = Number(sec.marksPerQuestion ?? 0);
+
+        for (const q of (sec.questions || [])) {
+          if (q && 'srcId' in q) delete q.srcId; // drop debug field if present
+          const stem  = q?.text ?? q?.question ?? '';
+          const marks = Number(q?.marks ?? fallbackMarks);
+          const k = _finalStemKey(stem, marks);
+          if (!k) { out.push(q); continue; }
+          if (perSectionSeen.has(k) || subjectSeen.has(k)) continue;
+          perSectionSeen.add(k);
+          subjectSeen.add(k);
+          out.push(q);
+        }
+
+        // renumber neatly within the section for preview
+        sec.questions = out.map((q, i) => ({ ...q, number: i + 1 }));
+
+        if (sec.type === 'internal') {
+          sec.numPairs = sec.questions.length;
+        } else {
+          sec.numQuestions = sec.questions.length;
+        }
+      });
+    });
+  } else {
+    // Paste / Upload .docx: keep ALL questions exactly as collected; just renumber.
+    (finalPaper.subjects || []).forEach(s => {
+      (s.sections || []).forEach(sec => {
+        const fallbackMarks = Number(sec.marksPerQuestion ?? 0);
+        sec.questions = (sec.questions || []).map((q, i) => {
+          if (q && 'srcId' in q) delete q.srcId; // strip debug field only
+          if (q && (q.marks == null || isNaN(q.marks))) q.marks = fallbackMarks; // ensure marks
+          return { ...q, number: i + 1 };
+        });
+
+        if (sec.type === 'internal') {
+          sec.numPairs = sec.questions.length;
+        } else {
+          sec.numQuestions = sec.questions.length;
+        }
+      });
+    });
+  }
+} catch (e) {
+  console.warn('final cleanup error:', e);
+}
+
+sessionStorage.setItem('examPaper', JSON.stringify(finalPaper));
+window.location.href = 'exam-review.html';
+
+
+
+            } catch (err) {
+                showToast("Error building exam: " + (err.message || err), "error");
+            }
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+        });
+    });
+});
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
