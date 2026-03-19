@@ -469,9 +469,9 @@ const auth = firebase.auth();
                   <span class="pdf-mode-tick" style="font-size:1.1em;color:#1762a7;font-weight:900;">✓</span>
                 </div>
 
-                <div class="pdf-mode-card" data-value="worksheet_key" style="
+                                <div class="pdf-mode-card" data-value="worksheet_key" style="
                   display:flex;align-items:center;justify-content:space-between;
-                  padding:14px 14px;margin-bottom:10px;
+                  padding:14px 14px;margin-bottom:8px;
                   border:1.5px solid #cfe0f2;border-radius:14px;
                   cursor:pointer;background:#f9fcff;
                   transition:all 0.15s ease;">
@@ -479,17 +479,7 @@ const auth = firebase.auth();
                   <span class="pdf-mode-tick" style="font-size:1.1em;color:transparent;font-weight:900;">✓</span>
                 </div>
 
-                <div class="pdf-mode-card" data-value="key_only" style="
-                  display:flex;align-items:center;justify-content:space-between;
-                  padding:14px 14px;margin-bottom:8px;
-                  border:1.5px solid #cfe0f2;border-radius:14px;
-                  cursor:pointer;background:#f9fcff;
-                  transition:all 0.15s ease;">
-                  <span style="font-weight:700;color:#12416c;">Key only</span>
-                  <span class="pdf-mode-tick" style="font-size:1.1em;color:transparent;font-weight:900;">✓</span>
-                </div>
-
-                <div style="
+                               <div style="
                   display:flex;justify-content:flex-end;gap:10px;
                   margin-top:16px;">
                   <button type="button" id="pdf-mode-cancel-btn" style="
@@ -686,8 +676,8 @@ if (!exportMode) {
   return;
 }
 
-const includeWorksheet = exportMode === 'worksheet' || exportMode === 'worksheet_key';
-const includeKey = exportMode === 'worksheet_key' || exportMode === 'key_only';
+const includeWorksheet = true;
+const includeKey = exportMode === 'worksheet_key';
       pdfBtn.disabled = true;
       pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
 
@@ -1142,12 +1132,9 @@ const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 
 function __getQuestionAnswerHTML(item, qNum) {
   const clone = item.cloneNode(true);
-  const type = (clone.getAttribute('data-type') || '').trim();
   const qTextEl = clone.querySelector('.question-text');
 
   let questionLine = '';
-  let options = [];
-
   if (qTextEl) {
     let html = qTextEl.innerHTML.replace(/<img[^>]*>/gi, '');
     let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
@@ -1156,33 +1143,28 @@ function __getQuestionAnswerHTML(item, qNum) {
 
     if (parts.length > 0) {
       questionLine = parts[0];
-      let optionLines = [];
-      for (let i = 1; i < parts.length; i++) {
-        let line = parts[i];
-        let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
-        if (inlineOpts && inlineOpts.length >= 2) {
-          optionLines.push(...inlineOpts.map(opt => opt.trim()));
-        } else if (line) {
-          optionLines.push(line);
-        }
-      }
-      if (optionLines.length === 4) {
-        options = optionLines.map((opt, i) =>
-          /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
-        );
-      } else {
-        options = optionLines;
-      }
     }
   }
 
   const docId = item.getAttribute('data-id');
-  let answerText = '';
-  if (docId) {
-    const source = window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[docId] ? window.__pdfQuestionDataMap[docId] : null;
-    if (source) {
-      answerText = source.parsedAnswer || source.answer || source.parsedAns || 'No answer available.';
-    }
+  const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
+
+  let answerText =
+    (source && (
+      source.parsedAnswer ||
+      source.answer ||
+      source.parsedAns ||
+      source.correctAnswer ||
+      source.correct_option ||
+      source.correctOption
+    )) || '';
+
+  if (!answerText && source && source.explanation) {
+    answerText = source.explanation;
+  }
+
+  if (!answerText) {
+    answerText = 'No answer available.';
   }
 
   const wrap = document.createElement('div');
@@ -1192,33 +1174,12 @@ function __getQuestionAnswerHTML(item, qNum) {
     <div style="font-weight:700; margin-bottom:2px;">Q${qNum}.</div>
     <div style="margin-bottom:4px;">${questionLine || ''}</div>
     <div style="margin-left:18px; color:#000;">
-      <b>Answer:</b> ${answerText || 'No answer available.'}
+      <b>Answer:</b> ${answerText}
     </div>
   `;
 
   printable.appendChild(wrap);
 }
-
-// store source data for key section
-window.__pdfQuestionDataMap = {};
-nodes.forEach(node => {
-  const id = node.getAttribute('data-id');
-  if (id) {
-    const sourceDoc = Array.from(displayArea.querySelectorAll('.question-item')).find(x => x.getAttribute('data-id') === id);
-    if (sourceDoc && !window.__pdfQuestionDataMap[id]) {
-      window.__pdfQuestionDataMap[id] = {};
-    }
-  }
-});
-
-const __allDisplayItems = Array.from(displayArea.querySelectorAll('.question-item'));
-for (const item of __allDisplayItems) {
-  const id = item.getAttribute('data-id');
-  if (id && !window.__pdfQuestionDataMap[id]) {
-    window.__pdfQuestionDataMap[id] = {};
-  }
-}
-
 if (includeWorksheet) {
   // === RENDER WORKSHEET ===
   if (!multipleChaptersSelected) {
@@ -1884,7 +1845,6 @@ query = query.orderBy("questionNumber");
 
         const snapshot = await query.get();
 window.__pdfQuestionDataMap = {};
-
         if (snapshot.empty) {
           displayArea.innerHTML = '<p class="no-questions-message">No questions found matching your criteria.</p>';
           return;
