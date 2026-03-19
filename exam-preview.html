@@ -845,7 +845,7 @@ function renderPrintPreview() {
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
-        <div class="school-title">St. Patrick’s School</div>
+        <div class="school-title">${exam.schoolName || 'SciMentra'}</div>
         <div class="subtitle">IIT & NEET FOUNDATION</div>
         <div class="exam-title">${exam.examName || ''}</div>
       </div>
