@@ -1,3 +1,4 @@
+see now we need to ad option in three buttons show explanation.do you understsnd: 
 <!DOCTYPE html> 
 <html lang="en">
 <head>
@@ -1784,7 +1785,7 @@ if (window.__quizSelectionMode === 'manual') {
 }
 
 bindManualQuizToolbar();
-/* ==== Explain It (AI) — open directly in ChatGPT (copy prompt + toast + open tab) ==== */
+/* ==== Explain It popup ==== */
 if (!window.__explainItBound) {
   window.__explainItBound = true;
   document.addEventListener('click', async (e) => {
@@ -1795,66 +1796,75 @@ if (!window.__explainItBound) {
     const docId = card?.getAttribute('data-id');
     if (!docId) return;
 
-    // tiny inline toast helper
-    function __qb_toast(msg) {
-      const t = document.createElement('div');
-      t.textContent = msg;
-      t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:100000;font-weight:600;letter-spacing:.2px;font-size:14px;opacity:0.98';
-      document.body.appendChild(t);
-      setTimeout(() => { t.style.transition='opacity .35s'; t.style.opacity='0'; }, 1200);
-      setTimeout(() => t.remove(), 1600);
-    }
-
     try {
-      // Pull freshest data for this question
       const snap = await db.collection('questions').doc(docId).get();
       const data = snap.data() || {};
+      const explanation = String(data.explanation || '').trim();
 
-      // Build a clean prompt
-      const cls     = data.class || document.getElementById('class-value')?.value || '';
-      const subject = data.subject || document.getElementById('subject-value')?.value || '';
-      const chapterSel = getMultiSelected('chapter');
-      const chapter = data.chapter || (chapterSel.length ? chapterSel.join(', ') : '');
-      const level   = data.difficulty || data.level || '';
-      const type    = data.mcqType || (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive');
-      const marks   = (data.marks ?? '');
+      document.querySelectorAll('.explanation-popup-overlay').forEach(el => el.remove());
 
-      const qText   = (data.question || data.body || data.text || '').trim();
-      const options = Array.isArray(data.options) ? data.options.filter(Boolean) : [];
+      const overlay = document.createElement('div');
+      overlay.className = 'explanation-popup-overlay';
+      overlay.innerHTML = `
+        <div style="
+          position:fixed;top:0;left:0;width:100vw;height:100vh;
+          background:rgba(0,0,0,0.75);z-index:100000;
+          display:flex;align-items:center;justify-content:center;
+          padding:16px;box-sizing:border-box;">
+          
+          <div style="
+            background:#111827;color:#ffffff;
+            width:100%;max-width:700px;max-height:85vh;
+            border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.35);
+            display:flex;flex-direction:column;overflow:hidden;">
+            
+            <div style="
+              padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.12);
+              font-size:1.12em;font-weight:700;text-align:center;">
+              Explanation
+            </div>
 
-      let prompt = `Please solve and explain clearly.\n`;
-      const meta = [subject && `Subject: ${subject}`, cls && `Class: ${cls}`, chapter && `Chapter: ${chapter}`, level && `Level: ${level}`, type && `Type: ${type}`, marks!=='' && `Marks: ${marks}`]
-        .filter(Boolean).join(' · ');
-      if (meta) prompt += meta + `\n\n`;
-      prompt += `Question:\n${qText}\n`;
-      if (options.length) {
-        prompt += `\nOptions:\n` + options.map((o,i)=>`${String.fromCharCode(65+i)}) ${o.replace(/^[A-D][).]\s*/, '')}`).join('\n');
-        prompt += `\n\nRespond with the correct option (A–D) and a step-by-step explanation.`;
-      } else {
-        prompt += `\n\nRespond with the final answer and a step-by-step explanation.`;
+            <div id="explanation-popup-body" style="
+              padding:18px;overflow-y:auto;line-height:1.7;
+              white-space:pre-wrap;font-size:1em;color:#ffffff;">
+              ${__qbEscapeHtml(explanation || 'No explanation available.')}
+            </div>
+
+            <div style="
+              padding:14px 18px;border-top:1px solid rgba(255,255,255,0.12);
+              display:flex;justify-content:flex-end;">
+              <button type="button" id="close-explanation-popup" style="
+                border:none;border-radius:10px;padding:10px 18px;
+                background:#ffffff;color:#111827;font-weight:700;cursor:pointer;">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      document.getElementById('close-explanation-popup').onclick = function() {
+        overlay.remove();
+      };
+
+      overlay.onclick = function(ev) {
+        if (ev.target === overlay.firstElementChild) {
+          overlay.remove();
+        }
+      };
+
+      const bodyEl = document.getElementById('explanation-popup-body');
+      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+        window.MathJax.typesetPromise([bodyEl]).catch(function(err){
+          console.error('MathJax explanation render error:', err);
+        });
       }
-
-      // Copy to clipboard for quick paste
-      let copied = false;
-      try {
-        await navigator.clipboard.writeText(prompt);
-        copied = true;
-      } catch (_) {
-        copied = false;
-      }
-
-      __qb_toast(copied ? 'Copied prompt. Opening ChatGPT…' : 'Opening ChatGPT… (paste prompt manually)');
-
-      // Open ChatGPT (model selector in URL if supported)
-      const handoffUrl = new URL('https://chatgpt.com/');
-      handoffUrl.searchParams.set('q', prompt); // pre-fill the message
-
-      // Open ChatGPT with the prefilled prompt
-      window.open(handoffUrl.toString(), '_blank', 'noopener');
 
     } catch (err) {
-      console.error('Explain It handoff failed:', err);
-      alert('Could not open in ChatGPT. Please try again.');
+      console.error('Explanation popup failed:', err);
+      alert('Could not load explanation.');
     }
   });
 }
@@ -1989,19 +1999,19 @@ function autoLatexAll(str) {
           const menu = document.createElement('div');
           menu.className = 'actions-menu';
 
-                    menu.innerHTML = `
+          menu.innerHTML = `
             <button class="menu-show-answer-btn">Show Answer</button>
-            <button class="menu-show-explanation-btn">Show Explanation</button>
             <button class="menu-edit-btn">Edit / Meta</button>
             <button class="menu-delete-btn">Delete</button>
           `;
           questionItem.appendChild(menu);
 
-                   menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
+          menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
             event.stopPropagation();
-                       let tempAns = questionItem.querySelector('.temp-answer.answer-box');
+            let tempAns = questionItem.querySelector('.temp-answer');
             if (tempAns) {
               tempAns.remove();
+              menu.querySelector('.menu-show-answer-btn').textContent = 'Show Answer';
               menu.remove();
               return;
             }
@@ -2014,63 +2024,12 @@ function autoLatexAll(str) {
               answer = 'No answer found.';
             }
             const ansDiv = document.createElement('div');
-            ansDiv.className = 'temp-answer answer-box';
+            ansDiv.className = 'temp-answer';
             ansDiv.textContent = answer;
             questionItem.appendChild(ansDiv);
+            menu.querySelector('.menu-show-answer-btn').textContent = 'Hide Answer';
             if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
               window.MathJax.typesetPromise([ansDiv]);
-            }
-            menu.remove();
-          };
-
-          menu.querySelector('.menu-show-explanation-btn').onclick = async (event) => {
-            event.stopPropagation();
-            let tempExp = questionItem.querySelector('.temp-answer.explanation-box');
-            if (tempExp) {
-              tempExp.remove();
-              menu.remove();
-              return;
-            }
-            let explanation = '';
-            try {
-              const docSnap = await db.collection('questions').doc(docId).get();
-              const data = docSnap.data();
-              explanation = data.explanation || 'No explanation available.';
-            } catch (e) {
-              explanation = 'No explanation found.';
-            }
-            const expDiv = document.createElement('div');
-            expDiv.className = 'temp-answer explanation-box';
-            expDiv.innerHTML = '<b>Explanation:</b>\n' + explanation;
-            questionItem.appendChild(expDiv);
-            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-              window.MathJax.typesetPromise([expDiv]);
-            }
-            menu.remove();
-          };
-
-                    menu.querySelector('.menu-show-explanation-btn').onclick = async (event) => {
-            event.stopPropagation();
-            let tempExp = questionItem.querySelector('.temp-answer.explanation-box');
-            if (tempExp) {
-              tempExp.remove();
-              menu.remove();
-              return;
-            }
-            let explanation = '';
-            try {
-              const docSnap = await db.collection('questions').doc(docId).get();
-              const data = docSnap.data();
-              explanation = data.explanation || 'No explanation available.';
-            } catch (e) {
-              explanation = 'No explanation found.';
-            }
-            const expDiv = document.createElement('div');
-            expDiv.className = 'temp-answer explanation-box';
-            expDiv.innerHTML = '<b>Explanation:</b><br>' + __qbEscapeHtml(explanation).replace(/\n/g, '<br>');
-            questionItem.appendChild(expDiv);
-            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-              window.MathJax.typesetPromise([expDiv]);
             }
             menu.remove();
           };
@@ -2166,16 +2125,11 @@ function autoLatexAll(str) {
             </div>
           </div>
 
-                    <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
+                   <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
           <textarea id="edit-q-text" rows="8" style="width:100%;min-height:140px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.05em;resize:vertical;">${(data.question || data.body || data.text || '').replace(/</g,'&lt;')}</textarea>
 
-          <div id="edit-desc-extra-block" style="border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
-            <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer</label>
-            <input id="edit-q-desc-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-
-            <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Explanation</label>
-            <textarea id="edit-q-desc-explanation" rows="5" style="width:100%;min-height:95px;padding:10px 12px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
-          </div>
+          <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Explanation</label>
+          <textarea id="edit-q-explanation" rows="6" style="width:100%;min-height:110px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.02em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
 
           <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -2198,10 +2152,8 @@ function autoLatexAll(str) {
             </div>
             <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer (e.g., A or A,C)</label>
             <input id="edit-q-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-
-            <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Explanation</label>
-            <textarea id="edit-q-explanation" rows="5" style="width:100%;min-height:95px;padding:10px 12px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
           </div>
+
           <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:6px;">
             <button id="edit-cancel" style="background:#eee;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#346799;cursor:pointer;">Cancel</button>
             <button id="edit-save" style="background:#1762a7;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#fff;cursor:pointer;">Save</button>
@@ -2231,16 +2183,13 @@ function autoLatexAll(str) {
       selType.value = initialType;
       if (initLevel) selLevel.value = initLevel;
 
-           const mcqBlock = popup.querySelector('#edit-mcq-block');
-      const descExtraBlock = popup.querySelector('#edit-desc-extra-block');
+      const mcqBlock = popup.querySelector('#edit-mcq-block');
       const toggleMCQBlock = () => {
-        const isMCQ = (
-          selType.value === 'MCQ (Single)' ||
-          selType.value === 'MCQ (Multiple)' ||
-          selType.value === 'Assertion and Reason (MCQ Single)'
-        );
-        mcqBlock.style.display = isMCQ ? 'block' : 'none';
-        if (descExtraBlock) descExtraBlock.style.display = isMCQ ? 'none' : 'block';
+       mcqBlock.style.display = (
+  selType.value === 'MCQ (Single)' ||
+  selType.value === 'MCQ (Multiple)' ||
+  selType.value === 'Assertion and Reason (MCQ Single)'
+) ? 'block' : 'none';
       };
       selType.addEventListener('change', toggleMCQBlock);
       toggleMCQBlock();
@@ -2248,21 +2197,22 @@ function autoLatexAll(str) {
       popup.querySelector('#edit-cancel').onclick = () => popup.remove();
 
       popup.querySelector('#edit-save').onclick = async () => {
-        const qType = selType.value;
+               const qType = selType.value;
         const qText = popup.querySelector('#edit-q-text').value.trim();
+        const explanationText = popup.querySelector('#edit-q-explanation').value.trim();
         const marksRaw = popup.querySelector('#edit-q-marks').value.trim();
         const levelVal = selLevel.value || '';
         const boardVal = popup.querySelector('#edit-q-board').value.trim();
         const chapterVal = popup.querySelector('#edit-q-chapter').value.trim();
         const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
-
         if (!qText) { alert("Question text is required."); return; }
 
-        const updateObj = {
+                const updateObj = {
   question: qText,
   difficulty: levelVal || firebase.firestore.FieldValue.delete(),
   board: boardVal || firebase.firestore.FieldValue.delete(),
   chapter: chapterVal || firebase.firestore.FieldValue.delete(),
+  explanation: explanationText || firebase.firestore.FieldValue.delete(),
 };
 
 // Normalize old subjects to new ones (Math / Math IIT)
@@ -2290,25 +2240,18 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.questionNumber = qn;
         }
 
-                if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
-          const descAns = (popup.querySelector('#edit-q-desc-answer')?.value || '').trim();
-          const descExp = (popup.querySelector('#edit-q-desc-explanation')?.value || '').trim();
-
+        if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
           updateObj.mcqType = firebase.firestore.FieldValue.delete();
           updateObj.options = firebase.firestore.FieldValue.delete();
           updateObj.body = qText;
           updateObj.text = qText;
-          updateObj.parsedAnswer = descAns || firebase.firestore.FieldValue.delete();
-          updateObj.answer = descAns || firebase.firestore.FieldValue.delete();
-          updateObj.explanation = descExp || firebase.firestore.FieldValue.delete();
+          updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
         } else {
           const optA = popup.querySelector('#edit-q-optA').value.trim();
           const optB = popup.querySelector('#edit-q-optB').value.trim();
           const optC = popup.querySelector('#edit-q-optC').value.trim();
           const optD = popup.querySelector('#edit-q-optD').value.trim();
           const ans = popup.querySelector('#edit-q-answer').value.trim();
-          const exp = (popup.querySelector('#edit-q-explanation')?.value || '').trim();
-
           if (!optA || !optB || !optC || !optD || !ans) {
             alert("For MCQ, all four options and the answer are required.");
             return;
@@ -2316,9 +2259,8 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.mcqType = qType;
           updateObj.options = [optA, optB, optC, optD];
           updateObj.parsedAnswer = ans;
-          updateObj.answer = ans;
-          updateObj.explanation = exp || firebase.firestore.FieldValue.delete();
         }
+
         try {
           await db.collection('questions').doc(docId).update(updateObj);
           popup.remove();
