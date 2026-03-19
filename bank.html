@@ -400,7 +400,7 @@ const auth = firebase.auth();
     const okBtn3 = dialog3.querySelector('#btnAppPromptOk');
     const cancelBtn3 = dialog3.querySelector('#btnAppPromptCancel');
 
-    window.appPrompt = function(msg, defaultValue = ''){
+        window.appPrompt = function(msg, defaultValue = ''){
       return new Promise(resolve => {
         if (textEl3) textEl3.textContent = msg;
         if (inputEl3) inputEl3.value = defaultValue || '';
@@ -423,6 +423,124 @@ const auth = firebase.auth();
           dialog3.close();
           resolve(null);
         };
+      });
+    };
+  }
+
+  if (!window.appSelectPdfMode) {
+    window.appSelectPdfMode = function() {
+      return new Promise(resolve => {
+        document.querySelectorAll('.pdf-mode-dialog-overlay').forEach(el => el.remove());
+
+        const overlay = document.createElement('div');
+        overlay.className = 'pdf-mode-dialog-overlay';
+        overlay.innerHTML = `
+          <div style="
+            position:fixed;top:0;left:0;width:100vw;height:100vh;
+            background:rgba(0,0,0,0.18);z-index:100000;
+            display:flex;align-items:center;justify-content:center;
+            padding:16px;box-sizing:border-box;">
+            
+            <div style="
+              background:#fff;border-radius:18px;overflow:hidden;
+              width:100%;max-width:460px;
+              box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+              
+              <div style="
+                background:#0f3d6b;color:#fff;padding:14px 18px;
+                font-size:1.08em;font-weight:700;">
+                SciMentra
+              </div>
+
+              <div style="padding:18px 18px 14px 18px;">
+                <div style="font-size:1em;color:#1f2d3d;margin-bottom:14px;line-height:1.5;">
+                  Choose PDF type
+                </div>
+
+                <input type="hidden" id="pdf-mode-selected" value="worksheet">
+
+                <div class="pdf-mode-card" data-value="worksheet" style="
+                  display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 14px;margin-bottom:10px;
+                  border:2px solid #1762a7;border-radius:14px;
+                  cursor:pointer;background:#eef6ff;
+                  transition:all 0.15s ease;box-shadow:0 4px 14px rgba(23,98,167,0.10);">
+                  <span style="font-weight:700;color:#12416c;">Worksheet only</span>
+                  <span class="pdf-mode-tick" style="font-size:1.1em;color:#1762a7;font-weight:900;">✓</span>
+                </div>
+
+                <div class="pdf-mode-card" data-value="worksheet_key" style="
+                  display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 14px;margin-bottom:10px;
+                  border:1.5px solid #cfe0f2;border-radius:14px;
+                  cursor:pointer;background:#f9fcff;
+                  transition:all 0.15s ease;">
+                  <span style="font-weight:700;color:#12416c;">Worksheet + Key</span>
+                  <span class="pdf-mode-tick" style="font-size:1.1em;color:transparent;font-weight:900;">✓</span>
+                </div>
+
+                <div class="pdf-mode-card" data-value="key_only" style="
+                  display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 14px;margin-bottom:8px;
+                  border:1.5px solid #cfe0f2;border-radius:14px;
+                  cursor:pointer;background:#f9fcff;
+                  transition:all 0.15s ease;">
+                  <span style="font-weight:700;color:#12416c;">Key only</span>
+                  <span class="pdf-mode-tick" style="font-size:1.1em;color:transparent;font-weight:900;">✓</span>
+                </div>
+
+                <div style="
+                  display:flex;justify-content:flex-end;gap:10px;
+                  margin-top:16px;">
+                  <button type="button" id="pdf-mode-cancel-btn" style="
+                    border:none;border-radius:999px;
+                    padding:8px 18px;background:#eef3f9;color:#35506b;
+                    font-weight:700;cursor:pointer;">
+                    Cancel
+                  </button>
+                  <button type="button" id="pdf-mode-ok-btn" style="
+                    border:none;border-radius:999px;
+                    padding:8px 18px;background:#0f3d6b;color:#fff;
+                    font-weight:700;cursor:pointer;">
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const hidden = overlay.querySelector('#pdf-mode-selected');
+        const cards = overlay.querySelectorAll('.pdf-mode-card');
+
+        function setSelected(val) {
+          hidden.value = val;
+          cards.forEach(card => {
+            const active = card.getAttribute('data-value') === val;
+            const tick = card.querySelector('.pdf-mode-tick');
+
+            card.style.border = active ? '2px solid #1762a7' : '1.5px solid #cfe0f2';
+            card.style.background = active ? '#eef6ff' : '#f9fcff';
+            card.style.boxShadow = active ? '0 4px 14px rgba(23,98,167,0.10)' : 'none';
+            if (tick) tick.style.color = active ? '#1762a7' : 'transparent';
+          });
+        }
+
+        cards.forEach(card => {
+          card.onclick = function() {
+            setSelected(card.getAttribute('data-value'));
+          };
+        });
+
+        const closeDialog = (value) => {
+          overlay.remove();
+          resolve(value);
+        };
+
+        overlay.querySelector('#pdf-mode-cancel-btn').onclick = () => closeDialog(null);
+        overlay.querySelector('#pdf-mode-ok-btn').onclick = () => closeDialog(hidden.value || 'worksheet');
       });
     };
   }
@@ -560,27 +678,16 @@ const auth = firebase.auth();
       const pdfBtn = document.getElementById('download-pdf-btn');
       const shuffleExport = await appConfirm("Shuffle MCQ options in worksheet?");
 
-const exportChoice = await appPrompt(
-  "Enter PDF type:\n1 = Worksheet only\n2 = Worksheet + Key\n3 = Key only",
-  "1"
-);
+const exportMode = await appSelectPdfMode();
 
-if (exportChoice === null) {
+if (!exportMode) {
   pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
   pdfBtn.disabled = false;
   return;
 }
 
-const exportMode = String(exportChoice).trim();
-if (!['1', '2', '3'].includes(exportMode)) {
-  alert("Please enter only 1, 2, or 3.");
-  pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
-  pdfBtn.disabled = false;
-  return;
-}
-
-const includeWorksheet = exportMode === '1' || exportMode === '2';
-const includeKey = exportMode === '2' || exportMode === '3';
+const includeWorksheet = exportMode === 'worksheet' || exportMode === 'worksheet_key';
+const includeKey = exportMode === 'worksheet_key' || exportMode === 'key_only';
       pdfBtn.disabled = true;
       pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
 
