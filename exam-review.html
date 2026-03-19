@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [["\\(", "\\)"], ["$", "$"]],
+      displayMath: [["\\[", "\\]"], ["$$", "$$"]],
+      processEscapes: true
+    },
+    svg: { fontCache: "global" },
+    options: {
+      ignoreHtmlClass: "no-mjx",
+      // processHtmlClass: "mjx-process"
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <meta charset="UTF-8" />
+  <title>Exam Review | St. Patrick's School</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    body { margin:0; padding:0; font-family:'Segoe UI', Arial, sans-serif; background:#f4f8fc;}
+    .page-wrapper { min-height:100vh; }
+    #main-header {
+      background: linear-gradient(90deg,#1762a7,#0f3d6b);
+      color:#fff; border-bottom-left-radius:28px; border-bottom-right-radius:28px;
+      padding:24px 10px 18px 10px; display:flex; flex-direction:column; align-items:center;
+      position: sticky; top: 0; z-index: 10;
+    }
+    #main-header .school-title { font-size:2.2em; font-weight:bold; margin:0;}
+    #main-header .subtitle { font-size:1.12em; color:#e0eaff; margin-top:4px;}
+    main { display:flex; flex-direction:column; align-items:center; padding:18px 8px 40px 8px;}
+    .review-container {
+      width:100%; max-width:600px; margin:0 auto; background:#fff; border-radius:22px;
+      box-shadow:0 4px 16px rgba(0,27,68,0.13); padding:32px 20px 28px 20px;
+    }
+    .review-container h2 { text-align:center; color:#11385d; margin:0 0 30px 0; font-size:2em; font-weight:800;}
+    .section-block { margin-bottom: 36px; }
+    .section-header {
+      font-size:1.2em; font-weight:700; color:#0f3d6b; margin:28px 0 10px 0; 
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      cursor:pointer; border-bottom:1.3px solid #bcd6ef; padding-bottom:5px;
+      background:#f7fafd; text-align:center;
+    }
+    .section-flex-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      background: #eaf4fd;
+      border-left: 5px solid #1762a7;
+      border-radius: 7px;
+      padding: 10px 18px 10px 16px;
+      box-shadow: 0 2px 8px #c8e3f533;
+      font-size: 1.06em;
+    }
+    .section-instructions {
+      color: #1762a7;
+      background: none;
+      border: none;
+      outline: none;
+      font-size: 1.07em;
+      font-weight: 500;
+      min-height: 24px;
+      margin: 0;
+      padding: 0;
+      flex: 1 1 auto;
+      text-align: left;
+      resize: none;
+    }
+    .marks-total-box {
+      font-weight: bold;
+      color: #185496;
+      margin-left: 18px;
+      min-width: 85px;
+      text-align: right;
+      flex: 0 0 auto;
+    }
+    .section-header[contenteditable],
+    .section-instructions[contenteditable] {
+      outline: 2px solid #1762a7;
+    }
+    .edit-icon { color:#888; margin-left:4px; cursor:pointer; }
+   .question-row {
+  display: grid;
+  grid-template-columns: 2.4em 1fr; /* number | body */
+  column-gap: 10px;
+  align-items: start;
+  margin-bottom: 14px;
+  background: #f7fafd;
+  padding: 13px 13px 10px 13px;
+  border-radius: 9px;
+  border: 1.1px solid #bcd6ef;
+  font-size: 1.07em;
+  box-sizing: border-box;
+}
+    .question-text { white-space: pre-wrap; flex: 1; }
+    .question-number { font-weight:700; color:#185496; margin-right:8px; }
+      .marks-box[contenteditable] {
+      background: #f3f7fe;
+      outline: 2px solid #bcd6ef;
+      border-radius: 6px;
+      padding: 2px 10px;
+      min-width: 28px;
+      text-align: center;
+      font-weight: bold;
+      color: #12416c;
+    }
+    .marks-label {
+      margin-left: 4px;
+      color: #1762a7;
+      font-size: 0.98em;
+      opacity: 0.82;
+    }
+    .save-btn, .preview-btn {
+      width: 100%;
+      background:#1762a7; color:#fff; border:none; border-radius:7px; padding:12px 0; font-size:1.08em; font-weight:600;
+      cursor:pointer; box-shadow:0 2px 7px #bcd6ef1a; margin:0;
+      transition: background 0.18s;
+      display: flex; justify-content: center; align-items: center; gap: 10px;
+    }
+    .save-btn:hover, .preview-btn:hover { background:#12416c; }
+    .preview-btn {
+      background: #12416c;
+      margin-top: 14px;
+    }
+    .preview-btn:hover {
+      background: #13ad59;
+    }
+    .edit-indicator { color:#e67600; font-size:0.93em; margin-left:8px; }
+    .section-header[contenteditable] { background:#f3f7fe; }
+    @media (max-width:700px){ .review-container{max-width:98vw; padding:12px 4vw 14px 4vw;} }
+    @media (max-width:480px){ #main-header .school-title{font-size:1.35em;} .review-container h2{font-size:1.25em;} }
+  .question-text[contenteditable] {
+  border: 1px dashed #bcd6ef;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+    .no-mjx[contenteditable] {
+  display: inline-block;
+  user-select: text;
+  -webkit-user-modify: read-write-plaintext-only;
+}
+.no-mjx[contenteditable]:focus {
+  outline: 2px solid #bcd6ef;
+  background: #f3f7fe;
+  border-radius: 6px;
+}
+     /* --- Per-question image box --- */
+  .q-imgwrap{margin:.5rem 0 1rem 0}
+  .q-imgbar{display:flex;gap:.5rem;align-items:center;margin:.25rem 0 .5rem}
+  .q-imgbar button,.q-imgbar input[type="file"]{padding:.35rem .6rem;border:1px solid #bcd6ef;border-radius:6px;background:#f7fafd;cursor:pointer}
+  .q-imgbox{width:100%;max-width:680px;min-height:160px;border:1.3px dashed #bcd6ef;border-radius:10px;background:#fbfdff;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;touch-action:pan-x pan-y}
+  .q-imgbox.empty::after{content:"Paste / Drop / Click to add image";color:#678;position:absolute;font-size:.95rem}
+  .q-imgbox img{max-width:none;max-height:none;will-change:transform;user-select:none;pointer-events:none}
+  .q-imghint{font-size:.82rem;color:#678;margin-top:.35rem}
+
+  /* right column container */
+.q-body { display: block; }
+
+/* hanging-indent subpart block */
+.subpart { display: block; margin: .15rem 0; }
+.subpart .label { display: inline-block; width: 2.2em; font-weight: 700; color:#185496; }
+.subpart .sub-text {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  text-align: justify;
+  /* hanging indent: first line starts at 0 after label, wraps align under first word */
+  text-indent: 0;
+}
+
+/* centered OR line */
+.or-line { text-align: center; font-weight: 700; letter-spacing: .08em; margin: .25rem 0; color:#0f3d6b; }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <header id="main-header">
+    <div class="school-title">St. Patrick's School</div>
+    <div class="subtitle">IIT & NEET FOUNDATION</div>
+  </header>
+  <main>
+    <div class="review-container">
+      <h2>Review & Edit Exam Paper</h2>
+      <div id="exam-review-area"></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 24px; width: 100%;">
+  <button class="save-btn" id="randomize-numbers-btn" style="background:#f08035;">
+    <i class="fas fa-random"></i> Randomize Numbers (Copy Prompt → Open ChatGPT)
+  </button>
+
+  <button class="save-btn" id="apply-json-btn" style="background:#1762a7;">
+    <i class="fas fa-paste"></i> Paste JSON from ChatGPT
+  </button>
+
+  <button class="save-btn" id="save-review-btn">
+    <i class="fas fa-save"></i> Save Changes
+  </button>
+  <button class="preview-btn" id="preview-btn">
+    <i class="fas fa-eye"></i> Preview Question Paper
+  </button>
+</div>
+    </div>
+  </main>
+</div>
+<script>
+  function stripMetaLine(str) {
+  if (!str) return '';
+  // Remove meta info lines like "Q4: Level 1, 1 Mark [Descriptive]"
+  return str.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '').trim();
+}
+  function stripMetaTags(str) {
+  if (!str) return '';
+  // Remove tags anywhere in the text, not only at the beginning
+  return str.replace(/\s*\[(?:Descriptive|MCQ|Multiple|Single)\]\s*/gi, '').trim();
+}
+  function getExamPaper() {
+    try {
+      return JSON.parse(sessionStorage.getItem("examPaper") || "null");
+    } catch {
+      return null;
+    }
+  }
+  function setExamPaper(paper) {
+    sessionStorage.setItem("examPaper", JSON.stringify(paper));
+  }
+// --------- Robust parser for AI output ---------
+function parseAIBlocks(text, expectedCount) {
+  if (!text) return [];
+  // normalize
+  let t = String(text)
+  .replace(/\r/g,'')
+  .replace(/&nbsp;/gi,' ')
+  .replace(/<br\s*\/?>/gi,'\n')
+  .replace(/<\/p>/gi,'\n')
+  .replace(/<p[^>]*>/gi,'')          // strip opening <p> so A/B are detected
+  .replace(/<div[^>]*>/gi,'\n')
+  .replace(/<\/div>/gi,'')
+  .replace(/<li[^>]*>/gi,'\n')
+  .replace(/<\/li>/gi,'')
+  .replace(/<ol[^>]*>|<ul[^>]*>|<\/ol>|<\/ul>/gi,'')
+  .trim();
+  // strip code fences if present
+  t = t.replace(/```(?:\w+)?\n([\s\S]*?)```/g, '$1');
+
+  // 1) Primary: "Q<number> ... :"  (allow ANY chars, including nested parens, until the colon)
+  //    No newline before the colon to avoid over-greedy spans.
+  let matches = [...t.matchAll(/Q\s*\d+[^\n:]*:/gi)];
+
+  // 2) Fallback: plain numbered lists like "1. " or "2) "
+  if (matches.length === 0) {
+    matches = [...t.matchAll(/(^|\n)\s*\d+\s*[\.\)]\s+/g)];
+  }
+
+  if (matches.length === 0) return [];
+
+  // Build block slices
+  const starts = matches.map(m => m.index + (t[m.index] === '\n' ? 1 : 0)).sort((a,b)=>a-b);
+  const blocks = [];
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i];
+    const end = i + 1 < starts.length ? starts[i + 1] : t.length;
+    const chunk = t.slice(start, end).trim();
+    if (chunk) blocks.push(chunk);
+  }
+
+  // Trim extras if AI returned more than asked
+  if (blocks.length > expectedCount) return blocks.slice(0, expectedCount);
+  return blocks;
+}
+  // --- NEW: parse pasted questions (order preserved) ---
+function parsePastedQuestions(rawText) {
+  if (!rawText) return [];
+  const text = String(rawText).replace(/\r/g, '').trim();
+
+  // Split into blocks by: blank lines OR numbered/Q-lines
+  const blocks = text.split(/\n{2,}|\n(?=\d+\s*[\.\)]\s)|\n(?=Q\s*\d+[:\.])/i)
+                     .map(b => b.trim())
+                     .filter(Boolean);
+
+  const items = [];
+  for (const block of blocks) {
+    // Extract MCQ options A/B/C/D and optional Ans:
+    const lines = block.split('\n').map(s => s.trim()).filter(Boolean);
+
+    // Detect options
+    const opts = [];
+    const optRegex = /^[A-D][\)\.\:]?\s+(.+)$/i;
+    lines.forEach(l => {
+      const m = l.match(optRegex);
+      if (m) opts.push(m[1].trim());
+    });
+
+    // Extract answer letters if present anywhere
+    let ans = '';
+    const am = block.match(/Ans?\s*:\s*([A-D](?:\s*,\s*[A-D])*)/i);
+    if (am) {
+      const seen = new Set();
+      ans = am[1]
+        .toUpperCase()
+        .split(',')
+        .map(s => s.trim())
+        .filter(L => /^[A-D]$/.test(L) && !seen.has(L) && (seen.add(L), true))
+        .join(seen.size > 1 ? ',' : '');
+    }
+
+    // Stem: remove leading "Qx:" or "1)." etc and strip option/answer lines
+    let stem = block
+  .replace(/^Q\s*\d+\s*[:\.\)]\s*/i, '')
+  .replace(/^\d+\s*[\.\)]\s*/, '')
+  .replace(/\n?Ans?\s*:.+$/i, '')
+  .replace(/\n?[A-D][\)\.\:]?\s+.+$/gmi, '')
+  .replace(/\n\s*\(?OR\)?\s*\n/gi, '\n')
+  .replace(/\(\s*OR\s*\)/gi, '')
+  .trim();
+
+    // Keep LaTeX intact in stem
+    if (opts.length === 4) {
+      items.push({ text: stem, options: opts, answer: ans });
+    } else {
+      items.push({ text: stem });
+    }
+  }
+  return items;
+}
+
+function renderExam() {
+
+    const paper = getExamPaper();
+    const area = document.getElementById('exam-review-area');
+         if (!paper) {
+      area.innerHTML = `<div style="color:#b00;padding:16px;font-size:1.11em;">No exam paper found!<br>Please go back and generate one first.</div>`;
+      document.getElementById("save-review-btn").disabled = true;
+      document.getElementById("preview-btn").disabled = true;
+      return;
+    }
+
+    // --- NEW: build questions for sections sourced from Paste (order preserved) ---
+(paper.subjects || []).forEach((subjectBlock) => {
+  (subjectBlock.sections || []).forEach((sec) => {
+    if (sec && sec.sourceType === 'Paste') {
+      // If already populated (e.g., user edited earlier), do nothing
+      const already = Array.isArray(sec.questions) && sec.questions.length;
+      const want = (sec.type === 'internal') ? (sec.numPairs || 0) : (sec.numQuestions || 0);
+      if (!already && sec.pastedText) {
+        const parsed = parsePastedQuestions(sec.pastedText);
+        const take = parsed.slice(0, Math.max(0, want));
+
+        // Map into your question shape
+        sec.questions = take.map((q, i) => ({
+          number: i + 1,
+          text: q.text,
+          options: Array.isArray(q.options) ? q.options : undefined,
+          answer: q.answer || '',
+          marks: sec.marksPerQuestion || ''
+        }));
+
+        // If fewer than needed, add a simple notice in instructions
+        if (sec.questions.length < want) {
+          const miss = want - sec.questions.length;
+          sec.instructions = (sec.instructions ? (sec.instructions + ' ') : '') +
+            `(Only ${sec.questions.length} available from pasted content; ${miss} missing)`;
+        }
+      }
+    }
+  });
+});
+
+let html = '';
+
+let qCounter = 0;
+(paper.subjects || []).forEach((subjectBlock, subjIdx) => {
+      if (paper.instructions) {
+  html += `<div class="paper-global-instructions" style="color:#12416c;font-size:1.1em; font-weight:600; background:#f7fafd; padding:10px 18px; border-radius:9px; margin-bottom:22px; text-align:center;">
+    ${paper.instructions}
+  </div>`;
+}
+      html += `<h3 style="color:#0f3d6b; margin:22px 0 8px 0;">Subject: ${subjectBlock.subject}</h3>`;
+            (subjectBlock.sections || []).forEach((section, sIdx) => {
+
+        // Section Header (centered)
+       html += `
+  <div class="section-block" style="margin-bottom: 18px;">
+    <!-- Centered Section Header -->
+    <div class="section-header"
+        style="text-align:center; justify-content: center;"
+        contenteditable="true"
+        spellcheck="true"
+        data-subject="${subjIdx}"
+        data-section="${sIdx}">
+      ${(
+  section.label && section.mcqType &&
+  !section.label.toUpperCase().includes(section.mcqType.toUpperCase()) &&
+  section.mcqType.toUpperCase() !== 'DESCRIPTIVE'
+    ? section.label + ` (${section.mcqType})`
+    : (section.label || 'Section')
+).replace(/\s*\(?\s*descriptive\s*\)?/i, '').trim()
+}
+      <i class="fas fa-pen edit-icon"></i>
+    </div>
+    <!-- Instructions and Total in one row -->
+    <div class="section-flex-row" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0; padding:7px 18px 7px 18px;">
+  <div style="font-weight: 600; color: #1762a7; font-size: 1.08em; text-align:left;">
+    ${
+      section.type === "all"
+        ? `Answer all ${section.numQuestions} questions`
+        : section.type === "any"
+          ? `Answer any ${section.attemptAny || section.numQuestions} questions`
+          : section.type === "internal"
+            ? `Answer all ${section.numPairs} pairs`
+            : ""
+    }
+  </div>
+    <div style="font-weight:600; color:#1762a7; font-size:1.08em; text-align:right; min-width:120px;">
+    <span contenteditable="plaintext-only" tabindex="0" class="num-questions no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin-right:2px;">
+      ${section.numQuestions}
+    </span>
+    x
+    <span contenteditable="plaintext-only" tabindex="0" class="marks-per-question no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin:0 2px;">
+      ${section.marksPerQuestion}
+    </span>
+    = ${(section.numQuestions * section.marksPerQuestion)} Marks
+  </div>
+</div>
+`;
+                (section.questions || []).forEach((q, qIdx) => {
+        {
+    const fullRaw = stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''));
+  const bodyHtml = `
+      <span class="question-text" contenteditable="true">${fullRaw}</span>
+    `;
+
+  html += `<div class="question-row" data-subject="${subjIdx}" data-section="${sIdx}" data-question="${qIdx}">
+    <span class="question-number">${(++qCounter)}.</span>
+    <div class="q-body">
+      ${bodyHtml}
+
+      ${ (q.options && q.options.length === 4)
+        ? `
+          <div class="mcq-block" style="display:flex;flex-direction:column;gap:6px;margin-left:8px;flex:1 1 100%;">
+            ${['A','B','C','D'].map((L, i) => `
+              <div class="mcq-row" data-idx="${i}" style="display:flex;align-items:center;gap:8px;">
+                <span style="font-weight:700;color:#185496;min-width:18px;">${L})</span>
+                <span class="mcq-opt no-mjx" contenteditable="plaintext-only" tabindex="0" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:3px 8px;">
+                    ${(q.options[i] || '').toString()}
+                </span>
+              </div>
+            `).join('')}
+            <div class="mcq-ans-row" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+              <span class="marks-label" style="min-width:62px;">Answer</span>
+              <span class="answer-box no-mjx" contenteditable="plaintext-only" tabindex="0" style="border:1px solid #bcd6ef;border-radius:6px;padding:3px 8px;min-width:80px;">
+                ${(q.answer || '').toString()}
+              </span>
+              <span class="marks-label" style="opacity:.8;">(use letters like A or A,C)</span>
+            </div>
+          </div>
+        `
+        : ''
+      }
+
+      <span class="marks-box no-mjx" contenteditable="plaintext-only" tabindex="0">${q.marks || section.marksPerQuestion || ''}</span>
+      <span class="marks-label">Marks</span>
+
+      <div class="q-imgwrap" data-qkey="${subjIdx}|${sIdx}|${qIdx}">
+        <div class="q-imgbar">
+          <button type="button" data-act="pick">Upload</button>
+          <button type="button" data-act="fit">Fit</button>
+          <button type="button" data-act="zout">-</button>
+          <button type="button" data-act="zin">+</button>
+          <button type="button" data-act="reset">Reset</button>
+          <button type="button" data-act="remove">Remove</button>
+          <input type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        </div>
+        <div class="q-imgbox ${q.image ? '' : 'empty'}" tabindex="0">
+          ${q.image ? `<img src="${q.image}" alt="question image">` : ''}
+        </div>
+        <div class="q-imghint">Tip: Ctrl/Cmd+V to paste, drag & drop to add. Wheel to zoom, drag to pan.</div>
+      </div>
+    </div>
+  </div>`;
+}
+        });
+        html += `</div>`;
+      });
+    });
+    area.innerHTML = html;
+    // Instantly update total marks on edit
+area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
+  el.addEventListener('input', function() {
+    const subjIdx = +this.dataset.subject, secIdx = +this.dataset.section;
+    // Find the other span
+    const block = this.closest('.section-flex-row');
+    const numQ = parseInt(block.querySelector('.num-questions').textContent.trim()) || 0;
+    const marksQ = parseInt(block.querySelector('.marks-per-question').textContent.trim()) || 0;
+    // Find the = ... Marks part (it’s always plain text, after the two spans)
+    const totalNode = block.childNodes[block.childNodes.length - 1];
+    if (totalNode && totalNode.nodeType === 3) {
+      totalNode.textContent = ` = ${numQ * marksQ} Marks`;
+    }
+  });
+});
+    // Enable MathJax preview for questions/options with click-to-edit
+(function () {
+  if (!window.__makeEditable) {
+    window.__makeEditable = function (el) {
+  const raw = el.dataset.raw ?? el.innerHTML ?? '';
+  el.dataset.raw = raw;
+  el.innerHTML = raw;                // keep HTML (incl. <img>)
+  el.setAttribute('contenteditable', 'true'); // allow HTML editing
+  el.classList.add('no-mjx');        // pause MathJax while editing
+  el.focus();
+};
+  }
+  if (!window.__makePreview) {
+    window.__makePreview = function (el) {
+  const raw = (el.innerHTML || el.dataset.raw || '').trim();
+  el.dataset.raw = raw;
+  el.classList.remove('no-mjx');     // let MathJax process
+  el.setAttribute('contenteditable', 'false');
+  el.innerHTML = raw;                // render HTML (incl. <img>)
+  (window.MathJax?.typesetPromise
+  ? MathJax.typesetPromise([el])
+  : (MathJax?.startup?.promise
+      ? MathJax.startup.promise.then(() => MathJax.typesetPromise([el]))
+      : Promise.resolve()))
+};
+  }
+  if (!window.__attachMathEditors) {
+    window.__attachMathEditors = function (root) {
+      const targets = root.querySelectorAll('.question-text, .sub-text, .mcq-opt');
+      targets.forEach(el => {
+        window.__makePreview(el);
+        el.addEventListener('click', () => {
+          if (el.getAttribute('contenteditable') === 'false') window.__makeEditable(el);
+        });
+        el.addEventListener('blur', () => {
+          if (el.getAttribute('contenteditable') !== 'false') window.__makePreview(el);
+        });
+      });
+    };
+  }
+  window.__attachMathEditors(area);
+(window.MathJax?.typesetPromise
+  ? MathJax.typesetPromise([area])
+  : (MathJax?.startup?.promise
+      ? MathJax.startup.promise.then(() => MathJax.typesetPromise([area]))
+      : Promise.resolve()));
+})();
+
+   // Inline editing indicators for all [contenteditable]
+   // ---- Per-question image boxes: handlers + state ----
+  attachImageBoxes(area);
+
+  function attachImageBoxes(root){
+    const wraps = root.querySelectorAll('.q-imgwrap');
+    wraps.forEach(wrap => {
+      const box = wrap.querySelector('.q-imgbox');
+      const fileInput = wrap.querySelector('input[type="file"]');
+      const btn = act => wrap.querySelector(`[data-act="${act}"]`);
+      const qkey = wrap.dataset.qkey; // "subj|sec|q"
+
+      // init transform state
+      box._scale = 1; box._tx = 0; box._ty = 0;
+
+      // helpers
+      function getPaper(){ try { return JSON.parse(sessionStorage.getItem("examPaper")||"null"); } catch { return null; } }
+      function setPaper(p){ sessionStorage.setItem("examPaper", JSON.stringify(p)); }
+      function getQ(){
+        const [si, se, qi] = qkey.split('|').map(Number);
+        return getPaper()?.subjects?.[si]?.sections?.[se]?.questions?.[qi];
+      }
+      function setImg(src){
+        box.classList.remove('empty');
+        if (!box.querySelector('img')){
+          const img = document.createElement('img');
+          box.appendChild(img);
+        }
+        box.querySelector('img').src = src;
+        // store into paper
+        const paper = getPaper();
+        const [si, se, qi] = qkey.split('|').map(Number);
+        const q = paper?.subjects?.[si]?.sections?.[se]?.questions?.[qi];
+        if (q){ q.image = src; setPaper(paper); }
+        fit(); // auto-fit on first load
+      }
+      function clearImg(){
+        const img = box.querySelector('img');
+        if (img) img.remove();
+        box.classList.add('empty');
+        const paper = getPaper();
+        const [si, se, qi] = qkey.split('|').map(Number);
+        const q = paper?.subjects?.[si]?.sections?.[se]?.questions?.[qi];
+        if (q && q.image){ delete q.image; setPaper(paper); }
+        resetView();
+      }
+      function applyTransform(){
+        const img = box.querySelector('img');
+        if (!img) return;
+        img.style.transform = `translate(${box._tx}px, ${box._ty}px) scale(${box._scale})`;
+      }
+      function resetView(){ box._scale = 1; box._tx = 0; box._ty = 0; applyTransform(); }
+      function fit(){
+        const img = box.querySelector('img'); if (!img) return;
+        const bw = box.clientWidth, bh = Math.max(160, box.clientHeight || 160);
+        const natural = () => new Promise(res=>{
+          if (img.naturalWidth) return res([img.naturalWidth, img.naturalHeight]);
+          img.onload = ()=>res([img.naturalWidth, img.naturalHeight]);
+        });
+        natural().then(([iw, ih])=>{
+          if(!iw||!ih) return resetView();
+          const s = Math.min(bw/iw, bh/ih);
+          box._scale = Math.max(0.1, Math.min(5, s));
+          box._tx = 0; box._ty = 0; applyTransform();
+        });
+      }
+
+      // upload via file picker
+      btn('pick')?.addEventListener('click', ()=> fileInput.click());
+      fileInput?.addEventListener('change', e=>{
+        const f = e.target.files && e.target.files[0]; if(!f) return;
+        if (!/^image\/(png|jpeg|webp)$/.test(f.type)){ alert('Use PNG/JPEG/WebP'); return; }
+        if (f.size > 20*1024*1024){ alert('Max 20 MB'); return; }
+        const r = new FileReader();
+        r.onload = ()=> setImg(r.result);
+        r.readAsDataURL(f); // store data URL → persists via sessionStorage
+      });
+
+      // paste from clipboard
+      box.addEventListener('paste', e=>{
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for (const it of items){
+          if (it.kind === 'file' && /^image\//.test(it.type)){
+            e.preventDefault();
+            const f = it.getAsFile();
+            if (!f) return;
+            const r = new FileReader();
+            r.onload = ()=> setImg(r.result);
+            r.readAsDataURL(f);
+            break;
+          }
+        }
+      });
+
+      // drag & drop
+      box.addEventListener('dragover', e=>{ e.preventDefault(); box.style.borderColor = '#1762a7'; });
+      box.addEventListener('dragleave', ()=>{ box.style.borderColor = '#bcd6ef'; });
+      box.addEventListener('drop', e=>{
+        e.preventDefault(); box.style.borderColor = '#bcd6ef';
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!f) return;
+        if (!/^image\/(png|jpeg|webp)$/.test(f.type)){ alert('Use PNG/JPEG/WebP'); return; }
+        if (f.size > 20*1024*1024){ alert('Max 20 MB'); return; }
+        const r = new FileReader();
+        r.onload = ()=> setImg(r.result);
+        r.readAsDataURL(f);
+      });
+
+      // zoom with wheel
+      box.addEventListener('wheel', e=>{
+        const img = box.querySelector('img'); if (!img) return;
+        e.preventDefault();
+        const delta = Math.sign(e.deltaY) * -0.1; // wheel up = zoom in
+        const newScale = Math.min(5, Math.max(0.1, box._scale + delta));
+        const rect = box.getBoundingClientRect();
+        const cx = e.clientX - rect.left - rect.width/2;
+        const cy = e.clientY - rect.top  - rect.height/2;
+        const factor = newScale / box._scale;
+        box._tx = cx - factor*(cx - box._tx);
+        box._ty = cy - factor*(cy - box._ty);
+        box._scale = newScale;
+        applyTransform();
+      }, { passive:false });
+
+      // pan by drag
+      let dragging = false, sx=0, sy=0;
+      box.addEventListener('pointerdown', e=>{
+        if (!box.querySelector('img')) return;
+        dragging = true; sx = e.clientX; sy = e.clientY; box.setPointerCapture(e.pointerId);
+      });
+      box.addEventListener('pointermove', e=>{
+        if (!dragging) return;
+        box._tx += (e.clientX - sx);
+        box._ty += (e.clientY - sy);
+        sx = e.clientX; sy = e.clientY;
+        applyTransform();
+      });
+      box.addEventListener('pointerup',   ()=> dragging=false);
+      box.addEventListener('pointercancel',()=> dragging=false);
+
+      // toolbar buttons
+      btn('fit')?.addEventListener('click', fit);
+      btn('reset')?.addEventListener('click', resetView);
+      btn('zin')?.addEventListener('click', ()=>{ box._scale=Math.min(5, box._scale+0.2); applyTransform(); });
+      btn('zout')?.addEventListener('click', ()=>{ box._scale=Math.max(0.1, box._scale-0.2); applyTransform(); });
+      btn('remove')?.addEventListener('click', clearImg);
+    });
+  }
+
+area.querySelectorAll('[contenteditable]').forEach(el => {
+  el.addEventListener('input', function() {
+    this.classList.add('edited');
+    // Remove existing edit-indicator
+    const parent = this.parentNode;
+    const existing = parent.querySelector('.edit-indicator');
+    if (existing) existing.remove();
+    // Add new one
+    const ind = document.createElement('span');
+    ind.className = 'edit-indicator';
+    ind.textContent = 'Edited';
+    parent.appendChild(ind);
+  });
+  el.addEventListener('blur', function() {
+    this.classList.remove('edited');
+    if (this.parentNode && this.parentNode.querySelector('.edit-indicator')) {
+      setTimeout(() => {
+        if (this.parentNode) {
+          const indicator = this.parentNode.querySelector('.edit-indicator');
+          if (indicator) indicator.remove();
+        }
+      }, 600);
+    }
+  });
+});
+}
+function saveEdits() {
+  const paper = getExamPaper();
+  if (!paper) return;
+  // Section names
+  document.querySelectorAll('.section-header').forEach(sec => {
+    const subjIdx = +sec.dataset.subject, secIdx = +sec.dataset.section;
+    paper.subjects[subjIdx].sections[secIdx].label = sec.textContent.replace(/<[^>]+>/g,'').replace(/Edited$/,'').trim();
+  });
+  // Number of Questions and Marks Per Question (editable)
+  document.querySelectorAll('.num-questions').forEach(span => {
+    const subjIdx = +span.dataset.subject, secIdx = +span.dataset.section;
+    let val = parseInt(span.textContent.trim());
+    if (!isNaN(val) && val > 0) paper.subjects[subjIdx].sections[secIdx].numQuestions = val;
+  });
+  document.querySelectorAll('.marks-per-question').forEach(span => {
+    const subjIdx = +span.dataset.subject, secIdx = +span.dataset.section;
+    let val = parseInt(span.textContent.trim());
+    if (!isNaN(val) && val > 0) paper.subjects[subjIdx].sections[secIdx].marksPerQuestion = val;
+  });
+  // Instructions (editable flex row)
+  document.querySelectorAll('.section-instructions').forEach(ins => {
+    const subjIdx = +ins.dataset.subject, secIdx = +ins.dataset.section;
+    paper.subjects[subjIdx].sections[secIdx].instructions = ins.innerText.trim();
+  });
+  // Questions — update text, options (if MCQ), answer key, and marks
+  document.querySelectorAll('.question-row').forEach(qr => {
+    const subjIdx = +qr.dataset.subject, secIdx = +qr.dataset.section, qIdx = +qr.dataset.question;
+
+    // Marks
+    const newMarks = qr.querySelector('.marks-box')?.innerText?.trim() ?? '';
+    paper.subjects[subjIdx].sections[secIdx].questions[qIdx].marks = newMarks;
+
+   // Text (prefer stored raw TeX/plain text)
+const aNode = qr.querySelector('.subpart .sub-text');            // first sub-text (A)
+const bNode = qr.querySelectorAll('.subpart .sub-text')[1];      // second sub-text (B)
+let newText = '';
+
+if (aNode && bNode) {
+  const aRaw = (aNode.dataset?.raw || aNode.innerHTML || '').trim();
+  const bRaw = (bNode.dataset?.raw || bNode.innerHTML || '').trim();
+  newText = `(A) ${aRaw}\n\n(B) ${bRaw}`;
+} else {
+  const qt = qr.querySelector('.question-text');
+  if (qt) newText = (qt.dataset?.raw || '').trim() || (qt.innerHTML || '').trim(); // keep HTML (images)
+}
+
+if (newText) {
+  paper.subjects[subjIdx].sections[secIdx].questions[qIdx].text = newText;
+}
+    const optNodes = qr.querySelectorAll('.mcq-opt');
+if (optNodes && optNodes.length === 4) {
+  const updatedOpts = Array.from(optNodes).map(n =>
+    ((n.dataset && n.dataset.raw) ? n.dataset.raw : (n.innerText || '')).trim()
+  );
+  paper.subjects[subjIdx].sections[secIdx].questions[qIdx].options = updatedOpts;
+}
+
+
+    // Answer key (letters like A or A,C)
+    const ansNode = qr.querySelector('.answer-box');
+    if (ansNode) {
+      let raw = (ansNode.innerText || '').toUpperCase().replace(/[^A-D,]/g,'').replace(/\s+/g,'');
+      // Normalize duplicates & order: A,B,C,D unique, keep original order
+      const seen = new Set();
+      const letters = raw.split(',').filter(x => /^[A-D]$/.test(x) && !seen.has(x) && (seen.add(x), true));
+      paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer = letters.join(letters.length > 1 ? ',' : '');
+           // Sync image (if present)
+      const wrap = qr.querySelector('.q-imgwrap');
+      if (wrap){
+        const img = wrap.querySelector('.q-imgbox img');
+        if (img && img.src){
+          paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image = img.src; // data URL persists
+        } else {
+          delete paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image;
+        }
+      }
+    }
+  });
+
+  // Re-number questions continuously across ALL subjects and sections
+  let n = 1;
+  (paper.subjects || []).forEach(subj => {
+    (subj.sections || []).forEach(sec => {
+      (sec.questions || []).forEach(q => { q.number = n++; });
+    });
+  });
+  setExamPaper(paper);
+  alert('Changes saved!');
+}
+
+document.getElementById('save-review-btn').onclick = saveEdits;
+window.onload = renderExam;
+document.getElementById('preview-btn').onclick = function() {
+  saveEdits();
+  const paper = getExamPaper();
+  if (paper) {
+    sessionStorage.setItem('finalExamData', JSON.stringify(paper));
+    window.location.href = 'exam-preview.html';
+  } else {
+    alert('No exam paper found!');
+  }
+};
+
+// --- Add this code at the end of your <script> ---
+document.getElementById('randomize-numbers-btn').onclick = async function() {
+  // --- stateful auto-batch controller: prepares batches or advances to next prompt ---
+  const btn = document.getElementById('randomize-numbers-btn');
+
+  // Helper: small guidance/status banner
+  function ensureGuide() {
+    let g = document.getElementById('rand-guide');
+    if (!g) {
+      g = document.createElement('div');
+      g.id = 'rand-guide';
+      g.style.cssText = 'margin-top:10px;padding:10px 12px;border:1px solid #bcd6ef;background:#f7fafd;border-radius:8px;color:#0f3d6b;font-size:.98em;';
+      btn.parentElement.insertBefore(g, btn.nextSibling);
+    }
+    return g;
+  }
+  function setGuide(html) {
+    const g = ensureGuide();
+    g.innerHTML = html;
+  }
+
+  // If a session already exists, just re-copy/open the current batch prompt
+  if (window.__randState && Array.isArray(window.__randState.batches)) {
+    const st = window.__randState;
+    const total = st.batches.length;
+    const i = st.idx + 1;
+    const promptText = buildRandomizePrompt(st.batches[st.idx]);
+    try {
+      await navigator.clipboard.writeText(promptText);
+      setGuide(`<b>Batch ${i}/${total}</b> prompt copied again. Opened ChatGPT. Paste → run → copy JSON → click <i>Paste JSON from ChatGPT</i>.`);
+      window.open('https://chat.openai.com/', '_blank', 'noopener');
+    } catch (e) {
+      alert('Copy failed. A window will open with the prompt for manual copy.');
+      const w = window.open('', '_blank', 'noopener,width=900,height=650,scrollbars=yes');
+      if (w) { w.document.write(`<pre style="white-space:pre-wrap;font-family:monospace;padding:16px;">${promptText.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</pre>`); w.document.close(); }
+    }
+    btn.innerHTML = `<i class="fas fa-random"></i> Copy Batch ${i}/${total} Prompt (again)`;
+    return;
+  }
+
+  // Fresh session
+  saveEdits();
+  const paper = getExamPaper();
+  if (!paper) { alert('No exam paper found!'); return; }
+
+  // Gather eligible questions (Math/Physics/Chemistry + contains a number)
+  const all = [];
+  paper.subjects.forEach((subjectBlock, subjIdx) => {
+    (subjectBlock.sections || []).forEach((section, sIdx) => {
+      (section.questions || []).forEach((q, qIdx) => {
+        const isProbSubject = ["math", "math 1", "math 2", "physics", "chemistry"].some(
+          s => (subjectBlock.subject || '').toLowerCase().includes(s)
+        );
+        if (!isProbSubject) return;
+        const text = (q.text || q.body || q.question || '');
+        if (!/\d/.test(text)) return;
+        all.push({ subjIdx, sIdx, qIdx, subject: subjectBlock.subject, sectionLabel: section.label, stem: text, options: Array.isArray(q.options) ? q.options : [] });
+      });
+    });
+  });
+
+  if (all.length === 0) {
+    alert('No numerical problem-solving questions found in Math/Physics/Chemistry.');
+    return;
+  }
+
+  // --- Make batches of size 15, but ensure last batch >= 12 if possible ---
+  function makeBatches(items, maxSize = 15, minSize = 12) {
+    const chunks = [];
+    for (let i = 0; i < items.length; i += maxSize) chunks.push(items.slice(i, i + maxSize));
+    if (chunks.length >= 2) {
+      const last = chunks[chunks.length - 1];
+      const prev = chunks[chunks.length - 2];
+      if (last.length < minSize && prev.length > minSize) {
+        const need = minSize - last.length;
+        const take = Math.min(need, prev.length - minSize);
+        if (take > 0) {
+          last.unshift(...prev.splice(prev.length - take, take));
+        }
+      }
+    }
+    return chunks;
+  }
+
+  const batches = makeBatches(all, 15, 12);
+  // Save session state
+  window.__randState = {
+    batches,                // array of arrays of question-maps
+    idx: 0,                 // current batch index
+    appliedCount: 0,        // total questions updated so far
+    paperBackup: JSON.parse(JSON.stringify(paper)) // full backup
+  };
+
+  const total = batches.length;
+  const promptText = buildRandomizePrompt(batches[0]);
+  try {
+    await navigator.clipboard.writeText(promptText);
+    setGuide(`<b>Batch 1/${total}</b> prompt copied. I opened ChatGPT. Steps:<br>1) Paste & run<br>2) Copy STRICT JSON array<br>3) Return here → click <i>Paste JSON from ChatGPT</i>`);
+    window.open('https://chat.openai.com/', '_blank', 'noopener');
+  } catch (e) {
+    alert('Copy failed. A window will open with the prompt for manual copy.');
+    const w = window.open('', '_blank', 'noopener,width=900,height=650,scrollbars=yes');
+    if (w) { w.document.write(`<pre style="white-space:pre-wrap;font-family:monospace;padding:16px;">${promptText.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</pre>`); w.document.close(); }
+  }
+  btn.innerHTML = `<i class="fas fa-random"></i> Copy Batch 1/${total} Prompt (again)`;
+};
+// --- END ---
+
+function buildRandomizePrompt(batchQuestions) {
+  const header = `
+You will receive a batch of questions (mostly numerical). For EACH question:
+- Keep the SAME wording/structure; only change numeric values to new reasonable integers (avoid 0/1 unless appropriate).
+- Recompute all options so they match the new numbers.
+- MCQ (Single): exactly one correct option.
+- MCQ (Multiple): 1–4 correct options (you choose per question).
+- Randomize intended correct-count distribution across the batch approximately as:
+  • 20%: 1 correct option
+  • 30%: 2 correct options
+  • 30%: 3 correct options
+  • 20%: 4 correct options (all correct)
+- Never return a question where none of the options are correct.
+- Shuffle options AND ensure the answer letters match the shuffled options.
+- Preserve any TeX/Math formatting already present (e.g., \\( ... \\)).
+- Return STRICT JSON only (no prose, no markdown fences). Each item must be ONE of:
+  • MCQ:
+    { "stem":"<updated question text>", "options":["A","B","C","D"], "answer":["A"] }  // or ["A","C"] for multiple
+  • Descriptive:
+    { "stem":"<updated question text>" }  // no options, no answer
+- Do not include any extra fields.
+[
+  { ... }, { ... }, ...
+]
+
+Input items (JSON per line):
+`.trim();
+
+  const lines = batchQuestions.map((q, idx) => JSON.stringify({
+    index: idx + 1,
+    subject: q.subject,
+    section: q.sectionLabel,
+    stem: q.stem,
+    options: q.options
+  })).join('\n');
+
+  return `${header}\n${lines}\n`;
+}
+
+document.getElementById('apply-json-btn').onclick = async function() {
+  const paper = getExamPaper();
+  if (!paper) { alert('No exam paper found!'); return; }
+
+  if (!window.__randState || !Array.isArray(window.__randState.batches)) {
+    alert('No active randomize session. Click “Randomize Numbers (Copy Prompt → Open ChatGPT)” first.');
+    return;
+  }
+
+  const st = window.__randState;
+  const totalBatches = st.batches.length;
+  const currentIdx = st.idx;
+  const currentMap = st.batches[currentIdx]; // this batch’s mapping
+
+  const raw = prompt(`Paste the STRICT JSON array returned by ChatGPT for Batch ${currentIdx + 1}/${totalBatches}:`, '');
+  if (!raw) return;
+
+ function extractJsonArray(raw) {
+  let s = String(raw || '').trim();
+
+  // strip code fences
+  s = s.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+
+  // normalize smart quotes / nbsp
+  s = s.replace(/[\u2018\u2019]/g, "'")
+       .replace(/[\u201C\u201D]/g, '"')
+       .replace(/\u00A0/g, ' ');
+
+  // take first plausible array
+  const first = s.indexOf('[');
+  const last  = s.lastIndexOf(']');
+  if (first === -1 || last === -1 || last <= first) {
+    throw new Error('No JSON array found');
+  }
+  let sub = s.slice(first, last + 1);
+
+    // remove trailing commas
+  sub = sub.replace(/,(\s*[}\]])/g, '$1');
+
+    // Repair LaTeX backslashes BEFORE parsing, so JSON does NOT turn \t \f \n \r into tab/formfeed/newline.
+  // 1) Fix LaTeX commands that start with t/f/n/r (e.g., \text, \times, \frac) so they don't become JSON escapes.
+  sub = sub
+    .replace(/\\t(?=[A-Za-z])/g, '\\\\t')
+    .replace(/\\f(?=[A-Za-z])/g, '\\\\f')
+    .replace(/\\n(?=[A-Za-z])/g, '\\\\n')
+    .replace(/\\r(?=[A-Za-z])/g, '\\\\r');
+
+  // 2) Fix all other invalid backslashes (e.g., \cap, \frac, \alpha) that are not valid JSON escapes
+  sub = sub.replace(/\\(?![\\\/"bfnrtu]|u[0-9a-fA-F]{4})/g, '\\\\');
+
+  return JSON.parse(sub);
+}
+
+let items;
+try {
+  items = extractJsonArray(raw);
+} catch (e) {
+  console.error('JSON parse failed:', e, raw);
+  alert('Invalid JSON. Please paste only the JSON array.');
+  return;
+}
+
+  if (!Array.isArray(items) || items.length !== currentMap.length) {
+    alert(`JSON length mismatch. Expected ${currentMap.length} items, got ${Array.isArray(items) ? items.length : 0}.`);
+    return;
+  }
+
+  const backup = JSON.parse(JSON.stringify(paper));
+  let applied = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const { subjIdx, sIdx, qIdx } = currentMap[i];
+    const out = items[i] || {};
+    const stem = (out.stem || '').trim();
+const isMCQ = Array.isArray(out.options) && out.options.length === 4;
+const opts = isMCQ ? out.options.map(x => String(x || '').trim()) : [];
+let ans = Array.isArray(out.answer) ? out.answer.map(x => String(x || '').trim().toUpperCase()) : [];
+
+const qObj = paper.subjects[subjIdx].sections[sIdx].questions[qIdx];
+
+// Basic stem check
+const validStem = stem.replace(/<[^>]+>/g, '').length >= 3;
+if (validStem) qObj.text = stem;
+
+if (isMCQ) {
+  // MCQ path
+  const validOpts = opts.every(s => s.length > 0);
+  if (validOpts) qObj.options = opts;
+
+  // Normalize answers (A–D, unique, original order)
+  const seen = new Set();
+  ans = ans.filter(L => /^[A-D]$/.test(L) && !seen.has(L) && (seen.add(L), true));
+  if (ans.length >= 1) qObj.answer = ans.join(ans.length > 1 ? ',' : '');
+
+  // Guard: if options exist but answer missing, keep previous answer if any
+  if (Array.isArray(qObj.options) && qObj.options.length === 4 && !qObj.answer) {
+    const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
+    if (orig?.answer) qObj.answer = orig.answer;
+  }
+} else {
+  // Descriptive path: ensure it’s stored as descriptive (no options/answer)
+  delete qObj.options;
+  delete qObj.answer;
+}
+
+// Guard: if stem was emptied by accident, restore original
+if (!qObj.text || !qObj.text.trim()) {
+  const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
+  if (orig?.text || orig?.question) qObj.text = (orig.text || orig.question);
+}
+    if (Array.isArray(qObj.options) && qObj.options.length === 4 && !qObj.answer) {
+      const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
+      if (orig?.answer) qObj.answer = orig.answer;
+    }
+    if (!qObj.text || !qObj.text.trim()) {
+      const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
+      if (orig?.text || orig?.question) qObj.text = (orig.text || orig.question);
+    }
+
+    applied++;
+  }
+
+  setExamPaper(paper);
+  renderExam();
+
+  // Update session progress
+  st.appliedCount += applied;
+  st.idx++;
+
+  // Guidance & next step
+  const btn = document.getElementById('randomize-numbers-btn');
+  const guide = document.getElementById('rand-guide');
+  if (st.idx >= totalBatches) {
+    alert(`All batches applied. Total updates: ${st.appliedCount}.`);
+    if (guide) guide.innerHTML = `<b>Done.</b> Applied ${st.appliedCount} updates across ${totalBatches} batches.`;
+    btn.innerHTML = '<i class="fas fa-random"></i> Randomize Numbers (Copy Prompt → Open ChatGPT)';
+    // Clear session
+    delete window.__randState;
+    return;
+  }
+
+  const nextIdx = st.idx;
+  const nextPrompt = buildRandomizePrompt(st.batches[nextIdx]);
+  try {
+    await navigator.clipboard.writeText(nextPrompt);
+    if (guide) guide.innerHTML = `<b>Batch ${nextIdx + 1}/${totalBatches}</b> prompt copied. I opened ChatGPT. Steps:<br>1) Paste & run<br>2) Copy STRICT JSON<br>3) Return → click <i>Paste JSON from ChatGPT</i>`;
+    window.open('https://chat.openai.com/', '_blank', 'noopener');
+  } catch (e) {
+    alert('Copy failed. A window will open with the next prompt for manual copy.');
+    const w = window.open('', '_blank', 'noopener,width=900,height=650,scrollbars=yes');
+    if (w) { w.document.write(`<pre style="white-space:pre-wrap;font-family:monospace;padding:16px;">${nextPrompt.replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]))}</pre>`); w.document.close(); }
+  }
+  btn.innerHTML = `<i class="fas fa-random"></i> Copy Batch ${nextIdx + 1}/${totalBatches} Prompt (again)`;
+};
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
