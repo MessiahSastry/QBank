@@ -1616,15 +1616,35 @@ function getQuestionTextFromDoc(data) {
 }
 
 function getQuestionAnswerFromDoc(data) {
-    return (
-        data.parsedAnswer ||
-        data.answer ||
-        data.parsedAns ||
-        data.correctAnswer ||
-        data.correct_option ||
-        data.correctOption ||
-        ''
-    );
+    const candidates = [
+        data.parsedAnswer,
+        data.parsedAns,
+        data.correctAnswer,
+        data.correct_option,
+        data.correctOption,
+        data.answer
+    ];
+
+    for (const val of candidates) {
+        if (val == null) continue;
+
+        const letters = String(val).toUpperCase().match(/[A-D]/g) || [];
+        const cleaned = [];
+        const seen = new Set();
+
+        for (const ch of letters) {
+            if (!seen.has(ch)) {
+                seen.add(ch);
+                cleaned.push(ch);
+            }
+        }
+
+        if (cleaned.length) {
+            return cleaned.join(',');
+        }
+    }
+
+    return '';
 }
 
 function getQuestionExplanationFromDoc(data) {
@@ -1650,7 +1670,12 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         ? norm.options.slice(0, 4)
         : (Array.isArray(extractedOptions) && extractedOptions.length === 4 ? extractedOptions : []);
 
-    const answerLetters = (String(norm.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+    const answerLetters = String(norm.answer || '')
+    .toUpperCase()
+    .split(',')
+    .map(x => x.trim())
+    .filter(x => /^[A-D]$/.test(x))
+    .join(',');
 
     if ((sectionMcqType === "MCQ (Single)" || sectionMcqType === "MCQ (Multiple)") && options.length === 4) {
         const clean = options.map(o => String(o).replace(/^[A-D][).]\s*/i, '').trim());
