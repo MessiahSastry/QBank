@@ -367,9 +367,9 @@ function sciMentraPrompt(message, defaultValue = '') {
     overlay.style.display = 'flex';
 
     setTimeout(() => {
-      input.focus();
-      input.select();
-    }, 0);
+  input.focus();
+  input.select();
+}, 0);
 
     function cleanup(value) {
       overlay.style.display = 'none';
@@ -383,9 +383,8 @@ function sciMentraPrompt(message, defaultValue = '') {
     cancelBtn.onclick = () => cleanup(null);
 
     input.onkeydown = (e) => {
-      if (e.key === 'Enter') cleanup(input.value);
-      if (e.key === 'Escape') cleanup(null);
-    };
+  if (e.key === 'Escape') cleanup(null);
+};
   });
 }
 
@@ -1120,6 +1119,7 @@ document.getElementById('apply-json-btn').onclick = async function() {
 
     // remove trailing commas
   sub = sub.replace(/,(\s*[}\]])/g, '$1');
+  sub = sub.replace(/\t/g, '\\t').replace(/\f/g, '\\f');
 
     // Repair LaTeX backslashes BEFORE parsing, so JSON does NOT turn \t \f \n \r into tab/formfeed/newline.
   // 1) Fix LaTeX commands that start with t/f/n/r (e.g., \text, \times, \frac) so they don't become JSON escapes.
@@ -1353,17 +1353,21 @@ if (!qObj.text || !qObj.text.trim()) {
         white-space:pre-wrap;
       "></div>
 
-      <input id="scimentra-dialog-input" type="text" style="
-        width:100%;
-        box-sizing:border-box;
-        padding:12px 14px;
-        border:1.5px solid #bcd6ef;
-        border-radius:10px;
-        font-size:1em;
-        outline:none;
-        margin-bottom:16px;
-        display:none;
-      ">
+     <textarea id="scimentra-dialog-input" style="
+  width:100%;
+  box-sizing:border-box;
+  padding:12px 14px;
+  border:1.5px solid #bcd6ef;
+  border-radius:10px;
+  font-size:1em;
+  outline:none;
+  margin-bottom:16px;
+  display:none;
+  min-height:180px;
+  resize:vertical;
+  font-family:monospace;
+  white-space:pre-wrap;
+"></textarea>
 
       <div style="
         display:flex;
