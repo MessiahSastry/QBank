@@ -1662,14 +1662,26 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                 options: clean,
                 answer: norm.answer
             });
+
             const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
 
-                    return {
+            return {
+                number: 0,
+                text: shuffled.question || stem,
+                marks: Number(marksPerQuestion || norm.marks || 0),
+                options: shuffled.options || clean,
+                answer: letterAns,
+                explanation: norm.explanation || '',
+                image: norm.image || ''
+            };
+        }
+
+        return {
             number: 0,
-            text: shuffled.question || stem,
+            text: stem,
             marks: Number(marksPerQuestion || norm.marks || 0),
-            options: shuffled.options || clean,
-            answer: letterAns,
+            options: clean,
+            answer: answerLetters,
             explanation: norm.explanation || '',
             image: norm.image || ''
         };
@@ -1679,35 +1691,12 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         number: 0,
         text: stem,
         marks: Number(marksPerQuestion || norm.marks || 0),
-        options: options.length === 4 ? options : [],
-        answer: answerLetters,
+        options: [],
+        answer: '',
         explanation: norm.explanation || '',
         image: norm.image || ''
     };
 }
-
-    return {
-        number: 0,
-        text: stem,
-        marks: Number(marksPerQuestion || norm.marks || 0),
-        options: options.length === 4 ? options : [],
-        answer: answerLetters,
-        explanation: norm.explanation || '',
-        image: norm.image || ''
-    };
-}
-
-    return {
-        number: 0,
-        text: stem,
-        marks: Number(marksPerQuestion || norm.marks || 0),
-        options: options.length === 4 ? options : [],
-        answer: answerLetters,
-        explanation: norm.explanation || '',
-        image: norm.image || ''
-    };
-}
-
 function updateSubjectsForBoardAndClass() {
     const selectedClass = getSelectedClass();
     const selectedBoard = getSelectedBoard();
