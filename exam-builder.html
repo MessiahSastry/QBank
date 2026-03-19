@@ -1764,7 +1764,8 @@ function getGlobalShuffleQuestions() {
 function getGlobalShuffleOptions() {
     return !!window._shuffleOptions;
 }
-    document.addEventListener('DOMContentLoaded', () => {
+   <script>
+document.addEventListener('DOMContentLoaded', () => {
     auth.onAuthStateChanged(function(user) {
         if (!user) {
             window.location.href = "login.html";
@@ -2032,12 +2033,6 @@ function getGlobalShuffleOptions() {
                             _mixedActual[pick] += sl.marksPerQuestion || 0;
                             return { ...sl, assigned: pick };
                         });
-
-                        const wantTxt = `${wantRaw[0]}/${wantRaw[1]}/${wantRaw[2]}`;
-                        const gotTxt  = `${_mixedTargets.L1}/${_mixedTargets.L2}/${_mixedTargets.L3}`;
-                        if (wantTxt !== gotTxt) {
-                            showToast(`Mixed: snapped to representable totals (gcd=${_mixedG}). Targets L1/L2/L3 → ${gotTxt}`, 'info');
-                        }
                     }
 
                     for (let sIdx = 0; sIdx < subjectsData.length; sIdx++) {
@@ -2105,7 +2100,6 @@ function getGlobalShuffleOptions() {
 
                                     for (let i = 0; i < takeCount; i++) {
                                         const slot = mySlots[i];
-
                                         const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
                                         const _act = (typeof _mixedActual  !== 'undefined' && _mixedActual)  ? _mixedActual  : { L1:0, L2:0, L3:0 };
 
@@ -2457,6 +2451,6 @@ function getGlobalShuffleOptions() {
         });
     });
 });
-    </script>
+</script>
 </body>
 </html>
