@@ -1989,19 +1989,19 @@ function autoLatexAll(str) {
           const menu = document.createElement('div');
           menu.className = 'actions-menu';
 
-          menu.innerHTML = `
+                    menu.innerHTML = `
             <button class="menu-show-answer-btn">Show Answer</button>
+            <button class="menu-show-explanation-btn">Show Explanation</button>
             <button class="menu-edit-btn">Edit / Meta</button>
             <button class="menu-delete-btn">Delete</button>
           `;
           questionItem.appendChild(menu);
 
-          menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
+                   menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
             event.stopPropagation();
-            let tempAns = questionItem.querySelector('.temp-answer');
+                       let tempAns = questionItem.querySelector('.temp-answer.answer-box');
             if (tempAns) {
               tempAns.remove();
-              menu.querySelector('.menu-show-answer-btn').textContent = 'Show Answer';
               menu.remove();
               return;
             }
@@ -2014,12 +2014,63 @@ function autoLatexAll(str) {
               answer = 'No answer found.';
             }
             const ansDiv = document.createElement('div');
-            ansDiv.className = 'temp-answer';
+            ansDiv.className = 'temp-answer answer-box';
             ansDiv.textContent = answer;
             questionItem.appendChild(ansDiv);
-            menu.querySelector('.menu-show-answer-btn').textContent = 'Hide Answer';
             if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
               window.MathJax.typesetPromise([ansDiv]);
+            }
+            menu.remove();
+          };
+
+          menu.querySelector('.menu-show-explanation-btn').onclick = async (event) => {
+            event.stopPropagation();
+            let tempExp = questionItem.querySelector('.temp-answer.explanation-box');
+            if (tempExp) {
+              tempExp.remove();
+              menu.remove();
+              return;
+            }
+            let explanation = '';
+            try {
+              const docSnap = await db.collection('questions').doc(docId).get();
+              const data = docSnap.data();
+              explanation = data.explanation || 'No explanation available.';
+            } catch (e) {
+              explanation = 'No explanation found.';
+            }
+            const expDiv = document.createElement('div');
+            expDiv.className = 'temp-answer explanation-box';
+            expDiv.innerHTML = '<b>Explanation:</b>\n' + explanation;
+            questionItem.appendChild(expDiv);
+            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+              window.MathJax.typesetPromise([expDiv]);
+            }
+            menu.remove();
+          };
+
+                    menu.querySelector('.menu-show-explanation-btn').onclick = async (event) => {
+            event.stopPropagation();
+            let tempExp = questionItem.querySelector('.temp-answer.explanation-box');
+            if (tempExp) {
+              tempExp.remove();
+              menu.remove();
+              return;
+            }
+            let explanation = '';
+            try {
+              const docSnap = await db.collection('questions').doc(docId).get();
+              const data = docSnap.data();
+              explanation = data.explanation || 'No explanation available.';
+            } catch (e) {
+              explanation = 'No explanation found.';
+            }
+            const expDiv = document.createElement('div');
+            expDiv.className = 'temp-answer explanation-box';
+            expDiv.innerHTML = '<b>Explanation:</b><br>' + __qbEscapeHtml(explanation).replace(/\n/g, '<br>');
+            questionItem.appendChild(expDiv);
+            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+              window.MathJax.typesetPromise([expDiv]);
             }
             menu.remove();
           };
@@ -2115,8 +2166,16 @@ function autoLatexAll(str) {
             </div>
           </div>
 
-          <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
+                    <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
           <textarea id="edit-q-text" rows="8" style="width:100%;min-height:140px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.05em;resize:vertical;">${(data.question || data.body || data.text || '').replace(/</g,'&lt;')}</textarea>
+
+          <div id="edit-desc-extra-block" style="border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
+            <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer</label>
+            <input id="edit-q-desc-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
+
+            <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Explanation</label>
+            <textarea id="edit-q-desc-explanation" rows="5" style="width:100%;min-height:95px;padding:10px 12px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
+          </div>
 
           <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -2139,8 +2198,10 @@ function autoLatexAll(str) {
             </div>
             <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer (e.g., A or A,C)</label>
             <input id="edit-q-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-          </div>
 
+            <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Explanation</label>
+            <textarea id="edit-q-explanation" rows="5" style="width:100%;min-height:95px;padding:10px 12px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
+          </div>
           <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:6px;">
             <button id="edit-cancel" style="background:#eee;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#346799;cursor:pointer;">Cancel</button>
             <button id="edit-save" style="background:#1762a7;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#fff;cursor:pointer;">Save</button>
@@ -2170,13 +2231,16 @@ function autoLatexAll(str) {
       selType.value = initialType;
       if (initLevel) selLevel.value = initLevel;
 
-      const mcqBlock = popup.querySelector('#edit-mcq-block');
+           const mcqBlock = popup.querySelector('#edit-mcq-block');
+      const descExtraBlock = popup.querySelector('#edit-desc-extra-block');
       const toggleMCQBlock = () => {
-       mcqBlock.style.display = (
-  selType.value === 'MCQ (Single)' ||
-  selType.value === 'MCQ (Multiple)' ||
-  selType.value === 'Assertion and Reason (MCQ Single)'
-) ? 'block' : 'none';
+        const isMCQ = (
+          selType.value === 'MCQ (Single)' ||
+          selType.value === 'MCQ (Multiple)' ||
+          selType.value === 'Assertion and Reason (MCQ Single)'
+        );
+        mcqBlock.style.display = isMCQ ? 'block' : 'none';
+        if (descExtraBlock) descExtraBlock.style.display = isMCQ ? 'none' : 'block';
       };
       selType.addEventListener('change', toggleMCQBlock);
       toggleMCQBlock();
@@ -2226,18 +2290,25 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.questionNumber = qn;
         }
 
-        if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
+                if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
+          const descAns = (popup.querySelector('#edit-q-desc-answer')?.value || '').trim();
+          const descExp = (popup.querySelector('#edit-q-desc-explanation')?.value || '').trim();
+
           updateObj.mcqType = firebase.firestore.FieldValue.delete();
           updateObj.options = firebase.firestore.FieldValue.delete();
           updateObj.body = qText;
           updateObj.text = qText;
-          updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
+          updateObj.parsedAnswer = descAns || firebase.firestore.FieldValue.delete();
+          updateObj.answer = descAns || firebase.firestore.FieldValue.delete();
+          updateObj.explanation = descExp || firebase.firestore.FieldValue.delete();
         } else {
           const optA = popup.querySelector('#edit-q-optA').value.trim();
           const optB = popup.querySelector('#edit-q-optB').value.trim();
           const optC = popup.querySelector('#edit-q-optC').value.trim();
           const optD = popup.querySelector('#edit-q-optD').value.trim();
           const ans = popup.querySelector('#edit-q-answer').value.trim();
+          const exp = (popup.querySelector('#edit-q-explanation')?.value || '').trim();
+
           if (!optA || !optB || !optC || !optD || !ans) {
             alert("For MCQ, all four options and the answer are required.");
             return;
@@ -2245,8 +2316,9 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.mcqType = qType;
           updateObj.options = [optA, optB, optC, optD];
           updateObj.parsedAnswer = ans;
+          updateObj.answer = ans;
+          updateObj.explanation = exp || firebase.firestore.FieldValue.delete();
         }
-
         try {
           await db.collection('questions').doc(docId).update(updateObj);
           popup.remove();
