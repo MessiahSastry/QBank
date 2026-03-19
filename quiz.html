@@ -222,7 +222,7 @@
       cursor:not-allowed;
     }
 
-    .submit-btn{
+        .submit-btn{
       display:block;
       width:100%;
       margin:22px auto 0 auto;
@@ -238,6 +238,98 @@
       letter-spacing:.04em;
     }
 
+    .ask-ai-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:8px 14px;
+      margin-top:12px;
+      font-size:0.95em;
+      font-weight:700;
+      letter-spacing:0.2px;
+      color:#fff;
+      background: linear-gradient(90deg, #1762a7, #0f3d6b);
+      border:none;
+      border-radius:999px;
+      box-shadow:0 2px 10px rgba(15,61,107,0.18);
+      cursor:pointer;
+      transition: transform .06s ease, box-shadow .15s ease, filter .15s ease;
+      will-change: transform, filter;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 40px;
+    }
+    .ask-ai-btn:hover{
+      filter:brightness(1.03);
+      box-shadow:0 4px 16px rgba(15,61,107,0.25);
+      transform: translateY(-1px);
+    }
+    .ask-ai-btn:active{
+      transform: translateY(0);
+      box-shadow:0 2px 10px rgba(15,61,107,0.18);
+      filter:brightness(0.98);
+    }
+    .ask-ai-btn:focus{
+      outline:none;
+      box-shadow:0 0 0 3px rgba(23,98,167,0.18), 0 2px 10px rgba(15,61,107,0.18);
+    }
+    .ask-ai-btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      filter:grayscale(0.15);
+      box-shadow:none;
+      transform:none;
+    }
+
+    #explanation-modal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.72);
+      z-index:1200;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
+    }
+    #explanation-modal > div{
+      background:#111;
+      color:#fff;
+      width:100%;
+      max-width:560px;
+      max-height:85vh;
+      overflow-y:auto;
+      border-radius:18px;
+      box-shadow:0 8px 28px rgba(0,0,0,0.35);
+      padding:22px 18px 18px 18px;
+      position:relative;
+    }
+    #explanation-modal-title{
+      font-size:1.18em;
+      font-weight:700;
+      margin-bottom:12px;
+      color:#fff;
+    }
+    #explanation-modal-text{
+      white-space:pre-wrap;
+      line-height:1.7;
+      color:#fff;
+      font-size:1.02em;
+    }
+    #close-explanation-btn{
+      position:sticky;
+      top:0;
+      display:block;
+      margin-left:auto;
+      margin-bottom:10px;
+      font-size:1.6em;
+      background:transparent;
+      border:none;
+      color:#fff;
+      cursor:pointer;
+      font-weight:bold;
+      z-index:2;
+    }
     .result-block{
       margin:32px 0 0 0;
       text-align:center;
@@ -700,10 +792,18 @@
     </div>
   </div>
 
-  <div id="leaderboard-modal">
+    <div id="leaderboard-modal">
     <div>
       <button id="close-leaderboard-btn" style="position:sticky;top:0;display:block;margin-left:auto;font-size:1.6em;background:#fff;border:none;color:#1762a7;cursor:pointer;font-weight:bold;z-index:10;">&times;</button>
       <div id="leaderboard-popup-block"></div>
+    </div>
+  </div>
+
+  <div id="explanation-modal">
+    <div>
+      <button id="close-explanation-btn" type="button">&times;</button>
+      <div id="explanation-modal-title">Explanation</div>
+      <div id="explanation-modal-text"></div>
     </div>
   </div>
 
@@ -1390,12 +1490,13 @@ document.getElementById('auth-status-line').innerHTML =
         </div>
       ` : '';
 
-      main.innerHTML = `
+           main.innerHTML = `
         <div class="question-block">
           <div style="margin-bottom:7px;font-weight:600;color:#777;">Question ${currentIdx + 1} of ${quiz.questions.length}</div>
           <div class="question-text">${q.question}</div>
           ${imageHtml}
           <div id="opt-form" class="option-block">${optionsHTML}</div>
+          <button type="button" class="ask-ai-btn" id="explain-btn" ${(userAnswers[currentIdx] === null || typeof userAnswers[currentIdx] === 'undefined') ? 'disabled' : ''}>💡 Explain It</button>
         </div>
 
         <div class="nav-btns">
@@ -1444,11 +1545,28 @@ document.getElementById('auth-status-line').innerHTML =
           renderQuestion();
         }
       };
-
       document.getElementById("finish-btn").onclick = async (e) => {
         e.preventDefault();
         await finishQuiz(false);
       };
+
+      const explainBtn = document.getElementById("explain-btn");
+      if (explainBtn) {
+        explainBtn.onclick = () => {
+          const explanationText = String(q.explanation || '').trim();
+          const modal = document.getElementById('explanation-modal');
+          const modalText = document.getElementById('explanation-modal-text');
+          const modalTitle = document.getElementById('explanation-modal-title');
+
+          modalTitle.textContent = `Explanation - Question ${currentIdx + 1}`;
+          modalText.textContent = explanationText || 'No explanation available for this question.';
+          modal.style.display = 'flex';
+
+          if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+            MathJax.typesetPromise([modalText]).catch(console.error);
+          }
+        };
+      }
     }
           function calculateScore() {
       let correct = 0, wrong = 0, missed = 0;
@@ -1734,11 +1852,28 @@ document.getElementById('auth-status-line').innerHTML =
           showStatusMessage(state.reason);
         }
 
-        const closeLb = document.getElementById('close-leaderboard-btn');
+               const closeLb = document.getElementById('close-leaderboard-btn');
         if (closeLb) {
           closeLb.onclick = function() {
             const lb = document.getElementById('leaderboard-modal');
             if (lb) lb.style.display = 'none';
+          };
+        }
+
+        const closeExplanationBtn = document.getElementById('close-explanation-btn');
+        if (closeExplanationBtn) {
+          closeExplanationBtn.onclick = function() {
+            const exp = document.getElementById('explanation-modal');
+            if (exp) exp.style.display = 'none';
+          };
+        }
+
+        const explanationModal = document.getElementById('explanation-modal');
+        if (explanationModal) {
+          explanationModal.onclick = function(e) {
+            if (e.target === explanationModal) {
+              explanationModal.style.display = 'none';
+            }
           };
         }
 
@@ -1765,11 +1900,13 @@ document.getElementById('auth-status-line').innerHTML =
         const modal = document.getElementById('quiz-auth-modal');
         const header = document.getElementById('main-header');
         const container = document.querySelector('.quiz-container');
-        const lb = document.getElementById('leaderboard-modal');
+                const lb = document.getElementById('leaderboard-modal');
+        const exp = document.getElementById('explanation-modal');
 
         if (modal && header && modal.contains(header)) document.body.appendChild(header);
         if (modal && container && modal.contains(container)) document.body.appendChild(container);
         if (modal && lb && modal.contains(lb)) document.body.appendChild(lb);
+        if (modal && exp && modal.contains(exp)) document.body.appendChild(exp);
       } catch (e) {
         console.warn('structure fix failed:', e);
       }
