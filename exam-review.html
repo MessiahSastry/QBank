@@ -327,6 +327,72 @@ function parsePastedQuestions(rawText) {
   return items;
 }
 
+function sciMentraAlert(message) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('scimentra-dialog-overlay');
+    const msg = document.getElementById('scimentra-dialog-message');
+    const input = document.getElementById('scimentra-dialog-input');
+    const okBtn = document.getElementById('scimentra-dialog-ok');
+    const cancelBtn = document.getElementById('scimentra-dialog-cancel');
+
+    msg.textContent = message || '';
+    input.style.display = 'none';
+    cancelBtn.style.display = 'none';
+    overlay.style.display = 'flex';
+
+    function cleanup() {
+      overlay.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+      resolve();
+    }
+
+    okBtn.onclick = cleanup;
+  });
+}
+
+function sciMentraPrompt(message, defaultValue = '') {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('scimentra-dialog-overlay');
+    const msg = document.getElementById('scimentra-dialog-message');
+    const input = document.getElementById('scimentra-dialog-input');
+    const okBtn = document.getElementById('scimentra-dialog-ok');
+    const cancelBtn = document.getElementById('scimentra-dialog-cancel');
+
+    msg.textContent = message || '';
+    input.style.display = 'block';
+    cancelBtn.style.display = 'inline-block';
+    input.value = defaultValue || '';
+    overlay.style.display = 'flex';
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 0);
+
+    function cleanup(value) {
+      overlay.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+      resolve(value);
+    }
+
+    okBtn.onclick = () => cleanup(input.value);
+    cancelBtn.onclick = () => cleanup(null);
+
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') cleanup(input.value);
+      if (e.key === 'Escape') cleanup(null);
+    };
+  });
+}
+
+window.alert = function(message) {
+  sciMentraAlert(message);
+};
+
 function renderExam() {
 
     const paper = getExamPaper();
@@ -817,7 +883,41 @@ if (optNodes && optNodes.length === 4) {
 
 document.getElementById('save-review-btn').onclick = saveEdits;
 window.onload = renderExam;
-document.getElementById('preview-btn').onclick = function() {
+function sciMentraPrompt(message, defaultValue = '') {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('scimentra-prompt-overlay');
+    const msg = document.getElementById('scimentra-prompt-message');
+    const input = document.getElementById('scimentra-prompt-input');
+    const okBtn = document.getElementById('scimentra-prompt-ok');
+    const cancelBtn = document.getElementById('scimentra-prompt-cancel');
+
+    msg.textContent = message || 'Enter value';
+    input.value = defaultValue || '';
+    overlay.style.display = 'flex';
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 0);
+
+    function cleanup(value) {
+      overlay.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+      resolve(value);
+    }
+
+    okBtn.onclick = () => cleanup(input.value);
+    cancelBtn.onclick = () => cleanup(null);
+
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') cleanup(input.value);
+      if (e.key === 'Escape') cleanup(null);
+    };
+  });
+} 
+document.getElementById('preview-btn').onclick = async function() {
   saveEdits();
   const paper = getExamPaper();
 
@@ -826,7 +926,7 @@ document.getElementById('preview-btn').onclick = function() {
     return;
   }
 
-  const schoolName = prompt('Enter School Name', paper.schoolName || 'SciMentra');
+  const schoolName = await sciMentraPrompt('Enter School Name', paper.schoolName || 'SciMentra');
   if (schoolName === null) return;
 
   paper.schoolName = (schoolName || '').trim() || 'SciMentra';
@@ -835,7 +935,6 @@ document.getElementById('preview-btn').onclick = function() {
   sessionStorage.setItem('finalExamData', JSON.stringify(paper));
   window.location.href = 'exam-preview.html';
 };
-
 // --- Add this code at the end of your <script> ---
 document.getElementById('randomize-numbers-btn').onclick = async function() {
   // --- stateful auto-batch controller: prepares batches or advances to next prompt ---
@@ -997,8 +1096,8 @@ document.getElementById('apply-json-btn').onclick = async function() {
   const currentIdx = st.idx;
   const currentMap = st.batches[currentIdx]; // this batch’s mapping
 
-  const raw = prompt(`Paste the STRICT JSON array returned by ChatGPT for Batch ${currentIdx + 1}/${totalBatches}:`, '');
-  if (!raw) return;
+  const raw = await sciMentraPrompt(`Paste the STRICT JSON array returned by ChatGPT for Batch ${currentIdx + 1}/${totalBatches}:`, '');
+  if (raw === null || !String(raw).trim()) return;
 
  function extractJsonArray(raw) {
   let s = String(raw || '').trim();
@@ -1138,6 +1237,163 @@ if (!qObj.text || !qObj.text.trim()) {
   btn.innerHTML = `<i class="fas fa-random"></i> Copy Batch ${nextIdx + 1}/${totalBatches} Prompt (again)`;
 };
 </script>
+ <div id="scimentra-prompt-overlay" style="
+  display:none;
+  position:fixed;
+  top:0;left:0;
+  width:100vw;height:100vh;
+  background:rgba(12,29,68,0.18);
+  z-index:100000;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  box-sizing:border-box;
+">
+  <div style="
+    background:#fff;
+    border-radius:18px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.18);
+    width:100%;
+    max-width:460px;
+    overflow:hidden;
+  ">
+    <div style="
+      background:#0f3d6b;
+      color:#fff;
+      padding:14px 18px;
+      font-size:1.08em;
+      font-weight:700;
+    ">
+      SciMentra
+    </div>
+
+    <div style="padding:18px;">
+      <div id="scimentra-prompt-message" style="
+        font-size:1em;
+        color:#1f2d3d;
+        margin-bottom:12px;
+        line-height:1.5;
+      ">Enter School Name</div>
+
+      <input id="scimentra-prompt-input" type="text" style="
+        width:100%;
+        box-sizing:border-box;
+        padding:12px 14px;
+        border:1.5px solid #bcd6ef;
+        border-radius:10px;
+        font-size:1em;
+        outline:none;
+        margin-bottom:16px;
+      ">
+
+      <div style="
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+      ">
+        <button id="scimentra-prompt-cancel" type="button" style="
+          border:none;
+          border-radius:999px;
+          padding:9px 18px;
+          background:#eef3f9;
+          color:#35506b;
+          font-weight:700;
+          cursor:pointer;
+        ">Cancel</button>
+
+        <button id="scimentra-prompt-ok" type="button" style="
+          border:none;
+          border-radius:999px;
+          padding:9px 18px;
+          background:#0f3d6b;
+          color:#fff;
+          font-weight:700;
+          cursor:pointer;
+        ">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+ <div id="scimentra-dialog-overlay" style="
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100vw; height:100vh;
+  background:rgba(12,29,68,0.18);
+  z-index:100000;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  box-sizing:border-box;
+">
+  <div style="
+    background:#fff;
+    border-radius:18px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.18);
+    width:100%;
+    max-width:460px;
+    overflow:hidden;
+  ">
+    <div style="
+      background:#0f3d6b;
+      color:#fff;
+      padding:14px 18px;
+      font-size:1.08em;
+      font-weight:700;
+    ">
+      SciMentra
+    </div>
+
+    <div style="padding:18px;">
+      <div id="scimentra-dialog-message" style="
+        font-size:1em;
+        color:#1f2d3d;
+        margin-bottom:12px;
+        line-height:1.5;
+        white-space:pre-wrap;
+      "></div>
+
+      <input id="scimentra-dialog-input" type="text" style="
+        width:100%;
+        box-sizing:border-box;
+        padding:12px 14px;
+        border:1.5px solid #bcd6ef;
+        border-radius:10px;
+        font-size:1em;
+        outline:none;
+        margin-bottom:16px;
+        display:none;
+      ">
+
+      <div style="
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+      ">
+        <button id="scimentra-dialog-cancel" type="button" style="
+          border:none;
+          border-radius:999px;
+          padding:9px 18px;
+          background:#eef3f9;
+          color:#35506b;
+          font-weight:700;
+          cursor:pointer;
+          display:none;
+        ">Cancel</button>
+
+        <button id="scimentra-dialog-ok" type="button" style="
+          border:none;
+          border-radius:999px;
+          padding:9px 18px;
+          background:#0f3d6b;
+          color:#fff;
+          font-weight:700;
+          cursor:pointer;
+        ">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
