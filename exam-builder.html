@@ -1664,27 +1664,27 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
             });
             const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
 
-            return {
-                number: 0,
-                text: shuffled.question || stem,
-                marks: Number(marksPerQuestion || norm.marks || 0),
-                options: shuffled.options || clean,
-                answer: letterAns,
-                explanation: norm.explanation || '',
-                image: norm.image || ''
-            };
-        }
-
-        return {
+                    return {
             number: 0,
-            text: stem,
+            text: shuffled.question || stem,
             marks: Number(marksPerQuestion || norm.marks || 0),
-            options: clean,
-            answer: answerLetters,
+            options: shuffled.options || clean,
+            answer: letterAns,
             explanation: norm.explanation || '',
             image: norm.image || ''
         };
     }
+
+    return {
+        number: 0,
+        text: stem,
+        marks: Number(marksPerQuestion || norm.marks || 0),
+        options: options.length === 4 ? options : [],
+        answer: answerLetters,
+        explanation: norm.explanation || '',
+        image: norm.image || ''
+    };
+}
 
     return {
         number: 0,
