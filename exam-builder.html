@@ -415,9 +415,39 @@ function showModalPrompt(message) {
     const modal = document.getElementById('modal-prompt');
     const msgBox = document.getElementById('modal-prompt-message');
     const okBtn = document.getElementById('modal-prompt-ok');
+    okBtn.style.display = '';
     msgBox.innerHTML = message;
     modal.style.display = 'flex';
     okBtn.onclick = () => { modal.style.display = 'none'; };
+}
+
+function showConfirmPrompt(message) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('modal-prompt');
+        const msgBox = document.getElementById('modal-prompt-message');
+        const okBtn = document.getElementById('modal-prompt-ok');
+
+        okBtn.style.display = 'none';
+        msgBox.innerHTML = `
+            <div style="margin-bottom:18px;">${message}</div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button id="modal-yes-btn" style="padding:8px 20px;background:#1762a7;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">Yes</button>
+                <button id="modal-no-btn" style="padding:8px 20px;background:#c82333;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">No</button>
+            </div>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('modal-yes-btn').onclick = () => {
+            modal.style.display = 'none';
+            okBtn.style.display = '';
+            resolve(true);
+        };
+        document.getElementById('modal-no-btn').onclick = () => {
+            modal.style.display = 'none';
+            okBtn.style.display = '';
+            resolve(false);
+        };
+    });
 }
 
 const config = {
@@ -536,6 +566,22 @@ function getDifficultyDistribution() {
     const l3 = l3Checked ? (parseFloat(document.getElementById('diff-l3-percent')?.value) || 0) : 0;
 
     return { L1: l1, L2: l2, L3: l3 };
+}
+
+function getAllowedDifficultyLevels() {
+    const out = [];
+    if (document.getElementById('diff-l1-check')?.checked) out.push('L1');
+    if (document.getElementById('diff-l2-check')?.checked) out.push('L2');
+    if (document.getElementById('diff-l3-check')?.checked) out.push('L3');
+    return out;
+}
+
+function getUnselectedDifficultyLevels() {
+    return ['L1', 'L2', 'L3'].filter(x => !getAllowedDifficultyLevels().includes(x));
+}
+
+function levelKeyToLabel(k) {
+    return k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3';
 }
 
 function refreshDifficultyTotalNote() {
@@ -1321,9 +1367,11 @@ async function fetchBalancedAcrossChapters({
       return givenMarks;
     }
 
-    const wantL1m = takeFromBudget("Level 1", desiredByMarks[0]);
-    const wantL2m = takeFromBudget("Level 2", desiredByMarks[1]);
-    const wantL3m = takeFromBudget("Level 3", desiredByMarks[2]);
+    const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
+
+const wantL1m = allowed.includes('L1') ? takeFromBudget("Level 1", desiredByMarks[0]) : 0;
+const wantL2m = allowed.includes('L2') ? takeFromBudget("Level 2", desiredByMarks[1]) : 0;
+const wantL3m = allowed.includes('L3') ? takeFromBudget("Level 3", desiredByMarks[2]) : 0;
 
     let wantL1q = Math.floor(wantL1m / Math.max(1, mPerQ));
     let wantL2q = Math.floor(wantL2m / Math.max(1, mPerQ));
@@ -1978,9 +2026,11 @@ if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
                 const time = document.getElementById('time-input').value;
                 const date = document.getElementById('date-input').value;
                 const instructions = document.getElementById('instructions-input').value;
-                const difficultyValue = getSelectedDifficulty();
+               const difficultyValue = getSelectedDifficulty();
                 const difficultyDistribution = getDifficultyDistribution();
+                const allowedDifficultyLevels = getAllowedDifficultyLevels();
                 window._difficultyDistribution = { ...difficultyDistribution };
+                window._allowedDifficultyLevels = allowedDifficultyLevels.slice();
                 const sourceTypeGlobal = getSourceTypeGlobal();
 
                 if (!selectedClass) {
@@ -2093,7 +2143,7 @@ if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
                     var _mixedPlanned = { L1:0, L2:0, L3:0 };
                     var _mixedG = 1;
 
-               if (!(
+              if (!(
     (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
@@ -2249,7 +2299,8 @@ return { ...sl, assigned: pick };
                                         ].sort((a,b)=> b.d - a.d).map(x=>x.k);
 
                                         const preferred = slot?.assigned || deficits[0];
-                                        const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)];
+                                        const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
+const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k => allowed.includes(k));
 
                                         let picked = null, pickedLevel = null;
 
@@ -2464,12 +2515,37 @@ return { ...sl, assigned: pick };
                     }
                 }
 
-                if (allSectionErrors.length > 0) {
-                    showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${allSectionErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
-                    btn.disabled = false;
-                    btn.textContent = "Build Exam Draft";
-                    return;
-                }
+               if (allSectionErrors.length > 0) {
+    const currentlyAllowed = getAllowedDifficultyLevels();
+    const currentlyUnselected = getUnselectedDifficultyLevels();
+
+    if (sourceTypeGlobal === 'Question Bank' && currentlyUnselected.length > 0) {
+        const labels = currentlyUnselected.map(levelKeyToLabel).join(', ');
+        const allowMore = await showConfirmPrompt(
+            `<b>Selected difficulty levels do not have enough questions.</b><br><br>` +
+            `Do you want to allow questions from these unselected levels: <b>${labels}</b>?`
+        );
+
+        if (allowMore) {
+            if (currentlyUnselected.includes('L1')) document.getElementById('diff-l1-check').checked = true;
+            if (currentlyUnselected.includes('L2')) document.getElementById('diff-l2-check').checked = true;
+            if (currentlyUnselected.includes('L3')) document.getElementById('diff-l3-check').checked = true;
+            refreshDifficultyTotalNote();
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+            return;
+        } else {
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+            return;
+        }
+    }
+
+    showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${allSectionErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
+    btn.disabled = false;
+    btn.textContent = "Build Exam Draft";
+    return;
+}
 
                if (
     sourceTypeGlobal === 'Question Bank' &&
