@@ -1352,8 +1352,8 @@ if (qTypeFinal === 'Descriptive') {
 
   // Example: Set1(M1: L1:2,L2:0,L3:1) | Set2(M2: L1:1,L2:1,L3:0)
   planRaw = sets.map((x, i) =>
-    `Set${i+1}(M${x.marks}: L1:${x.l1}, L2:${x.l2}, L3:${x.l3})`
-  ).join(' | ');
+  `Set${i+1}(Give ${x.marks} Mark Question${x.marks > 1 ? 's' : ''}: L1:${x.l1}, L2:${x.l2}, L3:${x.l3})`
+).join(' | ');
 } else {
   const l1 = parseInt(document.getElementById('lvl1-ai')?.value || '0', 10) || 0;
   const l2 = parseInt(document.getElementById('lvl2-ai')?.value || '0', 10) || 0;
@@ -1859,7 +1859,7 @@ B) <Option B>
 C) <Option C>
 D) <Option D>
 Ans: <A), B), C), or D) — only one>
-Explanation: <Step-by-step explanation>
+Explanation: <Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 
 List all MCQ (Single) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
@@ -1906,7 +1906,7 @@ B) <Option B>
 C) <Option C>
 D) <Option D>
 Ans: <All correct options, e.g., "A), C), D)" — two or more, comma separated>
-Explanation: <Step-by-step explanation>
+Explanation: <Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 
 List all MCQ (Multiple) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
@@ -1937,7 +1937,7 @@ For descriptive questions, each question must be formatted exactly as:
 Q<num>: Level <Level>, <Marks> [Descriptive]
 <Question text>
 Answer: <Final answer>
-Explanation: <Step-by-step explanation>
+Explanation: <Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 
 List all descriptive questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
@@ -2042,7 +2042,7 @@ Each question MUST follow this strict format:
 2. On the next line, write the question text.
 3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
 4. On the next line after options, specify the correct answer using the format "Ans: C and answer in Brackets".
-5. On the next line, write: "Explanation: <Step-by-step explanation>"
+5. On the next line, write: "Explanation: < Give Step-by-step explanation>"
 6. Don't mention the option in the explanation, but give the correct answer.
 
 Provide ONLY the questions in this exact format. Do not add any other text, introduction, or extra commentary.
@@ -2111,7 +2111,7 @@ Each question MUST follow this strict format:
 2. On the next line, write the question text.
 3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
 4. On the next line after options, specify ALL correct answers using the format "Ans: A), C), D)" (list all correct answers, separated by comma).
-5. On the next line, write: "Explanation: <Step-by-step explanation>"
+5. On the next line, write: "Explanation: <Give Step-by-step explanation>"
 6. Don't mention the option in the explanation, but give the correct answer.
 
 Provide ONLY the questions in this exact format. Do not add any other text, introduction, or extra commentary.
@@ -2170,7 +2170,7 @@ Format each question strictly as:
 Q<num>: Level <Lvl>, <Marks> Marks
 <Question text>
 Answer: <Final answer>
-Explanation: <Step-by-step explanation>
+Explanation: <Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 
 Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
@@ -2216,7 +2216,7 @@ Format strictly:
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <question text>
 Answer: <Final answer>
-Explanation: <Step-by-step explanation>
+Explanation: < Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 Do not add options.
 `;
@@ -2249,7 +2249,7 @@ B) ...
 C) ...
 D) ...
 Ans: ...
-Explanation: <Step-by-step explanation>
+Explanation: < Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 `;
         }
@@ -2911,7 +2911,7 @@ B) <Option B>
 C) <Option C>
 D) <Option D>
 Ans: <A) or B) or C) or D)>
-Explanation: <Step-by-step explanation>
+Explanation: <Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 
 Rules:
@@ -2953,7 +2953,7 @@ Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <Question text>
 Answer: <Final answer>
-Explanation: <Step-by-step explanation>
+Explanation: <Give Step-by-step explanation>
 Don't mention the option in the explanation, but give the correct answer.
 
 Rules:
