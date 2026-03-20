@@ -1099,15 +1099,18 @@ function extractJsonArray(raw) {
         continue;
       }
 
-      if (ch === '\\') {
-        const next = sub[i + 1] || '';
-        if (/["\\/bfnrt]/.test(next) || next === 'u') {
-          out += ch;
-        } else {
-          out += '\\\\';
-        }
-        continue;
-      }
+     if (ch === '\\') {
+  const next = sub[i + 1] || '';
+
+  // Preserve only real JSON-safe escapes for quote, slash, and backslash.
+  // Everything else should be doubled so LaTeX survives.
+  if (next === '"' || next === '\\' || next === '/') {
+    out += ch;
+  } else {
+    out += '\\\\';
+  }
+  continue;
+}
 
       if (ch === '"') {
         inString = false;
