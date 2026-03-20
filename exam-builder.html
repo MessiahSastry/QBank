@@ -279,10 +279,44 @@
                     </div>
                 </div>
 
-                    <div class="form-group">
-                        <label>Difficulty Level</label>
-                        <div id="difficulty-dropdown" class="custom-dropdown"></div>
-                    </div>
+                    <div class="form-group" id="difficulty-config-group">
+    <label>Difficulty Distribution</label>
+
+    <div id="difficulty-config-box" style="
+        border:1.3px solid #bcd6ef;
+        border-radius:10px;
+        background:#f7fafd;
+        padding:14px 14px 8px 14px;
+    ">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#185496;">
+                <input type="checkbox" id="diff-l1-check" checked>
+                Level 1
+            </label>
+            <input type="number" id="diff-l1-percent" min="0" max="100" value="40" style="width:90px;padding:8px 10px;border:1.3px solid #bcd6ef;border-radius:6px;background:#fff;">
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#185496;">
+                <input type="checkbox" id="diff-l2-check" checked>
+                Level 2
+            </label>
+            <input type="number" id="diff-l2-percent" min="0" max="100" value="30" style="width:90px;padding:8px 10px;border:1.3px solid #bcd6ef;border-radius:6px;background:#fff;">
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#185496;">
+                <input type="checkbox" id="diff-l3-check" checked>
+                Level 3
+            </label>
+            <input type="number" id="diff-l3-percent" min="0" max="100" value="30" style="width:90px;padding:8px 10px;border:1.3px solid #bcd6ef;border-radius:6px;background:#fff;">
+        </div>
+
+        <div id="difficulty-total-note" style="font-size:.95em;color:#54656f;margin-top:4px;">
+            Total: 100%
+        </div>
+    </div>
+</div>
 
                     <div id="subjects-sections-area">
                     </div>
@@ -477,8 +511,7 @@ const config = {
             "Other"
         ]
     },
-    difficultyLevels: ["Level 1", "Level 2", "Level 3", "Mixed"],
-    sectionLabels: ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"],
+       sectionLabels: ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"],
     sectionTypes: ["Answer all", "Answer any", "Internal choice"],
     sectionTypeKeys: ["all", "any", "internal"]
 };
@@ -490,7 +523,43 @@ function getSelectedBoard() {
     return document.getElementById('board-dropdown')?.dataset?.value || '';
 }
 function getSelectedDifficulty() {
-    return document.getElementById('difficulty-dropdown')?.dataset?.value || '';
+    return 'Custom';
+}
+
+function getDifficultyDistribution() {
+    const l1Checked = !!document.getElementById('diff-l1-check')?.checked;
+    const l2Checked = !!document.getElementById('diff-l2-check')?.checked;
+    const l3Checked = !!document.getElementById('diff-l3-check')?.checked;
+
+    const l1 = l1Checked ? (parseFloat(document.getElementById('diff-l1-percent')?.value) || 0) : 0;
+    const l2 = l2Checked ? (parseFloat(document.getElementById('diff-l2-percent')?.value) || 0) : 0;
+    const l3 = l3Checked ? (parseFloat(document.getElementById('diff-l3-percent')?.value) || 0) : 0;
+
+    return { L1: l1, L2: l2, L3: l3 };
+}
+
+function refreshDifficultyTotalNote() {
+    const note = document.getElementById('difficulty-total-note');
+    if (!note) return;
+
+    const d = getDifficultyDistribution();
+    const total = (d.L1 || 0) + (d.L2 || 0) + (d.L3 || 0);
+
+    note.textContent = `Total: ${total}%`;
+
+    if (total === 100) {
+        note.style.color = '#2d7a2d';
+    } else {
+        note.style.color = '#c82333';
+    }
+
+    const p1 = document.getElementById('diff-l1-percent');
+    const p2 = document.getElementById('diff-l2-percent');
+    const p3 = document.getElementById('diff-l3-percent');
+
+    if (p1) p1.disabled = !document.getElementById('diff-l1-check')?.checked;
+    if (p2) p2.disabled = !document.getElementById('diff-l2-check')?.checked;
+    if (p3) p3.disabled = !document.getElementById('diff-l3-check')?.checked;
 }
 function getSelectedSubjects() {
     return Array.from(document.querySelectorAll('#subjects-multiselect input[type="checkbox"]:checked')).map(cb => cb.value);
@@ -1002,9 +1071,9 @@ allQuestions.sort((a, b) => {
     allQuestions = allQuestions.filter(d => String(d.difficulty || d.level || '').trim() === forceDifficulty);
   } else {
     const globalDifficulty = getSelectedDifficulty();
-    if (globalDifficulty && globalDifficulty !== "Mixed") {
-      allQuestions = allQuestions.filter(d => String(d.difficulty || d.level || '').trim() === globalDifficulty);
-    }
+if (globalDifficulty && globalDifficulty !== "Custom") {
+  allQuestions = allQuestions.filter(d => String(d.difficulty || d.level || '').trim() === globalDifficulty);
+}
   }
 
   if (mcqType === "Descriptive") {
@@ -1237,7 +1306,10 @@ async function fetchBalancedAcrossChapters({
   async function fillMixed(totalNeed) {
     const mPerQ = Number(marksPerQuestion || 0);
     const sectionMarks = (Number(totalNeed || 0) * mPerQ);
-    const desiredByMarks = splitCounts(sectionMarks, [40, 30, 30]);
+       const p1 = Number(window._difficultyDistribution?.L1 || 0);
+    const p2 = Number(window._difficultyDistribution?.L2 || 0);
+    const p3 = Number(window._difficultyDistribution?.L3 || 0);
+    const desiredByMarks = splitCounts(sectionMarks, [p1, p2, p3]);
 
     function takeFromBudget(level, wantedMarks) {
       if (!globalMixBudget) return wantedMarks;
@@ -1311,13 +1383,13 @@ async function fetchBalancedAcrossChapters({
     }
   }
 
-  if (difficultyValue === "Mixed") {
-    await fillMixed(requestedCount);
-  } else if (difficultyValue && difficultyValue !== "Mixed") {
+  if (difficultyValue === "Level 1" || difficultyValue === "Level 2" || difficultyValue === "Level 3") {
     await fillNonMixed(requestedCount, difficultyValue);
-  } else {
+} else if (difficultyValue === "Custom") {
+    await fillMixed(requestedCount);
+} else {
     await fillNonMixed(requestedCount, null);
-  }
+}
 
   return { items: items.slice(0, requestedCount), errors };
 }
@@ -1791,7 +1863,16 @@ document.addEventListener('DOMContentLoaded', () => {
         createDropdown('class-dropdown', config.classes, 'Select Class');
         createDropdown('board-dropdown', config.boards, 'Select Board');
         createDropdown('exam-source-dropdown', ["Question Bank", "Paste", "Upload .docx"], 'Question Bank');
-        createDropdown('difficulty-dropdown', config.difficultyLevels, 'Select Difficulty');
+        refreshDifficultyTotalNote();
+
+[
+    'diff-l1-check','diff-l2-check','diff-l3-check',
+    'diff-l1-percent','diff-l2-percent','diff-l3-percent'
+].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshDifficultyTotalNote);
+    if (el) el.addEventListener('change', refreshDifficultyTotalNote);
+});
         document.getElementById('date-input').valueAsDate = new Date();
 
         createMultiSelectDropdown('subjects-multiselect', [], 'Select class and board to see subjects', function(){});
@@ -1832,8 +1913,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
 
-                const diffGroup = document.getElementById('difficulty-dropdown')?.closest('.form-group');
-                if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
+                const diffGroup = document.getElementById('difficulty-config-group');
+if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
 
                 document.querySelectorAll('[id^="chapters-multiselect-"]').forEach(el => {
                     const grp = el.closest('.form-group');
@@ -1898,6 +1979,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const date = document.getElementById('date-input').value;
                 const instructions = document.getElementById('instructions-input').value;
                 const difficultyValue = getSelectedDifficulty();
+                const difficultyDistribution = getDifficultyDistribution();
+                window._difficultyDistribution = { ...difficultyDistribution };
                 const sourceTypeGlobal = getSourceTypeGlobal();
 
                 if (!selectedClass) {
@@ -1913,7 +1996,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.textContent = "Build Exam Draft";
                     return;
                 }
+                if (sourceTypeGlobal === 'Question Bank') {
+    const totalDifficulty =
+        (difficultyDistribution.L1 || 0) +
+        (difficultyDistribution.L2 || 0) +
+        (difficultyDistribution.L3 || 0);
 
+    const checkedCount =
+        (document.getElementById('diff-l1-check')?.checked ? 1 : 0) +
+        (document.getElementById('diff-l2-check')?.checked ? 1 : 0) +
+        (document.getElementById('diff-l3-check')?.checked ? 1 : 0);
+
+    if (checkedCount === 0) {
+        showToast("Please select at least one difficulty level.", "error");
+        btn.disabled = false;
+        btn.textContent = "Build Exam Draft";
+        return;
+    }
+
+    if (totalDifficulty !== 100) {
+        showToast("Difficulty percentages must total 100%.", "error");
+        btn.disabled = false;
+        btn.textContent = "Build Exam Draft";
+        return;
+    }
+}
                 const subjectBlocks = document.querySelectorAll('.subject-block');
                 const subjectsData = [];
 
@@ -1965,16 +2072,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                const finalPaper = {
-                    class: selectedClass,
-                    board: selectedBoard,
-                    examName,
-                    date,
-                    time,
-                    maxMarks,
-                    instructions,
-                    subjects: []
-                };
+               const finalPaper = {
+    class: selectedClass,
+    board: selectedBoard,
+    examName,
+    date,
+    time,
+    maxMarks,
+    instructions,
+    difficultyDistribution,
+    subjects: []
+};
 
                 let allSectionErrors = [];
 
@@ -1982,9 +2090,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     let strictSlots = [];
                     var _mixedTargets = { L1:0, L2:0, L3:0 };
                     var _mixedActual  = { L1:0, L2:0, L3:0 };
+                    var _mixedPlanned = { L1:0, L2:0, L3:0 };
                     var _mixedG = 1;
 
-                    if (difficultyValue === "Mixed") {
+               if (!(
+    (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
+)) {
+    const allSlots = [];
                         const allSlots = [];
 
                         subjectsData.forEach((sd, sIdx) => {
@@ -2010,7 +2124,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const _gcd = (a,b)=> b===0 ? Math.abs(a) : _gcd(b, a%b);
                         _mixedG = allSlots.reduce((g, sl) => _gcd(g, sl.marksPerQuestion||0), 0) || 1;
 
-                        const wantRaw = splitCounts(totalMarks, [40,30,30]);
+                       const wantRaw = splitCounts(totalMarks, [
+    difficultyDistribution.L1 || 0,
+    difficultyDistribution.L2 || 0,
+    difficultyDistribution.L3 || 0
+]);
                         const rounded = wantRaw.map(v => Math.round(v / _mixedG) * _mixedG);
 
                         const errs = wantRaw.map((v,i) => v - rounded[i]);
@@ -2034,18 +2152,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         _mixedTargets = { L1: rounded[0], L2: rounded[1], L3: rounded[2] };
 
                         allSlots.sort((a,b)=> (b.marksPerQuestion||0) - (a.marksPerQuestion||0));
-                        _mixedActual = { L1:0, L2:0, L3:0 };
+                        _mixedPlanned = { L1:0, L2:0, L3:0 };
 
                         strictSlots = allSlots.map(sl => {
                             const deficits = [
-                                { k:"L1", d: (_mixedTargets.L1 - _mixedActual.L1) },
-                                { k:"L2", d: (_mixedTargets.L2 - _mixedActual.L2) },
-                                { k:"L3", d: (_mixedTargets.L3 - _mixedActual.L3) },
-                            ].sort((x,y)=> y.d - x.d);
+    { k:"L1", d: (_mixedTargets.L1 - _mixedPlanned.L1) },
+    { k:"L2", d: (_mixedTargets.L2 - _mixedPlanned.L2) },
+    { k:"L3", d: (_mixedTargets.L3 - _mixedPlanned.L3) },
+].sort((x,y)=> y.d - x.d);
 
-                            const pick = deficits[0].k;
-                            _mixedActual[pick] += sl.marksPerQuestion || 0;
-                            return { ...sl, assigned: pick };
+const pick = deficits[0].k;
+_mixedPlanned[pick] += sl.marksPerQuestion || 0;
+return { ...sl, assigned: pick };
                         });
                     }
 
@@ -2068,7 +2186,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const requestedCount = Number(sec.numQuestions || 0);
                                 const mPerQ = Number(sec.marksPerQuestion || 0);
 
-                                if (difficultyValue !== "Mixed") {
+                               if (
+    (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
+) {
                                     const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
                                         selectedClass,
                                         selectedBoard,
@@ -2077,7 +2199,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                         marksPerQuestion: sec.marksPerQuestion,
                                         mcqType: sec.mcqType,
                                         requestedCount,
-                                        difficultyValue,
+                                        difficultyValue:
+    difficultyDistribution.L1 === 100 ? "Level 1" :
+    difficultyDistribution.L2 === 100 ? "Level 2" :
+    difficultyDistribution.L3 === 100 ? "Level 3" :
+    "Custom",
                                         subjectSeenKeys,
                                         globalMixBudget: null
                                     });
@@ -2346,8 +2472,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                if (sourceTypeGlobal === 'Question Bank' && difficultyValue === "Mixed") {
-                    const actual = { L1: 0, L2: 0, L3: 0 };
+               if (
+    sourceTypeGlobal === 'Question Bank' &&
+    !(
+        (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
+        (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
+        (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
+    )
+) {
+    const actual = { L1: 0, L2: 0, L3: 0 };
 
                     for (const subj of finalPaper.subjects || []) {
                         for (const sec of subj.sections || []) {
