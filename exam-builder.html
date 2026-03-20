@@ -1079,7 +1079,8 @@ async function fetchQuestions({
   marksPerQuestion,
   mcqType,
   count,
-  forceDifficulty
+  forceDifficulty,
+  allowedDifficulties
 }) {
   let query = firestore.collection("questions")
     .where("createdBy", "==", currentUser.uid)
@@ -1095,14 +1096,14 @@ async function fetchQuestions({
   let allQuestions = [];
 
   snapshot.forEach(doc => {
-  allQuestions.push({ id: doc.id, ...doc.data() });
-});
+    allQuestions.push({ id: doc.id, ...doc.data() });
+  });
 
-allQuestions.sort((a, b) => {
-  const qa = Number(a.questionNumber || 0);
-  const qb = Number(b.questionNumber || 0);
-  return qa - qb;
-});
+  allQuestions.sort((a, b) => {
+    const qa = Number(a.questionNumber || 0);
+    const qb = Number(b.questionNumber || 0);
+    return qa - qb;
+  });
 
   if (chapters && chapters.length > 1) {
     allQuestions = allQuestions.filter(d => chapters.includes(String(d.chapter || '').trim()));
@@ -1115,11 +1116,10 @@ allQuestions.sort((a, b) => {
 
   if (forceDifficulty) {
     allQuestions = allQuestions.filter(d => String(d.difficulty || d.level || '').trim() === forceDifficulty);
-  } else {
-    const globalDifficulty = getSelectedDifficulty();
-if (globalDifficulty && globalDifficulty !== "Custom") {
-  allQuestions = allQuestions.filter(d => String(d.difficulty || d.level || '').trim() === globalDifficulty);
-}
+  } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
+    allQuestions = allQuestions.filter(d =>
+      allowedDifficulties.includes(String(d.difficulty || d.level || '').trim())
+    );
   }
 
   if (mcqType === "Descriptive") {
@@ -1134,8 +1134,7 @@ if (globalDifficulty && globalDifficulty !== "Custom") {
   shuffleArray(allQuestions);
   return allQuestions.slice(0, count);
 }
-
-async function fetchQuestionsWithMarksFallback({
+async function allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
   selectedClass,
   selectedBoard,
   selectedSubject,
@@ -1143,7 +1142,8 @@ async function fetchQuestionsWithMarksFallback({
   marksPerQuestion,
   mcqType,
   count,
-  forceDifficulty
+  forceDifficulty,
+  allowedDifficulties
 }) {
   const wantedMarks = parseInt(marksPerQuestion);
   const marksOrder = buildMarksFallbackOrder(wantedMarks);
@@ -1181,14 +1181,14 @@ async function fetchQuestionsWithMarksFallback({
     const rows = [];
     if (chapterList && chapterList.length === 1) {
       const snap = await queryObj.where("chapter", "==", chapterList[0]).get();
-snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
-rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
-return rows;
+      snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+      rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
+      return rows;
     }
 
     const snap = await queryObj.get();
-snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
-rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
+    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+    rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
 
     if (chapterList && chapterList.length > 1) {
       return rows.filter(d => chapterList.includes(String(d.chapter || '').trim()));
@@ -1204,6 +1204,9 @@ rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0
     if (difficulty) {
       const want = normDiff(difficulty);
       collected = collected.filter(d => normDiff(d.difficulty || d.level) === want);
+    } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
+      const wants = allowedDifficulties.map(normDiff);
+      collected = collected.filter(d => wants.includes(normDiff(d.difficulty || d.level)));
     }
 
     return uniqueByIdOrText(collected);
@@ -1221,21 +1224,20 @@ rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0
           picked.push(d);
           if (picked.length >= count) return picked.slice(0, count);
         }
-      }
-
-      const docs2 = await runAndFilter(mv, null, chapters);
-      for (const d of docs2) {
-        if (d.id && usedIds.has(d.id)) continue;
-        if (d.id) usedIds.add(d.id);
-        picked.push(d);
-        if (picked.length >= count) return picked.slice(0, count);
+      } else {
+        const docs2 = await runAndFilter(mv, null, chapters);
+        for (const d of docs2) {
+          if (d.id && usedIds.has(d.id)) continue;
+          if (d.id) usedIds.add(d.id);
+          picked.push(d);
+          if (picked.length >= count) return picked.slice(0, count);
+        }
       }
     }
   }
 
   return picked.slice(0, count);
 }
-
 async function fetchBalancedAcrossChapters({
   selectedClass,
   selectedBoard,
@@ -1246,7 +1248,8 @@ async function fetchBalancedAcrossChapters({
   requestedCount,
   difficultyValue,
   subjectSeenKeys,
-  globalMixBudget
+  globalMixBudget,
+  allowedDifficulties
 }) {
   const errors = [];
   const items = [];
@@ -1257,16 +1260,17 @@ async function fetchBalancedAcrossChapters({
 
   async function fetchFor(chapterList, count, forceDifficulty) {
     if (!count) return [];
-    let docs = await fetchQuestionsWithMarksFallback({
-      selectedClass,
-      selectedBoard,
-      selectedSubject: subject,
-      chapters: chapterList && chapterList.length ? chapterList : undefined,
-      marksPerQuestion,
-      mcqType,
-      count: Math.max(count * 2, count + 2),
-      forceDifficulty: forceDifficulty || undefined
-    });
+    let docs = await allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+  selectedClass,
+  selectedBoard,
+  selectedSubject: subject,
+  chapters: chapterList && chapterList.length ? chapterList : undefined,
+  marksPerQuestion,
+  mcqType,
+  count: Math.max(count * 2, count + 2),
+  forceDifficulty: forceDifficulty || undefined,
+  allowedDifficulties
+});
     return uniqueByIdOrText(docs);
   }
 
@@ -2240,23 +2244,23 @@ return { ...sl, assigned: pick };
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
 ) {
-                                    const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
-                                        selectedClass,
-                                        selectedBoard,
-                                        subject: subjData.subject,
-                                        chapters: subjData.chapters,
-                                        marksPerQuestion: sec.marksPerQuestion,
-                                        mcqType: sec.mcqType,
-                                        requestedCount,
-                                        difficultyValue:
-    difficultyDistribution.L1 === 100 ? "Level 1" :
-    difficultyDistribution.L2 === 100 ? "Level 2" :
-    difficultyDistribution.L3 === 100 ? "Level 3" :
-    "Custom",
-                                        subjectSeenKeys,
-                                        globalMixBudget: null
-                                    });
-
+                                   const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
+    selectedClass,
+    selectedBoard,
+    subject: subjData.subject,
+    chapters: subjData.chapters,
+    marksPerQuestion: sec.marksPerQuestion,
+    mcqType: sec.mcqType,
+    requestedCount,
+    difficultyValue:
+difficultyDistribution.L1 === 100 ? "Level 1" :
+difficultyDistribution.L2 === 100 ? "Level 2" :
+difficultyDistribution.L3 === 100 ? "Level 3" :
+"Custom",
+    subjectSeenKeys,
+    globalMixBudget: null,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
                                     if (balanceErrors?.length) {
                                         sectionErrors = sectionErrors.concat(balanceErrors);
                                     }
@@ -2307,16 +2311,17 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
                                         for (const lv of levelsTry) {
                                             const forceDiff = lv === 'L1' ? "Level 1" : (lv === 'L2' ? "Level 2" : "Level 3");
 
-                                            const docs = await fetchQuestionsWithMarksFallback({
-                                                selectedClass,
-                                                selectedBoard,
-                                                selectedSubject: subjData.subject,
-                                                chapters: subjData.chapters,
-                                                marksPerQuestion: mPerQ,
-                                                mcqType: sec.mcqType,
-                                                count: Math.max(40, requestedCount * 2),
-                                                forceDifficulty: forceDiff
-                                            });
+                                            const docs = await allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+                                        selectedClass,
+                                        selectedBoard,
+                                        selectedSubject: subjData.subject,
+                                        chapters: subjData.chapters,
+                                        marksPerQuestion: mPerQ,
+                                        mcqType: sec.mcqType,
+                                        count: Math.max(40, requestedCount * 2),
+                                        forceDifficulty: forceDiff,
+                                        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+                                    });
 
                                             const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
 
@@ -2331,28 +2336,10 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
                                             if (picked) break;
                                         }
 
-                                        if (!picked) {
-                                            const docs = await fetchQuestionsWithMarksFallback({
-                                                selectedClass,
-                                                selectedBoard,
-                                                selectedSubject: subjData.subject,
-                                                chapters: subjData.chapters,
-                                                marksPerQuestion: mPerQ,
-                                                mcqType: sec.mcqType,
-                                                count: Math.max(40, requestedCount * 2),
-                                                forceDifficulty: null
-                                            });
-
-                                            const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
-
-                                            for (const d of uniqueByIdOrText(docs)) {
-                                                const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
-                                                if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
-                                                picked = d;
-                                                pickedLevel = preferred;
-                                                break;
-                                            }
-                                        }
+                                       if (!picked) {
+    sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
+    continue;
+}
 
                                         if (!picked) {
                                             sectionErrors.push(`${subjData.subject} - ${sec.label}: no bank question available for one ${mPerQ}-mark slot.`);
@@ -2379,25 +2366,27 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
                                     const pairAChapter = sec.pairs[p].chapterA ? [sec.pairs[p].chapterA] : [];
                                     const pairBChapter = sec.pairs[p].chapterB ? [sec.pairs[p].chapterB] : [];
 
-                                    const qA = await fetchQuestions({
-                                        selectedClass,
-                                        selectedBoard,
-                                        selectedSubject: subjData.subject,
-                                        chapters: pairAChapter,
-                                        marksPerQuestion: sec.marksPerQuestion,
-                                        mcqType: "Descriptive",
-                                        count: 1
-                                    });
+                                   const qA = await fetchQuestions({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: pairAChapter,
+    marksPerQuestion: sec.marksPerQuestion,
+    mcqType: "Descriptive",
+    count: 1,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
 
-                                    const qB = await fetchQuestions({
-                                        selectedClass,
-                                        selectedBoard,
-                                        selectedSubject: subjData.subject,
-                                        chapters: pairBChapter,
-                                        marksPerQuestion: sec.marksPerQuestion,
-                                        mcqType: "Descriptive",
-                                        count: 1
-                                    });
+const qB = await fetchQuestions({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: pairBChapter,
+    marksPerQuestion: sec.marksPerQuestion,
+    mcqType: "Descriptive",
+    count: 1,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
 
                                     if (!qA.length || !qB.length) {
                                         missingPairs++;
@@ -2515,24 +2504,46 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
                     }
                 }
 
-               if (allSectionErrors.length > 0) {
-    const currentlyAllowed = getAllowedDifficultyLevels();
+              if (allSectionErrors.length > 0) {
     const currentlyUnselected = getUnselectedDifficultyLevels();
+    const shortageOnlySelectedLevels = allSectionErrors.some(e =>
+    String(e).includes('Checked difficulty levels do not have enough questions.')
+);
 
-    if (sourceTypeGlobal === 'Question Bank' && currentlyUnselected.length > 0) {
+    if (sourceTypeGlobal === 'Question Bank' && shortageOnlySelectedLevels && currentlyUnselected.length > 0) {
         const labels = currentlyUnselected.map(levelKeyToLabel).join(', ');
         const allowMore = await showConfirmPrompt(
-            `<b>Selected difficulty levels do not have enough questions.</b><br><br>` +
-            `Do you want to allow questions from these unselected levels: <b>${labels}</b>?`
+            `<b>Checked levels do not have enough questions.</b><br><br>` +
+            `Do you want to use these unchecked levels: <b>${labels}</b>?`
         );
 
         if (allowMore) {
             if (currentlyUnselected.includes('L1')) document.getElementById('diff-l1-check').checked = true;
             if (currentlyUnselected.includes('L2')) document.getElementById('diff-l2-check').checked = true;
             if (currentlyUnselected.includes('L3')) document.getElementById('diff-l3-check').checked = true;
+
+            const checkedNow = getAllowedDifficultyLevels();
+            const equalPercent = Math.floor(100 / checkedNow.length);
+            const remainder = 100 - (equalPercent * checkedNow.length);
+
+            document.getElementById('diff-l1-percent').value = checkedNow.includes('L1') ? equalPercent : 0;
+            document.getElementById('diff-l2-percent').value = checkedNow.includes('L2') ? equalPercent : 0;
+            document.getElementById('diff-l3-percent').value = checkedNow.includes('L3') ? equalPercent : 0;
+
+            if (checkedNow.length) {
+                const last = checkedNow[checkedNow.length - 1];
+                const el = document.getElementById(
+                    last === 'L1' ? 'diff-l1-percent' :
+                    last === 'L2' ? 'diff-l2-percent' :
+                    'diff-l3-percent'
+                );
+                el.value = Number(el.value || 0) + remainder;
+            }
+
             refreshDifficultyTotalNote();
             btn.disabled = false;
             btn.textContent = "Build Exam Draft";
+            document.getElementById('exam-setup-form').dispatchEvent(new Event('submit'));
             return;
         } else {
             btn.disabled = false;
@@ -2542,6 +2553,25 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
     }
 
     showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${allSectionErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
+    btn.disabled = false;
+    btn.textContent = "Build Exam Draft";
+    return;
+}
+    }
+
+    const cleanedErrors = allSectionErrors
+    .filter(e => !String(e).includes('Checked difficulty levels do not have enough questions.'))
+    .map(e => {
+        const t = String(e);
+        if (t.includes('Only') && t.includes('questions found')) return t;
+        if (t.includes('Only') && t.includes('pairs found')) return t;
+        if (t.includes('no bank question available')) return t;
+        return t;
+    });
+
+if (cleanedErrors.length) {
+    showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${cleanedErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
+}
     btn.disabled = false;
     btn.textContent = "Build Exam Draft";
     return;
