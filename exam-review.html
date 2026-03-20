@@ -1068,11 +1068,21 @@ document.getElementById('apply-json-btn').onclick = async function() {
 function extractJsonArray(raw) {
   let s = String(raw || '').trim();
 
+  // remove markdown fences
   s = s.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
 
+  // normalize curly quotes / nbsp
   s = s.replace(/[\u2018\u2019]/g, "'")
        .replace(/[\u201C\u201D]/g, '"')
        .replace(/\u00A0/g, ' ');
+
+  // if user pasted multiple objects without outer array, wrap them
+  const firstBracket = s.indexOf('[');
+  const firstBrace = s.indexOf('{');
+
+  if (firstBracket === -1 && firstBrace !== -1) {
+    s = `[${s}]`;
+  }
 
   const first = s.indexOf('[');
   const last = s.lastIndexOf(']');
@@ -1082,47 +1092,65 @@ function extractJsonArray(raw) {
 
   let sub = s.slice(first, last + 1);
 
+  // remove trailing commas before } or ]
   sub = sub.replace(/,(\s*[}\]])/g, '$1');
 
-  // protect LaTeX-style backslashes inside JSON strings
   let out = '';
   let inString = false;
-  let escaped = false;
+  let quoteEscaped = false;
 
   for (let i = 0; i < sub.length; i++) {
     const ch = sub[i];
 
-    if (inString) {
-      if (escaped) {
-        out += ch;
-        escaped = false;
-        continue;
-      }
-
-     if (ch === '\\') {
-  const next = sub[i + 1] || '';
-
-  // Preserve only real JSON-safe escapes for quote, slash, and backslash.
-  // Everything else should be doubled so LaTeX survives.
-  if (next === '"' || next === '\\' || next === '/') {
-    out += ch;
-  } else {
-    out += '\\\\';
-  }
-  continue;
-}
-
+    if (!inString) {
+      out += ch;
       if (ch === '"') {
-        inString = false;
-        out += ch;
+        inString = true;
+        quoteEscaped = false;
+      }
+      continue;
+    }
+
+    // inside string
+    if (quoteEscaped) {
+      // preserve escaped quote like \"
+      out += ch;
+      quoteEscaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      const next = sub[i + 1] || '';
+
+      // keep only escaped quote as-is
+      if (next === '"') {
+        out += '\\"';
+        i++;
         continue;
       }
 
-      out += ch;
-    } else {
-      out += ch;
-      if (ch === '"') inString = true;
+      // for EVERYTHING ELSE in strings, double the slash
+      // this safely repairs \begin, \end, \(, \), \times, \\ etc.
+      out += '\\\\';
+      continue;
     }
+
+    if (ch === '"') {
+      inString = false;
+      out += ch;
+      continue;
+    }
+
+    if (ch === '\n') {
+      out += '\\n';
+      continue;
+    }
+
+    if (ch === '\r') {
+      continue;
+    }
+
+    out += ch;
   }
 
   return JSON.parse(out);
