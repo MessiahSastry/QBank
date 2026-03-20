@@ -253,10 +253,17 @@
                         <input type="date" id="date-input">
                     </div>
 
-                    <div class="form-group">
-                        <label>Question Source</label>
-                        <div id="exam-source-dropdown" class="custom-dropdown"></div>
-                    </div>
+                    <div class="form-grid-2-col">
+    <div class="form-group">
+        <label>Question Source</label>
+        <div id="exam-source-dropdown" class="custom-dropdown"></div>
+    </div>
+
+    <div class="form-group">
+        <label>Selection Mode</label>
+        <div id="selection-mode-dropdown" class="custom-dropdown"></div>
+    </div>
+</div>
 
                     <div class="form-group" id="global-paste-wrap" style="display:none;">
                         <label>Paste all questions (in order)</label>
@@ -346,7 +353,68 @@
         font-size: 1.1em;
         box-shadow: 0 6px 24px rgba(0, 27, 68, 0.18);
     "></div>
+    <div id="manual-pick-modal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(20,40,80,0.22);
+    z-index:10001;
+    align-items:center;
+    justify-content:center;
+">
+    <div style="
+        width:min(950px,94vw);
+        max-height:88vh;
+        overflow:hidden;
+        background:#fff;
+        border-radius:16px;
+        box-shadow:0 12px 40px rgba(0,27,68,0.22);
+        display:flex;
+        flex-direction:column;
+    ">
+        <div style="padding:16px 18px;background:#0f3d6b;color:#fff;font-weight:700;">
+            Select Questions Manually
+        </div>
 
+        <div id="manual-pick-title" style="padding:12px 18px 6px 18px;color:#1762a7;font-weight:700;"></div>
+
+        <div id="manual-pick-list" style="
+            flex:1;
+            overflow:auto;
+            padding:12px 18px 18px 18px;
+            background:#f7fafd;
+        "></div>
+
+        <div style="
+            padding:14px 18px;
+            display:flex;
+            gap:10px;
+            justify-content:flex-end;
+            border-top:1px solid #d7e5f3;
+            background:#fff;
+        ">
+            <button type="button" id="manual-pick-cancel" style="
+                padding:10px 18px;
+                border:none;
+                border-radius:8px;
+                background:#c82333;
+                color:#fff;
+                font-weight:600;
+                cursor:pointer;
+            ">Cancel</button>
+
+            <button type="button" id="manual-pick-done" style="
+                padding:10px 18px;
+                border:none;
+                border-radius:8px;
+                background:#1762a7;
+                color:#fff;
+                font-weight:600;
+                cursor:pointer;
+            ">Use Selected</button>
+        </div>
+    </div>
+</div>
     <div id="modal-prompt" style="
         display:none;
         position: fixed;
@@ -410,6 +478,94 @@ function showToast(message, type = 'info') {
     toast.style.display = 'block';
     clearTimeout(window._toastTimeout);
     window._toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 2300);
+}
+    function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function openManualPickModal({ title, questions, requiredCount, marksPerQuestion, mcqType }) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('manual-pick-modal');
+        const titleBox = document.getElementById('manual-pick-title');
+        const listBox = document.getElementById('manual-pick-list');
+        const btnCancel = document.getElementById('manual-pick-cancel');
+        const btnDone = document.getElementById('manual-pick-done');
+
+        titleBox.innerHTML = `
+            ${escapeHtml(title)}<br>
+            <span style="font-weight:500;color:#54656f;">
+                Select ${requiredCount} question(s)
+            </span>
+        `;
+
+        listBox.innerHTML = '';
+
+        questions.forEach((q, idx) => {
+            const stem = getQuestionTextFromDoc(q);
+            const card = document.createElement('label');
+            card.style.display = 'block';
+            card.style.background = '#fff';
+            card.style.border = '1px solid #cfe0f1';
+            card.style.borderRadius = '12px';
+            card.style.padding = '12px 14px';
+            card.style.marginBottom = '12px';
+            card.style.cursor = 'pointer';
+
+            const extracted = Array.isArray(q.options) && q.options.length === 4 ? q.options : (extractMCQOptions(q) || []);
+            const optionsHtml = (mcqType !== 'Descriptive' && extracted.length === 4)
+                ? `<div style="margin-top:8px;color:#54656f;line-height:1.6;">
+                    A) ${escapeHtml(extracted[0])}<br>
+                    B) ${escapeHtml(extracted[1])}<br>
+                    C) ${escapeHtml(extracted[2])}<br>
+                    D) ${escapeHtml(extracted[3])}
+                   </div>`
+                : '';
+
+            card.innerHTML = `
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <input type="checkbox" class="manual-pick-check" data-idx="${idx}" style="margin-top:4px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:700;color:#0f3d6b;">Q${idx + 1}</div>
+                        <div style="margin-top:4px;color:#12416c;line-height:1.55;">${stem}</div>
+                        ${optionsHtml}
+                        <div style="margin-top:8px;font-size:.92em;color:#5d6d7e;">
+                            Marks: ${Number(marksPerQuestion || q.marks || 0)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            listBox.appendChild(card);
+        });
+
+        modal.style.display = 'flex';
+
+        function cleanup(val) {
+            modal.style.display = 'none';
+            btnCancel.onclick = null;
+            btnDone.onclick = null;
+            resolve(val);
+        }
+
+        btnCancel.onclick = () => cleanup(null);
+
+        btnDone.onclick = () => {
+            const checked = Array.from(listBox.querySelectorAll('.manual-pick-check:checked'))
+                .map(cb => Number(cb.dataset.idx));
+
+            if (checked.length !== requiredCount) {
+                showToast(`Please select exactly ${requiredCount} question(s).`, 'error');
+                return;
+            }
+
+            const picked = checked.map(i => questions[i]);
+            cleanup(picked);
+        };
+    });
 }
 function showModalPrompt(message) {
     const modal = document.getElementById('modal-prompt');
@@ -1880,6 +2036,10 @@ function getSourceTypeGlobal() {
     return (document.getElementById('exam-source-dropdown')?.dataset?.value) || 'Question Bank';
 }
 
+function getSelectionMode() {
+    return (document.getElementById('selection-mode-dropdown')?.dataset?.value) || 'Auto Select';
+}
+
 function getGlobalShuffleQuestions() {
     return !!window._shuffleQuestions;
 }
@@ -1900,7 +2060,8 @@ document.addEventListener('DOMContentLoaded', () => {
         createDropdown('class-dropdown', config.classes, 'Select Class');
         createDropdown('board-dropdown', config.boards, 'Select Board');
         createDropdown('exam-source-dropdown', ["Question Bank", "Paste", "Upload .docx"], 'Question Bank');
-        refreshDifficultyTotalNote();
+createDropdown('selection-mode-dropdown', ["Auto Select", "Manual Select"], 'Auto Select');
+refreshDifficultyTotalNote();
 
 [
     'diff-l1-check','diff-l2-check','diff-l3-check',
@@ -1940,24 +2101,27 @@ document.addEventListener('DOMContentLoaded', () => {
             window._globalDocxArrayBuffer = null;
 
             function toggle() {
-                const v = dd.dataset.value || 'Question Bank';
-                const isBank  = (v === 'Question Bank');
-                const isPaste = (v === 'Paste');
-                const isWord  = (v === 'Upload .docx');
+    const v = dd.dataset.value || 'Question Bank';
+    const isBank  = (v === 'Question Bank');
+    const isPaste = (v === 'Paste');
+    const isWord  = (v === 'Upload .docx');
 
-                pasteWrap.style.display  = isPaste ? 'block' : 'none';
-                uploadWrap.style.display = isWord ? 'block' : 'none';
+    pasteWrap.style.display  = isPaste ? 'block' : 'none';
+    uploadWrap.style.display = isWord ? 'block' : 'none';
 
-                if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
+    if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
 
-                const diffGroup = document.getElementById('difficulty-config-group');
-if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
+    const diffGroup = document.getElementById('difficulty-config-group');
+    if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
 
-                document.querySelectorAll('[id^="chapters-multiselect-"]').forEach(el => {
-                    const grp = el.closest('.form-group');
-                    if (grp) grp.style.display = isBank ? '' : 'none';
-                });
-            }
+    const selectionModeGroup = document.getElementById('selection-mode-dropdown')?.closest('.form-group');
+    if (selectionModeGroup) selectionModeGroup.style.display = isBank ? '' : 'none';
+
+    document.querySelectorAll('[id^="chapters-multiselect-"]').forEach(el => {
+        const grp = el.closest('.form-group');
+        if (grp) grp.style.display = isBank ? '' : 'none';
+    });
+}
 
             dd.addEventListener('change', toggle);
             toggle();
@@ -2022,7 +2186,8 @@ if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
                 const allowedDifficultyLevels = getAllowedDifficultyLevels();
                 window._difficultyDistribution = { ...difficultyDistribution };
                 window._allowedDifficultyLevels = allowedDifficultyLevels.slice();
-                const sourceTypeGlobal = getSourceTypeGlobal();
+               const sourceTypeGlobal = getSourceTypeGlobal();
+const selectionMode = getSelectionMode();
 
                 if (!selectedClass) {
                     showToast("Please select class.", "error");
@@ -2231,14 +2396,14 @@ return { ...sl, assigned: pick };
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
 ) {
-                                   const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
+                                  const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
     selectedClass,
     selectedBoard,
     subject: subjData.subject,
     chapters: subjData.chapters,
     marksPerQuestion: sec.marksPerQuestion,
     mcqType: sec.mcqType,
-    requestedCount,
+    requestedCount: selectionMode === 'Manual Select' ? Math.max(requestedCount * 4, requestedCount + 10) : requestedCount,
     difficultyValue:
 difficultyDistribution.L1 === 100 ? "Level 1" :
 difficultyDistribution.L2 === 100 ? "Level 2" :
@@ -2248,29 +2413,117 @@ difficultyDistribution.L3 === 100 ? "Level 3" :
     globalMixBudget: null,
     allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
 });
-                                    if (balanceErrors?.length) {
-                                        sectionErrors = sectionErrors.concat(balanceErrors);
-                                    }
 
-                                    const pool = Array.isArray(rawItems) ? rawItems.slice(0, requestedCount) : [];
-                                    const mapped = pool.map(q => mapBankQuestionToBuilderQuestion(q, sec.mcqType, mPerQ));
+if (balanceErrors?.length) {
+    sectionErrors = sectionErrors.concat(balanceErrors);
+}
 
-                                    const filtered = [];
-                                    const sectionSeen = new Set();
+let pool = Array.isArray(rawItems) ? rawItems.slice() : [];
 
-                                    for (const item of mapped) {
-                                        const k = makeStemKey({ text: item.text, marks: mPerQ });
-                                        if (k && (subjectSeenKeys.has(k) || sectionSeen.has(k))) continue;
-                                        if (k) {
-                                            subjectSeenKeys.add(k);
-                                            sectionSeen.add(k);
-                                        }
-                                        filtered.push(item);
-                                    }
+pool = pool.filter(q => {
+    const k = makeStemKey({ text: getQuestionTextFromDoc(q), marks: mPerQ });
+    return !(k && subjectSeenKeys.has(k));
+});
 
-                                    questions = filtered.map((it, i) => ({ ...it, number: i + 1 }));
+if (selectionMode === 'Manual Select') {
+    if (pool.length < requestedCount) {
+        sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${pool.length} question(s) available for manual selection.`);
+    } else {
+        const pickedManual = await openManualPickModal({
+            title: `${subjData.subject} - ${sec.label}`,
+            questions: pool,
+            requiredCount: requestedCount,
+            marksPerQuestion: mPerQ,
+            mcqType: sec.mcqType
+        });
+
+        if (!pickedManual) {
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+            return;
+        }
+
+        const mapped = pickedManual.map(q => mapBankQuestionToBuilderQuestion(q, sec.mcqType, mPerQ));
+        questions = mapped.map((it, i) => {
+            const k = makeStemKey({ text: it.text, marks: mPerQ });
+            if (k) subjectSeenKeys.add(k);
+            return { ...it, number: i + 1 };
+        });
+    }
+} else {
+    const limitedPool = pool.slice(0, requestedCount);
+    const mapped = limitedPool.map(q => mapBankQuestionToBuilderQuestion(q, sec.mcqType, mPerQ));
+
+    const filtered = [];
+    const sectionSeen = new Set();
+
+    for (const item of mapped) {
+        const k = makeStemKey({ text: item.text, marks: mPerQ });
+        if (k && (subjectSeenKeys.has(k) || sectionSeen.has(k))) continue;
+        if (k) {
+            subjectSeenKeys.add(k);
+            sectionSeen.add(k);
+        }
+        filtered.push(item);
+    }
+
+    questions = filtered.map((it, i) => ({ ...it, number: i + 1 }));
+}
                                 } else {
-                                    const mySlots = strictSlots.filter(sl =>
+    if (selectionMode === 'Manual Select') {
+        const manualPool = await fetchQuestionsWithMarksFallback({
+            selectedClass,
+            selectedBoard,
+            selectedSubject: subjData.subject,
+            chapters: subjData.chapters,
+            marksPerQuestion: mPerQ,
+            mcqType: sec.mcqType,
+            count: Math.max(requestedCount * 5, requestedCount + 15),
+            forceDifficulty: undefined,
+            allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+        });
+
+        const cleanPool = uniqueByIdOrText(manualPool).filter(d => {
+            const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
+            return !(k && subjectSeenKeys.has(k));
+        });
+
+        if (cleanPool.length < requestedCount) {
+            sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
+        } else {
+            const pickedManual = await openManualPickModal({
+                title: `${subjData.subject} - ${sec.label}`,
+                questions: cleanPool,
+                requiredCount: requestedCount,
+                marksPerQuestion: mPerQ,
+                mcqType: sec.mcqType
+            });
+
+            if (!pickedManual) {
+                btn.disabled = false;
+                btn.textContent = "Build Exam Draft";
+                return;
+            }
+
+            questions = pickedManual.map((picked, i) => {
+                const out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
+                const diffRaw = String(picked.difficulty || picked.level || '').trim().toLowerCase();
+                out._assignedLevel =
+                    diffRaw.includes('1') ? 'L1' :
+                    diffRaw.includes('2') ? 'L2' : 'L3';
+
+                const k = makeStemKey({ text: out.text, marks: mPerQ });
+                if (k) subjectSeenKeys.add(k);
+
+                if (_mixedActual && out._assignedLevel) {
+                    _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+                }
+
+                return { ...out, number: i + 1 };
+            });
+        }
+    } else {
+        const mySlots = strictSlots.filter(sl =>
                                         sl.sIdx === sIdx &&
                                         sl.secIdx === secIdx &&
                                         sl.marksPerQuestion === mPerQ
@@ -2369,12 +2622,13 @@ for (let i = 0; i < takeCount; i++) {
     const finalKey = makeStemKey({ text: out.text, marks: mPerQ });
     if (finalKey) subjectSeenKeys.add(finalKey);
 
-    if (_mixedActual && out._assignedLevel) {
-        _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
-    }
-}
+                                           if (_mixedActual && out._assignedLevel) {
+                                            _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+                                        }
+                                    }
                                 }
-                            } else if (sec.type === "internal") {
+                            }
+                        } else if (sec.type === "internal") {
                                 let missingPairs = 0;
 
                                 for (let p = 0; p < (sec.pairs || []).length; p++) {
