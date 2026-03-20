@@ -2533,9 +2533,11 @@ const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
 });
 
 const cleanPool = manualPool;
-        if (cleanPool.length < requestedCount) {
-            sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
-        } else {
+       if (cleanPool.length < requestedCount) {
+    sectionErrors.push(
+        `${subjData.subject} - ${sec.label}: Only ${cleanPool.length} question(s) available for ${mPerQ} mark ${sec.mcqType}.`
+    );
+} else {
             const pickedManual = await openManualPickModal({
                 title: `${subjData.subject} - ${sec.label}`,
                 questions: cleanPool,
