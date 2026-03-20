@@ -1071,6 +1071,86 @@ const db = {
     }
 };
 
+const _subjectQuestionCache = new Map();
+
+function _normDifficultyValue(s) {
+  let t = String(s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
+  t = t.replace(/^level[-_]?(\d)$/, 'level$1');
+  t = t.replace(/^l(\d)$/, 'level$1');
+  return t;
+}
+
+function _isAllowedMcqType(doc, mcqType) {
+  const typ = inferMcqType(doc);
+  if (mcqType === "MCQ (Single)") return typ === "MCQ (Single)";
+  if (mcqType === "MCQ (Multiple)") return typ === "MCQ (Multiple)";
+  if (mcqType === "Descriptive") return typ === "Descriptive";
+  return true;
+}
+
+async function getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject) {
+  const cacheKey = [currentUser?.uid || '', selectedClass, selectedBoard, selectedSubject].join('|');
+
+  if (_subjectQuestionCache.has(cacheKey)) {
+    return _subjectQuestionCache.get(cacheKey).slice();
+  }
+
+  const snapshot = await firestore.collection("questions")
+    .where("createdBy", "==", currentUser.uid)
+    .where("class", "==", selectedClass)
+    .where("board", "==", selectedBoard)
+    .where("subject", "==", selectedSubject)
+    .get();
+
+  const allQuestions = [];
+  snapshot.forEach(doc => {
+    allQuestions.push({ id: doc.id, ...doc.data() });
+  });
+
+  allQuestions.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
+
+  const unique = uniqueByIdOrText(allQuestions);
+  _subjectQuestionCache.set(cacheKey, unique.slice());
+  return unique.slice();
+}
+
+function filterQuestionsFromPool(pool, {
+  chapters,
+  marksPerQuestion,
+  mcqType,
+  forceDifficulty,
+  allowedDifficulties
+}) {
+  let rows = Array.isArray(pool) ? pool.slice() : [];
+
+  if (chapters && chapters.length) {
+    const chapterSet = new Set(chapters.map(x => String(x || '').trim()));
+    rows = rows.filter(d => chapterSet.has(String(d.chapter || '').trim()));
+  }
+
+  if (marksPerQuestion != null && marksPerQuestion !== '') {
+    const wantedMarks = Number(marksPerQuestion);
+    rows = rows.filter(d => Number(d.marks) === wantedMarks);
+  }
+
+  rows = rows.filter(d => _isAllowedMcqType(d, mcqType));
+
+  if (forceDifficulty) {
+    const want = _normDifficultyValue(forceDifficulty);
+    rows = rows.filter(d => _normDifficultyValue(d.difficulty || d.level) === want);
+  } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
+    const wants = allowedDifficulties.map(_normDifficultyValue);
+    rows = rows.filter(d => wants.includes(_normDifficultyValue(d.difficulty || d.level)));
+  }
+
+  return uniqueByIdOrText(rows);
+}
+
 async function fetchQuestions({
   selectedClass,
   selectedBoard,
@@ -1082,58 +1162,20 @@ async function fetchQuestions({
   forceDifficulty,
   allowedDifficulties
 }) {
-  let query = firestore.collection("questions")
-    .where("createdBy", "==", currentUser.uid)
-    .where("class", "==", selectedClass)
-    .where("board", "==", selectedBoard)
-    .where("subject", "==", selectedSubject);
+  const pool = await getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject);
 
-  if (chapters && chapters.length === 1) {
-    query = query.where("chapter", "==", chapters[0]);
-  }
-
-  const snapshot = await query.get();
-  let allQuestions = [];
-
-  snapshot.forEach(doc => {
-    allQuestions.push({ id: doc.id, ...doc.data() });
+  let rows = filterQuestionsFromPool(pool, {
+    chapters,
+    marksPerQuestion,
+    mcqType,
+    forceDifficulty,
+    allowedDifficulties
   });
 
-  allQuestions.sort((a, b) => {
-    const qa = Number(a.questionNumber || 0);
-    const qb = Number(b.questionNumber || 0);
-    return qa - qb;
-  });
-
-  if (chapters && chapters.length > 1) {
-    allQuestions = allQuestions.filter(d => chapters.includes(String(d.chapter || '').trim()));
-  }
-
-  if (marksPerQuestion) {
-    const wantedMarks = Number(marksPerQuestion);
-    allQuestions = allQuestions.filter(d => Number(d.marks) === wantedMarks);
-  }
-
-  if (forceDifficulty) {
-    allQuestions = allQuestions.filter(d => String(d.difficulty || d.level || '').trim() === forceDifficulty);
-  } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
-    allQuestions = allQuestions.filter(d =>
-      allowedDifficulties.includes(String(d.difficulty || d.level || '').trim())
-    );
-  }
-
-  if (mcqType === "Descriptive") {
-    allQuestions = allQuestions.filter(d => inferMcqType(d) === "Descriptive");
-  } else if (mcqType === "MCQ (Single)") {
-    allQuestions = allQuestions.filter(d => inferMcqType(d) === "MCQ (Single)");
-  } else if (mcqType === "MCQ (Multiple)") {
-    allQuestions = allQuestions.filter(d => inferMcqType(d) === "MCQ (Multiple)");
-  }
-
-  allQuestions = uniqueByIdOrText(allQuestions);
-  shuffleArray(allQuestions);
-  return allQuestions.slice(0, count);
+  shuffleArray(rows);
+  return rows.slice(0, count);
 }
+
 async function fetchQuestionsWithMarksFallback({
   selectedClass,
   selectedBoard,
@@ -1145,94 +1187,37 @@ async function fetchQuestionsWithMarksFallback({
   forceDifficulty,
   allowedDifficulties
 }) {
+  const pool = await getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject);
+
   const wantedMarks = parseInt(marksPerQuestion);
   const marksOrder = buildMarksFallbackOrder(wantedMarks);
 
   const picked = [];
   const usedIds = new Set();
-
-  const baseQuery = firestore.collection("questions")
-    .where("createdBy", "==", currentUser.uid)
-    .where("class", "==", selectedClass)
-    .where("board", "==", selectedBoard)
-    .where("subject", "==", selectedSubject);
-
-  const isAllowedType = (d) => {
-    const typ = inferMcqType(d);
-    if (mcqType === "MCQ (Single)") return typ === "MCQ (Single)";
-    if (mcqType === "MCQ (Multiple)") return typ === "MCQ (Multiple)";
-    if (mcqType === "Descriptive") return typ === "Descriptive";
-    return true;
-  };
-
-  const normDiff = s => {
-    let t = String(s || "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\u00A0/g, " ")
-      .replace(/\s+/g, "")
-      .trim()
-      .toLowerCase();
-    t = t.replace(/^level[-_]?(\d)$/, 'level$1');
-    t = t.replace(/^l(\d)$/, 'level$1');
-    return t;
-  };
-
-  const applyChapterFilter = async (queryObj, chapterList) => {
-    const rows = [];
-    if (chapterList && chapterList.length === 1) {
-      const snap = await queryObj.where("chapter", "==", chapterList[0]).get();
-      snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
-      rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
-      return rows;
-    }
-
-    const snap = await queryObj.get();
-    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
-    rows.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
-
-    if (chapterList && chapterList.length > 1) {
-      return rows.filter(d => chapterList.includes(String(d.chapter || '').trim()));
-    }
-    return rows;
-  };
-
-  const runAndFilter = async (marks, difficulty, chapterList) => {
-    let q = baseQuery.where("marks", "==", marks);
-    let collected = await applyChapterFilter(q, chapterList);
-    collected = collected.filter(isAllowedType);
-
-    if (difficulty) {
-      const want = normDiff(difficulty);
-      collected = collected.filter(d => normDiff(d.difficulty || d.level) === want);
-    } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
-      const wants = allowedDifficulties.map(normDiff);
-      collected = collected.filter(d => wants.includes(normDiff(d.difficulty || d.level)));
-    }
-
-    return uniqueByIdOrText(collected);
-  };
+  const usedKeys = new Set();
 
   for (const marks of marksOrder) {
-    const variants = Number.isFinite(marks) ? [marks, String(marks)] : [marks];
+    let rows = filterQuestionsFromPool(pool, {
+      chapters,
+      marksPerQuestion: marks,
+      mcqType,
+      forceDifficulty,
+      allowedDifficulties
+    });
 
-    for (const mv of variants) {
-      if (forceDifficulty) {
-        const docs1 = await runAndFilter(mv, forceDifficulty, chapters);
-        for (const d of docs1) {
-          if (d.id && usedIds.has(d.id)) continue;
-          if (d.id) usedIds.add(d.id);
-          picked.push(d);
-          if (picked.length >= count) return picked.slice(0, count);
-        }
-      } else {
-        const docs2 = await runAndFilter(mv, null, chapters);
-        for (const d of docs2) {
-          if (d.id && usedIds.has(d.id)) continue;
-          if (d.id) usedIds.add(d.id);
-          picked.push(d);
-          if (picked.length >= count) return picked.slice(0, count);
-        }
-      }
+    shuffleArray(rows);
+
+    for (const d of rows) {
+      const id = d && d.id;
+      const key = makeStemKey({ text: getQuestionTextFromDoc(d), marks: Number(d.marks || marks || 0) });
+
+      if ((id && usedIds.has(id)) || (key && usedKeys.has(key))) continue;
+
+      if (id) usedIds.add(id);
+      if (key) usedKeys.add(key);
+
+      picked.push(d);
+      if (picked.length >= count) return picked.slice(0, count);
     }
   }
 
@@ -2023,7 +2008,9 @@ if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
             btn.textContent = "Building Paper...";
 
             try {
-                const selectedClass = getSelectedClass();
+    _subjectQuestionCache.clear();
+
+    const selectedClass = getSelectedClass();
                 const selectedBoard = getSelectedBoard();
                 const examName = ((document.getElementById('exam-name-input').value || '').trim()).toUpperCase();
                 const maxMarks = document.getElementById('max-marks-input').value;
@@ -2291,68 +2278,101 @@ difficultyDistribution.L3 === 100 ? "Level 3" :
 
                                     const takeCount = Math.min(requestedCount, mySlots.length);
 
-                                    for (let i = 0; i < takeCount; i++) {
-                                        const slot = mySlots[i];
-                                        const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
-                                        const _act = (typeof _mixedActual  !== 'undefined' && _mixedActual)  ? _mixedActual  : { L1:0, L2:0, L3:0 };
+                                   const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
 
-                                        const deficits = [
-                                            { k:"L1", d: (_tgt.L1 - _act.L1) },
-                                            { k:"L2", d: (_tgt.L2 - _act.L2) },
-                                            { k:"L3", d: (_tgt.L3 - _act.L3) },
-                                        ].sort((a,b)=> b.d - a.d).map(x=>x.k);
+const preloadedPools = {
+    L1: await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(80, requestedCount * 4),
+        forceDifficulty: "Level 1",
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    }),
+    L2: await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(80, requestedCount * 4),
+        forceDifficulty: "Level 2",
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    }),
+    L3: await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(80, requestedCount * 4),
+        forceDifficulty: "Level 3",
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    })
+};
 
-                                        const preferred = slot?.assigned || deficits[0];
-                                        const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
-const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k => allowed.includes(k));
+const poolIndex = { L1: 0, L2: 0, L3: 0 };
 
-                                        let picked = null, pickedLevel = null;
+for (let i = 0; i < takeCount; i++) {
+    const slot = mySlots[i];
+    const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
+    const _act = (typeof _mixedActual  !== 'undefined' && _mixedActual)  ? _mixedActual  : { L1:0, L2:0, L3:0 };
 
-                                        for (const lv of levelsTry) {
-                                            const forceDiff = lv === 'L1' ? "Level 1" : (lv === 'L2' ? "Level 2" : "Level 3");
+    const deficits = [
+        { k:"L1", d: (_tgt.L1 - _act.L1) },
+        { k:"L2", d: (_tgt.L2 - _act.L2) },
+        { k:"L3", d: (_tgt.L3 - _act.L3) },
+    ].sort((a,b)=> b.d - a.d).map(x=>x.k);
 
-                                            const docs = await fetchQuestionsWithMarksFallback({
-    selectedClass,
-    selectedBoard,
-    selectedSubject: subjData.subject,
-    chapters: subjData.chapters,
-    marksPerQuestion: mPerQ,
-    mcqType: sec.mcqType,
-    count: Math.max(40, requestedCount * 2),
-    forceDifficulty: forceDiff,
-    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-});
+    const preferred = slot?.assigned || deficits[0];
+    const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k => allowed.includes(k));
 
-                                            const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
+    let picked = null, pickedLevel = null;
+    const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
 
-                                            for (const d of uniqueByIdOrText(docs)) {
-                                                const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
-                                                if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
-                                                picked = d;
-                                                pickedLevel = lv;
-                                                break;
-                                            }
+    for (const lv of levelsTry) {
+        const pool = preloadedPools[lv] || [];
+        let idx = poolIndex[lv] || 0;
 
-                                            if (picked) break;
-                                        }
+        while (idx < pool.length) {
+            const d = pool[idx++];
+            const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
+            if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
 
-     if (!picked) {
-    sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
-    continue;
+            picked = d;
+            pickedLevel = lv;
+            break;
+        }
+
+        poolIndex[lv] = idx;
+        if (picked) break;
+    }
+
+    if (!picked) {
+        sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
+        continue;
+    }
+
+    let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
+    out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
+
+    questions.push({
+        ...out,
+        number: questions.length + 1
+    });
+
+    const finalKey = makeStemKey({ text: out.text, marks: mPerQ });
+    if (finalKey) subjectSeenKeys.add(finalKey);
+
+    if (_mixedActual && out._assignedLevel) {
+        _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+    }
 }
-
-                                        let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
-                                        out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
-
-                                        questions.push({
-                                            ...out,
-                                            number: questions.length + 1
-                                        });
-
-                                        if (_mixedActual && out._assignedLevel) {
-                                            _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
-                                        }
-                                    }
                                 }
                             } else if (sec.type === "internal") {
                                 let missingPairs = 0;
