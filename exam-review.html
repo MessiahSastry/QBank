@@ -1068,36 +1068,28 @@ document.getElementById('apply-json-btn').onclick = async function() {
  function extractJsonArray(raw) {
   let s = String(raw || '').trim();
 
-  // strip code fences
   s = s.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
 
-  // normalize smart quotes / nbsp
   s = s.replace(/[\u2018\u2019]/g, "'")
        .replace(/[\u201C\u201D]/g, '"')
        .replace(/\u00A0/g, ' ');
 
-  // take first plausible array
   const first = s.indexOf('[');
   const last  = s.lastIndexOf(']');
   if (first === -1 || last === -1 || last <= first) {
     throw new Error('No JSON array found');
   }
+
   let sub = s.slice(first, last + 1);
 
-    // remove trailing commas
+  // remove trailing commas
   sub = sub.replace(/,(\s*[}\]])/g, '$1');
+
+  // escape raw newlines/tabs/formfeeds only if they somehow entered string content
   sub = sub.replace(/\t/g, '\\t').replace(/\f/g, '\\f');
 
-    // Repair LaTeX backslashes BEFORE parsing, so JSON does NOT turn \t \f \n \r into tab/formfeed/newline.
-  // 1) Fix LaTeX commands that start with t/f/n/r (e.g., \text, \times, \frac) so they don't become JSON escapes.
-  sub = sub
-    .replace(/\\t(?=[A-Za-z])/g, '\\\\t')
-    .replace(/\\f(?=[A-Za-z])/g, '\\\\f')
-    .replace(/\\n(?=[A-Za-z])/g, '\\\\n')
-    .replace(/\\r(?=[A-Za-z])/g, '\\\\r');
-
-  // 2) Fix all other invalid backslashes (e.g., \cap, \frac, \alpha) that are not valid JSON escapes
-  sub = sub.replace(/\\(?![\\\/"bfnrtu]|u[0-9a-fA-F]{4})/g, '\\\\');
+  // escape every backslash that is not already a valid JSON escape
+  sub = sub.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\');
 
   return JSON.parse(sub);
 }
