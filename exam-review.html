@@ -1065,7 +1065,7 @@ document.getElementById('apply-json-btn').onclick = async function() {
   const raw = await sciMentraPrompt(`Paste the STRICT JSON array returned by ChatGPT for Batch ${currentIdx + 1}/${totalBatches}:`, '');
   if (raw === null || !String(raw).trim()) return;
 
- function extractJsonArray(raw) {
+function extractJsonArray(raw) {
   let s = String(raw || '').trim();
 
   s = s.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
@@ -1075,20 +1075,15 @@ document.getElementById('apply-json-btn').onclick = async function() {
        .replace(/\u00A0/g, ' ');
 
   const first = s.indexOf('[');
-  const last  = s.lastIndexOf(']');
+  const last = s.lastIndexOf(']');
   if (first === -1 || last === -1 || last <= first) {
     throw new Error('No JSON array found');
   }
 
   let sub = s.slice(first, last + 1);
 
-  // remove trailing commas
   sub = sub.replace(/,(\s*[}\]])/g, '$1');
 
-  // escape raw newlines/tabs/formfeeds only if they somehow entered string content
-  sub = sub.replace(/\t/g, '\\t').replace(/\f/g, '\\f');
-
-  // escape every backslash that is not already a valid JSON escape
   sub = sub.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '\\\\');
 
   return JSON.parse(sub);
