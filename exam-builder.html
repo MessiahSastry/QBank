@@ -1134,7 +1134,7 @@ async function fetchQuestions({
   shuffleArray(allQuestions);
   return allQuestions.slice(0, count);
 }
-async function allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+async function fetchQuestionsWithMarksFallback({
   selectedClass,
   selectedBoard,
   selectedSubject,
@@ -1260,7 +1260,7 @@ async function fetchBalancedAcrossChapters({
 
   async function fetchFor(chapterList, count, forceDifficulty) {
     if (!count) return [];
-    let docs = await allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    let docs = await fetchQuestionsWithMarksFallback({
   selectedClass,
   selectedBoard,
   selectedSubject: subject,
@@ -2311,17 +2311,17 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
                                         for (const lv of levelsTry) {
                                             const forceDiff = lv === 'L1' ? "Level 1" : (lv === 'L2' ? "Level 2" : "Level 3");
 
-                                            const docs = await allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-                                        selectedClass,
-                                        selectedBoard,
-                                        selectedSubject: subjData.subject,
-                                        chapters: subjData.chapters,
-                                        marksPerQuestion: mPerQ,
-                                        mcqType: sec.mcqType,
-                                        count: Math.max(40, requestedCount * 2),
-                                        forceDifficulty: forceDiff,
-                                        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-                                    });
+                                            const docs = await fetchQuestionsWithMarksFallback({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: subjData.chapters,
+    marksPerQuestion: mPerQ,
+    mcqType: sec.mcqType,
+    count: Math.max(40, requestedCount * 2),
+    forceDifficulty: forceDiff,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
 
                                             const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
 
@@ -2336,15 +2336,10 @@ const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k
                                             if (picked) break;
                                         }
 
-                                       if (!picked) {
+     if (!picked) {
     sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
     continue;
 }
-
-                                        if (!picked) {
-                                            sectionErrors.push(`${subjData.subject} - ${sec.label}: no bank question available for one ${mPerQ}-mark slot.`);
-                                            continue;
-                                        }
 
                                         let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
                                         out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
@@ -2552,22 +2547,9 @@ const qB = await fetchQuestions({
         }
     }
 
-    showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${allSectionErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
-    btn.disabled = false;
-    btn.textContent = "Build Exam Draft";
-    return;
-}
-    }
-
-    const cleanedErrors = allSectionErrors
+   const cleanedErrors = allSectionErrors
     .filter(e => !String(e).includes('Checked difficulty levels do not have enough questions.'))
-    .map(e => {
-        const t = String(e);
-        if (t.includes('Only') && t.includes('questions found')) return t;
-        if (t.includes('Only') && t.includes('pairs found')) return t;
-        if (t.includes('no bank question available')) return t;
-        return t;
-    });
+    .map(e => String(e));
 
 if (cleanedErrors.length) {
     showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${cleanedErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
@@ -2576,8 +2558,9 @@ if (cleanedErrors.length) {
     btn.textContent = "Build Exam Draft";
     return;
 }
+    }
 
-               if (
+                 if (
     sourceTypeGlobal === 'Question Bank' &&
     !(
         (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
