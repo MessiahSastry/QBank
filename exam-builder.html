@@ -505,7 +505,7 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
 
         listBox.innerHTML = '';
 
-        questions.forEach((q, idx) => {
+               questions.forEach((q, idx) => {
             const stem = getQuestionTextFromDoc(q);
             const card = document.createElement('label');
             card.style.display = 'block';
@@ -541,6 +541,10 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
             `;
             listBox.appendChild(card);
         });
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([listBox]).catch(() => {});
+        }
 
         modal.style.display = 'flex';
 
