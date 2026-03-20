@@ -2507,23 +2507,32 @@ if (selectionMode === 'Manual Select') {
 }
                                 } else {
     if (selectionMode === 'Manual Select') {
-        const manualPool = await fetchQuestionsWithMarksFallback({
-            selectedClass,
-            selectedBoard,
-            selectedSubject: subjData.subject,
-            chapters: subjData.chapters,
-            marksPerQuestion: mPerQ,
-            mcqType: sec.mcqType,
-            count: Math.max(requestedCount * 5, requestedCount + 15),
-            forceDifficulty: undefined,
-            allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-        });
+       const manualPoolRaw = await fetchQuestionsWithMarksFallback({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: subjData.chapters,
+    marksPerQuestion: mPerQ,
+    mcqType: sec.mcqType,
+    count: Math.max(requestedCount * 5, requestedCount + 15),
+    forceDifficulty: undefined,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
 
-        const cleanPool = uniqueByIdOrText(manualPool).filter(d => {
-            const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
-            return !(k && subjectSeenKeys.has(k));
-        });
+const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
+    const docMarks = Number(d?.marks || 0);
+    if (docMarks !== mPerQ) return false;
 
+    const docType = inferMcqType(d);
+    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
+    if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
+    if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
+
+    const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
+    return !(k && subjectSeenKeys.has(k));
+});
+
+const cleanPool = manualPool;
         if (cleanPool.length < requestedCount) {
             sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
         } else {
