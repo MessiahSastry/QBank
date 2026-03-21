@@ -1187,15 +1187,37 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const clone = item.cloneNode(true);
   const qTextEl = clone.querySelector('.question-text');
 
-  let questionLine = '';
+ let questionLine = '';
+  let options = [];
   if (qTextEl) {
     let html = qTextEl.innerHTML.replace(/<img[^>]*>/gi, '');
     let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
       .map(s => s.replace(/&nbsp;/g, ' ').trim())
       .filter(Boolean);
 
+    parts = parts.filter(line => line && !/^<br\s*\/?>$/i.test(line));
+
     if (parts.length > 0) {
       questionLine = parts[0];
+
+      let optionLines = [];
+      for (let i = 1; i < parts.length; i++) {
+        let line = parts[i];
+        let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
+        if (inlineOpts && inlineOpts.length >= 2) {
+          optionLines.push(...inlineOpts.map(opt => opt.trim()));
+        } else if (line) {
+          optionLines.push(line);
+        }
+      }
+
+      if (optionLines.length === 4) {
+        options = optionLines.map((opt, i) =>
+          /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
+        );
+      } else {
+        options = optionLines;
+      }
     }
   }
 
@@ -1255,6 +1277,14 @@ qDiv.appendChild(qTextDiv);
   aDiv.innerHTML = '<b>Answer:</b><br>' + ((answerText && String(answerText).trim()) ? String(answerText).replace(/\n/g, '<br>') : 'No answer available.');
 
   wrap.appendChild(qDiv);
+
+  if (options.length) {
+    const optDiv = document.createElement('div');
+    optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.7;';
+    optDiv.innerHTML = options.map(opt => `<div>${String(opt).replace(/\n/g, '<br>')}</div>`).join('');
+    wrap.appendChild(optDiv);
+  }
+
   wrap.appendChild(aDiv);
 
   if (explanationText && String(explanationText).trim()) {
