@@ -1630,8 +1630,10 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"><\/script>
 
   <style>
-    :root{
-      --qb-page-margin: 1.5cm;
+        :root{
+      --qb-page-margin-side: 1.5cm;
+      --qb-page-margin-top: 2.1cm;
+      --qb-page-margin-bottom: 1.9cm;
       --qb-question-gap: 10px;
       --qb-line-height: 1.6;
       --qb-question-font: 11pt;
@@ -1681,11 +1683,11 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       align-items:center;
     }
 
-    .a4-page{
+        .a4-page{
       width:210mm;
       min-height:297mm;
       margin:0 auto;
-      padding:var(--qb-page-margin);
+      padding:var(--qb-page-margin-top) var(--qb-page-margin-side) var(--qb-page-margin-bottom) var(--qb-page-margin-side);
       max-width:210mm;
       box-sizing:border-box;
       background:#fff;
@@ -1695,7 +1697,6 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       font-size:var(--qb-question-font);
       transition: padding .25s;
     }
-
     #print-root{
       width:100%;
       box-sizing:border-box;
@@ -1923,7 +1924,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
         margin:0 !important;
         border-radius:0 !important;
         box-shadow:none !important;
-        padding:var(--qb-page-margin) !important;
+                padding:var(--qb-page-margin-top) var(--qb-page-margin-side) var(--qb-page-margin-bottom) var(--qb-page-margin-side) !important;
         page-break-after:auto;
       }
 
@@ -2026,12 +2027,21 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       });
     }
 
-    function updateMargin(){
-      const cm = marginSlider.value;
-      marginValue.textContent = cm + 'cm';
-      document.documentElement.style.setProperty('--qb-page-margin', cm + 'cm');
+       function updateMargin(){
+      const cm = parseFloat(marginSlider.value || '1.5');
+      const topCm = (cm + 0.6).toFixed(1);
+      const bottomCm = (cm + 0.4).toFixed(1);
+
+      marginValue.textContent = cm.toFixed(1) + 'cm';
+
+      document.documentElement.style.setProperty('--qb-page-margin-side', cm.toFixed(1) + 'cm');
+      document.documentElement.style.setProperty('--qb-page-margin-top', topCm + 'cm');
+      document.documentElement.style.setProperty('--qb-page-margin-bottom', bottomCm + 'cm');
+
       const root = document.getElementById('print-root');
-      if (root) root.style.padding = cm + 'cm';
+      if (root) {
+        root.style.padding = `${topCm}cm ${cm.toFixed(1)}cm ${bottomCm}cm ${cm.toFixed(1)}cm`;
+      }
     }
 
     function updateLineHeight(){
