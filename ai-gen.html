@@ -1550,7 +1550,7 @@ if (sessionParams.questionType === 'Descriptive' && (!sessionParams.marks || ses
             if (tgl) { tgl.textContent = 'Show Paste Panel'; tgl.setAttribute?.('aria-expanded', 'false'); }
           } catch (err) {
             console.error(err);
-            __qb_toast('Parser error. Check the format (Q1:, A)–D), Ans: …).');
+            __qb_toast('Parser error. Check the format.');
           }
         };
       }
@@ -1952,10 +1952,14 @@ For descriptive questions, each question must be formatted exactly as:
 Q<num>: Level <Level>, <Marks> [Descriptive]
 <Question text>
 Answer: <Final answer>
-Explanation: Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
-But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+Rules for Answer:
+- Do NOT write any Explanation section.
+- Write ONLY the Answer.
+- For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
+  1. ...
+  2. ...
+  3. ...
+- For lower-mark descriptive questions, write a short direct answer as needed.
 
 List all descriptive questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
@@ -2190,10 +2194,14 @@ Format each question strictly as:
 Q<num>: Level <Lvl>, <Marks> Marks
 <Question text>
 Answer: <Final answer>
-Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
-But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+Rules for Answer:
+- Do NOT write any Explanation section.
+- Write ONLY the Answer.
+- For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
+  1. ...
+  2. ...
+  3. ...
+- For lower-mark descriptive questions, write a short direct answer as needed.
 
 Provide ONLY the questions in this exact format. Do not add any other text, explanation, or introduction.
 `;
@@ -2238,9 +2246,14 @@ Format strictly:
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <question text>
 Answer: <Final answer>
-Explanation: < Give Step-by-step explanation>
-Don't mention the option in the explanation, but give the correct answer.
-Do not add options.
+Rules for Answer:
+- Do NOT write any Explanation section.
+- Write ONLY the Answer.
+- For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
+  1. ...
+  2. ...
+  3. ...
+- For lower-mark descriptive questions, write a short direct answer as needed.
 `;
         } else {
          // CBSE MCQ prompt (keeps options + Ans)
@@ -2979,10 +2992,14 @@ Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as
 Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <Question text>
 Answer: <Final answer>
-Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
-But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+Rules for Answer:
+- Do NOT write any Explanation section.
+- Write ONLY the Answer.
+- For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
+  1. ...
+  2. ...
+  3. ...
+- For lower-mark descriptive questions, write a short direct answer as needed.
 
 Rules:
 ${numberingNote}
