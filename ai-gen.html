@@ -2560,7 +2560,7 @@ async function saveSessionQuestions(sessionParams) {
         createdBy: currentUserProfile.uid,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
-          if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+          if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
         toSave.question = wrappedQuestion;
         toSave.options  = wrappedOptions;
         toSave.answer   = qData.parsedAnswer;
@@ -2772,14 +2772,20 @@ function buildChatGptGenerationPrompt(sessionParams) {
   const board = sessionParams.board || '';
   const subj  = sessionParams.subject || '';
   const chap  = sessionParams.chapter || '';
-  const rawType = sessionParams.questionType || 'MCQ (Single)';
+    const rawType = sessionParams.questionType || 'MCQ (Single)';
 const isTextbook = /Text Book/i.test(rawType);
 const isMultiple = /Multiple/i.test(rawType);
+const isFillBlank = rawType === 'Fill in the Blanks';
+const isAssertionReason = rawType === 'Assertion and Reason (MCQ Single)';
 
 // Meta tag label used in the example block
-const qtypeForFormat = isTextbook
-  ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
-  : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
+const qtypeForFormat = isFillBlank
+  ? 'Fill in the Blanks'
+  : isAssertionReason
+    ? 'Assertion and Reason (MCQ Single)'
+    : isTextbook
+      ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
+      : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
 
 let qtype = rawType;
 const transcribeNote = isTextbook ? `
@@ -2999,6 +3005,50 @@ ${isOlympiad ? '• Questions must match Olympiad standard: reasoning-heavy, con
 ${isFoundation ? '• Questions must match IIT & NEET Foundation standard: concept-based and progressively challenging, but still suitable for the selected class.' : ''}
 ${strictAccuracy}
 `;
+
+const fillBlankFormat = `
+Generate EXACTLY ${count} questions. Format each question EXACTLY as:
+Q<num>: Level <1/2/3>, 1 Mark [Fill in the Blanks]
+<Question text with one blank written as ________>
+Answer:
+<Final answer>
+Explanation:
+<Give step-by-step explanation if needed>
+
+Rules:
+${numberingNote}
+• Do NOT give A), B), C), or D) options.
+• Every question must contain a real blank like ________.
+• The answer must exactly fit the blank.
+• Use ONLY content from the selected class/subject/chapter.
+• No headings, introductions, comments, or extra text.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
+
+const assertionReasonFormat = `
+Generate EXACTLY ${count} questions. Format each question EXACTLY as:
+Q<num>: Level <1/2/3>, 1 Mark [Assertion and Reason (MCQ Single)]
+Assertion (A): <statement>
+Reason (R): <statement>
+A) Both A and R are true, and R is the correct explanation of A.
+B) Both A and R are true, but R is not the correct explanation of A.
+C) A is true, but R is false.
+D) A is false, but R is true.
+Ans: <A) or B) or C) or D)>
+Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
+But non-math-related should give a point-wise (each point in a new line, use a number for each point)
+Answer: <Final answer>
+
+Rules:
+${numberingNote}
+• Do NOT generate normal MCQs here.
+• Every question must contain both Assertion and Reason.
+• Use ONLY content from the selected class/subject/chapter.
+• No headings, introductions, comments, or extra text.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
   // MCQ Multiple additional distribution rule (per 10)
   const multiBlockRule = `
 Additional rules for MCQ (Multiple):
@@ -3063,12 +3113,30 @@ ${strictAccuracy}
 `;
 
   // ----- Assemble prompt by type/mode -----
-  if (/Descriptive/i.test(qtype)) {
+   if (/Descriptive/i.test(qtype)) {
     return (
   `${header}
 ${levelBlock}
 ${transcribeNote}
 ${descFormat}`
+);
+  }
+
+  if (isFillBlank) {
+    return (
+`${header}
+${levelBlock}
+${transcribeNote}
+${fillBlankFormat}`.trim()
+);
+  }
+
+  if (isAssertionReason) {
+    return (
+`${header}
+${levelBlock}
+${transcribeNote}
+${assertionReasonFormat}`.trim()
 );
   }
 
@@ -3259,7 +3327,7 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       explanation: ''
     };
 
-     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)' || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
       const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
       const bodyWithoutExplanation = explanationMatch
@@ -3339,7 +3407,7 @@ if (TYPE === 'Text Book (MCQ Multiple)') TYPE = 'Text (Multiple)';
 
     // Marks
     const mkMatch = m.match(/(\d+)\s*Mark/i);
-    const marks = mkMatch ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}` : (TYPE.startsWith('MCQ') ? '1 Mark' : '');
+    const marks = mkMatch ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}` : ((TYPE.startsWith('MCQ') || TYPE === 'Assertion and Reason (MCQ Single)') ? '1 Mark' : '');
 
     out[i].parsedMeta = `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
 
@@ -3398,7 +3466,7 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
     if (marksMatch) {
       marks = `${marksMatch[1]} Mark${marksMatch[1] === "1" ? "" : "s"}`;
     } else {
-      marks = sessionParams.questionType.startsWith("MCQ") ? "1 Mark" : "";
+            marks = (sessionParams.questionType.startsWith("MCQ") || sessionParams.questionType === "Assertion and Reason (MCQ Single)") ? "1 Mark" : "";
     }
 
    const metaType = (sessionParams.questionType === 'Text Book (MCQ Single)') ? 'Text (Single)'
@@ -3408,7 +3476,7 @@ questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${m
 
        let rawBody = qText.substring(originalMeta.length).trim();
 
-    if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book')) {
+    if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
       const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
       const bodyWithoutExplanation = explanationMatch
