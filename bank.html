@@ -708,7 +708,8 @@ const qtypeHeaderLine = (__chosenTypes.length === 1) ? __chosenTypes[0] : 'MIXED
 const avoidCSS = document.createElement('style');
 avoidCSS.textContent = `
   .keep-with-next { page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid; }
-  .no-split, .no-split * img { page-break-inside: avoid; break-inside: avoid; }
+  .no-split { page-break-inside: auto; break-inside: auto; }
+  .no-split img { page-break-inside: avoid; break-inside: avoid; }
 `;
 printable.prepend(avoidCSS);
       printable.id = 'printable-export';
@@ -1180,7 +1181,7 @@ function __getQuestionAnswerHTML(item, qNum) {
     .trim();
 
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:avoid; color:#000;';
+  wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
 
   const qDiv = document.createElement('div');
   qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6;';
@@ -1398,7 +1399,7 @@ await __waitForImages(printable);
         filename: `Question_Bank_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((selChaptersForHeader.join('_')) || 'All').replace(/ /g, "_")}.pdf`,
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'cm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['css', 'legacy'] }
       }).from(printable)
         .toPdf()
         .save()
