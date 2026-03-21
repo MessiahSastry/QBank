@@ -676,6 +676,15 @@ if (!exportMode) {
   return;
 }
 
+const schoolNameInput = await appPrompt('Enter School Name', 'SciMentra');
+if (schoolNameInput === null) {
+  pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+  pdfBtn.disabled = false;
+  return;
+}
+
+const finalSchoolName = (schoolNameInput || '').trim() || 'SciMentra';
+
 const includeWorksheet = true;
 const includeKey = exportMode === 'worksheet_key';
       pdfBtn.disabled = true;
@@ -721,8 +730,7 @@ printable.prepend(avoidCSS);
       printable.style.margin = "0 auto";
       printable.style.padding = "0";
       printable.style.lineHeight = "1.6";
-
-     if (includeWorksheet) {
+if (includeWorksheet) {
   printable.innerHTML = `
     <div style="
       margin:22px auto 10px auto;
@@ -733,6 +741,9 @@ printable.prepend(avoidCSS);
       box-sizing:border-box;
       max-width:510px;
     ">
+      <div style="font-size:1.26em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:8px;">
+        ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
+      </div>
       <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
         ${String(chapterTitleForBox || '').toUpperCase()}
       </div>
@@ -752,6 +763,9 @@ printable.prepend(avoidCSS);
       box-sizing:border-box;
       max-width:510px;
     ">
+      <div style="font-size:1.26em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:8px;">
+        ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
+      </div>
       <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
         ${String(chapterTitleForBox || '').toUpperCase()}
       </div>
@@ -1348,21 +1362,25 @@ if (includeKey) {
     printable.appendChild(spacer);
 
     const keyHeader = document.createElement('div');
-    keyHeader.style.cssText = `
-      margin:22px auto 10px auto;
-      border:2.5px solid #bdd7f6;
-      border-radius:16px;
-      padding:18px 40px 14px 40px;
-      background:#fafdff;
-      box-sizing:border-box;
-      max-width:510px;
-      text-align:center;
-      font-size:1.24em;
-      font-weight:800;
-      letter-spacing:0.01em;
-    `;
-    keyHeader.textContent = 'ANSWER KEY';
-    printable.appendChild(keyHeader);
+keyHeader.style.cssText = `
+  margin:22px auto 10px auto;
+  border:2.5px solid #bdd7f6;
+  border-radius:16px;
+  padding:18px 40px 14px 40px;
+  background:#fafdff;
+  box-sizing:border-box;
+  max-width:510px;
+  text-align:center;
+`;
+keyHeader.innerHTML = `
+  <div style="font-size:1.26em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:8px;">
+    ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
+  </div>
+  <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
+    ANSWER KEY
+  </div>
+`;
+printable.appendChild(keyHeader);
   }
 
   let keyCounter = 1;
@@ -1396,7 +1414,7 @@ await __waitForImages(printable);
 
       html2pdf().set({
         margin: [1.5, 1.5, 1.5, 1.5],
-        filename: `Question_Bank_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((selChaptersForHeader.join('_')) || 'All').replace(/ /g, "_")}.pdf`,
+       filename: `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((selChaptersForHeader.join('_')) || 'All').replace(/ /g, "_")}.pdf`,
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'cm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['css', 'legacy'] }
