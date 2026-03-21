@@ -937,8 +937,8 @@ function buildQuestionHTML(item, __parent = printable) {
         ${qCounter}.
       </div>
       <div class="question-body" style="flex:1;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-        <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
-          ${questionLine || ''}
+        <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;white-space:pre-wrap;">
+          ${String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ')}
         </div>
         ${imgHtml ? imgHtml : ''}
         <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
@@ -1244,7 +1244,8 @@ qNoDiv.textContent = 'Q' + qNum + '.';
 
 const qTextDiv = document.createElement('div');
 qTextDiv.style.cssText = 'flex:1; min-width:0;';
-qTextDiv.innerHTML = (questionLine || '');
+qTextDiv.style.whiteSpace = 'pre-wrap';
+qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ');
 
 qDiv.appendChild(qNoDiv);
 qDiv.appendChild(qTextDiv);
@@ -2727,7 +2728,8 @@ if (selQtypes.length > 0) {
                 ${
                   Array.isArray(data.options) && data.options.length === 4
                     ? `
-                        <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;">${autoLatexAll(data.question)}</div>
+                        <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${autoLatexAll(String(data.question || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '
+Reason (R): '))}</div>
                         <div style="margin-left:18px;">
                           <div>${autoLatexAll(data.options[0].replace(/^[A-D][).]\s*/, ''))}</div>
                           <div>${autoLatexAll(data.options[1].replace(/^[A-D][).]\s*/, ''))}</div>
