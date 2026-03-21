@@ -733,7 +733,19 @@ printable.prepend(avoidCSS);
 if (includeWorksheet) {
   printable.innerHTML = `
     <div style="
-      margin:22px auto 10px auto;
+      text-align:center;
+      font-size:1.85em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      margin:10px 0 16px 0;
+      line-height:1.2;
+      text-transform:uppercase;
+    ">
+      ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
+    </div>
+
+    <div style="
+      margin:0 auto 10px auto;
       border:2.5px solid #bdd7f6;
       border-radius:16px;
       padding:18px 40px 14px 40px;
@@ -741,9 +753,6 @@ if (includeWorksheet) {
       box-sizing:border-box;
       max-width:510px;
     ">
-      <div style="font-size:1.26em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:8px;">
-        ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-      </div>
       <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
         ${String(chapterTitleForBox || '').toUpperCase()}
       </div>
@@ -755,7 +764,19 @@ if (includeWorksheet) {
 } else {
   printable.innerHTML = `
     <div style="
-      margin:22px auto 10px auto;
+      text-align:center;
+      font-size:1.85em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      margin:10px 0 16px 0;
+      line-height:1.2;
+      text-transform:uppercase;
+    ">
+      ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
+    </div>
+
+    <div style="
+      margin:0 auto 10px auto;
       border:2.5px solid #bdd7f6;
       border-radius:16px;
       padding:18px 40px 14px 40px;
@@ -763,9 +784,6 @@ if (includeWorksheet) {
       box-sizing:border-box;
       max-width:510px;
     ">
-      <div style="font-size:1.26em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:8px;">
-        ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-      </div>
       <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
         ${String(chapterTitleForBox || '').toUpperCase()}
       </div>
@@ -775,7 +793,6 @@ if (includeWorksheet) {
     </div>
   `;
 }
-
       const displayArea = document.getElementById('questions-display-area');
       const nodes = displayArea.querySelectorAll('.question-item');
       if (!nodes.length) {
@@ -1361,9 +1378,22 @@ if (includeKey) {
     spacer.style.cssText = 'height:24px;';
     printable.appendChild(spacer);
 
-    const keyHeader = document.createElement('div');
+    const keySchool = document.createElement('div');
+keySchool.style.cssText = `
+  text-align:center;
+  font-size:1.85em;
+  font-weight:900;
+  letter-spacing:0.03em;
+  margin:10px 0 16px 0;
+  line-height:1.2;
+  text-transform:uppercase;
+`;
+keySchool.textContent = String(finalSchoolName || '').toUpperCase();
+printable.appendChild(keySchool);
+
+const keyHeader = document.createElement('div');
 keyHeader.style.cssText = `
-  margin:22px auto 10px auto;
+  margin:0 auto 10px auto;
   border:2.5px solid #bdd7f6;
   border-radius:16px;
   padding:18px 40px 14px 40px;
@@ -1373,9 +1403,6 @@ keyHeader.style.cssText = `
   text-align:center;
 `;
 keyHeader.innerHTML = `
-  <div style="font-size:1.26em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:8px;">
-    ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-  </div>
   <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
     ANSWER KEY
   </div>
