@@ -1170,29 +1170,33 @@ function __getQuestionAnswerHTML(item, qNum) {
       '';
   }
 
+    answerText = String(answerText || '')
+    .replace(/^\s*Answer\s*:\s*/i, '')
+    .replace(/^\s*Ans\s*:\s*/i, '')
+    .trim();
+
+  explanationText = String(explanationText || '')
+    .replace(/^\s*Explanation\s*:\s*/i, '')
+    .trim();
+
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:avoid; color:#000;';
 
-  const qNoDiv = document.createElement('div');
-  qNoDiv.style.cssText = 'font-weight:700; margin-bottom:2px;';
-  qNoDiv.textContent = 'Q' + qNum + '.';
-
   const qDiv = document.createElement('div');
-  qDiv.style.cssText = 'margin-bottom:4px;';
-  qDiv.innerHTML = questionLine || '';
+  qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6;';
+  qDiv.innerHTML = '<b>Q' + qNum + '.</b> ' + (questionLine || '');
 
   const aDiv = document.createElement('div');
-  aDiv.style.cssText = 'margin-left:18px; color:#000;';
-  aDiv.innerHTML = '<b>Answer:</b> ' + ((answerText && String(answerText).trim()) ? String(answerText).replace(/\n/g, '<br>') : 'No answer available.');
+  aDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px; line-height:1.7;';
+  aDiv.innerHTML = '<b>Answer:</b><br>' + ((answerText && String(answerText).trim()) ? String(answerText).replace(/\n/g, '<br>') : 'No answer available.');
 
-  wrap.appendChild(qNoDiv);
   wrap.appendChild(qDiv);
   wrap.appendChild(aDiv);
 
   if (explanationText && String(explanationText).trim()) {
     const eDiv = document.createElement('div');
-    eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px;';
-    eDiv.innerHTML = '<b>Explanation:</b> ' + String(explanationText).replace(/\n/g, '<br>');
+    eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:6px; line-height:1.7;';
+    eDiv.innerHTML = '<b>Explanation:</b><br>' + String(explanationText).replace(/\n/g, '<br>');
     wrap.appendChild(eDiv);
   }
 
