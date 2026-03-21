@@ -3443,7 +3443,16 @@ function createQuestionElement(qData, index) {
   questionEl.innerHTML = `
     <div class="question-meta-ai">${qData.parsedMeta}</div>
     <div class="question-text-ai">${(qData.parsedBody || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
-    ${qData.parsedAnswer ? `<div class="temp-answer answer-box" style="display:block; margin-top:8px;"><b>${qData.parsedAnswer.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b></div>` : ''}
+    ${qData.parsedAnswer ? (() => {
+  const safeAns = (qData.parsedAnswer || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  if (qData.parsedMeta && qData.parsedMeta.includes('[Descriptive]')) {
+    const answerOnly = safeAns.replace(/^Answer:\s*/i, '').trim();
+    return `<div class="temp-answer answer-box" style="display:block; margin-top:8px;"><b>Answer:</b><br>${answerOnly}</div>`;
+  }
+
+  return `<div class="temp-answer answer-box" style="display:block; margin-top:8px;"><b>${safeAns}</b></div>`;
+})() : ''}
     ${qData.explanation ? `<div class="temp-answer" style="display:block; margin-top:8px;"><b>Explanation:</b> ${(qData.explanation || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : ''}
     <div class="question-actions">
       <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
