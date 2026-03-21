@@ -1805,6 +1805,7 @@ async function proceedWithGeneration(originalPrompt, sessionParams) {
 
   // We need to check this again
   const didSendFile = stagedFile !== null;
+const isMathSubject = /mathematics|math/i.test((sessionParams.subject || '').toLowerCase());
 
   const loadingMessage = appendChatMessage(
     'Generating questions as per your instructions...',
@@ -1949,14 +1950,21 @@ For every question, use this meta line at the top:
 Q<num>: Level <Level>, <Marks> [Descriptive]
 
 For descriptive questions, each question must be formatted exactly as:
-Q<num>: Level <Level>, <Marks> [Descriptive]
+
+${isMathSubject ? `Q<num>: Level <Level>, <Marks> [Descriptive]
 <Question text>
-Answer: <Final answer>
+Answer:
+<Final answer>
+Explanation:
+<Step-by-step solution>` : `Q<num>: Level <Level>, <Marks> [Descriptive]
+<Question text>
+Answer:
+<Final answer>`}
 Rules for Answer:
-- Math-related Questions: Write the explanation in a proper step-wise format, as ChatGPT gives.
+- If the subject is Mathematics/Math, Explanation is required. 
+- For Mathematics/Math, write the Explanation in a proper step-wise format, as ChatGPT gives.
 - Non-math-related: Do NOT write any Explanation section. Write ONLY the Answer.
-- Math-related Questions: Write the solution in a proper step-wise format, as ChatGPT gives.
-  But non-math-related should give a point-wise.
+- Non-math-related should give a point-wise.
 - For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
   1. ...
   2. ...
@@ -2193,15 +2201,21 @@ Strictly follow these level definitions for every question:
 User request: "${originalPrompt}"
 
 Format each question strictly as:
-Q<num>: Level <Lvl>, <Marks> Marks
+
+${isMathSubject ? `Q<num>: Level <Lvl>, <Marks> [Descriptive]
 <Question text>
-Answer: <Final answer>
+Answer:
+<Final answer>
+Explanation:
+<Step-by-step solution>` : `Q<num>: Level <Lvl>, <Marks> [Descriptive]
+<Question text>
+Answer:
+<Final answer>`}
 Rules for Answer:
-- Math-related Questions: Write the explanation in a proper step-wise format, as ChatGPT gives.
+- If the subject is Mathematics/Math, Explanation is required. 
+- For Mathematics/Math, write the Explanation in a proper step-wise format, as ChatGPT gives.
 - Non-math-related: Do NOT write any Explanation section. Write ONLY the Answer.
-- Write ONLY the Answer.
-- Math-related Questions: Write the solution in a proper step-wise format, as ChatGPT gives.
-  But non-math-related should give a point-wise.
+- Non-math-related should give a point-wise.
 - For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
   1. ...
   2. ...
@@ -2248,15 +2262,21 @@ Assign a Level for each question:
 - Do not output any question if an error or ambiguity is found. Only output after confirming everything is correct.
 
 Format strictly:
-Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+
+${isMathSubject ? `Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <question text>
-Answer: <Final answer>
+Answer:
+<Final answer>
+Explanation:
+<Step-by-step solution>` : `Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+<question text>
+Answer:
+<Final answer>`}
 Rules for Answer:
-- Math-related Questions: Write the explanation in a proper step-wise format, as ChatGPT gives.
+- If the subject is Mathematics/Math, Explanation is required. 
+- For Mathematics/Math, write the Explanation in a proper step-wise format, as ChatGPT gives.
 - Non-math-related: Do NOT write any Explanation section. Write ONLY the Answer.
-- Write ONLY the Answer.
-- Math-related Questions: Write the solution in a proper step-wise format, as ChatGPT gives.
-  But non-math-related should give a point-wise.
+- Non-math-related should give a point-wise.
 - For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
   1. ...
   2. ...
@@ -2768,7 +2788,8 @@ TEXT BOOK MODE — IMPORTANT:
 • Do NOT generate new questions; only extract from the provided page(s).
 ` : '';
   const plan  = (sessionParams.levelPlan || '').trim();
-  const count = sessionParams.numQuestions || 20;
+const count = sessionParams.numQuestions || 20;
+const isMathSubject = /mathematics|math/i.test((subj || '').toLowerCase());
 
   const selectedBoard = (sessionParams.board || '').trim().toLowerCase();
 
@@ -2994,18 +3015,23 @@ ${isFoundation ? '• Multiple-correct questions should be suitable for IIT & NE
 `;
 
   // DESCRIPTIVE format
- const descFormat = `
+const descFormat = `
 Generate EXACTLY ${count} Descriptive questions. Format each question EXACTLY as:
 
-Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+${isMathSubject ? `Q<num>: Level <1/2/3>, <Marks> [Descriptive]
 <Question text>
-Answer: <Final answer>
+Answer:
+<Final answer>
+Explanation:
+<Step-by-step solution>` : `Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+<Question text>
+Answer:
+<Final answer>`}
 Rules for Answer:
-- Math-related Questions: Write the explanation in a proper step-wise format, as ChatGPT gives.
+- If the subject is Mathematics/Math, Explanation is required. 
+- For Mathematics/Math, write the Explanation in a proper step-wise format, as ChatGPT gives.
 - Non-math-related: Do NOT write any Explanation section. Write ONLY the Answer.
-- Write ONLY the Answer.
-- Math-related Questions: Write the solution in a proper step-wise format, as ChatGPT gives.
-  But non-math-related should give a point-wise.
+- Non-math-related should give a point-wise.
 - For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
   1. ...
   2. ...
