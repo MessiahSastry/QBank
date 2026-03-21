@@ -1616,8 +1616,21 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 <head>
   <meta charset="UTF-8">
   <title>${safeTitle}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=900, initial-scale=1.0, minimum-scale=0.25, maximum-scale=5.0, user-scalable=yes">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]], processEscapes: true },
+      svg: { fontCache: "global" },
+      options: {
+        ignoreHtmlClass: 'no-mjx',
+        processHtmlClass: 'mjx-process'
+      }
+    };
+  <\/script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"><\/script>
+
   <style>
     :root{
       --qb-page-margin: 1.5cm;
@@ -1639,6 +1652,12 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       font-family:'Times New Roman', Times, serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      overflow:auto;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+
+    body{
+      min-width: 900px;
     }
 
     #page-container{
@@ -1655,10 +1674,9 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       min-height:297mm;
       border-radius:13px;
       padding:0;
-      overflow-x:auto;
+      overflow:visible;
       position:relative;
-      width:100vw;
-      max-width:100vw;
+      width:100%;
       box-sizing:border-box;
       display:flex;
       flex-direction:column;
@@ -1673,11 +1691,11 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       max-width:210mm;
       box-sizing:border-box;
       background:#fff;
-      transition:width .25s, padding .25s;
       color:#000;
       font-family:'Times New Roman', Times, serif;
       line-height:var(--qb-line-height);
       font-size:var(--qb-question-font);
+      transition: padding .25s;
     }
 
     #print-root{
@@ -1687,7 +1705,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 
     .toolbar{
       width:210mm;
-      max-width:99vw;
+      max-width:210mm;
       display:flex;
       justify-content:center;
       gap:24px;
@@ -1738,6 +1756,14 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       font-size:var(--qb-question-font) !important;
       color:#000 !important;
       margin-bottom:6px !important;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+    }
+
+    #print-root .question-text > div{
+      margin:0 !important;
+      padding:0 !important;
+      line-height:var(--qb-line-height) !important;
     }
 
     #print-root .options-block{
@@ -1765,6 +1791,22 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       break-after:avoid !important;
     }
 
+    /* IMPORTANT: hide MathJax assistive text so duplicate letters do not appear */
+    mjx-assistive-mml,
+    .MJX_Assistive_MathML,
+    mjx-assistive-mml *{
+      position:absolute !important;
+      width:1px !important;
+      height:1px !important;
+      padding:0 !important;
+      margin:-1px !important;
+      overflow:hidden !important;
+      clip:rect(0, 0, 0, 0) !important;
+      white-space:nowrap !important;
+      border:0 !important;
+      display:block !important;
+    }
+
     mjx-container{
       display:inline-block !important;
       min-width:0 !important;
@@ -1773,10 +1815,26 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       margin:0 !important;
       padding:0 !important;
       line-height:1 !important;
+      max-width:100% !important;
     }
 
     mjx-container svg{
       display:inline-block !important;
+      overflow:visible !important;
+      max-width:100% !important;
+    }
+
+    #print-root .options-block > div{
+      flex-wrap:wrap !important;
+      column-gap:18px !important;
+      row-gap:2px !important;
+    }
+
+    #print-root .options-block > div > span,
+    #print-root .options-block > div > div{
+      white-space:nowrap !important;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
     }
 
     #floating-settings-btn{
@@ -1815,49 +1873,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       align-items:flex-start;
     }
 
-    @media (max-width: 800px){
-      .a4-page{
-        width:100vw !important;
-        min-width:100vw !important;
-        max-width:100vw !important;
-        margin:0 !important;
-        padding:3vw 2vw !important;
-        min-height:unset !important;
-        border-radius:0 !important;
-        box-shadow:none !important;
-        background:#fff !important;
-        display:block !important;
-      }
-
-      .print-preview{
-        min-height:unset !important;
-        border-radius:0 !important;
-        width:100vw !important;
-        max-width:100vw !important;
-        padding:0 !important;
-      }
-
-      #page-container, .print-preview{
-        max-width:100vw !important;
-        width:100vw !important;
-        margin:0 !important;
-        padding:0 !important;
-        border-radius:0 !important;
-        align-items:stretch !important;
-      }
-
-      .toolbar{
-        width:100vw !important;
-        max-width:100vw !important;
-        padding:0 14px !important;
-        box-sizing:border-box !important;
-      }
-
-      .toolbar button{
-        width:100%;
-        justify-content:center;
-      }
-
+    @media (max-width: 700px){
       #floating-settings-btn{
         width:72px !important;
         height:72px !important;
@@ -1866,18 +1882,12 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
         bottom:18px !important;
         box-shadow:0 6px 22px rgba(15,61,107,0.25) !important;
       }
-
-      #settings-popup-modal{
-        right:14px !important;
-        left:14px !important;
-        bottom:100px !important;
-        min-width:unset !important;
-      }
     }
 
     @media print{
       html, body{
         background:#fff !important;
+        overflow:visible !important;
       }
 
       .toolbar,
@@ -1936,7 +1946,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 <body>
   <div id="page-container">
     <div id="print-preview" class="print-preview">
-      <div id="print-root" class="a4-page"></div>
+      <div id="print-root" class="a4-page mjx-process"></div>
     </div>
 
     <div class="toolbar">
@@ -2025,6 +2035,26 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       });
     }
 
+    async function afterMathReady(){
+      const root = document.getElementById('print-root');
+
+      if (window.MathJax && typeof window.MathJax.typesetClear === 'function') {
+        window.MathJax.typesetClear([root]);
+      }
+
+      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+        try {
+          await window.MathJax.typesetPromise([root]);
+        } catch (err) {
+          console.error('Preview MathJax failed:', err);
+        }
+      }
+
+      root.querySelectorAll('mjx-assistive-mml').forEach(el => {
+        el.setAttribute('aria-hidden', 'true');
+      });
+    }
+
     floatingBtn.onclick = function(){
       settingsModal.style.display = 'flex';
     };
@@ -2041,10 +2071,16 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
     marginSlider.addEventListener('input', updateMargin);
     lineSlider.addEventListener('input', updateLineHeight);
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
       updateGap();
       updateMargin();
       updateLineHeight();
+
+      if (window.MathJax?.startup?.promise) {
+        await window.MathJax.startup.promise;
+      }
+
+      await afterMathReady();
     });
   <\/script>
 </body>
