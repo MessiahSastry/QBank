@@ -1183,7 +1183,7 @@ const includesAnyMCQ = (selectedQtypes.length === 0) || selectedQtypes.includes(
 
 const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 
-function __getQuestionAnswerHTML(item, qNum) {
+function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const clone = item.cloneNode(true);
   const qTextEl = clone.querySelector('.question-text');
 
@@ -1223,7 +1223,7 @@ function __getQuestionAnswerHTML(item, qNum) {
       '';
   }
 
-    answerText = String(answerText || '')
+  answerText = String(answerText || '')
     .replace(/^\s*Answer\s*:\s*/i, '')
     .replace(/^\s*Ans\s*:\s*/i, '')
     .trim();
@@ -1253,7 +1253,7 @@ function __getQuestionAnswerHTML(item, qNum) {
     wrap.appendChild(eDiv);
   }
 
-  printable.appendChild(wrap);
+  __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
   // === RENDER WORKSHEET ===
@@ -1424,42 +1424,206 @@ if (includeKey) {
     printable.appendChild(spacer);
 
     const keySchool = document.createElement('div');
-keySchool.style.cssText = `
-  text-align:center;
-  font-size:1.85em;
-  font-weight:900;
-  letter-spacing:0.03em;
-  margin:10px 0 16px 0;
-  line-height:1.2;
-  text-transform:uppercase;
-`;
-keySchool.textContent = String(finalSchoolName || '').toUpperCase();
-printable.appendChild(keySchool);
+    keySchool.style.cssText = `
+      text-align:center;
+      font-size:1.85em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      margin:10px 0 16px 0;
+      line-height:1.2;
+      text-transform:uppercase;
+    `;
+    keySchool.textContent = String(finalSchoolName || '').toUpperCase();
+    printable.appendChild(keySchool);
 
-const keyHeader = document.createElement('div');
-keyHeader.style.cssText = `
-  margin:0 auto 10px auto;
-  border:2.5px solid #bdd7f6;
-  border-radius:16px;
-  padding:18px 40px 14px 40px;
-  background:#fafdff;
-  box-sizing:border-box;
-  max-width:510px;
-  text-align:center;
-`;
-keyHeader.innerHTML = `
-  <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
-    ANSWER KEY
-  </div>
-`;
-printable.appendChild(keyHeader);
+    const keyHeader = document.createElement('div');
+    keyHeader.style.cssText = `
+      margin:0 auto 10px auto;
+      border:2.5px solid #bdd7f6;
+      border-radius:16px;
+      padding:18px 40px 14px 40px;
+      background:#fafdff;
+      box-sizing:border-box;
+      max-width:510px;
+      text-align:center;
+    `;
+    keyHeader.innerHTML = `
+      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
+        ANSWER KEY
+      </div>
+    `;
+    printable.appendChild(keyHeader);
   }
 
   let keyCounter = 1;
-  Array.from(nodes).forEach(item => {
-    __getQuestionAnswerHTML(item, keyCounter);
+
+  function __renderKeyQuestion(item, __parent = printable) {
+    __getQuestionAnswerHTML(item, keyCounter, __parent);
     keyCounter++;
-  });
+  }
+
+  if (!multipleChaptersSelected) {
+    const list = Array.from(nodes);
+
+    const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+    const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+    const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+
+    function __renderKeyMCQByLevel(listScope, typeLabel) {
+      const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+      if (!mcq.length) return;
+
+      renderLeftHeading(typeLabel);
+
+      const buckets = levelsOrder.map(lvl => ({
+        name: lvl,
+        items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+      }));
+      const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+      if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
+
+      buckets.forEach(b => {
+        if (!b.items.length) return;
+
+        const __sec = document.createElement('div');
+        __sec.className = 'keep-with-next';
+        __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+        printable.appendChild(__sec);
+
+        renderLeftHeading(b.name, __sec);
+        __renderKeyQuestion(b.items[0], __sec);
+        b.items.slice(1).forEach(item => __renderKeyQuestion(item));
+      });
+    }
+
+    if (wantSingle) __renderKeyMCQByLevel(list, 'MCQ (Single)');
+    if (wantMulti)  __renderKeyMCQByLevel(list, 'MCQ (Multiple)');
+
+    if (wantDesc) {
+      const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
+
+      const presentMarks = Array.from(new Set(
+        descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                .filter(m => Number.isFinite(m) && m > 0)
+      )).sort((a,b) => a - b);
+
+      let __descHeadingShown = false;
+
+      presentMarks.forEach(m => {
+        const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+
+        const groups = levelsOrder.map(lvl => ({
+          lvl,
+          items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        })).filter(g => g.items.length);
+
+        if (!groups.length) return;
+
+        groups.forEach((g, idx) => {
+          const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          if (!__descHeadingShown) {
+            renderTypeHeading('DESCRIPTIVE', __sec);
+            __descHeadingShown = true;
+          }
+
+          if (idx === 0) {
+            renderLeftHeading(`${m} Marks`, __sec);
+          }
+
+          renderLeftHeading(g.lvl, __sec);
+          __renderKeyQuestion(g.items[0], __sec);
+          g.items.slice(1).forEach(item => __renderKeyQuestion(item));
+        });
+      });
+    }
+  } else {
+    chapterOrder.forEach(ch => {
+      const list = chapterMap.get(ch) || [];
+      if (!list.length) return;
+
+      renderCenteredChapterTitle(ch);
+
+      const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+      const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+      const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+
+      function __renderKeyMCQByLevelFor(listScope, typeLabel) {
+        const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+        if (!mcq.length) return;
+
+        renderLeftHeading(typeLabel);
+
+        const buckets = levelsOrder.map(lvl => ({
+          name: lvl,
+          items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        }));
+        const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+        if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
+
+        buckets.forEach(b => {
+          if (!b.items.length) return;
+
+          const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          renderLeftHeading(b.name, __sec);
+          __renderKeyQuestion(b.items[0], __sec);
+          b.items.slice(1).forEach(item => __renderKeyQuestion(item));
+        });
+      }
+
+      if (wantSingle) __renderKeyMCQByLevelFor(list, 'MCQ (Single)');
+      if (wantMulti)  __renderKeyMCQByLevelFor(list, 'MCQ (Multiple)');
+
+      if (wantDesc) {
+        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
+
+        const presentMarks = Array.from(new Set(
+          descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                  .filter(m => Number.isFinite(m) && m > 0)
+        )).sort((a,b) => a - b);
+
+        let __descHeadingShown = false;
+
+        presentMarks.forEach(m => {
+          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+
+          const groups = levelsOrder.map(lvl => ({
+            lvl,
+            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+          })).filter(g => g.items.length);
+
+          if (!groups.length) return;
+
+          groups.forEach((g, idx) => {
+            const __sec = document.createElement('div');
+            __sec.className = 'keep-with-next';
+            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+            printable.appendChild(__sec);
+
+            if (!__descHeadingShown) {
+              renderTypeHeading('DESCRIPTIVE', __sec);
+              __descHeadingShown = true;
+            }
+
+            if (idx === 0) {
+              renderLeftHeading(`${m} Marks`, __sec);
+            }
+
+            renderLeftHeading(g.lvl, __sec);
+            __renderKeyQuestion(g.items[0], __sec);
+            g.items.slice(1).forEach(item => __renderKeyQuestion(item));
+          });
+        });
+      }
+    });
+  }
 }
      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
       await window.MathJax.typesetPromise([printable]);
