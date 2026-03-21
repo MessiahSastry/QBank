@@ -803,25 +803,18 @@ if (includeWorksheet) {
       }
 
       // Helper for hanging indent
-      function createHangingDiv(qNum, text, isMCQ = false) {
-        if (isMCQ) {
-          return `
-            <div style="margin-bottom:2px;">
-              <div style="text-indent:-20px;padding-left:20px;font-size:11pt;display:flex;justify-content:space-between;align-items:center;max-width:98%;">
-                <span style="flex:1;">${qNum}. ${text}</span>
-                <span style=" display:inline-block; text-align:right; font-weight:normal; font-size:1.15em; letter-spacing:2px; min-width:38px; font-family:'Times New Roman', Times, serif; ">
-                  ( &nbsp;&nbsp; )
-                </span>
+           function createHangingDiv(qNum, text, isMCQ = false) {
+        return `
+          <div class="question-container" style="display:flex;align-items:flex-start;width:100%;box-sizing:border-box;">
+            <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;flex:0 0 auto;">
+              ${qNum}.
+            </div>
+            <div class="question-body" style="flex:1;line-height:1.6;">
+              <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
+                ${text || ''}
               </div>
-            </div>`;
-        } else {
-          return `
-            <div style="margin-bottom:2px;">
-              <div style="text-indent:-20px;padding-left:20px;font-size:11pt;">
-                ${qNum}. ${text}
-              </div>
-            </div>`;
-        }
+            </div>
+          </div>`;
       }
 
       // MCQ Option Formatter
@@ -939,12 +932,17 @@ function buildQuestionHTML(item, __parent = printable) {
   }
   const isMCQ = options.length === 4;
 
-  const questionHtml = `
-    <div class="question-container" style="display:flex;align-items:flex-start;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;">
-      <div class="question-body" style="flex:1;">
-        ${createHangingDiv(qCounter, questionLine, isMCQ)}
+   const questionHtml = `
+    <div class="question-container" style="display:flex;align-items:flex-start;margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
+      <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;flex:0 0 auto;">
+        ${qCounter}.
+      </div>
+      <div class="question-body" style="flex:1;line-height:1.6;page-break-inside:auto;break-inside:auto;">
+        <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
+          ${questionLine || ''}
+        </div>
         ${imgHtml ? imgHtml : ''}
-        <div class="options-block" style="margin-top:2px;padding-left:20px;">
+        <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
           ${
             isMCQ ? (() => {
               let optionLinesRaw = options.slice(0, 4).map((opt) => {
@@ -1734,7 +1732,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       background:#0f3d6b;
     }
 
-    #print-root .question-container{
+        #print-root .question-container{
       margin-bottom:var(--qb-question-gap) !important;
       display:flex;
       align-items:flex-start;
@@ -1744,15 +1742,25 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       break-inside:auto !important;
     }
 
+    #print-root .question-number{
+      min-width:28px !important;
+      padding-right:4px !important;
+      box-sizing:border-box !important;
+      line-height:1.25 !important;
+      font-size:var(--qb-question-font) !important;
+      color:#000 !important;
+      flex:0 0 auto !important;
+    }
+
     #print-root .question-body{
       flex:1;
-      line-height:var(--qb-line-height);
+      line-height:1.6 !important;
       page-break-inside:auto !important;
       break-inside:auto !important;
     }
 
     #print-root .question-text{
-      line-height:var(--qb-line-height) !important;
+      line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
       color:#000 !important;
       margin-bottom:6px !important;
