@@ -1236,8 +1236,18 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
 
   const qDiv = document.createElement('div');
-  qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6;';
-  qDiv.innerHTML = '<b>Q' + qNum + '.</b> ' + (questionLine || '');
+qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
+
+const qNoDiv = document.createElement('div');
+qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:bold;';
+qNoDiv.textContent = 'Q' + qNum + '.';
+
+const qTextDiv = document.createElement('div');
+qTextDiv.style.cssText = 'flex:1; min-width:0;';
+qTextDiv.innerHTML = (questionLine || '');
+
+qDiv.appendChild(qNoDiv);
+qDiv.appendChild(qTextDiv);
 
   const aDiv = document.createElement('div');
   aDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px; line-height:1.7;';
@@ -2782,8 +2792,14 @@ if (!window.__explainItBound) {
     try {
       const snap = await db.collection('questions').doc(docId).get();
       const data = snap.data() || {};
-      const explanation = String(data.explanation || '').trim();
-const answer = String(data.parsedAnswer || data.answer || data.parsedAns || '').trim();
+      const explanation = String(data.explanation || '')
+  .replace(/^\s*Explanation\s*:\s*/i, '')
+  .trim();
+
+const answer = String(data.parsedAnswer || data.answer || data.parsedAns || '')
+  .replace(/^\s*Answer\s*:\s*/i, '')
+  .replace(/^\s*Ans\s*:\s*/i, '')
+  .trim();
 
 const popupTitle = explanation ? 'Explanation' : 'Answer';
 const popupContent = explanation || answer || 'No explanation or answer available.';
