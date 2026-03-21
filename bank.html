@@ -688,7 +688,7 @@ const finalSchoolName = (schoolNameInput || '').trim() || 'SciMentra';
 const includeWorksheet = true;
 const includeKey = exportMode === 'worksheet_key';
       pdfBtn.disabled = true;
-      pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Print PDF...';
+      pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Preview...';
 
       const classVal = document.getElementById('class-value').value || '';
       const subjectVal = document.getElementById('subject-value').value || '';
@@ -1604,10 +1604,11 @@ await __waitForImages(printable);
 async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   const printWin = window.open('', '_blank');
   if (!printWin) {
-    throw new Error('Popup blocked. Please allow popups for printing.');
+    throw new Error('Popup blocked. Please allow popups for preview.');
   }
 
   const safeTitle = __qbEscapeHtml(String(title || 'Question_Bank'));
+  const contentJson = JSON.stringify(String(contentHtml || ''));
 
   printWin.document.open();
   printWin.document.write(`<!DOCTYPE html>
@@ -1616,123 +1617,440 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   <meta charset="UTF-8">
   <title>${safeTitle}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
-    @page { size: A4; margin: 1.5cm; }
+    :root{
+      --qb-page-margin: 1.5cm;
+      --qb-question-gap: 10px;
+      --qb-line-height: 1.6;
+      --qb-question-font: 11pt;
+    }
 
-    html, body {
+    @page{
+      size: A4;
       margin: 0;
-      padding: 0;
-      background: #fff;
-      color: #000;
-      font-family: 'Times New Roman', Times, serif;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      background:#f4f8fc;
+      color:#000;
+      font-family:'Times New Roman', Times, serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
 
-    body {
-      background: #f4f8fc;
-      padding: 16px 0;
+    #page-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      padding:0 0 36px 0;
+      box-sizing:border-box;
     }
 
-    #print-shell {
-      width: 100%;
-      max-width: 210mm;
-      margin: 0 auto;
-      background: #fff;
-      box-sizing: border-box;
+    .print-preview{
+      background:#fff;
+      min-height:297mm;
+      border-radius:13px;
+      padding:0;
+      overflow-x:auto;
+      position:relative;
+      width:100vw;
+      max-width:100vw;
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
     }
 
-    #print-root {
-      width: 100%;
-      box-sizing: border-box;
-      font-family: 'Times New Roman', Times, serif;
-      color: #000;
+    .a4-page{
+      width:210mm;
+      min-height:297mm;
+      margin:0 auto;
+      padding:var(--qb-page-margin);
+      max-width:210mm;
+      box-sizing:border-box;
+      background:#fff;
+      transition:width .25s, padding .25s;
+      color:#000;
+      font-family:'Times New Roman', Times, serif;
+      line-height:var(--qb-line-height);
+      font-size:var(--qb-question-font);
     }
 
-    img {
-      max-width: 100%;
-      height: auto;
+    #print-root{
+      width:100%;
+      box-sizing:border-box;
     }
 
-    .question-container,
-    .question-body,
-    .options-block,
-    .question-img-block,
-    .opt-grid-2x2 {
-      page-break-inside: auto !important;
-      break-inside: auto !important;
+    .toolbar{
+      width:210mm;
+      max-width:99vw;
+      display:flex;
+      justify-content:center;
+      gap:24px;
+      margin:24px auto 12px auto;
+      position:relative;
+      z-index:11;
     }
 
-    .keep-with-next {
-      page-break-after: avoid !important;
-      break-after: avoid !important;
+    .toolbar button{
+      background:#1463ad;
+      color:#fff;
+      border:none;
+      padding:16px 42px;
+      border-radius:9px;
+      font-weight:bold;
+      font-size:1.1em;
+      cursor:pointer;
+      box-shadow:0 2px 12px rgba(0,61,107,0.08);
+      transition:background .16s, transform .1s;
+      display:flex;
+      align-items:center;
+      gap:9px;
     }
 
-    .no-split {
-      page-break-inside: auto !important;
-      break-inside: auto !important;
+    .toolbar button:hover{
+      background:#0f3d6b;
     }
 
-    mjx-container {
-      display: inline-block !important;
-      min-width: 0 !important;
-      min-height: 0 !important;
-      vertical-align: middle !important;
-      margin: 0 !important;
-      padding: 0 !important;
+    #print-root .question-container{
+      margin-bottom:var(--qb-question-gap) !important;
+      display:flex;
+      align-items:flex-start;
+      width:100% !important;
+      box-sizing:border-box !important;
+      page-break-inside:auto !important;
+      break-inside:auto !important;
     }
 
-    mjx-container svg {
-      display: inline-block !important;
+    #print-root .question-body{
+      flex:1;
+      line-height:var(--qb-line-height);
+      page-break-inside:auto !important;
+      break-inside:auto !important;
     }
 
-    @media print {
-      html, body {
-        background: #fff !important;
-        padding: 0 !important;
+    #print-root .question-text{
+      line-height:var(--qb-line-height) !important;
+      font-size:var(--qb-question-font) !important;
+      color:#000 !important;
+      margin-bottom:6px !important;
+    }
+
+    #print-root .options-block{
+      margin-top:2px !important;
+      line-height:1.22 !important;
+      page-break-inside:auto !important;
+      break-inside:auto !important;
+    }
+
+    #print-root .question-img-block,
+    #print-root .opt-grid-2x2,
+    #print-root .no-split{
+      page-break-inside:auto !important;
+      break-inside:auto !important;
+    }
+
+    #print-root img{
+      max-width:100%;
+      height:auto;
+      display:block;
+    }
+
+    #print-root .keep-with-next{
+      page-break-after:avoid !important;
+      break-after:avoid !important;
+    }
+
+    mjx-container{
+      display:inline-block !important;
+      min-width:0 !important;
+      min-height:0 !important;
+      vertical-align:middle !important;
+      margin:0 !important;
+      padding:0 !important;
+      line-height:1 !important;
+    }
+
+    mjx-container svg{
+      display:inline-block !important;
+    }
+
+    #floating-settings-btn{
+      position:fixed;
+      bottom:32px;
+      right:32px;
+      z-index:9999;
+      background:linear-gradient(90deg, #1762a7, #0f3d6b);
+      color:#fff;
+      border:none;
+      border-radius:50%;
+      box-shadow:0 4px 18px rgba(15,61,107,0.16);
+      width:60px;
+      height:60px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:2em;
+      cursor:pointer;
+      transition:background 0.15s;
+    }
+
+    #settings-popup-modal{
+      display:none;
+      position:fixed;
+      bottom:100px;
+      right:36px;
+      z-index:10000;
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 8px 32px #17386844;
+      padding:32px 24px 22px 24px;
+      min-width:280px;
+      border:2px solid #1463ad;
+      flex-direction:column;
+      align-items:flex-start;
+    }
+
+    @media (max-width: 800px){
+      .a4-page{
+        width:100vw !important;
+        min-width:100vw !important;
+        max-width:100vw !important;
+        margin:0 !important;
+        padding:3vw 2vw !important;
+        min-height:unset !important;
+        border-radius:0 !important;
+        box-shadow:none !important;
+        background:#fff !important;
+        display:block !important;
       }
 
-      #print-shell {
-        max-width: none !important;
-        margin: 0 !important;
+      .print-preview{
+        min-height:unset !important;
+        border-radius:0 !important;
+        width:100vw !important;
+        max-width:100vw !important;
+        padding:0 !important;
+      }
+
+      #page-container, .print-preview{
+        max-width:100vw !important;
+        width:100vw !important;
+        margin:0 !important;
+        padding:0 !important;
+        border-radius:0 !important;
+        align-items:stretch !important;
+      }
+
+      .toolbar{
+        width:100vw !important;
+        max-width:100vw !important;
+        padding:0 14px !important;
+        box-sizing:border-box !important;
+      }
+
+      .toolbar button{
+        width:100%;
+        justify-content:center;
+      }
+
+      #floating-settings-btn{
+        width:72px !important;
+        height:72px !important;
+        font-size:2.5em !important;
+        right:18px !important;
+        bottom:18px !important;
+        box-shadow:0 6px 22px rgba(15,61,107,0.25) !important;
+      }
+
+      #settings-popup-modal{
+        right:14px !important;
+        left:14px !important;
+        bottom:100px !important;
+        min-width:unset !important;
+      }
+    }
+
+    @media print{
+      html, body{
+        background:#fff !important;
+      }
+
+      .toolbar,
+      #floating-settings-btn,
+      #settings-popup-modal{
+        display:none !important;
+      }
+
+      #page-container{
+        padding:0 !important;
+        margin:0 !important;
+      }
+
+      .print-preview{
+        background:#fff !important;
+        padding:0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+      }
+
+      .a4-page{
+        width:100% !important;
+        max-width:none !important;
+        min-height:auto !important;
+        margin:0 !important;
+        border-radius:0 !important;
+        box-shadow:none !important;
+        padding:var(--qb-page-margin) !important;
+        page-break-after:auto;
+      }
+
+      #print-root .question-text,
+      #print-root .question-body,
+      #print-root .options-block{
+        font-weight:normal !important;
+      }
+
+      mjx-container,
+      mjx-container *{
+        font-weight:normal !important;
+      }
+
+      mjx-container[jax="SVG"] svg,
+      mjx-container[jax="SVG"] svg *{
+        font-weight:400 !important;
+        stroke:none !important;
+      }
+
+      mjx-container[jax="SVG"] svg text,
+      mjx-container[jax="SVG"] svg tspan{
+        font-weight:400 !important;
       }
     }
   </style>
 </head>
 <body>
-  <div id="print-shell">
-    <div id="print-root">${contentHtml}</div>
+  <div id="page-container">
+    <div id="print-preview" class="print-preview">
+      <div id="print-root" class="a4-page"></div>
+    </div>
+
+    <div class="toolbar">
+      <button id="preview-print-btn"><i class="fas fa-print"></i> Print / Save PDF</button>
+    </div>
+  </div>
+
+  <button id="floating-settings-btn" title="Settings">
+    <i class="fas fa-cog"></i>
+  </button>
+
+  <div id="settings-popup-modal">
+    <div style="font-weight:700;color:#12416c;font-size:1.2em;margin-bottom:18px;">
+      <i class="fas fa-sliders-h" style="margin-right:8px;color:#1463ad;"></i>Preview Settings
+    </div>
+
+    <div style="margin-bottom:18px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Gap between questions</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="gap-slider" type="range" min="4" max="36" value="10" style="width:100%;">
+        <span id="gap-slider-value">10px</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:18px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Page margin</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="margin-slider" type="range" min="0.5" max="2.5" step="0.1" value="1.5" style="width:100%;">
+        <span id="margin-slider-value">1.5cm</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:22px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Line height</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="line-slider" type="range" min="1.1" max="2.2" step="0.05" value="1.6" style="width:100%;">
+        <span id="line-slider-value">1.6</span>
+      </div>
+    </div>
+
+    <button id="close-settings-popup" style="
+      position:absolute;top:10px;right:18px;background:none;border:none;color:#185496;
+      font-size:1.5em;cursor:pointer;" title="Close">×</button>
   </div>
 
   <script>
-    (function () {
-      async function waitForImages() {
-        const imgs = Array.from(document.querySelectorAll('img'));
-        await Promise.all(
-          imgs.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
-            img.onload = img.onerror = resolve;
-          }))
-        );
-      }
+    const __CONTENT = ${contentJson};
+    const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
 
-      waitForImages().then(() => {
-        setTimeout(() => {
-          document.title = ${JSON.stringify(String(title || 'Question_Bank'))};
-          window.focus();
-          window.print();
-        }, 350);
+    document.title = __TITLE;
+    document.getElementById('print-root').innerHTML = __CONTENT;
+
+    const floatingBtn = document.getElementById('floating-settings-btn');
+    const settingsModal = document.getElementById('settings-popup-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-popup');
+    const gapSlider = document.getElementById('gap-slider');
+    const gapValue = document.getElementById('gap-slider-value');
+    const marginSlider = document.getElementById('margin-slider');
+    const marginValue = document.getElementById('margin-slider-value');
+    const lineSlider = document.getElementById('line-slider');
+    const lineValue = document.getElementById('line-slider-value');
+
+    function updateGap(){
+      const px = gapSlider.value;
+      gapValue.textContent = px + 'px';
+      document.documentElement.style.setProperty('--qb-question-gap', px + 'px');
+      document.querySelectorAll('#print-root .question-container').forEach(div => {
+        div.style.marginBottom = px + 'px';
       });
+    }
 
-      window.onafterprint = function () {
-        setTimeout(() => window.close(), 150);
-      };
-    })();
+    function updateMargin(){
+      const cm = marginSlider.value;
+      marginValue.textContent = cm + 'cm';
+      document.documentElement.style.setProperty('--qb-page-margin', cm + 'cm');
+      const root = document.getElementById('print-root');
+      if (root) root.style.padding = cm + 'cm';
+    }
+
+    function updateLineHeight(){
+      const lh = lineSlider.value;
+      lineValue.textContent = lh;
+      document.documentElement.style.setProperty('--qb-line-height', lh);
+      document.querySelectorAll('#print-root .question-text, #print-root .question-body').forEach(el => {
+        el.style.lineHeight = lh;
+      });
+    }
+
+    floatingBtn.onclick = function(){
+      settingsModal.style.display = 'flex';
+    };
+
+    closeSettingsBtn.onclick = function(){
+      settingsModal.style.display = 'none';
+    };
+
+    document.getElementById('preview-print-btn').onclick = function(){
+      window.print();
+    };
+
+    gapSlider.addEventListener('input', updateGap);
+    marginSlider.addEventListener('input', updateMargin);
+    lineSlider.addEventListener('input', updateLineHeight);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateGap();
+      updateMargin();
+      updateLineHeight();
+    });
   <\/script>
 </body>
 </html>`);
   printWin.document.close();
 }
-
     // Dropdown HTML
     function createDropdownHTML(id, options, defaultValueText = 'All') {
   const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
