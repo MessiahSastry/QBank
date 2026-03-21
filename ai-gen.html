@@ -3329,7 +3329,7 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       explanation: ''
     };
 
-     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)' || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
+     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
       const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
       const bodyWithoutExplanation = explanationMatch
@@ -3341,34 +3341,39 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       const withoutAns = ansMatch ? bodyWithoutExplanation.replace(ansMatch[0], '').trim() : bodyWithoutExplanation.trim();
 
       const lines = withoutAns.split('\n').map(l => l.trim()).filter(Boolean);
-      const qText = lines.length ? lines[0] : '';
 
-      let optBlock = lines.slice(1).join('\n');
-      optBlock = __forceOptionLines(optBlock);
+const optionStartIndex = lines.findIndex(l => /^[A-D]\)/i.test(l));
+const stemLines = optionStartIndex >= 0 ? lines.slice(0, optionStartIndex) : lines.slice(0, 1);
+const optionLinesRaw = optionStartIndex >= 0 ? lines.slice(optionStartIndex) : lines.slice(1);
 
-      const optLines = optBlock.split('\n').map(x => x.trim()).filter(Boolean);
+const qText = stemLines.join('\n').trim();
 
-      const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
-      const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
-      const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
-      const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
+let optBlock = optionLinesRaw.join('\n');
+optBlock = __forceOptionLines(optBlock);
 
-      qData.question = qText;
-      qData.options = [A, B, C, D].map(s => s.replace(/^[A-D]\)\s*/, '').trim());
+const optLines = optBlock.split('\n').map(x => x.trim()).filter(Boolean);
 
-      qData.parsedAnswer = ansLine
-        ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
-        : null;
+const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
+const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
+const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
+const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
 
-      qData.explanation = explanationText;
+qData.question = qText;
+qData.options = [A, B, C, D].map(s => s.replace(/^[A-D]\)\s*/, '').trim());
 
-      qData.parsedBody = [
-        qText,
-        `A) ${qData.options[0]}`,
-        `B) ${qData.options[1]}`,
-        `C) ${qData.options[2]}`,
-        `D) ${qData.options[3]}`
-      ].join('\n');
+qData.parsedAnswer = ansLine
+  ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
+  : null;
+
+qData.explanation = explanationText;
+
+qData.parsedBody = [
+  qText,
+  `A) ${qData.options[0]}`,
+  `B) ${qData.options[1]}`,
+  `C) ${qData.options[2]}`,
+  `D) ${qData.options[3]}`
+].join('\n');
 
       qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
 
@@ -3490,14 +3495,21 @@ questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${m
       if (answerMatch) {
         const questionAndOptions = answerMatch[1].trim();
         const lines = questionAndOptions
-          .split('\n')
-          .map(x => x.trim())
-          .filter(x => x && x !== '<br>' && x !== '');
+  .split('\n')
+  .map(x => x.trim())
+  .filter(x => x && x !== '<br>' && x !== '');
 
-        questionData.question = lines[0] || '';
-        questionData.options = lines.slice(1, 5).map(x => x || '');
-        questionData.parsedAnswer = answerMatch[2].trim();
-        questionData.parsedBody = lines.join('\n');
+const optionStartIndex = lines.findIndex(l => /^[A-D]\)/i.test(l));
+const stemLines = optionStartIndex >= 0 ? lines.slice(0, optionStartIndex) : lines.slice(0, 1);
+const optionLines = optionStartIndex >= 0 ? lines.slice(optionStartIndex, optionStartIndex + 4) : lines.slice(1, 5);
+
+questionData.question = stemLines.join('\n').trim();
+questionData.options = optionLines.map(x => x || '');
+questionData.parsedAnswer = answerMatch[2].trim();
+questionData.parsedBody = [
+  questionData.question,
+  ...questionData.options
+].join('\n');
       } else {
         questionData.question = bodyWithoutExplanation.split('\n')[0].trim();
         questionData.options = bodyWithoutExplanation.split('\n').slice(1, 5).map(x => x.trim());
