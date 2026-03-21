@@ -425,16 +425,26 @@
         background-color: #555;
       }
 
-      .temp-answer {
-        background-color: #fff8e1;
-        border-top: 2px solid #ffecb3;
-        padding: 10px 14px;
-        margin-top: 10px;
-        border-radius: 0 0 12px 12px;
-        font-style: italic;
-        color: #5d4037;
-        white-space: pre-wrap;
-      }
+     .temp-answer {
+  padding: 10px 14px;
+  margin-top: 10px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+}
+
+.answer-box {
+  background: #eef6ff;
+  border-left: 4px solid #1762a7;
+  color: #0f3d6b;
+  font-style: normal;
+}
+
+.explanation-box {
+  background: #f7fbff;
+  border-left: 4px solid #0f3d6b;
+  color: #23425f;
+  font-style: normal;
+}
         /* --- Styles for Confirmation Modal --- */
 .confirmation-overlay {
     position: fixed;
@@ -3416,7 +3426,7 @@ function createQuestionElement(qData, index) {
   questionEl.innerHTML = `
     <div class="question-meta-ai">${qData.parsedMeta}</div>
     <div class="question-text-ai">${(qData.parsedBody || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
-    ${qData.parsedAnswer ? `<div class="temp-answer" style="display:block; margin-top:8px;"><b>${qData.parsedAnswer.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b></div>` : ''}
+    ${qData.parsedAnswer ? `<div class="temp-answer answer-box" style="display:block; margin-top:8px;"><b>${qData.parsedAnswer.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</b></div>` : ''}
     ${qData.explanation ? `<div class="temp-answer" style="display:block; margin-top:8px;"><b>Explanation:</b> ${(qData.explanation || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : ''}
     <div class="question-actions">
       <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
