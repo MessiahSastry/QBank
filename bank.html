@@ -1183,6 +1183,88 @@ const includesAnyMCQ = (selectedQtypes.length === 0) || selectedQtypes.includes(
 
 const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 
+function __renderKeyOptionsLayout(optionLines, hostNode) {
+  if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
+
+  if (optionLines.length !== 4) {
+    return optionLines.map(opt =>
+      `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`
+    ).join('');
+  }
+
+  const pageEl =
+    (hostNode && hostNode.closest && hostNode.closest('.a4-page')) ||
+    printable ||
+    document.body;
+
+  const pwRaw = (pageEl && pageEl.getBoundingClientRect().width) || 820;
+  const pw = Math.min(pwRaw, 820);
+
+  function measureRowHTML(html) {
+    const d = document.createElement('div');
+    d.style.cssText = `
+      visibility:hidden; position:absolute; left:-99999px; top:0;
+      white-space:nowrap; padding:0; margin:0; border:none;
+      font-family:Times New Roman,Times,serif; font-size:11pt;
+    `;
+    d.innerHTML = html;
+    document.body.appendChild(d);
+    const w = d.getBoundingClientRect().width;
+    d.remove();
+    return w;
+  }
+
+  const fourRowHTML = optionLines.map(opt =>
+    `<span style="display:inline-block;margin-right:32px;min-width:70px;">${String(opt).trim()}</span>`
+  ).join('');
+
+  const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
+
+  const isShortLatexSet = hasLatex && optionLines.every(opt => {
+    const s = String(opt)
+      .replace(/^([A-D])\)\s*/,'')
+      .replace(/\\\(|\\\)|\\\[|\\\]/g,'')
+      .replace(/\$/g,'')
+      .replace(/\\[a-zA-Z]+/g,'x')
+      .replace(/[{}]/g,'')
+      .trim();
+    return s.length <= 10;
+  });
+
+  const maxFour = Math.max(420, pw - 20);
+  const fitsFour = ((!hasLatex || isShortLatexSet) && (measureRowHTML(fourRowHTML) <= maxFour));
+
+  if (fitsFour) {
+    return `
+      <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
+        ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${String(opt).trim()}</span>`).join('')}
+      </div>`;
+  }
+
+  const colGap = 24;
+  const halfWidth = Math.max(240, (pw - colGap) / 2);
+
+  const optWidths = optionLines.map(opt => measureRowHTML(
+    `<span style="display:inline-block;font-family:Times New Roman,Times,serif;font-size:11pt;">${String(opt).trim()}</span>`
+  ));
+
+  const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
+
+  if (!anyTooWideForTwoCols) {
+    return `
+      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
+        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[0]).trim()}</span>
+        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[1]).trim()}</span>
+        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[2]).trim()}</span>
+        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[3]).trim()}</span>
+      </div>`;
+  }
+
+  return optionLines
+    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`)
+    .join('');
+}
+
 function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const clone = item.cloneNode(true);
   const qTextEl = clone.querySelector('.question-text');
@@ -1280,8 +1362,8 @@ qDiv.appendChild(qTextDiv);
 
   if (options.length) {
     const optDiv = document.createElement('div');
-    optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.7;';
-    optDiv.innerHTML = options.map(opt => `<div>${String(opt).replace(/\n/g, '<br>')}</div>`).join('');
+    optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
+    optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
     wrap.appendChild(optDiv);
   }
 
