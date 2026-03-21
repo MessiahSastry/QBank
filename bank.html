@@ -2040,7 +2040,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 
       const root = document.getElementById('print-root');
       if (root) {
-        root.style.padding = `${topCm}cm ${cm.toFixed(1)}cm ${bottomCm}cm ${cm.toFixed(1)}cm`;
+                root.style.padding = topCm + 'cm ' + cm.toFixed(1) + 'cm ' + bottomCm + 'cm ' + cm.toFixed(1) + 'cm';
       }
     }
 
