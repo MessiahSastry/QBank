@@ -457,7 +457,7 @@ const auth = firebase.auth();
                   Choose PDF type
                 </div>
 
-                <input type="hidden" id="pdf-mode-selected" value="worksheet">
+                               <input type="hidden" id="pdf-mode-selected" value="worksheet">
 
                 <div class="pdf-mode-card" data-value="worksheet" style="
                   display:flex;align-items:center;justify-content:space-between;
@@ -465,20 +465,19 @@ const auth = firebase.auth();
                   border:2px solid #1762a7;border-radius:14px;
                   cursor:pointer;background:#eef6ff;
                   transition:all 0.15s ease;box-shadow:0 4px 14px rgba(23,98,167,0.10);">
-                  <span style="font-weight:700;color:#12416c;">Worksheet only</span>
+                  <span style="font-weight:700;color:#12416c;">Worksheet</span>
                   <span class="pdf-mode-tick" style="font-size:1.1em;color:#1762a7;font-weight:900;">✓</span>
                 </div>
 
-                                <div class="pdf-mode-card" data-value="worksheet_key" style="
+                <div class="pdf-mode-card" data-value="key" style="
                   display:flex;align-items:center;justify-content:space-between;
                   padding:14px 14px;margin-bottom:8px;
                   border:1.5px solid #cfe0f2;border-radius:14px;
                   cursor:pointer;background:#f9fcff;
                   transition:all 0.15s ease;">
-                  <span style="font-weight:700;color:#12416c;">Worksheet + Key</span>
+                  <span style="font-weight:700;color:#12416c;">Key</span>
                   <span class="pdf-mode-tick" style="font-size:1.1em;color:transparent;font-weight:900;">✓</span>
                 </div>
-
                                <div style="
                   display:flex;justify-content:flex-end;gap:10px;
                   margin-top:16px;">
@@ -685,8 +684,8 @@ if (schoolNameInput === null) {
 
 const finalSchoolName = (schoolNameInput || '').trim() || 'SciMentra';
 
-const includeWorksheet = true;
-const includeKey = exportMode === 'worksheet_key';
+const includeWorksheet = exportMode === 'worksheet';
+const includeKey = exportMode === 'key';
       pdfBtn.disabled = true;
       pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Preview...';
 
@@ -1067,7 +1066,7 @@ if (selChaptersForHeader.length >= 2) {
 // helpers
 function renderCenteredChapterTitle(text) {
   const t = document.createElement('div');
-  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;';
+  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid;display:block;width:100%;';
   t.textContent = String(text || 'Unspecified').toUpperCase();
   printable.appendChild(t);
 }
@@ -1079,7 +1078,6 @@ function renderTypeHeading(text, __parent = printable) {
   const t = String(text || '').trim();
   const h = document.createElement('div');
 
-  // Make DESCRIPTIVE heading centered & strong like your MCQ headings
   if (/^descriptive$/i.test(t)) {
     h.style.cssText = `
       font-size:1.12em;
@@ -1089,10 +1087,13 @@ function renderTypeHeading(text, __parent = printable) {
       margin:14px 0 10px 0;
       page-break-inside:avoid;
       break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
     `;
     h.textContent = 'DESCRIPTIVE';
   } else {
-    // generic fallback
     h.style.cssText = `
       font-size:1.08em;
       font-weight:900;
@@ -1101,6 +1102,10 @@ function renderTypeHeading(text, __parent = printable) {
       margin:14px 0 10px 0;
       page-break-inside:avoid;
       break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
     `;
     h.textContent = t.toUpperCase();
   }
@@ -1118,7 +1123,7 @@ function renderLeftHeading(text, __parent = printable) {
   const h = document.createElement('div');
 
   if (isLevel) {
-   h.style.cssText = `
+    h.style.cssText = `
       width:100%;
       box-sizing:border-box;
       background:#fff;
@@ -1132,6 +1137,9 @@ function renderLeftHeading(text, __parent = printable) {
       margin:10px 0 8px 0;
       page-break-inside:avoid;
       break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
     `;
     h.textContent = t.toUpperCase();
   } else if (isMCQHeading) {
@@ -1143,17 +1151,32 @@ function renderLeftHeading(text, __parent = printable) {
       margin:14px 0 10px 0;
       page-break-inside:avoid;
       break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
     `;
     h.textContent = t.toUpperCase();
   } else {
-    h.style.cssText = 'font-size:1.05em;font-weight:800;letter-spacing:0.01em;text-align:left;margin:8px 0 6px 0;';
+    h.style.cssText = `
+      font-size:1.05em;
+      font-weight:800;
+      letter-spacing:0.01em;
+      text-align:left;
+      margin:8px 0 6px 0;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
+    `;
     h.textContent = t;
   }
 
   __parent.appendChild(h);
   return h;
 }
-
 // Decide layout mode
 const includesDescriptive = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 const includesAnyMCQ = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)') || selectedQtypes.includes('MCQ (Multiple)');
@@ -1269,32 +1292,47 @@ if (includeWorksheet) {
     if (wantSingle) __renderMCQByLevel(list, 'MCQ (Single)');
     if (wantMulti) __renderMCQByLevel(list, 'MCQ (Multiple)');
 
-    if (wantDesc) {
-      renderTypeHeading('DESCRIPTIVE');
-      const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
+         if (wantDesc) {
+        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
 
-      const presentMarks = Array.from(new Set(
-        descList.map(n => Number(n.getAttribute('data-marks') || ''))
-                .filter(m => Number.isFinite(m) && m > 0)
-      )).sort((a,b) => a - b);
+        const presentMarks = Array.from(new Set(
+          descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                  .filter(m => Number.isFinite(m) && m > 0)
+        )).sort((a,b) => a - b);
 
-      presentMarks.forEach(m => {
-        const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+        let __descHeadingShown = false;
 
-        const groups = levelsOrder.map(lvl => ({
-          lvl,
-          items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-        })).filter(g => g.items.length);
+        presentMarks.forEach(m => {
+          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
 
-        if (!groups.length) return;
+          const groups = levelsOrder.map(lvl => ({
+            lvl,
+            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+          })).filter(g => g.items.length);
 
-        renderLeftHeading(`${m} Marks`);
-        groups.forEach(g => {
-          renderLeftHeading(g.lvl);
-          g.items.forEach(item => buildQuestionHTML(item));
+          if (!groups.length) return;
+
+          groups.forEach((g, idx) => {
+            const __sec = document.createElement('div');
+            __sec.className = 'keep-with-next';
+            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+            printable.appendChild(__sec);
+
+            if (!__descHeadingShown) {
+              renderTypeHeading('DESCRIPTIVE', __sec);
+              __descHeadingShown = true;
+            }
+
+            if (idx === 0) {
+              renderLeftHeading(`${m} Marks`, __sec);
+            }
+
+            renderLeftHeading(g.lvl, __sec);
+            buildQuestionHTML(g.items[0], __sec);
+            g.items.slice(1).forEach(item => buildQuestionHTML(item));
+          });
         });
-      });
-    }
+      }
   } else {
     chapterOrder.forEach(ch => {
       const list = chapterMap.get(ch) || [];
@@ -1334,38 +1372,47 @@ if (includeWorksheet) {
       if (wantSingle) __renderMCQByLevelFor(list, 'MCQ (Single)');
       if (wantMulti) __renderMCQByLevelFor(list, 'MCQ (Multiple)');
 
-      if (wantDesc) {
-        renderTypeHeading('DESCRIPTIVE');
-        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
+         if (wantDesc) {
+      const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
 
-        const presentMarks = Array.from(new Set(
-          descList.map(n => Number(n.getAttribute('data-marks') || ''))
-                  .filter(m => Number.isFinite(m) && m > 0)
-        )).sort((a,b) => a - b);
+      const presentMarks = Array.from(new Set(
+        descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                .filter(m => Number.isFinite(m) && m > 0)
+      )).sort((a,b) => a - b);
 
-        presentMarks.forEach(m => {
-          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+      let __descHeadingShown = false;
 
-          const groups = levelsOrder.map(lvl => ({
-            lvl,
-            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-          })).filter(g => g.items.length);
+      presentMarks.forEach(m => {
+        const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
 
-          if (!groups.length) return;
+        const groups = levelsOrder.map(lvl => ({
+          lvl,
+          items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        })).filter(g => g.items.length);
 
-          renderLeftHeading(`${m} Marks`);
-          groups.forEach(g => {
-            const __sec = document.createElement('div');
-            __sec.className = 'keep-with-next';
-            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-            printable.appendChild(__sec);
+        if (!groups.length) return;
 
-            renderLeftHeading(g.lvl, __sec);
-            buildQuestionHTML(g.items[0], __sec);
-            g.items.slice(1).forEach(item => buildQuestionHTML(item));
-          });
+        groups.forEach((g, idx) => {
+          const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          if (!__descHeadingShown) {
+            renderTypeHeading('DESCRIPTIVE', __sec);
+            __descHeadingShown = true;
+          }
+
+          if (idx === 0) {
+            renderLeftHeading(`${m} Marks`, __sec);
+          }
+
+          renderLeftHeading(g.lvl, __sec);
+          buildQuestionHTML(g.items[0], __sec);
+          g.items.slice(1).forEach(item => buildQuestionHTML(item));
         });
-      }
+      });
+    }
     });
   }
 }
