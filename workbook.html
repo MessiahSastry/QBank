@@ -2959,6 +2959,7 @@ const answer = String(data.parsedAnswer || data.answer || data.parsedAns || '')
 
 const popupTitle = explanation ? 'Explanation' : 'Answer';
 const popupContent = explanation || answer || 'No explanation or answer available.';
+const questionTextForChatgpt = String(data.question || data.body || data.text || '').trim();
 
 document.querySelectorAll('.explanation-popup-overlay').forEach(el => el.remove());
 
@@ -2990,36 +2991,50 @@ overlay.innerHTML = `
       </div>
 
             <div style="
-              padding:14px 18px;border-top:1px solid rgba(255,255,255,0.12);
-              display:flex;justify-content:flex-end;">
-              <button type="button" id="close-explanation-popup" style="
-                border:none;border-radius:10px;padding:10px 18px;
-                background:#ffffff;color:#111827;font-weight:700;cursor:pointer;">
-                Close
-              </button>
-            </div>
+              <div style="
+  padding:14px 18px;border-top:1px solid rgba(255,255,255,0.12);
+  display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+  
+  <button type="button" id="more-explanation-btn" style="
+    border:none;border-radius:10px;padding:10px 18px;
+    background:#1762a7;color:#ffffff;font-weight:700;cursor:pointer;">
+    Need More Explanation
+  </button>
+
+  <button type="button" id="close-explanation-popup" style="
+    border:none;border-radius:10px;padding:10px 18px;
+    background:#ffffff;color:#111827;font-weight:700;cursor:pointer;">
+    Close
+  </button>
+</div>
           </div>
         </div>
       `;
 
       document.body.appendChild(overlay);
 
-      document.getElementById('close-explanation-popup').onclick = function() {
-        overlay.remove();
-      };
+     document.getElementById('close-explanation-popup').onclick = function() {
+  overlay.remove();
+};
 
-      overlay.onclick = function(ev) {
-        if (ev.target === overlay.firstElementChild) {
-          overlay.remove();
-        }
-      };
+document.getElementById('more-explanation-btn').onclick = function() {
+  const promptText = `Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, final answer, and where students usually make mistakes.\n\nQuestion:\n${questionTextForChatgpt}`;
+  const chatgptUrl = 'https://chatgpt.com/?q=' + encodeURIComponent(promptText);
+  window.open(chatgptUrl, '_blank');
+};
 
-      const bodyEl = document.getElementById('explanation-popup-body');
-      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-        window.MathJax.typesetPromise([bodyEl]).catch(function(err){
-          console.error('MathJax explanation render error:', err);
-        });
-      }
+overlay.onclick = function(ev) {
+  if (ev.target === overlay.firstElementChild) {
+    overlay.remove();
+  }
+};
+
+const bodyEl = document.getElementById('explanation-popup-body');
+if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+  window.MathJax.typesetPromise([bodyEl]).catch(function(err){
+    console.error('MathJax explanation render error:', err);
+  });
+}
 
     } catch (err) {
       console.error('Explanation popup failed:', err);
