@@ -675,14 +675,14 @@ if (!exportMode) {
   return;
 }
 
-const schoolNameInput = await appPrompt('Enter School Name', 'SciMentra');
+const schoolNameInput = await appPrompt('Enter School Name', '');
 if (schoolNameInput === null) {
   pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
   pdfBtn.disabled = false;
   return;
 }
 
-const finalSchoolName = (schoolNameInput || '').trim() || 'SciMentra';
+const finalSchoolName = (schoolNameInput || '').trim();
 
 const includeWorksheet = exportMode === 'worksheet';
 const includeKey = exportMode === 'key';
@@ -731,6 +731,7 @@ printable.prepend(avoidCSS);
       printable.style.lineHeight = "1.6";
 if (includeWorksheet) {
   printable.innerHTML = `
+        ${finalSchoolName ? `
     <div style="
       text-align:center;
       font-size:1.85em;
@@ -739,9 +740,13 @@ if (includeWorksheet) {
       margin:10px 0 16px 0;
       line-height:1.2;
       text-transform:uppercase;
+      font-family:'Times New Roman', Times, serif;
+      color:#7A2230;
+      -webkit-text-fill-color:#7A2230;
+      -webkit-text-stroke:1.2px #163A63;
     ">
-      ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-    </div>
+      ${__qbEscapeHtml(String(finalSchoolName).toUpperCase())}
+    </div>` : ''}
 
     <div style="
       margin:0 auto 10px auto;
@@ -935,11 +940,11 @@ function buildQuestionHTML(item, __parent = printable) {
    <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-          <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;">
+                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#163A63;font-weight:700;">
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-            <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+                    <div class="question-text" style="line-height:1.25;font-size:11pt;color:#163A63;font-weight:700;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
           .replace(/^\s+/, '')
           .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
@@ -957,9 +962,10 @@ function buildQuestionHTML(item, __parent = printable) {
               }
             }
             
-            let optionLines = optionLinesRaw.map((text, i) => {
+                        let optionLines = optionLinesRaw.map((text, i) => {
               return String.fromCharCode(65 + i) + ") " + text;
             });
+            const optionHtmlLines = optionLines.map(opt => __qbFormatOptionForPrint(opt));
 
               // ✅ 4-in-one-line → else 2+2 → else one-by-one (PDF-stable)
        const pwRaw = printable.getBoundingClientRect().width || 820;
@@ -990,7 +996,7 @@ function buildQuestionHTML(item, __parent = printable) {
         if (fitsFour) {
           return `
             <div style="display:flex;flex-wrap:nowrap;gap:32px;margin-bottom:3px;width:100%;">
-              ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;">${opt.trim()}</span>`).join('')}
+                            ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;">${opt}</span>`).join('')}
             </div>`;
         }
         
@@ -1008,17 +1014,17 @@ function buildQuestionHTML(item, __parent = printable) {
         if (!anyTooWideForTwoCols) {
              return `
         <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;">
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[0]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[1]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[2]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[3]}</span>
+                    <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
+          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
+          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
+          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
         </div>`;
 
         }
         
         // 3) Else one-by-one (4 lines)
-        return optionLines
-          .map(opt => `<div style="margin-bottom:2px;">${opt.trim().replace(/\n/g, '<br>')}</div>`)
+              return optionHtmlLines
+          .map(opt => `<div style="margin-bottom:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
           .join('');
             })()
             : (options.length > 0
@@ -1222,6 +1228,7 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
     `<span style="display:inline-block;margin-right:32px;min-width:70px;">${String(opt).trim()}</span>`
   ).join('');
 
+    const optionHtmlLines = optionLines.map(opt => __qbFormatOptionForPrint(opt));
   const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
 
   const isShortLatexSet = hasLatex && optionLines.every(opt => {
@@ -1241,7 +1248,7 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
   if (fitsFour) {
     return `
       <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
-        ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${String(opt).trim()}</span>`).join('')}
+                ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
       </div>`;
   }
 
@@ -1257,15 +1264,15 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
   if (!anyTooWideForTwoCols) {
     return `
       <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[0]).trim()}</span>
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[1]).trim()}</span>
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[2]).trim()}</span>
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[3]).trim()}</span>
+               <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
       </div>`;
   }
 
-  return optionLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`)
+  return optionHtmlLines
+    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
     .join('');
 }
 
@@ -1347,11 +1354,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
 const qNoDiv = document.createElement('div');
-qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:bold;';
+qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:bold; color:#163A63;';
 qNoDiv.textContent = 'Q' + qNum + '.';
 
 const qTextDiv = document.createElement('div');
-qTextDiv.style.cssText = 'flex:1; min-width:0;';
+qTextDiv.style.cssText = 'flex:1; min-width:0; color:#163A63; font-weight:700;';
 qTextDiv.style.whiteSpace = 'pre-wrap';
 qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ');
 
@@ -1360,7 +1367,7 @@ qDiv.appendChild(qTextDiv);
 
   const aDiv = document.createElement('div');
   aDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px; line-height:1.7;';
-  aDiv.innerHTML = '<b>Answer:</b><br>' + ((answerText && String(answerText).trim()) ? String(answerText).replace(/\n/g, '<br>') : 'No answer available.');
+   aDiv.innerHTML = '<span style="color:#7A2230;font-weight:700;">Answer:</span><br><span style="color:#111111;">' + ((answerText && String(answerText).trim()) ? String(answerText).replace(/\n/g, '<br>') : 'No answer available.') + '</span>';
 
   wrap.appendChild(qDiv);
 
@@ -1376,7 +1383,7 @@ qDiv.appendChild(qTextDiv);
   if (explanationText && String(explanationText).trim()) {
     const eDiv = document.createElement('div');
     eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:6px; line-height:1.7;';
-    eDiv.innerHTML = '<b>Explanation:</b><br>' + String(explanationText).replace(/\n/g, '<br>');
+       eDiv.innerHTML = '<span style="color:#7A2230;font-weight:700;">Explanation:</span><br><span style="color:#111111;">' + String(explanationText).replace(/\n/g, '<br>') + '</span>';
     wrap.appendChild(eDiv);
   }
 
@@ -2087,7 +2094,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       box-sizing:border-box !important;
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
-      color:#000 !important;
+      color:#163A63 !important;
       flex:0 0 auto !important;
     }
 
@@ -2101,7 +2108,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
     #print-root .question-text{
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
-      color:#000 !important;
+      color:#163A63 !important;
       margin-bottom:6px !important;
       word-break:normal !important;
       overflow-wrap:normal !important;
@@ -4086,6 +4093,13 @@ function __qbEscapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function __qbFormatOptionForPrint(opt) {
+  const s = String(opt || '').trim();
+  const m = s.match(/^([A-D]\))\s*(.*)$/);
+  if (!m) return s;
+  return `<span style="color:#7A2230;font-weight:700;">${m[1]}</span> <span style="color:#111111;">${m[2]}</span>`;
 }
 
 function __qbNormalizeOptions(options) {
