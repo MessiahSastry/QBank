@@ -945,12 +945,13 @@ const subjectsHTML = initialSubjectsWithOther
 </div>
  <div class="form-group">
   <label>Chapter Name:</label>
-  <input
-    type="text"
-    id="chapter-input-ai"
-    placeholder="Type Chapter Name"
-    autocomplete="off"
-  />
+  <div id="chapter-dropdown-ai" class="custom-dropdown">
+    <input type="hidden" id="chapter-value-ai" value="">
+    <div class="selected-option">Select Chapter</div>
+    <div class="dropdown-options">
+      <div data-value="">No chapters available</div>
+    </div>
+  </div>
 </div>
               <div class="form-group">
             <label>Question Type:</label>
@@ -1046,52 +1047,80 @@ const subjectsHTML = initialSubjectsWithOther
         </form>
       `;
 
-      const _initialSubjectFinal =
+            const _initialSubjectFinal =
   ((initialSubjectsWithOther[0] || '') === 'Other')
     ? ((document.getElementById('subject-other-input')?.value || '').trim() || 'Other')
     : (initialSubjectsWithOther[0] || '');
 
-// Chapter is typed by user (no dropdown)
-const chapterInput = formContainer.querySelector('#chapter-input-ai');
+window.__loadedChapterBoardFiles = window.__loadedChapterBoardFiles || {};
 
-function __toTitleCaseWords(str) {
-  return (str || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
+function __chapterBoardSlug(boardName) {
+  return (boardName || '')
+    .toString()
     .trim()
-    .split(" ")
-    .map(w => w ? (w.charAt(0).toUpperCase() + w.slice(1)) : "")
-    .join(" ");
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
-        
-if (chapterInput) {
-  // While typing: keep each word's first letter capital
-  chapterInput.addEventListener("input", () => {
-  // allow space normally; don't transform when last char is space
-  const v = chapterInput.value;
-  if (!v) return;
 
-  // If the user just typed a space, do nothing.
-  if (v.endsWith(" ")) return;
+function loadBoardChapterFile(boardName) {
+  const board = (boardName || '').trim();
+  if (!board || board === 'Other') return Promise.resolve(false);
 
-  // Only format when last typed char is a letter (so spaces stay)
-  const last = v.slice(-1);
-  if (!/[A-Za-z]/.test(last)) return;
+  const slug = __chapterBoardSlug(board);
+  if (!slug) return Promise.resolve(false);
 
-  const cur = chapterInput.selectionStart || v.length;
-  chapterInput.value = __toTitleCaseWords(v);
-  chapterInput.setSelectionRange(cur, cur);
-});
+  const fileName = `chapters-${slug}.js`;
 
-// Final cleanup when leaving field
-chapterInput.addEventListener("blur", () => {
-  chapterInput.value = __toTitleCaseWords(chapterInput.value);
-});
+  if (window.__loadedChapterBoardFiles[fileName]) {
+    return Promise.resolve(true);
+  }
 
-  // Final cleanup when leaving the field
-  chapterInput.addEventListener("blur", () => {
-    chapterInput.value = __toTitleCaseWords(chapterInput.value);
+  return new Promise((resolve) => {
+    const existing = document.querySelector(`script[data-chapter-file="${fileName}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => {
+        window.__loadedChapterBoardFiles[fileName] = true;
+        resolve(true);
+      }, { once: true });
+      existing.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
+
+    const s = document.createElement('script');
+    s.src = fileName;
+    s.async = true;
+    s.setAttribute('data-chapter-file', fileName);
+
+    s.onload = () => {
+      window.__loadedChapterBoardFiles[fileName] = true;
+      resolve(true);
+    };
+
+    s.onerror = () => {
+      resolve(false);
+    };
+
+    document.head.appendChild(s);
   });
+}
+
+function getBoardChapterData(boardName) {
+  const board = (boardName || '').trim();
+  if (!board) return {};
+
+  const registry = window.BOARD_CHAPTERS || window.boardChapters || {};
+  if (registry && typeof registry === 'object' && registry[board]) {
+    return registry[board];
+  }
+
+  const globalKey = `CHAPTERS_${board.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`;
+  if (window[globalKey] && typeof window[globalKey] === 'object') {
+    return window[globalKey];
+  }
+
+  return {};
 }
 
 /* NEW: Board Other + Subject Other toggle (Board "Other" forces Subject input too) */
@@ -1144,7 +1173,11 @@ if (__subOpts) {
   __subOpts.addEventListener('click', () => setTimeout(__syncOtherToggles, 0));
 }
 
-    setupCustomDropdownsForForm();
+        setupCustomDropdownsForForm();
+    updateChapterDropdown(
+      document.getElementById('class-value-ai')?.value || '',
+      document.getElementById('subject-value-ai')?.value || ''
+    );
 
 /* NEW: Descriptive “Add another set” + Total across sets */
 (function () {
@@ -1387,7 +1420,7 @@ const sessionParams = {
   board: finalBoard,
   subject: finalSubject,
   questionType: qTypeFinal,
-  chapter: document.getElementById('chapter-input-ai').value.trim(),
+    chapter: (document.getElementById('chapter-value-ai')?.value || '').trim(),
   levelPlan: planRaw,
   numQuestions: derivedCount,
   marks: (qTypeFinal === 'Descriptive')
@@ -1610,7 +1643,7 @@ if (subjectInput.value === 'Other') {
   if (sOther) sOther.value = '';
 }
 
-    updateChapterDropdown(selectedClass, newSubjects[0] || '');
+           updateChapterDropdown(selectedClass, newSubjectsWithOther[0] || '');
 
     optionsContainerListener(
       subjectOptions,
@@ -1681,7 +1714,7 @@ if (subjectInput.value === 'Other') {
   if (sOther) sOther.value = '';
 }
 
-    updateChapterDropdown(selectedClass, newSubjects[0] || '');
+        updateChapterDropdown(selectedClass, newSubjectsWithOther[0] || '');
 
     optionsContainerListener(
       subjectOptions,
@@ -1692,12 +1725,72 @@ if (subjectInput.value === 'Other') {
     );
   });
 
-  setupCustomDropdown('qtype-dropdown-ai', 'qtype-value-ai');
-  // Chapter is now a text input, so no custom dropdown setup is needed here.
+    setupCustomDropdown('qtype-dropdown-ai', 'qtype-value-ai');
+  setupCustomDropdown('chapter-dropdown-ai', 'chapter-value-ai');
 }
 
-function updateChapterDropdown(selectedClass, selectedSubject) {
-  // Chapter is now typed manually, so no dropdown update is needed.
+async function updateChapterDropdown(selectedClass, selectedSubject) {
+  const chapterDropdown = document.getElementById('chapter-dropdown-ai');
+  if (!chapterDropdown) return;
+
+  const chapterOptions = chapterDropdown.querySelector('.dropdown-options');
+  const chapterSelected = chapterDropdown.querySelector('.selected-option');
+  const chapterInput = document.getElementById('chapter-value-ai');
+
+  const resetChapterDropdown = (msg = 'Select Chapter') => {
+    chapterOptions.innerHTML = `<div data-value="">${msg}</div>`;
+    chapterSelected.textContent = msg;
+    chapterInput.value = '';
+  };
+
+  const rawBoard = document.getElementById('board-value-ai')?.value || '';
+  const otherBoard = (document.getElementById('board-other-input')?.value || '').trim();
+  const finalBoard = (rawBoard === 'Other') ? (otherBoard || 'Other') : rawBoard;
+
+  const otherSubject = (document.getElementById('subject-other-input')?.value || '').trim();
+  const finalSubject = (selectedSubject === 'Other')
+    ? (otherSubject || 'Other')
+    : (selectedSubject || '');
+
+  if (!finalBoard || !finalSubject || finalBoard === 'Other' || finalSubject === 'Other') {
+    resetChapterDropdown('Select Chapter');
+    return;
+  }
+
+  await loadBoardChapterFile(finalBoard);
+
+  const boardData = getBoardChapterData(finalBoard);
+
+  let chapters = [];
+
+  if (Array.isArray(boardData?.[finalSubject])) {
+    chapters = boardData[finalSubject];
+  } else if (Array.isArray(boardData?.[selectedClass]?.[finalSubject])) {
+    chapters = boardData[selectedClass][finalSubject];
+  } else if (Array.isArray(boardData?.[selectedClass?.trim()]?.[finalSubject])) {
+    chapters = boardData[selectedClass.trim()][finalSubject];
+  }
+
+  const uniqueChapters = Array.from(new Set((chapters || []).filter(Boolean)));
+
+  if (!uniqueChapters.length) {
+    resetChapterDropdown('No chapters available');
+    return;
+  }
+
+  chapterOptions.innerHTML = uniqueChapters
+    .map(ch => `<div data-value="${String(ch).replace(/"/g, '&quot;')}">${ch}</div>`)
+    .join('');
+
+  chapterSelected.textContent = uniqueChapters[0];
+  chapterInput.value = uniqueChapters[0];
+
+  optionsContainerListener(
+    chapterOptions,
+    chapterSelected,
+    chapterInput,
+    chapterDropdown
+  );
 }
 function setupCustomDropdown(dropdownId, inputId, callback) {
   const dropdown = document.getElementById(dropdownId);
