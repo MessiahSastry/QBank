@@ -103,27 +103,44 @@
     }
 
     .nav-button {
-      background: #fff;
-      color: #0f3d6b;
-      border: none;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      font-size: 1.2em;
-      font-weight: 600;
-      cursor: pointer;
-      width: 90%;
-      max-width: 450px;
-      text-align: center;
-      transition: transform 0.2s, box-shadow 0.2s;
-      -webkit-user-select: none;
-      user-select: none;
-    }
+  border: none;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  font-size: 1.2em;
+  font-weight: 600;
+  cursor: pointer;
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-user-select: none;
+  user-select: none;
+}
 
-    .nav-button:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-    }
+.qg-btn {
+  background: #e8f1ff;
+  color: #0f3d6b;
+  border-left: 8px solid #1762a7;
+}
+
+.qb-btn {
+  background: #e8fff1;
+  color: #146c43;
+  border-left: 8px solid #1f9d55;
+}
+
+.eb-btn {
+  background: #fff4e8;
+  color: #b45309;
+  border-left: 8px solid #f59e0b;
+}
+
+   .nav-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  filter: brightness(0.98);
+}
 
     .nav-button > i {
       margin-right: 10px;
@@ -148,17 +165,17 @@
       <div class="nav-buttons-container">
         <h2 style="text-align:center; color: #0f3d6b;">Choose Admin Section</h2>
 
-        <div class="nav-button" onclick="location.href='ai.gen.ad.html'">
-          <i class="fas fa-brain"></i> Question Generator
-        </div>
+       <div class="nav-button qg-btn" onclick="location.href='ai.gen.ad.html'">
+  <i class="fas fa-brain"></i> Question Generator
+</div>
 
-        <div class="nav-button" onclick="location.href='bank.ad.html'">
-          <i class="fas fa-book"></i> Question Bank
-        </div>
+<div class="nav-button qb-btn" onclick="location.href='bank.ad.html'">
+  <i class="fas fa-book"></i> Question Bank
+</div>
 
-        <div class="nav-button" onclick="location.href='exam.builder.ad.html'">
-          <i class="fas fa-file-alt"></i> Exam Builder
-        </div>
+<div class="nav-button eb-btn" onclick="location.href='exam.builder.ad.html'">
+  <i class="fas fa-file-alt"></i> Exam Builder
+</div>
       </div>
     </main>
   </div>
