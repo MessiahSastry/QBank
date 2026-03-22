@@ -792,7 +792,7 @@ if (includeWorksheet) {
         ${String(chapterTitleForBox || '').toUpperCase()}
       </div>
       <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;text-align:center;margin-bottom:4px;">
-        ANSWER KEY
+        Questions & Answers
       </div>
     </div>
   `;
@@ -1374,9 +1374,36 @@ qDiv.appendChild(qTextDiv);
 const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
 
 if (isPointWise) {
+  const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
+
+  const formattedAnswer = ansLines.map(line => {
+    const numberedMatch = line.match(/^\s*(\d+[\.\)])\s+(.*)$/);
+    const bulletMatch = line.match(/^\s*([-•])\s+(.*)$/);
+
+    if (numberedMatch) {
+      return `
+        <div style="display:flex;align-items:flex-start;margin-bottom:4px;">
+          <span style="flex:0 0 26px;max-width:26px;">${numberedMatch[1]}</span>
+          <span style="flex:1;min-width:0;">${numberedMatch[2]}</span>
+        </div>
+      `;
+    }
+
+    if (bulletMatch) {
+      return `
+        <div style="display:flex;align-items:flex-start;margin-bottom:4px;">
+          <span style="flex:0 0 18px;max-width:18px;">${bulletMatch[1]}</span>
+          <span style="flex:1;min-width:0;">${bulletMatch[2]}</span>
+        </div>
+      `;
+    }
+
+    return `<div style="margin-bottom:4px;">${line}</div>`;
+  }).join('');
+
   aDiv.innerHTML =
     '<div style="color:#7A2230;font-weight:700;">Answer:</div>' +
-    '<div style="color:#111111;padding-left:18px;">' + ansRaw.replace(/\n/g, '<br>') + '</div>';
+    '<div style="color:#111111;padding-left:18px;margin-top:2px;">' + formattedAnswer + '</div>';
 } else {
   aDiv.innerHTML =
     '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
@@ -1597,7 +1624,7 @@ if (includeKey) {
     `;
     keyHeader.innerHTML = `
       <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
-        ANSWER KEY
+        Questions & Answers
       </div>
     `;
     printable.appendChild(keyHeader);
