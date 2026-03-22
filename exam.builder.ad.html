@@ -1255,29 +1255,68 @@ function takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, secM
 
 const db = {
     getChapters: async (selectedClass, selectedBoard, selectedSubject) => {
-        if (!currentUser || !selectedClass || !selectedBoard || !selectedSubject) return [];
-        try {
-            const snapshot = await firestore.collection("questions")
+    if (!currentUser || !selectedClass || !selectedBoard || !selectedSubject) return [];
+
+    try {
+        console.log("GET CHAPTERS INPUT:", {
+            uid: currentUser.uid,
+            class: selectedClass,
+            board: selectedBoard,
+            subject: selectedSubject
+        });
+
+        const snapshot = await firestore.collection("questions")
+            .where("createdBy", "==", currentUser.uid)
+            .where("class", "==", selectedClass)
+            .where("board", "==", selectedBoard)
+            .where("subject", "==", selectedSubject)
+            .get();
+
+        console.log("GET CHAPTERS SNAPSHOT SIZE:", snapshot.size);
+
+        if (snapshot.empty) {
+            const broadSnapshot = await firestore.collection("questions")
                 .where("createdBy", "==", currentUser.uid)
-                .where("class", "==", selectedClass)
-                .where("board", "==", selectedBoard)
-                .where("subject", "==", selectedSubject)
                 .get();
 
-            if (snapshot.empty) return [];
+            console.log("ALL QUESTIONS FOR THIS USER:", broadSnapshot.size);
 
-            const chapterSet = new Set();
-            snapshot.forEach(doc => {
-                const data = doc.data() || {};
-                if (data.chapter) chapterSet.add(String(data.chapter).trim());
+            broadSnapshot.forEach(doc => {
+                const d = doc.data() || {};
+                console.log("QUESTION DOC:", {
+                    id: doc.id,
+                    class: d.class,
+                    board: d.board,
+                    subject: d.subject,
+                    chapter: d.chapter,
+                    createdBy: d.createdBy
+                });
             });
 
-            return Array.from(chapterSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
-        } catch (error) {
-            console.error("Error fetching chapters from Firestore:", error);
             return [];
         }
+
+        const chapterSet = new Set();
+        snapshot.forEach(doc => {
+            const data = doc.data() || {};
+            console.log("MATCHED DOC:", {
+                id: doc.id,
+                class: data.class,
+                board: data.board,
+                subject: data.subject,
+                chapter: data.chapter,
+                createdBy: data.createdBy
+            });
+
+            if (data.chapter) chapterSet.add(String(data.chapter).trim());
+        });
+
+        return Array.from(chapterSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    } catch (error) {
+        console.error("Error fetching chapters from Firestore:", error);
+        return [];
     }
+}
 };
 
 const _subjectQuestionCache = new Map();
