@@ -1,3 +1,4 @@
+i give you code review it and wait for my corrections . dont unswer untill i ask:
 <!DOCTYPE html> 
 <html lang="en">
 <head>
@@ -211,7 +212,7 @@
 
     <main>
       <div class="setup-form-container">
-        <h2>Question Bank</h2>
+        <h2>Work Book</h2>
 
         <form id="filter-form">
           <div class="form-group">
@@ -244,7 +245,12 @@
           </div>
         </form>
 
-            </div>
+        <div id="export-btns">
+          <button id="download-pdf-btn"><i class="fa-solid fa-file-pdf"></i> Download Worksheet</button>
+          <button id="create-quiz-btn" class="main-btn" style="margin-top:16px;"><i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz</button>
+<button id="manage-students-btn" class="main-btn" style="margin-top:12px; background:#0f8b6d;"><i class="fa-solid fa-users"></i> Manage Classes & Students</button>
+        </div>
+      </div>
 
       <div id="manual-quiz-toolbar" style="display:none; width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
         <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
@@ -267,7 +273,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <script>
-    const firebaseConfig = {
+   const scimentraConfig = {
   apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
   authDomain: "scimentra-qbank.firebaseapp.com",
   projectId: "scimentra-qbank",
@@ -276,9 +282,27 @@
   appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
   measurementId: "G-KV01PDN7QD"
 };
-    firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+
+const stpatricksConfig = {
+  apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
+  authDomain: "stpatricks-questionbank.firebaseapp.com",
+  projectId: "stpatricks-questionbank",
+  storageBucket: "stpatricks-questionbank.appspot.com",
+  messagingSenderId: "917615322861",
+  appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
+};
+    const scimentraApp =
+  firebase.apps.length
+    ? firebase.app()
+    : firebase.initializeApp(scimentraConfig);
+
+const stpatricksApp =
+  firebase.apps.find(app => app.name === 'stpatricksApp') ||
+  firebase.initializeApp(stpatricksConfig, 'stpatricksApp');
+
+const auth = scimentraApp.auth();
+const db = scimentraApp.firestore();
+const questionsDb = stpatricksApp.firestore();
 
 // SciMentra custom alert + confirm
 (function setupSciMentraDialogs(){
@@ -582,27 +606,27 @@ const auth = firebase.auth();
           "Cyber / Computer"
         ],
         "IIT & NEET Foundation": [
-          "Mathematics",
-          "Physics",
-          "Chemistry",
-          "Biology",
-          "Reasoning"
-        ],
-        "JEE Mains": [
-          "Physics",
-          "Chemistry",
-          "Mathematics"
-        ],
-        "JEE Advance": [
-          "Physics",
-          "Chemistry",
-          "Mathematics"
-        ],
-        "NEET": [
-          "Physics",
-          "Chemistry",
-          "Biology"
-        ],
+    "Math IIT",
+    "Physics IIT & NEET",
+    "Chemistry IIT & NEET",
+    "Biology NEET",
+    "Reasoning IIT & NEET"
+  ],
+  "JEE Mains": [
+    "Physics (Mains)",
+    "Chemistry (Mains)",
+    "Mathematics (Mains)"
+  ],
+  "JEE Advance": [
+    "Physics (Advance)",
+    "Chemistry (Advance)",
+    "Mathematics (Advance)"
+  ],
+  "NEET": [
+    "Physics (NEET)",
+    "Chemistry (NEET)",
+    "Biology (NEET)"
+  ],
         "AP State Board (SCERT)": [
           "Telugu",
           "Hindi",
@@ -636,7 +660,7 @@ const auth = firebase.auth();
           currentUser = user;
           initializeApp();
         } else {
-          window.location.href = 'login.html';
+         window.location.href = 'login.html';
         }
       });
 
@@ -2725,13 +2749,11 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     return;
   }
 
-  try {
-    const q = db.collection('questions')
-      .where('createdBy', '==', currentUser.uid)
+    try {
+    const q = questionsDb.collection('questions')
       .where('class', '==', classVal)
       .where('board', '==', boardVal)
       .where('subject', '==', subjectVal);
-
     const snapshot = await q.get();
     const chapters = new Set();
     snapshot.forEach(doc => {
@@ -2770,8 +2792,7 @@ const selQtypes   = getMultiSelected('qtype');            // array of types
 const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
 const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
 
-  let query = db.collection('questions')
-  .where('createdBy', '==', currentUser.uid);
+    let query = questionsDb.collection('questions');
 
 if (classVal && classVal !== 'Select Class' && classVal !== 'All') {
   query = query.where('class', '==', classVal);
@@ -2950,7 +2971,7 @@ if (!window.__explainItBound) {
     if (!docId) return;
 
     try {
-      const snap = await db.collection('questions').doc(docId).get();
+      const snap = await questionsDb.collection('questions').doc(docId).get();
       const data = snap.data() || {};
       const explanation = String(data.explanation || '')
   .replace(/^\s*Explanation\s*:\s*/i, '')
@@ -3054,7 +3075,7 @@ overlay.innerHTML = `
                 }
                 img.src = e.target.result;
                 const docId = input.closest('.question-item').getAttribute('data-id');
-                await db.collection('questions').doc(docId).update({ image: e.target.result });
+                await questionsDb.collection('questions').doc(docId).update({ image: e.target.result });
                 alert('Image saved!');
               };
               reader.readAsDataURL(file);
@@ -3068,7 +3089,7 @@ overlay.innerHTML = `
               if (!docId) return;
               if (!(await appConfirm("Delete the image from this question?"))) return;
               try {
-                await db.collection('questions').doc(docId).update({ image: firebase.firestore.FieldValue.delete() });
+                await questionsDb.collection('questions').doc(docId).update({ image: firebase.firestore.FieldValue.delete() });
                 fetchAndDisplayQuestions();
               } catch (err) {
                 alert("Could not delete image: " + err.message);
@@ -3180,7 +3201,7 @@ function autoLatexAll(str) {
             }
             let answer = '';
             try {
-              const docSnap = await db.collection('questions').doc(docId).get();
+              const docSnap = await questionsDb.collection('questions').doc(docId).get();
               const data = docSnap.data();
               answer = data.parsedAnswer || data.answer || data.parsedAns || 'No answer available.';
             } catch (e) {
@@ -3199,7 +3220,7 @@ function autoLatexAll(str) {
 
           menu.querySelector('.menu-edit-btn').onclick = async () => {
             menu.remove();
-            const docSnap = await db.collection('questions').doc(docId).get();
+            const docSnap = await questionsDb.collection('questions').doc(docId).get();
             const data = docSnap.data();
             showEditPopupForBank(docId, data);
           };
@@ -3207,7 +3228,7 @@ function autoLatexAll(str) {
           menu.querySelector('.menu-delete-btn').onclick = async () => {
             menu.remove();
             if (!(await appConfirm("Are you sure you want to delete this question?"))) return;
-            await db.collection('questions').doc(docId).delete();
+            await questionsDb.collection('questions').doc(docId).delete();
             fetchAndDisplayQuestions();
           };
         };
@@ -3425,7 +3446,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
         }
 
         try {
-          await db.collection('questions').doc(docId).update(updateObj);
+          await questionsDb.collection('questions').doc(docId).update(updateObj);
           popup.remove();
           fetchAndDisplayQuestions();
         } catch (err) {
@@ -4677,7 +4698,7 @@ document.getElementById('create-quiz-btn').addEventListener('click', async funct
       const docId = item.getAttribute('data-id');
       if (!docId) continue;
 
-      const snap = await db.collection('questions').doc(docId).get();
+      const snap = await questionsDb.collection('questions').doc(docId).get();
       const data = snap.data() || {};
 
             let qObj = {
