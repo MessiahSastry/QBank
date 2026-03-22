@@ -1054,7 +1054,7 @@ const subjectsHTML = initialSubjectsWithOther
 
 window.__loadedChapterBoardFiles = window.__loadedChapterBoardFiles || {};
 
-function __chapterBoardSlug(boardName) {
+window.__chapterBoardSlug = function(boardName) {
   return (boardName || '')
     .toString()
     .trim()
@@ -1064,11 +1064,11 @@ function __chapterBoardSlug(boardName) {
     .replace(/^-+|-+$/g, '');
 }
 
-function loadBoardChapterFile(boardName) {
+window.loadBoardChapterFile = function(boardName) {
   const board = (boardName || '').trim();
   if (!board || board === 'Other') return Promise.resolve(false);
 
-  const slug = __chapterBoardSlug(board);
+    const slug = window.__chapterBoardSlug(board);
   if (!slug) return Promise.resolve(false);
 
   const fileName = `chapters-${slug}.js`;
@@ -1106,7 +1106,7 @@ function loadBoardChapterFile(boardName) {
   });
 }
 
-function getBoardChapterData(boardName) {
+window.getBoardChapterData = function(boardName) {
   const board = (boardName || '').trim();
   if (!board) return {};
 
@@ -1757,9 +1757,9 @@ async function updateChapterDropdown(selectedClass, selectedSubject) {
     return;
   }
 
-  await loadBoardChapterFile(finalBoard);
+    await window.loadBoardChapterFile(finalBoard);
 
-  const boardData = getBoardChapterData(finalBoard);
+    const boardData = window.getBoardChapterData(finalBoard);
 
   let chapters = [];
 
