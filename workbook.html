@@ -2959,7 +2959,20 @@ const answer = String(data.parsedAnswer || data.answer || data.parsedAns || '')
 
 const popupTitle = explanation ? 'Explanation' : 'Answer';
 const popupContent = explanation || answer || 'No explanation or answer available.';
+
 const questionTextForChatgpt = String(data.question || data.body || data.text || '').trim();
+const questionOptionsForChatgpt = Array.isArray(data.options) ? data.options : [];
+
+let fullQuestionForChatgpt = questionTextForChatgpt;
+
+if (questionOptionsForChatgpt.length === 4) {
+  const formattedOptions = questionOptionsForChatgpt.map((opt, i) => {
+    const cleanOpt = String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
+    return `${String.fromCharCode(65 + i)}) ${cleanOpt}`;
+  }).join('\n');
+
+  fullQuestionForChatgpt += '\n' + formattedOptions;
+}
 
 document.querySelectorAll('.explanation-popup-overlay').forEach(el => el.remove());
 
@@ -3018,11 +3031,13 @@ overlay.innerHTML = `
 };
 
 document.getElementById('more-explanation-btn').onclick = function() {
-  const promptText = `Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, final answer, and where students usually make mistakes.\n\nQuestion:\n${questionTextForChatgpt}`;
+  const promptText = `Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.
+
+Question:
+${fullQuestionForChatgpt}`;
   const chatgptUrl = 'https://chatgpt.com/?q=' + encodeURIComponent(promptText);
   window.open(chatgptUrl, '_blank');
 };
-
 overlay.onclick = function(ev) {
   if (ev.target === overlay.firstElementChild) {
     overlay.remove();
