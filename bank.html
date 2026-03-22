@@ -1076,7 +1076,7 @@ if (selChaptersForHeader.length >= 2) {
 // helpers
 function renderCenteredChapterTitle(text) {
   const t = document.createElement('div');
-  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid;display:block;width:100%;';
+  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid;display:block;width:100%;color:#163A63;';
   t.textContent = String(text || 'Unspecified').toUpperCase();
   printable.appendChild(t);
 }
@@ -1089,36 +1089,38 @@ function renderTypeHeading(text, __parent = printable) {
   const h = document.createElement('div');
 
   if (/^descriptive$/i.test(t)) {
-    h.style.cssText = `
-      font-size:1.12em;
-      font-weight:900;
-      letter-spacing:0.03em;
-      text-align:center;
-      margin:14px 0 10px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-      page-break-after:avoid;
-      break-after:avoid;
-      display:block;
-      width:100%;
-    `;
-    h.textContent = 'DESCRIPTIVE';
-  } else {
-    h.style.cssText = `
-      font-size:1.08em;
-      font-weight:900;
-      letter-spacing:0.02em;
-      text-align:center;
-      margin:14px 0 10px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-      page-break-after:avoid;
-      break-after:avoid;
-      display:block;
-      width:100%;
-    `;
-    h.textContent = t.toUpperCase();
-  }
+  h.style.cssText = `
+    font-size:1.12em;
+    font-weight:900;
+    letter-spacing:0.03em;
+    text-align:center;
+    margin:14px 0 10px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+    width:100%;
+    color:#7A2230;
+  `;
+  h.textContent = 'DESCRIPTIVE';
+} else {
+  h.style.cssText = `
+    font-size:1.08em;
+    font-weight:900;
+    letter-spacing:0.02em;
+    text-align:center;
+    margin:14px 0 10px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+    width:100%;
+    color:#7A2230;
+  `;
+  h.textContent = t.toUpperCase();
+}
 
   __parent.appendChild(h);
   return h;
@@ -1133,41 +1135,42 @@ function renderLeftHeading(text, __parent = printable) {
   const h = document.createElement('div');
 
   if (isLevel) {
-    h.style.cssText = `
-      width:100%;
-      box-sizing:border-box;
-      background:#fff;
-      color:#000;
-      border:2px solid #000;
-      text-align:center;
-      font-weight:900;
-      letter-spacing:0.06em;
-      padding:6px 10px;
-      border-radius:12px;
-      margin:10px 0 8px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-      page-break-after:avoid;
-      break-after:avoid;
-      display:block;
-    `;
-    h.textContent = t.toUpperCase();
-  } else if (isMCQHeading) {
-    h.style.cssText = `
-      font-size:1.12em;
-      font-weight:900;
-      letter-spacing:0.03em;
-      text-align:center;
-      margin:14px 0 10px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-      page-break-after:avoid;
-      break-after:avoid;
-      display:block;
-      width:100%;
-    `;
-    h.textContent = t.toUpperCase();
-  } else {
+  h.style.cssText = `
+    width:100%;
+    box-sizing:border-box;
+    background:#F3F3F3;
+    color:#111111;
+    border:2px solid #111111;
+    text-align:center;
+    font-weight:900;
+    letter-spacing:0.06em;
+    padding:6px 10px;
+    border-radius:12px;
+    margin:10px 0 8px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+  `;
+  h.textContent = t.toUpperCase();
+} else if (isMCQHeading) {
+  h.style.cssText = `
+    font-size:1.12em;
+    font-weight:900;
+    letter-spacing:0.03em;
+    text-align:center;
+    margin:14px 0 10px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+    width:100%;
+    color:#7A2230;
+  `;
+  h.textContent = t.toUpperCase();
+} else {
     h.style.cssText = `
       font-size:1.05em;
       font-weight:800;
