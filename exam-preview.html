@@ -71,6 +71,8 @@
     .question-number {
       min-width: 28px;
       padding-right: 4px;
+      color:#163A63;
+      font-weight:700;
     }
     .question-body {
       flex: 1;
@@ -152,6 +154,11 @@
       font-family: 'Times New Roman', Times, serif;
       text-transform: capitalize;
     }
+.school-title-themed{
+      color:#7A2230;
+      -webkit-text-fill-color:#7A2230;
+      -webkit-text-stroke:1.2px #163A63;
+    }
     .subtitle {
       font-size: 1.19em;
       font-weight: 500;
@@ -165,14 +172,14 @@
       font-weight: bold;
       margin: 7px 0 0 0;
     }
-    .details-rect {
+   .details-rect {
   margin: 20px 0 26px 0;
-  border: 2px solid #000;      /* black border */
+  border: 2px solid #000000;
   border-radius: 18px;
   padding: 13px 18px 13px 18px;
   display: flex;
   flex-direction: column;
-  background: #fff;            /* white background (no blue tint) */
+  background: #FFFFFF;
   box-sizing: border-box;
 }
     .rect-row {
@@ -187,6 +194,7 @@
     .rect-row .rect-label {
       font-weight: bold;
       margin-right: 6px;
+      color:#111111;
     }
     .rect-row .rect-subject {
       flex: 1 1 0;
@@ -194,6 +202,7 @@
       font-size: 1.32em;
       font-weight: bold;
       letter-spacing: 0.03em;
+      color:#163A63;
     }
     .section-block {
       margin-bottom: 24px;
@@ -201,7 +210,7 @@
     .section-header {
       font-weight: bold;
       font-size: 1.12em;
-      color: #111;
+      color: #7A2230;
       margin-bottom: 10px;
       margin-top: 18px;
       text-transform: uppercase;
@@ -216,6 +225,8 @@
 .question-text{
       line-height: 1.25;
       margin-bottom: 6px;
+      color:#163A63;
+      font-weight:700;
 }
        .footer-row {
         display: flex;
@@ -711,8 +722,8 @@ function fitsInLine(option1, option2, maxWidth = 700) {
 
   // Non-4 options → always stacked
   if (optionLines.length !== 4) {
-    return optionLines.map(opt =>
-      `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`
+   return optionLines.map(opt =>
+      `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`
     ).join('');
   }
 
@@ -766,7 +777,7 @@ const fitsFour = ( (!hasLatex || isShortLatexSet) && (measureRowHTML(fourRowHTML
 if (fitsFour) {
   return `
     <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
-      ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${String(opt).trim()}</span>`).join('')}
+      ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${formatPreviewOption(String(opt).trim())}</span>`).join('')}
     </div>`;
 }
 
@@ -781,18 +792,18 @@ if (fitsFour) {
   const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
 
   if (!anyTooWideForTwoCols) {
-    return `
+   return `
       <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[0]).trim()}</span>
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[1]).trim()}</span>
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[2]).trim()}</span>
-        <span style="min-width:70px;display:block;width:100%;">${String(optionLines[3]).trim()}</span>
+        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[0]).trim())}</span>
+        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[1]).trim())}</span>
+        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[2]).trim())}</span>
+        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[3]).trim())}</span>
       </div>`;
   }
 
   // 3) Else one-by-one (4 lines)
   return optionLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`)
+    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`)
     .join('');
 }
 
@@ -813,6 +824,13 @@ function stripLeadingLabel(s) {
   const labelRe = /^\s*[\(\[]?\s*(?:[A-Da-d]|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*/i;
   while (labelRe.test(t)) t = t.replace(labelRe, '');
   return t;
+}
+
+function formatPreviewOption(opt) {
+  const s = String(opt || '').trim();
+  const m = s.match(/^([A-D]\))\s*(.*)$/);
+  if (!m) return s;
+  return `<span style="color:#7A2230;font-weight:700;">${m[1]}</span> <span style="color:#111111;">${m[2]}</span>`;
 }
   function stripABPrefix(html) {
   if (html == null) return '';
@@ -845,7 +863,7 @@ function renderPrintPreview() {
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
-        <div class="school-title">${exam.schoolName || 'SciMentra'}</div>
+        <div class="school-title school-title-themed">${exam.schoolName || 'SciMentra'}</div>
         <div class="subtitle">IIT & NEET FOUNDATION</div>
         <div class="exam-title">${exam.examName || ''}</div>
       </div>
@@ -873,7 +891,7 @@ function renderPrintPreview() {
   let contentHTML = '';
   if (exam.subjects && exam.subjects.length > 1) {
     for (const subjectBlock of exam.subjects) {
-      contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#0f3d6b;">Subject: ${subjectBlock.subject || ''}</div>`;
+      contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${subjectBlock.subject || ''}</div>`;
       /* qNum is global; no per-section reset */
       for (const section of (subjectBlock.sections || [])) {
         contentHTML += `
@@ -1022,7 +1040,7 @@ function renderPrintPreview() {
                 })()
               }
             </span>
-              <span style="flex:0 0 auto;text-align:right;margin-left:30px;color:#0f3d6b;">
+              <span style="flex:0 0 auto;text-align:right;margin-left:30px;color:#111111;">
                 ${
                   section.type === 'all'      ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
                   section.type === 'any'      ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
