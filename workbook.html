@@ -134,24 +134,7 @@
 .question-item.manual-select-mode .question-select-box{
   display:block;
 }
-.question-actions { position: absolute; top: 12px; right: 10px; z-index: 10; }
-    .q-action-btn {
-      background: none; border: none; color: #54656f; font-size: 1.18em; cursor: pointer;
-      padding: 5px; border-radius: 50%; width: 32px; height: 32px; line-height: 22px;
-    }
-    .q-action-btn:hover { background-color: #e0e0e0; }
-    .actions-menu {
-      position: absolute; background: #333; color: white; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      padding: 5px; z-index: 1010; display: flex; flex-direction: column; gap: 0; right: 10px; top: 40px; min-width: 120px;
-    }
-    .actions-menu button {
-      background: none; border: none; color: white; padding: 10px 12px; border-radius: 4px; cursor: pointer; font-size: 0.98em; text-align: left;
-    }
-    .actions-menu button:hover { background-color: #555; }
-    .temp-answer {
-      background-color: #fff8e1; border-top: 2px solid #ffecb3; padding: 10px 14px; margin-top: 10px; border-radius: 0 0 12px 12px;
-      font-style: italic; color: #5d4037; white-space: pre-wrap;
-    }
+
      /* ===== Explain It button styling ===== */
 .ask-ai-btn{
   display:inline-flex;
@@ -2919,9 +2902,7 @@ if (selQtypes.length > 0) {
                     : ''
                 }
               </div>
-              <div class="question-actions">
-                <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
-              </div>
+              
              <!-- Ask AI button replaces the old image button -->
             <button type="button" class="ask-ai-btn">💡 Explain It</button>
             </div>`;
@@ -2938,7 +2919,7 @@ if (selQtypes.length > 0) {
   });
 }
 
-          if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
+         
 
 if (window.__quizSelectionMode === 'manual') {
   document.querySelectorAll('.question-item').forEach(item => {
@@ -3164,82 +3145,8 @@ function autoLatexAll(str) {
       return str;
     }
 
-    // 3-dot menu actions for each question in Question Bank
-    function setupQuestionActionMenus() {
-      document.querySelectorAll('.q-action-btn').forEach((btn) => {
-        btn.onclick = function(e) {
-          e.stopPropagation();
-
-          document.querySelectorAll('.actions-menu').forEach(m => m.remove());
-
-          const questionItem = btn.closest('.question-item');
-          const docId = questionItem.getAttribute('data-id');
-          const menu = document.createElement('div');
-          menu.className = 'actions-menu';
-
-          menu.innerHTML = `
-            <button class="menu-show-answer-btn">Show Answer</button>
-            <button class="menu-edit-btn">Edit / Meta</button>
-            <button class="menu-delete-btn">Delete</button>
-          `;
-          questionItem.appendChild(menu);
-
-          menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
-            event.stopPropagation();
-            let tempAns = questionItem.querySelector('.temp-answer');
-            if (tempAns) {
-              tempAns.remove();
-              menu.querySelector('.menu-show-answer-btn').textContent = 'Show Answer';
-              menu.remove();
-              return;
-            }
-            let answer = '';
-            try {
-              const docSnap = await questionsDb.collection('questions').doc(docId).get();
-              const data = docSnap.data();
-              answer = data.parsedAnswer || data.answer || data.parsedAns || 'No answer available.';
-            } catch (e) {
-              answer = 'No answer found.';
-            }
-            const ansDiv = document.createElement('div');
-            ansDiv.className = 'temp-answer';
-            ansDiv.textContent = answer;
-            questionItem.appendChild(ansDiv);
-            menu.querySelector('.menu-show-answer-btn').textContent = 'Hide Answer';
-            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-              window.MathJax.typesetPromise([ansDiv]);
-            }
-            menu.remove();
-          };
-
-          menu.querySelector('.menu-edit-btn').onclick = async () => {
-            menu.remove();
-            const docSnap = await questionsDb.collection('questions').doc(docId).get();
-            const data = docSnap.data();
-            showEditPopupForBank(docId, data);
-          };
-
-          menu.querySelector('.menu-delete-btn').onclick = async () => {
-            menu.remove();
-            if (!(await appConfirm("Are you sure you want to delete this question?"))) return;
-            await questionsDb.collection('questions').doc(docId).delete();
-            fetchAndDisplayQuestions();
-          };
-        };
-      });
-
-      document.addEventListener('click', function(event) {
-        document.querySelectorAll('.actions-menu').forEach(menu => {
-          if (!menu.contains(event.target) && !event.target.closest('.q-action-btn')) {
-            menu.remove();
-          }
-        });
-      });
-    }
-
-    if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
-
-    function showEditPopupForBank(docId, data) {
+   
+      function showEditPopupForBank(docId, data) {
       document.querySelectorAll('.edit-popup').forEach(p => p.remove());
 
       const isMCQInitial = Array.isArray(data.options) && data.options.length === 4;
