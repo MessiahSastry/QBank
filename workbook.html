@@ -291,8 +291,9 @@ const stpatricksConfig = {
   appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
 };
     const scimentraApp =
-  firebase.apps.find(app => app.name === 'scimentraApp') ||
-  firebase.initializeApp(scimentraConfig, 'scimentraApp');
+  firebase.apps.length
+    ? firebase.app()
+    : firebase.initializeApp(scimentraConfig);
 
 const stpatricksApp =
   firebase.apps.find(app => app.name === 'stpatricksApp') ||
@@ -2748,7 +2749,7 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
   }
 
     try {
-    const q = questionsquestionsDb.collection('questions')
+    const q = questionsDb.collection('questions')
       .where('class', '==', classVal)
       .where('board', '==', boardVal)
       .where('subject', '==', subjectVal);
@@ -2790,7 +2791,7 @@ const selQtypes   = getMultiSelected('qtype');            // array of types
 const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
 const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
 
-    let query = questionsquestionsDb.collection('questions');
+    let query = questionsDb.collection('questions');
 
 if (classVal && classVal !== 'Select Class' && classVal !== 'All') {
   query = query.where('class', '==', classVal);
