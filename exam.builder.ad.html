@@ -1259,14 +1259,11 @@ const db = {
 
     try {
         console.log("GET CHAPTERS INPUT:", {
-            uid: currentUser.uid,
             class: selectedClass,
             board: selectedBoard,
             subject: selectedSubject
         });
-
         const snapshot = await firestore.collection("questions")
-            .where("createdBy", "==", currentUser.uid)
             .where("class", "==", selectedClass)
             .where("board", "==", selectedBoard)
             .where("subject", "==", selectedSubject)
@@ -1286,8 +1283,7 @@ broadSnapshot.forEach(doc => {
         class: d.class,
         board: d.board,
         subject: d.subject,
-        chapter: d.chapter,
-        createdBy: d.createdBy
+        chapter: d.chapter
     });
 });
 
@@ -1302,8 +1298,7 @@ broadSnapshot.forEach(doc => {
                 class: data.class,
                 board: data.board,
                 subject: data.subject,
-                chapter: data.chapter,
-                createdBy: data.createdBy
+                chapter: data.chapter
             });
 
             if (data.chapter) chapterSet.add(String(data.chapter).trim());
@@ -1347,7 +1342,6 @@ async function getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubj
   }
 
   const snapshot = await firestore.collection("questions")
-    .where("createdBy", "==", currentUser.uid)
     .where("class", "==", selectedClass)
     .where("board", "==", selectedBoard)
     .where("subject", "==", selectedSubject)
