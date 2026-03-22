@@ -341,8 +341,7 @@
     "Our Environment",
     "Management of Natural Resources"
   ]
-},
-
+    },
     "10th Class": {
       "Math IIT": [
         "Real Numbers",
