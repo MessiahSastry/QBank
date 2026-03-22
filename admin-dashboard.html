@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SciMentra - Admin Dashboard</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f3d6b">
+  <link rel="apple-touch-icon" href="scimentra-logo.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #f4f8fc;
+      height: 100%;
+    }
+
+    .page-container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .dashboard-header {
+      flex-shrink: 0;
+      background: linear-gradient(90deg, #1762a7, #0f3d6b);
+      color: #fff;
+      border-bottom-left-radius: 28px;
+      border-bottom-right-radius: 28px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 15px 20px;
+      box-sizing: border-box;
+      position: relative;
+      text-align: center;
+    }
+
+    .dashboard-header .school-title {
+      font-size: 1.6em;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .dashboard-header .subtitle {
+      font-size: 1em;
+      color: #e0eaff;
+      margin-top: 5px;
+      font-weight: 500;
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 50%;
+      left: 15px;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      font-size: 1.1em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+
+    .back-btn:hover {
+      background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    main {
+      flex-grow: 1;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .welcome-message {
+      text-align: left;
+      font-size: 1.3em;
+      color: #185496;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+
+    .nav-buttons-container {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-button {
+      background: #fff;
+      color: #0f3d6b;
+      border: none;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-size: 1.2em;
+      font-weight: 600;
+      cursor: pointer;
+      width: 90%;
+      max-width: 450px;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .nav-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+
+    .nav-button > i {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container" id="admin-dashboard" style="display:none;">
+    <header class="dashboard-header">
+      <button class="back-btn" onclick="location.href='dashboard.html'" title="Back">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <h1 class="school-title">SciMentra</h1>
+      <p class="subtitle">Admin Dashboard</p>
+    </header>
+
+    <main>
+      <div class="welcome-message">
+        Welcome Admin, <span id="display-name"></span>!
+      </div>
+
+      <div class="nav-buttons-container">
+        <h2 style="text-align:center; color: #0f3d6b;">Choose Admin Section</h2>
+
+        <div class="nav-button" onclick="location.href='ai.gen.ad.html'">
+          <i class="fas fa-brain"></i> Question Generator
+        </div>
+
+        <div class="nav-button" onclick="location.href='bank.ad.html'">
+          <i class="fas fa-book"></i> Question Bank
+        </div>
+
+        <div class="nav-button" onclick="location.href='exam.builder.ad.html'">
+          <i class="fas fa-file-alt"></i> Exam Builder
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+      authDomain: "scimentra-qbank.firebaseapp.com",
+      projectId: "scimentra-qbank",
+      storageBucket: "scimentra-qbank.firebasestorage.app",
+      messagingSenderId: "371409178675",
+      appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+      measurementId: "G-KV01PDN7QD"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const adminDashboard = document.getElementById("admin-dashboard");
+    const displayNameSpan = document.getElementById("display-name");
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location.replace("index.html");
+        return;
+      }
+
+      const userEmail = (user.email || "").toLowerCase().trim();
+
+      if (userEmail !== "messiahsastry20@gmail.com") {
+        alert("Access denied.");
+        window.location.replace("dashboard.html");
+        return;
+      }
+
+      displayNameSpan.textContent = user.displayName || user.email.split('@')[0];
+      adminDashboard.style.display = "flex";
+    });
+  </script>
+</body>
+</html>
