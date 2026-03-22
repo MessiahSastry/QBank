@@ -459,18 +459,36 @@
     </div>
 
 <script>
-const firebaseConfig = {
+const scimentraConfig = {
+  apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+  authDomain: "scimentra-qbank.firebaseapp.com",
+  projectId: "scimentra-qbank",
+  storageBucket: "scimentra-qbank.firebasestorage.app",
+  messagingSenderId: "371409178675",
+  appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+  measurementId: "G-KV01PDN7QD"
+};
+
+const stpatricksConfig = {
   apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
   authDomain: "stpatricks-questionbank.firebaseapp.com",
   projectId: "stpatricks-questionbank",
-  storageBucket: "stpatricks-questionbank.firebasestorage.app",
+  storageBucket: "stpatricks-questionbank.appspot.com",
   messagingSenderId: "917615322861",
   appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
 };
-firebase.initializeApp(firebaseConfig);
 
-const firestore = firebase.firestore();
-const auth = firebase.auth();
+const scimentraApp =
+  firebase.apps.length
+    ? firebase.app()
+    : firebase.initializeApp(scimentraConfig);
+
+const stpatricksApp =
+  firebase.apps.find(app => app.name === 'stpatricksApp') ||
+  firebase.initializeApp(stpatricksConfig, 'stpatricksApp');
+
+const auth = scimentraApp.auth();
+const firestore = stpatricksApp.firestore();
 let currentUser = null;
 
 document.addEventListener('click', function(e) {
