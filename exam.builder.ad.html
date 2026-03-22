@@ -1275,23 +1275,21 @@ const db = {
         console.log("GET CHAPTERS SNAPSHOT SIZE:", snapshot.size);
 
         if (snapshot.empty) {
-            const broadSnapshot = await firestore.collection("questions")
-                .where("createdBy", "==", currentUser.uid)
-                .get();
+           const broadSnapshot = await firestore.collection("questions").get();
 
-            console.log("ALL QUESTIONS FOR THIS USER:", broadSnapshot.size);
+console.log("ALL QUESTIONS IN QUESTIONS COLLECTION:", broadSnapshot.size);
 
-            broadSnapshot.forEach(doc => {
-                const d = doc.data() || {};
-                console.log("QUESTION DOC:", {
-                    id: doc.id,
-                    class: d.class,
-                    board: d.board,
-                    subject: d.subject,
-                    chapter: d.chapter,
-                    createdBy: d.createdBy
-                });
-            });
+broadSnapshot.forEach(doc => {
+    const d = doc.data() || {};
+    console.log("QUESTION DOC:", {
+        id: doc.id,
+        class: d.class,
+        board: d.board,
+        subject: d.subject,
+        chapter: d.chapter,
+        createdBy: d.createdBy
+    });
+});
 
             return [];
         }
