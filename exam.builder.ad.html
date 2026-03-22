@@ -1,0 +1,3011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <meta charset="UTF-8" />
+    <title>Exam Builder - Multi Subject | SciMentra</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #0f3d6b;
+            --secondary-blue: #1762a7;
+            --light-blue-bg: #f4f8fc;
+            --border-color: #bcd6ef;
+            --text-dark: #12416c;
+            --text-light: #54656f;
+        }
+        html { height: -webkit-fill-available; }
+        body {
+            margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f4f8fc;
+            height: 100vh; height: -webkit-fill-available;
+        }
+        body::after {
+            content: "SciMentra\A IIT & NEET FOUNDATION";
+            white-space: pre; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 5vw; font-weight: bold;
+            color: rgba(15, 61, 107, 0.04); z-index: -1; text-align: center;
+            pointer-events: none; line-height: 1.2;
+        }
+        .page-wrapper { display: flex; flex-direction: column; height: 100vh; }
+        #main-header {
+            background: linear-gradient(90deg, #1762a7, #0f3d6b);
+            color: #fff; border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;
+            min-height: 60px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 15px 10px 18px 10px;
+            box-sizing: border-box; flex-shrink: 0; position: sticky; top: 0; z-index: 10;
+        }
+        #main-header .school-title { font-size: 1.8em; font-weight: bold; margin: 0;}
+        #main-header .subtitle { font-size: 1.05em; color: #e0eaff; margin-top: 5px; }
+        main {
+            flex: 1 1 0%;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        .setup-form-container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 20px auto;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 18px rgba(0, 27, 68, 0.1);
+            padding: 25px 16px;
+            flex-shrink: 0;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        .setup-form-container h2 { text-align: center; color: var(--primary-blue); margin-top: 0; margin-bottom: 25px; }
+        #exam-setup-form h3 {
+            margin-top: 25px; margin-bottom: 15px;
+            color: var(--secondary-blue); border-bottom: 2px solid #e0eaff; padding-bottom: 10px;
+            font-size: 1.2em; display: flex; align-items: center; gap: 10px;
+        }
+        #exam-setup-form h3:first-of-type { margin-top: 0; }
+        .form-grid-1-col, .form-grid-2-col { display: grid; gap: 15px; }
+        .form-grid-1-col { grid-template-columns: 1fr; }
+        .form-grid-2-col { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 600px) {
+            main { padding-top: 20px; }
+            .form-grid-2-col { grid-template-columns: 1fr; }
+        }
+        .form-group { margin-bottom: 0; }
+        .form-group label {
+            font-weight: 600; margin-bottom: 5px;
+            color: #185496; display: block;
+        }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group input[type="date"],
+        .form-group textarea, .custom-dropdown .selected-option {
+            width: 100%; padding: 10px 12px; border-radius: 6px;
+            border: 1.3px solid #bcd6ef; font-size: 1em; background: #f7fafd;
+            box-sizing: border-box; height: 42px;
+        }
+        .form-group textarea { height: auto; min-height: 80px; }
+        .custom-dropdown { position: relative; }
+        .custom-dropdown .selected-option { cursor: pointer; }
+        .dropdown-options {
+            display: none; position: absolute; top: 100%; left: 0; right: 0;
+            background: #fff; border: 1.3px solid #bcd6ef; border-top: none;
+            border-radius: 0 0 6px 6px; box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1);
+            z-index: 1000; max-height: 200px; overflow-y: auto;
+        }
+        .custom-dropdown.open .dropdown-options { display: block; }
+        .dropdown-options div[data-value] { padding: 10px 15px; cursor: pointer; }
+        .dropdown-options div[data-value]:hover { background: #e0eaff; }
+        .multi-select-dropdown .dropdown-options div { display: flex; align-items: center; padding: 10px 15px; }
+        .multi-select-dropdown .dropdown-options div:hover { background: #e0eaff; }
+        .multi-select-dropdown input[type="checkbox"] { margin-right: 10px; }
+        .multi-select-dropdown .selected-chapters-display {
+            min-height: 42px; height: auto; padding: 10px 12px;
+            background: #f7fafd; border-radius: 6px;
+            border: 1.3px solid #bcd6ef;
+            line-height: 1.5; cursor: pointer;
+        }
+        .placeholder { font-style: normal; color: #5a7a9b; }
+        .subject-block {
+            margin: 24px 0 32px 0;
+            padding: 20px 18px;
+            border-radius: 14px;
+            background: #f4f8fc;
+            border: 1.3px solid #d2e3f7;
+            box-shadow: 0 2px 14px #112a4c0e;
+        }
+        .subject-block-title {
+            font-size: 1.19em;
+            color: #0f3d6b;
+            font-weight: bold;
+            margin-bottom: 16px;
+            margin-top: 2px;
+        }
+        #add-section-btn {
+            background: none; border: 1px dashed #1762a7; color: #1762a7;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600;
+        }
+        .submit-btn {
+            background: linear-gradient(90deg, #1762a7, #0f3d6b);
+            color: #fff; font-weight: bold; cursor: pointer; padding: 12px 0;
+            margin-top: 25px; width: 100%; border-radius: 8px; border: none; font-size: 1.05em;
+        }
+        .section-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 10px;
+            border: 1.3px solid #bcd6ef;
+            border-radius: 12px;
+            background: #fff;
+            margin-bottom: 12px;
+            min-height: 42px;
+            box-shadow: 0 2px 12px rgba(0, 27, 68, 0.07);
+        }
+        .section-logic-fields {
+            flex: 1 1 260px;
+            min-width: 220px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .internal-choice-pairs { width: 100%; margin-top: 6px; margin-bottom: 2px; }
+        .drag-handle { cursor: grab; color: #5a7a9b; }
+        .remove-section-btn { background: none; border: none; color: #c82333; cursor: pointer; font-size: 1.1em; }
+        .section-item .remove-section-btn {
+            background: #f7dede;
+            border: none;
+            color: #c82333;
+            cursor: pointer;
+            font-size: 1.1em;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+        }
+        .section-item .remove-section-btn:hover { background: #fbbcbc; }
+        .section-item select,
+            .section-item input[type="number"],
+            .section-item input[type="text"] {
+                width: auto;
+                min-width: 90px;
+                padding: 9px 12px;
+                border-radius: 6px;
+                border: 1.3px solid #bcd6ef;
+                font-size: 1em;
+                background: #f7fafd;
+                color: #12416c;
+                outline: none;
+                transition: border-color 0.2s;
+                margin-bottom: 6px;
+            }
+            .section-item select:focus,
+            .section-item input[type="number"]:focus,
+            .section-item input[type="text"]:focus {
+                border-color: #1762a7;
+            }
+            .section-item label {
+                font-weight: 600;
+                color: #185496;
+                font-size: 0.97em;
+                margin-bottom: 2px;
+            }
+    </style>
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['\\(', '\\)'], ['$', '$']],
+      displayMath: [['\\[', '\\]'], ['$$', '$$']],
+      processEscapes: true
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <div class="page-wrapper">
+        <header id="main-header">
+            <h1 class="school-title">SciMentra</h1>
+            <div class="subtitle">IIT & NEET FOUNDATION</div>
+        </header>
+        <main>
+            <div class="setup-form-container">
+                <h2>Exam Builder (Multi-Subject)</h2>
+                <form id="exam-setup-form">
+                    <h3><i class="fas fa-file-alt"></i> Basic Information</h3>
+                    <div class="form-grid-2-col">
+                        <div class="form-group">
+                            <label>Class</label>
+                            <div id="class-dropdown" class="custom-dropdown"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Board</label>
+                            <div id="board-dropdown" class="custom-dropdown"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top:15px;">
+                        <label>Subjects (select one or more)</label>
+                        <div id="subjects-multiselect" class="multi-select-dropdown custom-dropdown">
+                            <div class="selected-chapters-display placeholder">Select class and board to see subjects</div>
+                            <div class="dropdown-options"></div>
+                        </div>
+                    </div>
+
+                    <h3><i class="fas fa-list-ol"></i> Exam Details</h3>
+                    <div class="form-group">
+                        <label>Exam Name</label>
+                        <input type="text" id="exam-name-input" placeholder="e.g., FA2 / Revision Test 3"
+                       spellcheck="true" autocapitalize="characters" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Marks</label>
+                        <input type="number" id="max-marks-input" placeholder="e.g. 100">
+                    </div>
+                    <div class="form-group">
+                        <label>Time (in minutes)</label>
+                        <input type="number" id="time-input" value="90">
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="date-input">
+                    </div>
+
+                    <div class="form-grid-2-col">
+    <div class="form-group">
+        <label>Question Source</label>
+        <div id="exam-source-dropdown" class="custom-dropdown"></div>
+    </div>
+
+    <div class="form-group">
+        <label>Selection Mode</label>
+        <div id="selection-mode-dropdown" class="custom-dropdown"></div>
+    </div>
+</div>
+
+                    <div class="form-group" id="global-paste-wrap" style="display:none;">
+                        <label>Paste all questions (in order)</label>
+                        <textarea id="global-paste-area" placeholder="Paste raw questions here, one per line or separated by blank lines."
+                                  style="width:100%;min-height:140px;border:1.3px solid #bcd6ef;border-radius:8px;padding:10px;background:#f7fafd;"></textarea>
+                        <div id="global-paste-count" style="color:#54656f;font-size:.9em;margin-top:6px;"></div>
+                    </div>
+
+                   <div class="form-group" id="global-upload-wrap" style="display:none;">
+                    <label>Upload a .docx file (all questions in order)</label>
+                    <input type="file" id="global-docx-input" accept=".docx" />
+                    <div id="global-docx-status" style="color:#54656f;font-size:.9em;margin-top:6px;">No file chosen</div>
+                </div>
+
+                <div class="form-group" id="paste-docx-shuffle" style="display:none;">
+                    <label>Arrangement</label>
+                    <div style="margin-top:6px;">
+                        <label><input type="checkbox" id="chk-shuffle-questions" checked> Shuffle questions</label>
+                        <label style="margin-left:16px;"><input type="checkbox" id="chk-shuffle-options" checked> Shuffle options (MCQ)</label>
+                    </div>
+                </div>
+
+                    <div class="form-group" id="difficulty-config-group">
+    <label>Difficulty Distribution</label>
+
+    <div id="difficulty-config-box" style="
+        border:1.3px solid #bcd6ef;
+        border-radius:10px;
+        background:#f7fafd;
+        padding:14px 14px 8px 14px;
+    ">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#185496;">
+                <input type="checkbox" id="diff-l1-check" checked>
+                Level 1
+            </label>
+            <input type="number" id="diff-l1-percent" min="0" max="100" value="40" style="width:90px;padding:8px 10px;border:1.3px solid #bcd6ef;border-radius:6px;background:#fff;">
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#185496;">
+                <input type="checkbox" id="diff-l2-check" checked>
+                Level 2
+            </label>
+            <input type="number" id="diff-l2-percent" min="0" max="100" value="30" style="width:90px;padding:8px 10px;border:1.3px solid #bcd6ef;border-radius:6px;background:#fff;">
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:#185496;">
+                <input type="checkbox" id="diff-l3-check" checked>
+                Level 3
+            </label>
+            <input type="number" id="diff-l3-percent" min="0" max="100" value="30" style="width:90px;padding:8px 10px;border:1.3px solid #bcd6ef;border-radius:6px;background:#fff;">
+        </div>
+
+        <div id="difficulty-total-note" style="font-size:.95em;color:#54656f;margin-top:4px;">
+            Total: 100%
+        </div>
+    </div>
+</div>
+
+                    <div id="subjects-sections-area">
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label>Instructions (Optional)</label>
+                        <textarea id="instructions-input" placeholder="e.g., All questions are compulsory..."></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn">Build Exam Draft</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" style="
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #0f3d6b;
+        color: #fff;
+        padding: 14px 28px;
+        border-radius: 8px;
+        display: none;
+        z-index: 9999;
+        font-weight: bold;
+        font-size: 1.1em;
+        box-shadow: 0 6px 24px rgba(0, 27, 68, 0.18);
+    "></div>
+    <div id="manual-pick-modal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(20,40,80,0.22);
+    z-index:10001;
+    align-items:center;
+    justify-content:center;
+">
+    <div style="
+        width:min(950px,94vw);
+        max-height:88vh;
+        overflow:hidden;
+        background:#fff;
+        border-radius:16px;
+        box-shadow:0 12px 40px rgba(0,27,68,0.22);
+        display:flex;
+        flex-direction:column;
+    ">
+        <div style="padding:16px 18px;background:#0f3d6b;color:#fff;font-weight:700;">
+            Select Questions Manually
+        </div>
+
+        <div id="manual-pick-title" style="padding:12px 18px 6px 18px;color:#1762a7;font-weight:700;"></div>
+
+        <div id="manual-pick-list" style="
+            flex:1;
+            overflow:auto;
+            padding:12px 18px 18px 18px;
+            background:#f7fafd;
+        "></div>
+
+        <div style="
+            padding:14px 18px;
+            display:flex;
+            gap:10px;
+            justify-content:flex-end;
+            border-top:1px solid #d7e5f3;
+            background:#fff;
+        ">
+            <button type="button" id="manual-pick-cancel" style="
+                padding:10px 18px;
+                border:none;
+                border-radius:8px;
+                background:#c82333;
+                color:#fff;
+                font-weight:600;
+                cursor:pointer;
+            ">Cancel</button>
+
+            <button type="button" id="manual-pick-done" style="
+                padding:10px 18px;
+                border:none;
+                border-radius:8px;
+                background:#1762a7;
+                color:#fff;
+                font-weight:600;
+                cursor:pointer;
+            ">Use Selected</button>
+        </div>
+    </div>
+</div>
+    <div id="modal-prompt" style="
+        display:none;
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(20,40,80,0.18);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;">
+        <div style="
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px #17386855;
+            max-width: 340px;
+            margin: auto;
+            padding: 36px 22px 22px 22px;
+            border: 2px solid #c82333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;">
+            <div id="modal-prompt-message" style="color: #c82333; font-weight: bold; font-size: 1.13em; text-align: center; margin-bottom: 26px;"></div>
+            <button id="modal-prompt-ok" style="
+                padding: 8px 26px;
+                background: #1762a7;
+                color: #fff;
+                border-radius: 7px;
+                border: none;
+                font-weight: 600;
+                font-size: 1.06em;
+                cursor: pointer;">OK</button>
+        </div>
+    </div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
+    authDomain: "scimentra-qbank.firebaseapp.com",
+    projectId: "scimentra-qbank",
+    storageBucket: "scimentra-qbank.firebasestorage.app",
+    messagingSenderId: "371409178675",
+    appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+    measurementId: "G-KV01PDN7QD"
+};
+firebase.initializeApp(firebaseConfig);
+
+const firestore = firebase.firestore();
+const auth = firebase.auth();
+let currentUser = null;
+
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.custom-dropdown.open').forEach(drop => {
+        if (!drop.contains(e.target)) {
+            drop.classList.remove('open');
+        }
+    });
+});
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.background = type === 'error' ? '#c82333' : '#0f3d6b';
+    toast.style.display = 'block';
+    clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 2300);
+}
+    function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function openManualPickModal({ title, questions, requiredCount, marksPerQuestion, mcqType }) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('manual-pick-modal');
+        const titleBox = document.getElementById('manual-pick-title');
+        const listBox = document.getElementById('manual-pick-list');
+        const btnCancel = document.getElementById('manual-pick-cancel');
+        const btnDone = document.getElementById('manual-pick-done');
+
+               titleBox.innerHTML = `
+            ${escapeHtml(title)}<br>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;">
+                <span style="font-weight:500;color:#54656f;">
+                    Select ${requiredCount} question(s)
+                </span>
+                <span id="manual-picked-count" style="font-weight:700;color:#0f3d6b;">
+                    Selected: 0 / ${requiredCount}
+                </span>
+            </div>
+        `;
+
+        listBox.innerHTML = '';
+
+               questions.forEach((q, idx) => {
+            const stem = getQuestionTextFromDoc(q);
+            const card = document.createElement('label');
+            card.style.display = 'block';
+            card.style.background = '#fff';
+            card.style.border = '1px solid #cfe0f1';
+            card.style.borderRadius = '12px';
+            card.style.padding = '12px 14px';
+            card.style.marginBottom = '12px';
+            card.style.cursor = 'pointer';
+
+            const extracted = Array.isArray(q.options) && q.options.length === 4 ? q.options : (extractMCQOptions(q) || []);
+            const optionsHtml = (mcqType !== 'Descriptive' && extracted.length === 4)
+                ? `<div style="margin-top:8px;color:#54656f;line-height:1.6;">
+                    A) ${escapeHtml(extracted[0])}<br>
+                    B) ${escapeHtml(extracted[1])}<br>
+                    C) ${escapeHtml(extracted[2])}<br>
+                    D) ${escapeHtml(extracted[3])}
+                   </div>`
+                : '';
+
+            card.innerHTML = `
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <input type="checkbox" class="manual-pick-check" data-idx="${idx}" style="margin-top:4px;">
+                    <div style="flex:1;">
+                        <div style="font-weight:700;color:#0f3d6b;">Q${idx + 1}</div>
+                        <div style="margin-top:4px;color:#12416c;line-height:1.55;">${stem}</div>
+                        ${optionsHtml}
+                        <div style="margin-top:8px;font-size:.92em;color:#5d6d7e;">
+                            Marks: ${Number(marksPerQuestion || q.marks || 0)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            listBox.appendChild(card);
+        });
+
+               const countBox = document.getElementById('manual-picked-count');
+
+        function updateManualPickedCount() {
+            const checkedCount = listBox.querySelectorAll('.manual-pick-check:checked').length;
+            if (countBox) {
+                countBox.textContent = `Selected: ${checkedCount} / ${requiredCount}`;
+                countBox.style.color = checkedCount === requiredCount ? '#2d7a2d' : '#0f3d6b';
+            }
+        }
+
+        listBox.querySelectorAll('.manual-pick-check').forEach(cb => {
+            cb.addEventListener('change', updateManualPickedCount);
+        });
+
+        updateManualPickedCount();
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([listBox]).catch(() => {});
+        }
+
+        modal.style.display = 'flex';
+
+        function cleanup(val) {
+            modal.style.display = 'none';
+            btnCancel.onclick = null;
+            btnDone.onclick = null;
+            resolve(val);
+        }
+
+        btnCancel.onclick = () => cleanup(null);
+
+        btnDone.onclick = () => {
+            const checked = Array.from(listBox.querySelectorAll('.manual-pick-check:checked'))
+                .map(cb => Number(cb.dataset.idx));
+
+            if (checked.length !== requiredCount) {
+                showToast(`Please select exactly ${requiredCount} question(s).`, 'error');
+                return;
+            }
+
+            const picked = checked.map(i => questions[i]);
+            cleanup(picked);
+        };
+    });
+}
+function showModalPrompt(message) {
+    const modal = document.getElementById('modal-prompt');
+    const msgBox = document.getElementById('modal-prompt-message');
+    const okBtn = document.getElementById('modal-prompt-ok');
+    okBtn.style.display = '';
+    msgBox.innerHTML = message;
+    modal.style.display = 'flex';
+    okBtn.onclick = () => { modal.style.display = 'none'; };
+}
+
+function showConfirmPrompt(message) {
+    return new Promise(resolve => {
+        const modal = document.getElementById('modal-prompt');
+        const msgBox = document.getElementById('modal-prompt-message');
+        const okBtn = document.getElementById('modal-prompt-ok');
+
+        okBtn.style.display = 'none';
+        msgBox.innerHTML = `
+            <div style="margin-bottom:18px;">${message}</div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button id="modal-yes-btn" style="padding:8px 20px;background:#1762a7;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">Yes</button>
+                <button id="modal-no-btn" style="padding:8px 20px;background:#c82333;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">No</button>
+            </div>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('modal-yes-btn').onclick = () => {
+            modal.style.display = 'none';
+            okBtn.style.display = '';
+            resolve(true);
+        };
+        document.getElementById('modal-no-btn').onclick = () => {
+            modal.style.display = 'none';
+            okBtn.style.display = '';
+            resolve(false);
+        };
+    });
+}
+
+const config = {
+    classes: [
+        "3rd Class", "4th Class", "5th Class", "6th Class", "7th Class",
+        "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"
+    ],
+    boards: [
+        "CBSE",
+        "ICSE",
+        "Olympiad",
+        "IIT & NEET Foundation",
+        "JEE Mains",
+        "JEE Advance",
+        "NEET",
+        "AP State Board (SCERT)",
+        "Other"
+    ],
+    boardSubjectMappings: {
+        "CBSE": [
+            "English",
+            "Hindi",
+            "Mathematics",
+            "Science",
+            "Social Science",
+            "Computer Science / IT",
+            "Sanskrit",
+            "Physical Education",
+            "General Knowledge",
+            "Environmental Studies",
+            "Other"
+        ],
+        "ICSE": [
+            "English Language",
+            "English Literature",
+            "Second Language",
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Biology",
+            "History & Civics",
+            "Geography",
+            "Computer Applications",
+            "Environmental Education",
+            "Commercial Studies / Economics",
+            "Other"
+        ],
+        "Olympiad": [
+            "Mathematics",
+            "Science",
+            "English",
+            "Reasoning",
+            "General Knowledge",
+            "Cyber / Computer"
+        ],
+        "IIT & NEET Foundation": [
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Biology",
+            "Reasoning"
+        ],
+        "JEE Mains": [
+            "Physics",
+            "Chemistry",
+            "Mathematics"
+        ],
+        "JEE Advance": [
+            "Physics",
+            "Chemistry",
+            "Mathematics"
+        ],
+        "NEET": [
+            "Physics",
+            "Chemistry",
+            "Biology"
+        ],
+        "AP State Board (SCERT)": [
+            "Telugu",
+            "Hindi",
+            "English",
+            "Mathematics",
+            "Physical Science",
+            "Biological Science",
+            "Social Studies",
+            "General Science",
+            "Computer / ICT",
+            "Other"
+        ],
+        "Other": [
+            "Other"
+        ]
+    },
+       sectionLabels: ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"],
+    sectionTypes: ["Answer all", "Answer any", "Internal choice"],
+    sectionTypeKeys: ["all", "any", "internal"]
+};
+
+function getSelectedClass() {
+    return document.getElementById('class-dropdown')?.dataset?.value || '';
+}
+function getSelectedBoard() {
+    return document.getElementById('board-dropdown')?.dataset?.value || '';
+}
+function getSelectedDifficulty() {
+    return 'Custom';
+}
+
+function getDifficultyDistribution() {
+    const l1Checked = !!document.getElementById('diff-l1-check')?.checked;
+    const l2Checked = !!document.getElementById('diff-l2-check')?.checked;
+    const l3Checked = !!document.getElementById('diff-l3-check')?.checked;
+
+    const l1 = l1Checked ? (parseFloat(document.getElementById('diff-l1-percent')?.value) || 0) : 0;
+    const l2 = l2Checked ? (parseFloat(document.getElementById('diff-l2-percent')?.value) || 0) : 0;
+    const l3 = l3Checked ? (parseFloat(document.getElementById('diff-l3-percent')?.value) || 0) : 0;
+
+    return { L1: l1, L2: l2, L3: l3 };
+}
+
+function getAllowedDifficultyLevels() {
+    const out = [];
+    if (document.getElementById('diff-l1-check')?.checked) out.push('L1');
+    if (document.getElementById('diff-l2-check')?.checked) out.push('L2');
+    if (document.getElementById('diff-l3-check')?.checked) out.push('L3');
+    return out;
+}
+
+function getUnselectedDifficultyLevels() {
+    return ['L1', 'L2', 'L3'].filter(x => !getAllowedDifficultyLevels().includes(x));
+}
+
+function levelKeyToLabel(k) {
+    return k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3';
+}
+
+function refreshDifficultyTotalNote() {
+    const note = document.getElementById('difficulty-total-note');
+    if (!note) return;
+
+    const d = getDifficultyDistribution();
+    const total = (d.L1 || 0) + (d.L2 || 0) + (d.L3 || 0);
+
+    note.textContent = `Total: ${total}%`;
+
+    if (total === 100) {
+        note.style.color = '#2d7a2d';
+    } else {
+        note.style.color = '#c82333';
+    }
+
+    const p1 = document.getElementById('diff-l1-percent');
+    const p2 = document.getElementById('diff-l2-percent');
+    const p3 = document.getElementById('diff-l3-percent');
+
+    if (p1) p1.disabled = !document.getElementById('diff-l1-check')?.checked;
+    if (p2) p2.disabled = !document.getElementById('diff-l2-check')?.checked;
+    if (p3) p3.disabled = !document.getElementById('diff-l3-check')?.checked;
+}
+function getSelectedSubjects() {
+    return Array.from(document.querySelectorAll('#subjects-multiselect input[type="checkbox"]:checked')).map(cb => cb.value);
+}
+
+function extractMCQOptions(q) {
+  if (Array.isArray(q?.options) && q.options.length === 4) return q.options;
+
+  let s = String(q?.question || q?.text || q?.body || '');
+  s = s.replace(/\r/g, '');
+
+  const labelRe = /(^|\s)([ABCD])[\)\.]\s/gi;
+  const hits = [];
+  let m;
+  while ((m = labelRe.exec(s)) !== null) {
+    hits.push({ letter: m[2].toUpperCase(), i: m.index + m[0].length });
+  }
+
+  const need = ['A', 'B', 'C', 'D'];
+  const map = {};
+  for (const h of hits) {
+    if (!(h.letter in map)) map[h.letter] = h.i;
+  }
+  if (!need.every(L => map[L] != null)) return null;
+
+  const endA = map['B'];
+  const endB = map['C'];
+  const endC = map['D'];
+  const ansIdx = (s.match(/\bAns?\s*:/i)?.index) ?? s.length;
+  const endD = ansIdx;
+
+  const A = s.slice(map['A'], endA).trim();
+  const B = s.slice(map['B'], endB).trim();
+  const C = s.slice(map['C'], endC).trim();
+  const D = s.slice(map['D'], endD).trim();
+
+  return [A, B, C, D];
+}
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+}
+function shuffleMCQQuestion(questionObj) {
+    if (!questionObj.options || !questionObj.options.length) return questionObj;
+    let { options, answer } = questionObj;
+    let correctIndices = [];
+    if (typeof answer === 'string') {
+      const ansMatches = String(answer).toUpperCase().match(/[A-D]/g);
+      if (ansMatches) correctIndices = ansMatches.map(l => "ABCD".indexOf(l));
+    } else if (Array.isArray(answer)) {
+      if (answer.length && typeof answer[0] === 'string') {
+        correctIndices = answer
+          .map(l => "ABCD".indexOf(String(l).toUpperCase()))
+          .filter(i => i >= 0);
+      } else {
+        correctIndices = answer;
+      }
+    }
+    const optPairs = options.map((opt, idx) => ({ opt, idx }));
+    shuffleArray(optPairs);
+    const newOptions = optPairs.map(p => p.opt);
+    const newCorrectIndices = optPairs.map((p, newIdx) => (correctIndices.includes(p.idx) ? newIdx : null)).filter(x => x !== null);
+    const ansStr = "Ans: " + newCorrectIndices.map(i => "ABCD"[i] + ")").join(", ");
+    return { ...questionObj, options: newOptions, answer: ansStr };
+}
+function splitCounts(total, percents) {
+    let result = percents.map(p => Math.floor(total * p / 100));
+    let sum = result.reduce((a, b) => a + b, 0);
+    let diff = total - sum;
+    for (let i = 0; diff > 0; i++, diff--) result[i % result.length]++;
+    return result;
+}
+
+function htmlToPlainText(html) {
+  if (!html) return '';
+  let s = String(html);
+  s = s.replace(/<\/p\s*>/gi, '\n')
+       .replace(/<br\s*\/?>/gi, '\n')
+       .replace(/<\/li\s*>/gi, '\n')
+       .replace(/<\/h[1-6]\s*>/gi, '\n');
+  s = s.replace(/<[^>]+>/g, ' ');
+  s = s.replace(/&nbsp;/gi, ' ')
+       .replace(/&amp;/gi, '&')
+       .replace(/&lt;/gi, '<')
+       .replace(/&gt;/gi, '>')
+       .replace(/&#39;/gi, "'")
+       .replace(/&quot;/gi, '"');
+  s = s.replace(/\r/g, '')
+     .replace(/\u00A0/g, ' ')
+     .replace(/[ \t]+\n/g, '\n')
+     .replace(/[ \t]{2,}/g, ' ')
+     .replace(/\n{2,}/g, '\n\n')
+     .trim();
+  s = s.replace(/\n/g, '\n');
+  return s;
+}
+
+function parsePastedQuestionsToPool(raw) {
+  if (!raw) return [];
+  let text = String(raw);
+
+  if (/<[a-z][\s\S]*>/i.test(text)) {
+    text = htmlToPlainText(text);
+  } else {
+    text = text.replace(/\r/g, '').trim();
+  }
+  if (!text) return [];
+
+  const lines = text.split('\n');
+  const merged = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].trim();
+    if (/^(?:Q\.?\s*)?\d+\s*[\.\)]?$/.test(cur) && i + 1 < lines.length) {
+      lines[i + 1] = `${cur} ${lines[i + 1]}`;
+      continue;
+    }
+    merged.push(lines[i]);
+  }
+  const norm = merged.join('\n');
+
+  const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[\.\)]|\s)\s*/gmi;
+  const starts = [];
+  let m;
+  while ((m = headerRe.exec(norm)) !== null) {
+    starts.push(m.index);
+  }
+  if (!starts.length) {
+    const byLines = norm.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+    return byLines.length ? byLines : [norm.trim()];
+  }
+
+  const blocks = [];
+  for (let i = 0; i < starts.length; i++) {
+    const start = starts[i];
+    const end = i + 1 < starts.length ? starts[i + 1] : norm.length;
+    const slice = norm.slice(start, end);
+    const cleaned = slice.replace(/^[ \t]*(?:Q\.?\s*)?\d+(?:[\.\)]|\s)\s*/, '').trim();
+    if (cleaned) blocks.push(cleaned);
+  }
+  return blocks;
+}
+
+function allocateSequentiallyAcrossSections(subjectsData, pool, { shuffleQuestions = true, shuffleOptions = true } = {}) {
+  const errors = [];
+  let index = 0;
+  const stripLead = s => String(s || '').replace(/^\s*(?:Q?\s*\d+[\.\)]\s*)/, '').trim();
+
+  for (const subj of subjectsData) {
+    for (const sec of subj.sections) {
+      if (sec.type === 'internal') {
+        const needPairs = Number(sec.numPairs || 0);
+        const marks = Number(sec.marksPerQuestion || 0);
+        const pairs = [];
+
+        const takeCleanStem = () => {
+          if (index >= pool.length) return null;
+          const rawBlock = stripLead(pool[index++]) || '';
+          let stem = rawBlock.replace(/\bAns?\s*:\s*.*$/i, '').trim();
+
+          const extracted = extractMCQOptions({ question: rawBlock });
+          if (Array.isArray(extracted) && extracted.length === 4) {
+            const aLabelIdx = stem.search(/(^|\s)A[)\.]\s/i);
+            if (aLabelIdx !== -1) stem = stem.slice(0, aLabelIdx).trim();
+          }
+
+          stem = stem.replace(/^\s*(?:\(?[Aa]\)?[.)]|(?:\(A\))|A[.)])\s+/, '');
+          stem = stem.replace(/^\s*[aA][.)]\s+/, '');
+          return stem || null;
+        };
+
+        for (let p = 0; p < needPairs; p++) {
+          const aStem = takeCleanStem();
+          const bStem = takeCleanStem();
+          if (!aStem || !bStem) break;
+
+          const htmlPair =
+            `(A) ${aStem}<br>` +
+            `<div style="text-align:center;"><b>(OR)</b></div>` +
+            `(B) ${bStem}`;
+
+          pairs.push({
+            number: p + 1,
+            text: htmlPair,
+            marks: marks,
+            options: [],
+            answer: ""
+          });
+        }
+
+        if (pairs.length < needPairs) {
+          errors.push(`${subj.subject} - ${sec.label}: Only ${pairs.length} of ${needPairs} pairs available from source.`);
+        }
+
+        sec.questions = pairs;
+        continue;
+      }
+
+      const need = Number(sec.numQuestions || 0);
+      const marks = Number(sec.marksPerQuestion || 0);
+      const pick = [];
+
+      for (let i = 0; i < need; i++) {
+        if (index >= pool.length) break;
+
+        const rawBlock = stripLead(pool[index++]) || '';
+        let stemNoAns = rawBlock.replace(/\bAns?\s*:\s*.*$/i, '').trim();
+        const extracted = extractMCQOptions({ question: rawBlock });
+
+        if (Array.isArray(extracted) && extracted.length === 4) {
+          const aLabelIdx = stemNoAns.search(/(^|\s)A[)\.]\s/i);
+          if (aLabelIdx !== -1) {
+            stemNoAns = stemNoAns.slice(0, aLabelIdx).trim();
+          }
+        }
+
+        if (Array.isArray(extracted) && extracted.length === 4) {
+          const cleanOpts = extracted.map(o => String(o)
+            .replace(/^[A-D][)\.]\s*/i, '')
+            .replace(/\s+[A-D][)\.]?\s*$/i, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim()
+          );
+
+          const ansMatch = String(rawBlock).toUpperCase().match(/\bANS?\s*:\s*([A-D](?:\s*,\s*[A-D])*)/);
+          const ansLetters = ansMatch ? ansMatch[1].match(/[A-D]/g) : [];
+
+          let outOptions = cleanOpts.slice();
+          let outAnswerLetters = (ansLetters && ansLetters.length) ? ansLetters.slice() : [];
+
+          if (shuffleOptions) {
+            const shuffled = shuffleMCQQuestion({
+              question: stemNoAns,
+              options: cleanOpts,
+              answer: outAnswerLetters
+            });
+            outOptions = shuffled.options || cleanOpts;
+            outAnswerLetters = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []);
+          }
+
+          const letterAns = (outAnswerLetters || []).join(',');
+
+          pick.push({
+            number: i + 1,
+            text: stemNoAns,
+            marks: marks,
+            options: outOptions,
+            answer: letterAns
+          });
+        } else {
+          pick.push({
+            number: i + 1,
+            text: stemNoAns,
+            marks: marks,
+            options: [],
+            answer: ""
+          });
+        }
+      }
+
+      if (pick.length < need) {
+        errors.push(`${subj.subject} - ${sec.label}: Only ${pick.length} of ${need} questions available from source.`);
+      }
+
+      if (shuffleQuestions && pick.length > 1) {
+        shuffleArray(pick);
+      }
+
+      sec.questions = pick;
+    }
+  }
+  return { errors };
+}
+
+function normalizeText(s) {
+  if (!s) return '';
+  let t = String(s);
+  t = t.replace(/<[^>]+>/g, ' ');
+  t = t.replace(/&nbsp;/gi, ' ').replace(/\u00A0/g, ' ');
+  try { t = t.normalize('NFKC'); } catch (e) {}
+  t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  t = t.replace(/[\u2010-\u2015\u2212]/g, '-');
+  t = t.replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+       .replace(/[\u201C\u201D\u2033]/g, '"');
+  t = t.replace(/\u00D7/g, 'x');
+  t = t.replace(/\s+/g, ' ').trim().toLowerCase();
+  t = t.replace(/[.,;:!?]+$/g, '');
+  return t;
+}
+
+function makeStemKey(q) {
+  let raw = String(q?.question || q?.text || '');
+  raw = raw.replace(/<[^>]+>/g, ' ');
+  raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
+  raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');
+  raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');
+  const stemNorm = normalizeText(raw);
+  const marks = (q && q.marks != null) ? String(q.marks) : '';
+  return stemNorm + '|m=' + String(marks ?? '');
+}
+
+function normalizeChoice(s) {
+  if (!s) return '';
+  let t = String(s);
+  t = t.replace(/^[A-D][\)\.]\s*/i, '');
+  t = t.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\u00A0/g, ' ');
+  try { t = t.normalize('NFKC'); } catch (e) {}
+  t = t.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  t = t.replace(/[\u2010-\u2015\u2212]/g, '-');
+  t = t.replace(/[\u2018\u2019\u201A\u2032]/g, "'").replace(/[\u201C\u201D\u2033]/g, '"');
+  t = t.replace(/\u00D7/g, 'x');
+  t = t.replace(/\s+/g, ' ').trim().toLowerCase();
+  t = t.replace(/[.,;:!?]+$/g, '');
+  return t;
+}
+function extractAnswerLetters(ans) {
+  if (!ans) return [];
+  if (Array.isArray(ans)) {
+    return ans.map(x => String(x)).map(s => s.toUpperCase()).filter(s => /^[ABCD]$/.test(s));
+  }
+  const m = String(ans).toUpperCase().match(/[A-D]/g);
+  return m ? m : [];
+}
+function normalizeMcqType(s) {
+  const t = String(s || '').trim().toLowerCase();
+  if (!t) return 'Descriptive';
+  if (t.includes('multiple')) return 'MCQ (Multiple)';
+  if (t.includes('single')) return 'MCQ (Single)';
+  if (t.includes('desc')) return 'Descriptive';
+  return s;
+}
+function inferMcqType(d) {
+  const norm = normalizeMcqType(d?.mcqType || d?.type || '');
+  if (norm === 'MCQ (Single)' || norm === 'MCQ (Multiple)' || norm === 'Descriptive') return norm;
+
+  const letters = String(
+    d?.parsedAnswer ||
+    d?.answer ||
+    d?.parsedAns ||
+    d?.correctAnswer ||
+    d?.correct_option ||
+    d?.correctOption ||
+    ''
+  ).toUpperCase().match(/[A-D]/g) || [];
+
+  if (letters.length > 1) return 'MCQ (Multiple)';
+  if (Array.isArray(d?.options) && d.options.length === 4) return 'MCQ (Single)';
+  return 'Descriptive';
+}
+function makeDeDupeKey(q) {
+  let raw = String(q?.question || q?.text || '');
+  raw = raw.replace(/<[^>]+>/g, ' ');
+  raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
+  raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');
+  raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');
+  const stemNorm = normalizeText(raw);
+
+  const typeNorm = normalizeMcqType(q?.mcqType || q?.type || '');
+  const rawOpts = Array.isArray(q?.options) ? q.options.slice(0, 4) : (extractMCQOptions(q) || []);
+  const optNormsInOrder = rawOpts.map(o => normalizeChoice(o)).filter(Boolean);
+
+  const answerValue =
+    q?.parsedAnswer ||
+    q?.answer ||
+    q?.parsedAns ||
+    q?.correctAnswer ||
+    q?.correct_option ||
+    q?.correctOption ||
+    '';
+
+  const ansLetters = extractAnswerLetters(answerValue);
+  const ansTexts = ansLetters.length && optNormsInOrder.length === 4
+    ? ansLetters.map(L => {
+        const idx = "ABCD".indexOf(L);
+        return idx >= 0 ? optNormsInOrder[idx] : '';
+      }).filter(Boolean).sort()
+    : [];
+
+  const optionSet = Array.from(new Set(optNormsInOrder)).sort();
+
+  const key =
+    stemNorm +
+    '||t=' + (typeNorm || '') +
+    '||opts=' + optionSet.join('|') +
+    '||ans=' + ansTexts.join('|');
+
+  return key;
+}
+function uniqueByIdOrText(arr) {
+  const seenIds = new Set();
+  const seenStem = new Set();
+  const out = [];
+  for (const q of (arr || [])) {
+    const id = q && q.id;
+    const key = makeStemKey(q);
+    if ((id && seenIds.has(id)) || (key && seenStem.has(key))) continue;
+    if (id) seenIds.add(id);
+    if (key) seenStem.add(key);
+    out.push(q);
+  }
+  return out;
+}
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+function buildMarksFallbackOrder(wanted) {
+  const w = parseInt(wanted || 0);
+  const universe = [1,2,3,4,5,6,8,10];
+  if (!w || !universe.includes(w)) return universe;
+  const rest = universe.filter(m => m !== w).sort((a,b) => Math.abs(a-w) - Math.abs(b-w));
+  return [w, ...rest];
+}
+function splitEvenAcrossChapters(total, chapters) {
+  const n = Math.max(1, (chapters || []).length);
+  const base = Math.floor(total / n);
+  const rem = total - base * n;
+  const out = Array(n).fill(base);
+  for (let i = 0; i < rem; i++) out[i] += 1;
+  return out;
+}
+function takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, secMarks) {
+  const out = [];
+  const mPerQ = Number(secMarks ?? 0);
+  for (const d of (pool || [])) {
+    const id = d && d.id;
+    const key = makeStemKey({ text: d.question || d.text || '', marks: mPerQ });
+    if ((id && usedIds.has(id)) || (key && usedKeys.has(key)) || (key && subjectSeenKeys.has(key))) continue;
+    if (id) usedIds.add(id);
+    if (key) usedKeys.add(key);
+    out.push(d);
+    if (out.length >= need) break;
+  }
+  return out;
+}
+
+const db = {
+    getChapters: async (selectedClass, selectedBoard, selectedSubject) => {
+        if (!currentUser || !selectedClass || !selectedBoard || !selectedSubject) return [];
+        try {
+            const snapshot = await firestore.collection("questions")
+                .where("createdBy", "==", currentUser.uid)
+                .where("class", "==", selectedClass)
+                .where("board", "==", selectedBoard)
+                .where("subject", "==", selectedSubject)
+                .get();
+
+            if (snapshot.empty) return [];
+
+            const chapterSet = new Set();
+            snapshot.forEach(doc => {
+                const data = doc.data() || {};
+                if (data.chapter) chapterSet.add(String(data.chapter).trim());
+            });
+
+            return Array.from(chapterSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
+        } catch (error) {
+            console.error("Error fetching chapters from Firestore:", error);
+            return [];
+        }
+    }
+};
+
+const _subjectQuestionCache = new Map();
+
+function _normDifficultyValue(s) {
+  let t = String(s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
+  t = t.replace(/^level[-_]?(\d)$/, 'level$1');
+  t = t.replace(/^l(\d)$/, 'level$1');
+  return t;
+}
+
+function _isAllowedMcqType(doc, mcqType) {
+  const typ = inferMcqType(doc);
+  if (mcqType === "MCQ (Single)") return typ === "MCQ (Single)";
+  if (mcqType === "MCQ (Multiple)") return typ === "MCQ (Multiple)";
+  if (mcqType === "Descriptive") return typ === "Descriptive";
+  return true;
+}
+
+async function getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject) {
+  const cacheKey = [currentUser?.uid || '', selectedClass, selectedBoard, selectedSubject].join('|');
+
+  if (_subjectQuestionCache.has(cacheKey)) {
+    return _subjectQuestionCache.get(cacheKey).slice();
+  }
+
+  const snapshot = await firestore.collection("questions")
+    .where("createdBy", "==", currentUser.uid)
+    .where("class", "==", selectedClass)
+    .where("board", "==", selectedBoard)
+    .where("subject", "==", selectedSubject)
+    .get();
+
+  const allQuestions = [];
+  snapshot.forEach(doc => {
+    allQuestions.push({ id: doc.id, ...doc.data() });
+  });
+
+  allQuestions.sort((a, b) => Number(a.questionNumber || 0) - Number(b.questionNumber || 0));
+
+  const unique = uniqueByIdOrText(allQuestions);
+  _subjectQuestionCache.set(cacheKey, unique.slice());
+  return unique.slice();
+}
+
+function filterQuestionsFromPool(pool, {
+  chapters,
+  marksPerQuestion,
+  mcqType,
+  forceDifficulty,
+  allowedDifficulties
+}) {
+  let rows = Array.isArray(pool) ? pool.slice() : [];
+
+  if (chapters && chapters.length) {
+    const chapterSet = new Set(chapters.map(x => String(x || '').trim()));
+    rows = rows.filter(d => chapterSet.has(String(d.chapter || '').trim()));
+  }
+
+  if (marksPerQuestion != null && marksPerQuestion !== '') {
+    const wantedMarks = Number(marksPerQuestion);
+    rows = rows.filter(d => Number(d.marks) === wantedMarks);
+  }
+
+  rows = rows.filter(d => _isAllowedMcqType(d, mcqType));
+
+  if (forceDifficulty) {
+    const want = _normDifficultyValue(forceDifficulty);
+    rows = rows.filter(d => _normDifficultyValue(d.difficulty || d.level) === want);
+  } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
+    const wants = allowedDifficulties.map(_normDifficultyValue);
+    rows = rows.filter(d => wants.includes(_normDifficultyValue(d.difficulty || d.level)));
+  }
+
+  return uniqueByIdOrText(rows);
+}
+
+async function fetchQuestions({
+  selectedClass,
+  selectedBoard,
+  selectedSubject,
+  chapters,
+  marksPerQuestion,
+  mcqType,
+  count,
+  forceDifficulty,
+  allowedDifficulties
+}) {
+  const pool = await getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject);
+
+  let rows = filterQuestionsFromPool(pool, {
+    chapters,
+    marksPerQuestion,
+    mcqType,
+    forceDifficulty,
+    allowedDifficulties
+  });
+
+  shuffleArray(rows);
+  return rows.slice(0, count);
+}
+
+async function fetchQuestionsWithMarksFallback({
+  selectedClass,
+  selectedBoard,
+  selectedSubject,
+  chapters,
+  marksPerQuestion,
+  mcqType,
+  count,
+  forceDifficulty,
+  allowedDifficulties
+}) {
+  const pool = await getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject);
+
+  const wantedMarks = parseInt(marksPerQuestion);
+  const marksOrder = buildMarksFallbackOrder(wantedMarks);
+
+  const picked = [];
+  const usedIds = new Set();
+  const usedKeys = new Set();
+
+  for (const marks of marksOrder) {
+    let rows = filterQuestionsFromPool(pool, {
+      chapters,
+      marksPerQuestion: marks,
+      mcqType,
+      forceDifficulty,
+      allowedDifficulties
+    });
+
+    shuffleArray(rows);
+
+    for (const d of rows) {
+      const id = d && d.id;
+      const key = makeStemKey({ text: getQuestionTextFromDoc(d), marks: Number(d.marks || marks || 0) });
+
+      if ((id && usedIds.has(id)) || (key && usedKeys.has(key))) continue;
+
+      if (id) usedIds.add(id);
+      if (key) usedKeys.add(key);
+
+      picked.push(d);
+      if (picked.length >= count) return picked.slice(0, count);
+    }
+  }
+
+  return picked.slice(0, count);
+}
+async function fetchBalancedAcrossChapters({
+  selectedClass,
+  selectedBoard,
+  subject,
+  chapters,
+  marksPerQuestion,
+  mcqType,
+  requestedCount,
+  difficultyValue,
+  subjectSeenKeys,
+  globalMixBudget,
+  allowedDifficulties
+}) {
+  const errors = [];
+  const items = [];
+  const usedIds = new Set();
+  const usedKeys = new Set();
+
+  const chs = Array.isArray(chapters) ? chapters.slice() : [];
+
+  async function fetchFor(chapterList, count, forceDifficulty) {
+    if (!count) return [];
+    let docs = await fetchQuestionsWithMarksFallback({
+  selectedClass,
+  selectedBoard,
+  selectedSubject: subject,
+  chapters: chapterList && chapterList.length ? chapterList : undefined,
+  marksPerQuestion,
+  mcqType,
+  count: Math.max(count * 2, count + 2),
+  forceDifficulty: forceDifficulty || undefined,
+  allowedDifficulties
+});
+    return uniqueByIdOrText(docs);
+  }
+
+  async function borrow(need, sameDifficulty) {
+    if (need <= 0) return [];
+    let pool = [];
+    if (sameDifficulty) {
+      pool = await fetchFor(chs, need, sameDifficulty);
+      let picked = takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+      need -= picked.length;
+      if (need <= 0) return picked;
+
+      const pool2 = await fetchFor(chs, need, null);
+      picked = picked.concat(takeUniqueFromPool(pool2, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion));
+      return picked;
+    } else {
+      pool = await fetchFor(chs, need, null);
+      return takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+    }
+  }
+
+  async function fillNonMixed(totalNeed, forceDiff) {
+    if (!chs.length) {
+      const pool = await fetchFor(null, totalNeed, forceDiff);
+      items.push(...takeUniqueFromPool(pool, totalNeed, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion));
+      return;
+    }
+
+    const strictOneEach = totalNeed <= chs.length;
+    if (strictOneEach) {
+      for (let i = 0; i < chs.length && items.length < totalNeed; i++) {
+        let pool = await fetchFor([chs[i]], 1, forceDiff);
+        let picked = takeUniqueFromPool(pool, 1, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+        if (!picked.length) {
+          pool = await fetchFor([chs[i]], 1, null);
+          picked = takeUniqueFromPool(pool, 1, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+        }
+        if (picked.length) items.push(...picked);
+      }
+
+      let remaining = totalNeed - items.length;
+      if (remaining > 0) {
+        const borrowedSame = await borrow(remaining, forceDiff);
+        items.push(...borrowedSame);
+        remaining = totalNeed - items.length;
+      }
+      if (remaining > 0) {
+        const borrowedAny = await borrow(remaining, null);
+        items.push(...borrowedAny);
+      }
+      if (items.length < totalNeed) {
+        errors.push(`${subject}: Could not pick one per selected chapter; only ${items.length} of ${totalNeed} found.`);
+      }
+      return;
+    }
+
+    const perChapter = splitEvenAcrossChapters(totalNeed, chs);
+    for (let i = 0; i < chs.length; i++) {
+      const need = perChapter[i];
+      if (!need) continue;
+      const pool = await fetchFor([chs[i]], need, forceDiff);
+      const picked = takeUniqueFromPool(pool, need, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+      items.push(...picked);
+      perChapter[i] -= picked.length;
+    }
+
+    let remaining = perChapter.reduce((a, b) => a + b, 0);
+    if (remaining > 0) {
+      const borrowedSame = await borrow(remaining, forceDiff);
+      items.push(...borrowedSame);
+      remaining = totalNeed - items.length;
+    }
+    if (remaining > 0) {
+      const borrowedAny = await borrow(remaining, null);
+      items.push(...borrowedAny);
+    }
+
+    if (items.length < totalNeed) {
+      errors.push(`${subject}: Only ${items.length} of ${totalNeed} questions found (after chapter balance).`);
+    }
+  }
+
+  async function fillMixed(totalNeed) {
+    const mPerQ = Number(marksPerQuestion || 0);
+    const sectionMarks = (Number(totalNeed || 0) * mPerQ);
+       const p1 = Number(window._difficultyDistribution?.L1 || 0);
+    const p2 = Number(window._difficultyDistribution?.L2 || 0);
+    const p3 = Number(window._difficultyDistribution?.L3 || 0);
+    const desiredByMarks = splitCounts(sectionMarks, [p1, p2, p3]);
+
+    function takeFromBudget(level, wantedMarks) {
+      if (!globalMixBudget) return wantedMarks;
+      const key = (level === "Level 1") ? "L1" : (level === "Level 2") ? "L2" : "L3";
+      const canGive = Math.max(0, Math.min(globalMixBudget[key] || 0, wantedMarks));
+      const qCount = Math.floor(canGive / Math.max(1, mPerQ));
+      const givenMarks = qCount * mPerQ;
+      globalMixBudget[key] = (globalMixBudget[key] || 0) - givenMarks;
+      return givenMarks;
+    }
+
+    const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
+
+const wantL1m = allowed.includes('L1') ? takeFromBudget("Level 1", desiredByMarks[0]) : 0;
+const wantL2m = allowed.includes('L2') ? takeFromBudget("Level 2", desiredByMarks[1]) : 0;
+const wantL3m = allowed.includes('L3') ? takeFromBudget("Level 3", desiredByMarks[2]) : 0;
+
+    let wantL1q = Math.floor(wantL1m / Math.max(1, mPerQ));
+    let wantL2q = Math.floor(wantL2m / Math.max(1, mPerQ));
+    let wantL3q = Math.floor(wantL3m / Math.max(1, mPerQ));
+
+    const capTotal = Math.min(totalNeed, wantL1q + wantL2q + wantL3q);
+    const scaleDown = (wantL1q + wantL2q + wantL3q) > 0 ? capTotal / (wantL1q + wantL2q + wantL3q) : 0;
+    if (scaleDown > 0 && scaleDown < 1) {
+      wantL1q = Math.floor(wantL1q * scaleDown);
+      wantL2q = Math.floor(wantL2q * scaleDown);
+      wantL3q = Math.floor(wantL3q * scaleDown);
+      let rem = capTotal - (wantL1q + wantL2q + wantL3q);
+      const order = ["L1", "L2", "L3"];
+      for (const k of order) {
+        if (!rem) break;
+        if (k === "L1") wantL1q++;
+        else if (k === "L2") wantL2q++;
+        else wantL3q++;
+        rem--;
+      }
+    }
+
+    async function pickStrict(count, level, chapterList) {
+      if (count <= 0) return [];
+      const pool = await fetchFor(chapterList || null, count, level);
+      return takeUniqueFromPool(pool, count, usedIds, usedKeys, subjectSeenKeys, marksPerQuestion);
+    }
+
+    if (!chs.length) {
+      const p1 = await pickStrict(wantL1q, "Level 1", null);
+      const p2 = await pickStrict(wantL2q, "Level 2", null);
+      const p3 = await pickStrict(wantL3q, "Level 3", null);
+      items.push(...p1, ...p2, ...p3);
+
+      if (p1.length < wantL1q) errors.push(`${subject}: Mixed(strict, marks) needs ${wantL1q} L1, got ${p1.length}.`);
+      if (p2.length < wantL2q) errors.push(`${subject}: Mixed(strict, marks) needs ${wantL2q} L2, got ${p2.length}.`);
+      if (p3.length < wantL3q) errors.push(`${subject}: Mixed(strict, marks) needs ${wantL3q} L3, got ${p3.length}.`);
+      return;
+    }
+
+    function splitEven(count) { return splitEvenAcrossChapters(count, chs); }
+
+    const L1PerCh = splitEven(wantL1q);
+    const L2PerCh = splitEven(wantL2q);
+    const L3PerCh = splitEven(wantL3q);
+
+    for (let i = 0; i < chs.length; i++) {
+      const ch = chs[i];
+      const c1 = await pickStrict(L1PerCh[i], "Level 1", [ch]);
+      const c2 = await pickStrict(L2PerCh[i], "Level 2", [ch]);
+      const c3 = await pickStrict(L3PerCh[i], "Level 3", [ch]);
+      items.push(...c1, ...c2, ...c3);
+
+      if (c1.length < L1PerCh[i]) errors.push(`${subject} / ${ch}: Mixed(strict, marks) needs ${L1PerCh[i]} L1, got ${c1.length}.`);
+      if (c2.length < L2PerCh[i]) errors.push(`${subject} / ${ch}: Mixed(strict, marks) needs ${L2PerCh[i]} L2, got ${c2.length}.`);
+      if (c3.length < L3PerCh[i]) errors.push(`${subject} / ${ch}: Mixed(strict, marks) needs ${L3PerCh[i]} L3, got ${c3.length}.`);
+    }
+  }
+
+  if (difficultyValue === "Level 1" || difficultyValue === "Level 2" || difficultyValue === "Level 3") {
+    await fillNonMixed(requestedCount, difficultyValue);
+} else if (difficultyValue === "Custom") {
+    await fillMixed(requestedCount);
+} else {
+    await fillNonMixed(requestedCount, null);
+}
+
+  return { items: items.slice(0, requestedCount), errors };
+}
+
+function createDropdown(containerId, options, placeholder) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
+    container.innerHTML = `<div class="selected-option">${placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+    container.dataset.value = '';
+    container.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== container) d.classList.remove('open'); });
+        container.classList.toggle('open');
+        if (e.target.dataset.value) {
+            const selectedValue = e.target.dataset.value;
+            container.querySelector('.selected-option').textContent = selectedValue;
+            container.dataset.value = selectedValue;
+            container.classList.remove('open');
+            container.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    });
+}
+
+function createMultiSelectDropdown(containerId, options, placeholder, onChange) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const optionsHTML = options.map(opt => `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`).join('');
+    container.innerHTML = `<div class="selected-chapters-display placeholder">${placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+    container.classList.remove('open');
+
+    function updateDisplay() {
+        const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        const display = container.querySelector('.selected-chapters-display');
+        if (checked.length) {
+            display.textContent = checked.join(', ');
+            display.classList.remove('placeholder');
+        } else {
+            display.textContent = placeholder;
+            display.classList.add('placeholder');
+        }
+    }
+
+    container.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (e.target.closest('.selected-chapters-display')) container.classList.toggle('open');
+        if (e.target.type === 'checkbox') {
+            updateDisplay();
+            if (onChange) onChange();
+        }
+    });
+
+    document.addEventListener('click', () => { container.classList.remove('open'); });
+    updateDisplay();
+}
+
+function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
+    const area = document.getElementById('subjects-sections-area');
+    area.innerHTML = '';
+
+    subjects.forEach((subject, sIdx) => {
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = "subject-block";
+        subjectDiv.style = "margin-bottom:32px;padding:16px;border:1.3px solid #bcd6ef;border-radius:13px;background:#f9fbfd;";
+
+        subjectDiv.innerHTML = `
+            <h3 style="color:#185496;margin-bottom:10px;font-size:1.1em;"><i class="fas fa-book"></i> ${subject}</h3>
+            <div class="form-group">
+                <label>Chapters (select one or more)</label>
+                <div id="chapters-multiselect-${sIdx}" class="multi-select-dropdown custom-dropdown" data-sidx="${sIdx}">
+                    <div class="selected-chapters-display placeholder">Select subject to see chapters</div>
+                    <div class="dropdown-options"></div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:14px;">
+                <label>Sections (Add, set type, and drag to reorder)</label>
+                <div class="subject-sections-list" id="sections-list-${sIdx}"></div>
+                <button type="button" class="add-section-btn" data-sidx="${sIdx}" style="margin-top: 10px;">+ Add Section</button>
+            </div>
+         `;
+        subjectDiv.dataset.subject = subject;
+        area.appendChild(subjectDiv);
+
+        (async () => {
+            const chapterDropdown = subjectDiv.querySelector(`#chapters-multiselect-${sIdx}`);
+            const optionsContainer = chapterDropdown.querySelector('.dropdown-options');
+            const display = chapterDropdown.querySelector('.selected-chapters-display');
+            display.textContent = 'Loading chapters...';
+            display.classList.add('placeholder');
+
+            const chapters = await db.getChapters(selectedClass, selectedBoard, subject);
+
+            if (chapters.length > 0) {
+                optionsContainer.innerHTML = chapters.map(opt => `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`).join('');
+                display.textContent = 'Select one or more chapters';
+            } else {
+                optionsContainer.innerHTML = '<div style="padding: 10px; font-style: italic;">No chapters found.</div>';
+                display.textContent = 'No chapters found';
+            }
+
+            display.classList.add('placeholder');
+
+            chapterDropdown.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (e.target.closest('.selected-chapters-display')) chapterDropdown.classList.toggle('open');
+                if (e.target.type === 'checkbox') updateSelectedChaptersDisplay(chapterDropdown);
+            });
+        })();
+
+        setTimeout(() => addSectionForSubject(sIdx), 100);
+        subjectDiv.querySelector('.add-section-btn').onclick = () => addSectionForSubject(sIdx);
+    });
+}
+    function addSectionForSubject(sIdx) {
+    const list = document.getElementById(`sections-list-${sIdx}`);
+    const sectionCount = list.children.length;
+
+    const newItem = document.createElement('div');
+    newItem.className = 'section-item';
+
+    const sectionLabelDropdown = createSectionDropdown(
+        config.sectionLabels,
+        "Select Section",
+        config.sectionLabels[sectionCount % config.sectionLabels.length],
+        null
+    );
+    sectionLabelDropdown.classList.add('section-label-dropdown');
+    sectionLabelDropdown.style.width = "120px";
+    sectionLabelDropdown.style.marginRight = "8px";
+
+    const mcqTypeOptions = ["MCQ (Single)", "MCQ (Multiple)", "Descriptive"];
+    const mcqTypeDropdown = createSectionDropdown(mcqTypeOptions, "MCQ Type", mcqTypeOptions[0], null);
+    mcqTypeDropdown.classList.add('mcq-type-dropdown');
+    mcqTypeDropdown.style.width = "150px";
+    mcqTypeDropdown.style.marginRight = "10px";
+
+    const sectionTypeDropdown = createSectionDropdown(
+        config.sectionTypes,
+        "Select Type",
+        config.sectionTypes[0],
+        (val) => updateSectionLogicFields(newItem, config.sectionTypeKeys[config.sectionTypes.indexOf(val)])
+    );
+    sectionTypeDropdown.classList.add('section-type-dropdown');
+    sectionTypeDropdown.style.width = "140px";
+    sectionTypeDropdown.style.marginRight = "10px";
+
+    const logicFields = document.createElement('span');
+    logicFields.className = "section-logic-fields";
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = "button";
+    removeBtn.className = "remove-section-btn";
+    removeBtn.style.marginLeft = "8px";
+    removeBtn.innerHTML = "&times;";
+    removeBtn.onclick = () => newItem.remove();
+
+    const dragHandle = document.createElement('span');
+    dragHandle.className = "drag-handle";
+    dragHandle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+
+    newItem.appendChild(dragHandle);
+    newItem.appendChild(sectionLabelDropdown);
+    newItem.appendChild(mcqTypeDropdown);
+    newItem.appendChild(sectionTypeDropdown);
+    newItem.appendChild(logicFields);
+    newItem.appendChild(removeBtn);
+
+    updateSectionLogicFields(newItem, config.sectionTypeKeys[0]);
+    list.appendChild(newItem);
+
+    if (window.Sortable) new Sortable(list, { animation: 150, handle: '.drag-handle' });
+}
+
+function createSectionDropdown(options, placeholder, defaultValue, onChange) {
+    const dropdown = document.createElement('div');
+    dropdown.className = 'custom-dropdown';
+    const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
+    dropdown.innerHTML = `<div class="selected-option">${defaultValue || placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+    dropdown.dataset.value = defaultValue || '';
+
+    dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== dropdown) d.classList.remove('open'); });
+        dropdown.classList.toggle('open');
+        if (e.target.dataset.value) {
+            const val = e.target.dataset.value;
+            dropdown.querySelector('.selected-option').textContent = val;
+            dropdown.dataset.value = val;
+            dropdown.classList.remove('open');
+            if (onChange) onChange(val);
+        }
+    });
+
+    return dropdown;
+}
+
+function updateSectionLogicFields(sectionItem, typeKey) {
+    const logicFields = sectionItem.querySelector('.section-logic-fields');
+    logicFields.innerHTML = '';
+
+    if (typeKey === 'all') {
+        logicFields.innerHTML = `
+            <label style="font-size:0.97em;">
+                Number of questions:
+                <input type="number" class="num-questions-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:14px;">
+                Marks per question:
+                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+        `;
+    } else if (typeKey === 'any') {
+        logicFields.innerHTML = `
+            <label style="font-size:0.97em;">
+                Total questions:
+                <input type="number" class="num-questions-input" min="1" value="1" style="width:50px; margin:0 6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:18px;">
+                Attempt any:
+                <input type="number" class="attempt-any-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:14px;">
+                Marks per question:
+                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+        `;
+    } else if (typeKey === 'internal') {
+        logicFields.innerHTML = `
+            <label style="font-size:0.97em;">
+                Number of pairs:
+                <input type="number" class="num-pairs-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <label style="font-size:0.97em; margin-left:14px;">
+                Marks per pair:
+                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+            </label>
+            <div class="internal-choice-pairs"></div>
+        `;
+        generateInternalPairs(sectionItem);
+        sectionItem.querySelector('.num-pairs-input').addEventListener('input', () => generateInternalPairs(sectionItem));
+    }
+}
+
+function generateInternalPairs(sectionItem) {
+    const pairCount = parseInt(sectionItem.querySelector('.num-pairs-input').value) || 1;
+    const pairsDiv = sectionItem.querySelector('.internal-choice-pairs');
+    pairsDiv.innerHTML = '';
+
+    for (let i = 1; i <= pairCount; i++) {
+        const pairDiv = document.createElement('div');
+        pairDiv.style.margin = '6px 0';
+        pairDiv.style.display = 'flex';
+        pairDiv.style.alignItems = 'center';
+        pairDiv.innerHTML = `<label style="margin-right:10px;">Pair ${i}:</label>
+            <input class="pair-chapter-a" placeholder="Chapter (a)" style="width:110px;margin-right:7px;">
+            <input class="pair-chapter-b" placeholder="Chapter (b)" style="width:110px;">`;
+        pairsDiv.appendChild(pairDiv);
+    }
+}
+
+function updateSelectedChaptersDisplay(chapterDropdown) {
+    const display = chapterDropdown.querySelector('.selected-chapters-display');
+    const checkedChapters = Array.from(chapterDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
+
+    if (checkedChapters.length === 0) {
+        display.textContent = 'Select one or more chapters';
+        display.classList.add('placeholder');
+    } else {
+        display.textContent = checkedChapters.join(', ');
+        display.classList.remove('placeholder');
+    }
+}
+
+function buildSectionInstructions(sec) {
+    if (sec.type === "all") {
+        const n = Number(sec.numQuestions) || 0;
+        return n ? `Answer all ${n} questions` : `Answer all the questions`;
+    }
+    if (sec.type === "any") {
+        const anyN = Number(sec.attemptAny) || 0;
+        return anyN ? `Answer any ${anyN} questions` : `Answer any questions`;
+    }
+    if (sec.type === "internal") {
+        const p = Number(sec.numPairs) || 0;
+        const n = p || 0;
+        const plural = n === 1 ? "question" : "questions";
+        return n
+            ? `Answer all ${n} ${plural}. Choose either (A) or (B) in each.`
+            : `Answer all questions. Choose either (A) or (B) in each.`;
+    }
+    return "";
+}
+
+function getQuestionTextFromDoc(data) {
+    return data.question || data.body || data.text || '';
+}
+
+function getQuestionAnswerFromDoc(data) {
+    const candidates = [
+        data.parsedAnswer,
+        data.parsedAns,
+        data.correctAnswer,
+        data.correct_option,
+        data.correctOption,
+        data.answer
+    ];
+
+    for (const val of candidates) {
+        if (val == null) continue;
+
+        const letters = String(val).toUpperCase().match(/[A-D]/g) || [];
+        const cleaned = [];
+        const seen = new Set();
+
+        for (const ch of letters) {
+            if (!seen.has(ch)) {
+                seen.add(ch);
+                cleaned.push(ch);
+            }
+        }
+
+        if (cleaned.length) {
+            return cleaned.join(',');
+        }
+    }
+
+    return '';
+}
+
+function getQuestionExplanationFromDoc(data) {
+    return data.explanation || data.solution || data.explain || '';
+}
+
+function normalizeQuestionDoc(doc) {
+    const q = { ...(doc || {}) };
+    q.question = getQuestionTextFromDoc(q);
+    q.answer = getQuestionAnswerFromDoc(q);
+    q.explanation = getQuestionExplanationFromDoc(q);
+    q.mcqType = normalizeMcqType(q.mcqType || q.type || '');
+    q.difficulty = q.difficulty || q.level || '';
+    q.options = Array.isArray(q.options) ? q.options : [];
+    return q;
+}
+
+function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
+    const norm = normalizeQuestionDoc(q);
+    const stem = norm.question || '';
+    const extractedOptions = extractMCQOptions(norm);
+    const options = Array.isArray(norm.options) && norm.options.length === 4
+        ? norm.options.slice(0, 4)
+        : (Array.isArray(extractedOptions) && extractedOptions.length === 4 ? extractedOptions : []);
+
+    const answerLetters = String(norm.answer || '')
+    .toUpperCase()
+    .split(',')
+    .map(x => x.trim())
+    .filter(x => /^[A-D]$/.test(x))
+    .join(',');
+
+    if ((sectionMcqType === "MCQ (Single)" || sectionMcqType === "MCQ (Multiple)") && options.length === 4) {
+        const clean = options.map(o => String(o).replace(/^[A-D][).]\s*/i, '').trim());
+
+        if (getGlobalShuffleOptions()) {
+            const shuffled = shuffleMCQQuestion({
+                ...norm,
+                question: stem,
+                options: clean,
+                answer: norm.answer
+            });
+
+            const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+
+            return {
+                number: 0,
+                text: shuffled.question || stem,
+                marks: Number(marksPerQuestion || norm.marks || 0),
+                options: shuffled.options || clean,
+                answer: letterAns,
+                explanation: norm.explanation || '',
+                image: norm.image || ''
+            };
+        }
+
+        return {
+            number: 0,
+            text: stem,
+            marks: Number(marksPerQuestion || norm.marks || 0),
+            options: clean,
+            answer: answerLetters,
+            explanation: norm.explanation || '',
+            image: norm.image || ''
+        };
+    }
+
+    return {
+        number: 0,
+        text: stem,
+        marks: Number(marksPerQuestion || norm.marks || 0),
+        options: [],
+        answer: '',
+        explanation: norm.explanation || '',
+        image: norm.image || ''
+    };
+}
+function updateSubjectsForBoardAndClass() {
+    const selectedClass = getSelectedClass();
+    const selectedBoard = getSelectedBoard();
+
+    
+    const area = document.getElementById('subjects-sections-area');
+
+    if (!selectedClass || !selectedBoard) {
+        createMultiSelectDropdown(
+            'subjects-multiselect',
+            [],
+            'Select class and board to see subjects',
+            function() {}
+        );
+        if (area) area.innerHTML = '';
+        return;
+    }
+
+    const subjects = config.boardSubjectMappings[selectedBoard] || [];
+    createMultiSelectDropdown(
+        'subjects-multiselect',
+        subjects,
+        'Select Subject(s)',
+        updateSubjectsSectionsArea
+    );
+
+    if (area) area.innerHTML = '';
+}
+
+function updateSubjectsSectionsArea() {
+    const selectedSubjects = getSelectedSubjects();
+    const selectedClass = getSelectedClass();
+    const selectedBoard = getSelectedBoard();
+
+    if (!selectedClass || !selectedBoard || selectedSubjects.length === 0) {
+        document.getElementById('subjects-sections-area').innerHTML = '';
+        return;
+    }
+
+    renderSubjectsSectionsArea(selectedSubjects, selectedClass, selectedBoard);
+
+    document.getElementById('exam-source-dropdown')
+        ?.dispatchEvent(new Event('change'));
+}
+
+function getSourceTypeGlobal() {
+    return (document.getElementById('exam-source-dropdown')?.dataset?.value) || 'Question Bank';
+}
+
+function getSelectionMode() {
+    return (document.getElementById('selection-mode-dropdown')?.dataset?.value) || 'Auto Select';
+}
+
+function getGlobalShuffleQuestions() {
+    return !!window._shuffleQuestions;
+}
+
+function getGlobalShuffleOptions() {
+    return !!window._shuffleOptions;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    auth.onAuthStateChanged(function(user) {
+        if (!user) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        currentUser = user;
+
+        createDropdown('class-dropdown', config.classes, 'Select Class');
+        createDropdown('board-dropdown', config.boards, 'Select Board');
+        createDropdown('exam-source-dropdown', ["Question Bank", "Paste", "Upload .docx"], 'Question Bank');
+createDropdown('selection-mode-dropdown', ["Auto Select", "Manual Select"], 'Auto Select');
+refreshDifficultyTotalNote();
+
+[
+    'diff-l1-check','diff-l2-check','diff-l3-check',
+    'diff-l1-percent','diff-l2-percent','diff-l3-percent'
+].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshDifficultyTotalNote);
+    if (el) el.addEventListener('change', refreshDifficultyTotalNote);
+});
+        document.getElementById('date-input').valueAsDate = new Date();
+
+        createMultiSelectDropdown('subjects-multiselect', [], 'Select class and board to see subjects', function(){});
+
+        document.getElementById('class-dropdown').addEventListener('change', function () {
+            updateSubjectsForBoardAndClass();
+        });
+
+        document.getElementById('board-dropdown').addEventListener('change', function () {
+            updateSubjectsForBoardAndClass();
+        });
+
+        (function wireGlobalSourceUI(){
+            const dd = document.getElementById('exam-source-dropdown');
+            const pasteWrap = document.getElementById('global-paste-wrap');
+            const uploadWrap = document.getElementById('global-upload-wrap');
+            const pasteArea = document.getElementById('global-paste-area');
+            const pasteCount = document.getElementById('global-paste-count');
+            const docxInput  = document.getElementById('global-docx-input');
+            const docxStatus = document.getElementById('global-docx-status');
+
+            const shuffleBlock = document.getElementById('paste-docx-shuffle');
+            const chkSQ = document.getElementById('chk-shuffle-questions');
+            const chkSO = document.getElementById('chk-shuffle-options');
+
+            window._shuffleQuestions = true;
+            window._shuffleOptions = true;
+            window._globalDocxArrayBuffer = null;
+
+            function toggle() {
+    const v = dd.dataset.value || 'Question Bank';
+    const isBank  = (v === 'Question Bank');
+    const isPaste = (v === 'Paste');
+    const isWord  = (v === 'Upload .docx');
+
+    pasteWrap.style.display  = isPaste ? 'block' : 'none';
+    uploadWrap.style.display = isWord ? 'block' : 'none';
+
+    if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
+
+    const diffGroup = document.getElementById('difficulty-config-group');
+    if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
+
+    const selectionModeGroup = document.getElementById('selection-mode-dropdown')?.closest('.form-group');
+    if (selectionModeGroup) selectionModeGroup.style.display = isBank ? '' : 'none';
+
+    document.querySelectorAll('[id^="chapters-multiselect-"]').forEach(el => {
+        const grp = el.closest('.form-group');
+        if (grp) grp.style.display = isBank ? '' : 'none';
+    });
+}
+
+            dd.addEventListener('change', toggle);
+            toggle();
+
+            if (chkSQ) chkSQ.addEventListener('change', () => { window._shuffleQuestions = !!chkSQ.checked; });
+            if (chkSO) chkSO.addEventListener('change', () => { window._shuffleOptions  = !!chkSO.checked; });
+
+            pasteArea?.addEventListener('input', () => {
+                const t = (pasteArea.value || '').trim();
+                const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[\.\)]|\s)\s*/gmi;
+                const nums = [];
+                let m;
+                while ((m = headerRe.exec(t)) !== null) nums.push(parseInt(m[1], 10));
+                let approx = 0, last = -Infinity;
+                for (const n of nums) {
+                    if (n >= last + 1) {
+                        approx++;
+                        last = n;
+                    }
+                }
+                if (!approx && nums.length) approx = nums.length;
+                pasteCount.textContent = approx ? `~${approx} question blocks detected` : '';
+            });
+
+            docxInput?.addEventListener('change', async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (!f) {
+                    docxStatus.textContent = 'No file chosen';
+                    window._globalDocxArrayBuffer = null;
+                    return;
+                }
+                docxStatus.textContent = `Reading ${f.name}...`;
+                try {
+                    window._globalDocxArrayBuffer = await f.arrayBuffer();
+                    docxStatus.textContent = `Ready: ${f.name}`;
+                } catch (err) {
+                    window._globalDocxArrayBuffer = null;
+                    docxStatus.textContent = `Read failed: ${err}`;
+                }
+            });
+        })();
+
+        document.getElementById('exam-setup-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const btn = document.querySelector('.submit-btn');
+            btn.disabled = true;
+            btn.textContent = "Building Paper...";
+
+            try {
+    _subjectQuestionCache.clear();
+
+    const selectedClass = getSelectedClass();
+                const selectedBoard = getSelectedBoard();
+                const examName = ((document.getElementById('exam-name-input').value || '').trim()).toUpperCase();
+                const maxMarks = document.getElementById('max-marks-input').value;
+                const time = document.getElementById('time-input').value;
+                const date = document.getElementById('date-input').value;
+                const instructions = document.getElementById('instructions-input').value;
+               const difficultyValue = getSelectedDifficulty();
+                const difficultyDistribution = getDifficultyDistribution();
+                const allowedDifficultyLevels = getAllowedDifficultyLevels();
+                window._difficultyDistribution = { ...difficultyDistribution };
+                window._allowedDifficultyLevels = allowedDifficultyLevels.slice();
+               const sourceTypeGlobal = getSourceTypeGlobal();
+const selectionMode = getSelectionMode();
+
+                if (!selectedClass) {
+                    showToast("Please select class.", "error");
+                    btn.disabled = false;
+                    btn.textContent = "Build Exam Draft";
+                    return;
+                }
+
+                if (!selectedBoard) {
+                    showToast("Please select board.", "error");
+                    btn.disabled = false;
+                    btn.textContent = "Build Exam Draft";
+                    return;
+                }
+                if (sourceTypeGlobal === 'Question Bank') {
+    const totalDifficulty =
+        (difficultyDistribution.L1 || 0) +
+        (difficultyDistribution.L2 || 0) +
+        (difficultyDistribution.L3 || 0);
+
+    const checkedCount =
+        (document.getElementById('diff-l1-check')?.checked ? 1 : 0) +
+        (document.getElementById('diff-l2-check')?.checked ? 1 : 0) +
+        (document.getElementById('diff-l3-check')?.checked ? 1 : 0);
+
+    if (checkedCount === 0) {
+        showToast("Please select at least one difficulty level.", "error");
+        btn.disabled = false;
+        btn.textContent = "Build Exam Draft";
+        return;
+    }
+
+    if (totalDifficulty !== 100) {
+        showToast("Difficulty percentages must total 100%.", "error");
+        btn.disabled = false;
+        btn.textContent = "Build Exam Draft";
+        return;
+    }
+}
+                const subjectBlocks = document.querySelectorAll('.subject-block');
+                const subjectsData = [];
+
+                for (let sb of subjectBlocks) {
+                    const subjectTitle = sb.dataset.subject;
+                    const chapterDropdown = sb.querySelector('.multi-select-dropdown');
+                    const chapters = chapterDropdown
+                        ? Array.from(chapterDropdown.querySelectorAll('input:checked')).map(cb => cb.value)
+                        : [];
+
+                    const sectionsList = sb.querySelectorAll('.section-item');
+                    const sections = [];
+
+                    for (let section of sectionsList) {
+                        const label = section.querySelector('.section-label-dropdown').dataset.value;
+                        const mcqType = section.querySelector('.mcq-type-dropdown').dataset.value;
+                        const typeLabel = section.querySelector('.section-type-dropdown').dataset.value;
+                        const typeIndex = config.sectionTypes.indexOf(typeLabel);
+                        const type = config.sectionTypeKeys[typeIndex];
+
+                        const sec = { label, mcqType, type };
+
+                        if (type === "all") {
+                            sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
+                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                        } else if (type === "any") {
+                            sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
+                            sec.attemptAny = parseInt(section.querySelector('.attempt-any-input').value);
+                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                        } else if (type === "internal") {
+                            sec.numPairs = parseInt(section.querySelector('.num-pairs-input').value);
+                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                            sec.pairs = [];
+                            const pairDivs = section.querySelectorAll('.internal-choice-pairs > div');
+                            pairDivs.forEach(div => {
+                                const chapterA = div.querySelector('.pair-chapter-a').value;
+                                const chapterB = div.querySelector('.pair-chapter-b').value;
+                                sec.pairs.push({ chapterA, chapterB });
+                            });
+                        }
+
+                        sections.push(sec);
+                    }
+
+                    subjectsData.push({
+                        subject: subjectTitle,
+                        chapters,
+                        sections
+                    });
+                }
+
+               const finalPaper = {
+    class: selectedClass,
+    board: selectedBoard,
+    examName,
+    date,
+    time,
+    maxMarks,
+    instructions,
+    difficultyDistribution,
+    subjects: []
+};
+
+                let allSectionErrors = [];
+
+                if (sourceTypeGlobal === 'Question Bank') {
+                    let strictSlots = [];
+                    var _mixedTargets = { L1:0, L2:0, L3:0 };
+                    var _mixedActual  = { L1:0, L2:0, L3:0 };
+                    var _mixedPlanned = { L1:0, L2:0, L3:0 };
+                    var _mixedG = 1;
+
+              if (!(
+    (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
+)) {
+    const allSlots = [];
+                       
+                        subjectsData.forEach((sd, sIdx) => {
+                            sd.sections.forEach((sec, secIdx) => {
+                                if (sec.type === "all" || sec.type === "any") {
+                                    const n = Number(sec.numQuestions || 0);
+                                    const m = Number(sec.marksPerQuestion || 0);
+                                    for (let i = 0; i < n; i++) {
+                                        allSlots.push({
+                                            sIdx,
+                                            secIdx,
+                                            subject: sd.subject,
+                                            label: sec.label,
+                                            marksPerQuestion: m
+                                        });
+                                    }
+                                }
+                            });
+                        });
+
+                        const totalMarks = allSlots.reduce((s, sl) => s + (sl.marksPerQuestion || 0), 0);
+
+                        const _gcd = (a,b)=> b===0 ? Math.abs(a) : _gcd(b, a%b);
+                        _mixedG = allSlots.reduce((g, sl) => _gcd(g, sl.marksPerQuestion||0), 0) || 1;
+
+                       const wantRaw = splitCounts(totalMarks, [
+    difficultyDistribution.L1 || 0,
+    difficultyDistribution.L2 || 0,
+    difficultyDistribution.L3 || 0
+]);
+                        const rounded = wantRaw.map(v => Math.round(v / _mixedG) * _mixedG);
+
+                        const errs = wantRaw.map((v,i) => v - rounded[i]);
+                        let curSum = rounded.reduce((a,b)=>a+b,0);
+
+                        while (curSum !== totalMarks) {
+                            let idx = 0, best = -Infinity;
+                            for (let i=0;i<3;i++){
+                                const dir = (totalMarks > curSum) ? 1 : -1;
+                                const score = dir * errs[i];
+                                if (score > best) {
+                                    best = score;
+                                    idx = i;
+                                }
+                            }
+                            rounded[idx] += (totalMarks > curSum) ? _mixedG : -_mixedG;
+                            errs[idx] += (totalMarks > curSum) ? _mixedG : -_mixedG;
+                            curSum = rounded.reduce((a,b)=>a+b,0);
+                        }
+
+                        _mixedTargets = { L1: rounded[0], L2: rounded[1], L3: rounded[2] };
+
+                        allSlots.sort((a,b)=> (b.marksPerQuestion||0) - (a.marksPerQuestion||0));
+                        _mixedPlanned = { L1:0, L2:0, L3:0 };
+
+                        strictSlots = allSlots.map(sl => {
+                            const deficits = [
+    { k:"L1", d: (_mixedTargets.L1 - _mixedPlanned.L1) },
+    { k:"L2", d: (_mixedTargets.L2 - _mixedPlanned.L2) },
+    { k:"L3", d: (_mixedTargets.L3 - _mixedPlanned.L3) },
+].sort((x,y)=> y.d - x.d);
+
+const pick = deficits[0].k;
+_mixedPlanned[pick] += sl.marksPerQuestion || 0;
+return { ...sl, assigned: pick };
+                        });
+                    }
+
+                    for (let sIdx = 0; sIdx < subjectsData.length; sIdx++) {
+                        const subjData = subjectsData[sIdx];
+                        const subjectSeenKeys = new Set();
+
+                        const subjectBlock = {
+                            subject: subjData.subject,
+                            chapters: subjData.chapters,
+                            sections: []
+                        };
+
+                        for (let secIdx = 0; secIdx < subjData.sections.length; secIdx++) {
+                            const sec = subjData.sections[secIdx];
+                            let questions = [];
+                            let sectionErrors = [];
+
+                            if (sec.type === "all" || sec.type === "any") {
+                                const requestedCount = Number(sec.numQuestions || 0);
+                                const mPerQ = Number(sec.marksPerQuestion || 0);
+
+                               if (
+    (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
+    (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
+) {
+                                  const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
+    selectedClass,
+    selectedBoard,
+    subject: subjData.subject,
+    chapters: subjData.chapters,
+    marksPerQuestion: sec.marksPerQuestion,
+    mcqType: sec.mcqType,
+    requestedCount: selectionMode === 'Manual Select' ? Math.max(requestedCount * 4, requestedCount + 10) : requestedCount,
+    difficultyValue:
+difficultyDistribution.L1 === 100 ? "Level 1" :
+difficultyDistribution.L2 === 100 ? "Level 2" :
+difficultyDistribution.L3 === 100 ? "Level 3" :
+"Custom",
+    subjectSeenKeys,
+    globalMixBudget: null,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
+
+if (balanceErrors?.length) {
+    sectionErrors = sectionErrors.concat(balanceErrors);
+}
+
+let pool = Array.isArray(rawItems) ? rawItems.slice() : [];
+
+pool = pool.filter(q => {
+    const k = makeStemKey({ text: getQuestionTextFromDoc(q), marks: mPerQ });
+    return !(k && subjectSeenKeys.has(k));
+});
+
+if (selectionMode === 'Manual Select') {
+    if (pool.length < requestedCount) {
+        sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${pool.length} question(s) available for manual selection.`);
+    } else {
+        const pickedManual = await openManualPickModal({
+            title: `${subjData.subject} - ${sec.label}`,
+            questions: pool,
+            requiredCount: requestedCount,
+            marksPerQuestion: mPerQ,
+            mcqType: sec.mcqType
+        });
+
+        if (!pickedManual) {
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+            return;
+        }
+
+        const mapped = pickedManual.map(q => mapBankQuestionToBuilderQuestion(q, sec.mcqType, mPerQ));
+        questions = mapped.map((it, i) => {
+            const k = makeStemKey({ text: it.text, marks: mPerQ });
+            if (k) subjectSeenKeys.add(k);
+            return { ...it, number: i + 1 };
+        });
+    }
+} else {
+    const limitedPool = pool.slice(0, requestedCount);
+    const mapped = limitedPool.map(q => mapBankQuestionToBuilderQuestion(q, sec.mcqType, mPerQ));
+
+    const filtered = [];
+    const sectionSeen = new Set();
+
+    for (const item of mapped) {
+        const k = makeStemKey({ text: item.text, marks: mPerQ });
+        if (k && (subjectSeenKeys.has(k) || sectionSeen.has(k))) continue;
+        if (k) {
+            subjectSeenKeys.add(k);
+            sectionSeen.add(k);
+        }
+        filtered.push(item);
+    }
+
+    questions = filtered.map((it, i) => ({ ...it, number: i + 1 }));
+}
+                                } else {
+    if (selectionMode === 'Manual Select') {
+       const manualPoolRaw = await fetchQuestionsWithMarksFallback({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: subjData.chapters,
+    marksPerQuestion: mPerQ,
+    mcqType: sec.mcqType,
+    count: Math.max(requestedCount * 5, requestedCount + 15),
+    forceDifficulty: undefined,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
+
+const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
+    const docMarks = Number(d?.marks || 0);
+    if (docMarks !== mPerQ) return false;
+
+    const docType = inferMcqType(d);
+    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
+    if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
+    if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
+
+    const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
+    return !(k && subjectSeenKeys.has(k));
+});
+
+const cleanPool = manualPool;
+       if (cleanPool.length < requestedCount) {
+    sectionErrors.push(
+        `${subjData.subject} - ${sec.label}: Only ${cleanPool.length} question(s) available for ${mPerQ} mark ${sec.mcqType}.`
+    );
+} else {
+            const pickedManual = await openManualPickModal({
+                title: `${subjData.subject} - ${sec.label}`,
+                questions: cleanPool,
+                requiredCount: requestedCount,
+                marksPerQuestion: mPerQ,
+                mcqType: sec.mcqType
+            });
+
+            if (!pickedManual) {
+                btn.disabled = false;
+                btn.textContent = "Build Exam Draft";
+                return;
+            }
+
+            questions = pickedManual.map((picked, i) => {
+                const out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
+                const diffRaw = String(picked.difficulty || picked.level || '').trim().toLowerCase();
+                out._assignedLevel =
+                    diffRaw.includes('1') ? 'L1' :
+                    diffRaw.includes('2') ? 'L2' : 'L3';
+
+                const k = makeStemKey({ text: out.text, marks: mPerQ });
+                if (k) subjectSeenKeys.add(k);
+
+                if (_mixedActual && out._assignedLevel) {
+                    _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+                }
+
+                return { ...out, number: i + 1 };
+            });
+        }
+    } else {
+        const mySlots = strictSlots.filter(sl =>
+                                        sl.sIdx === sIdx &&
+                                        sl.secIdx === secIdx &&
+                                        sl.marksPerQuestion === mPerQ
+                                    );
+
+                                    const takeCount = Math.min(requestedCount, mySlots.length);
+
+                                   const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
+
+const preloadedPools = {
+    L1: await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(80, requestedCount * 4),
+        forceDifficulty: "Level 1",
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    }),
+    L2: await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(80, requestedCount * 4),
+        forceDifficulty: "Level 2",
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    }),
+    L3: await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(80, requestedCount * 4),
+        forceDifficulty: "Level 3",
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    })
+};
+
+const poolIndex = { L1: 0, L2: 0, L3: 0 };
+
+for (let i = 0; i < takeCount; i++) {
+    const slot = mySlots[i];
+    const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
+    const _act = (typeof _mixedActual  !== 'undefined' && _mixedActual)  ? _mixedActual  : { L1:0, L2:0, L3:0 };
+
+    const deficits = [
+        { k:"L1", d: (_tgt.L1 - _act.L1) },
+        { k:"L2", d: (_tgt.L2 - _act.L2) },
+        { k:"L3", d: (_tgt.L3 - _act.L3) },
+    ].sort((a,b)=> b.d - a.d).map(x=>x.k);
+
+    const preferred = slot?.assigned || deficits[0];
+    const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k => allowed.includes(k));
+
+    let picked = null, pickedLevel = null;
+    const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
+
+    for (const lv of levelsTry) {
+        const pool = preloadedPools[lv] || [];
+        let idx = poolIndex[lv] || 0;
+
+        while (idx < pool.length) {
+            const d = pool[idx++];
+            const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
+            if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
+
+            picked = d;
+            pickedLevel = lv;
+            break;
+        }
+
+        poolIndex[lv] = idx;
+        if (picked) break;
+    }
+
+    if (!picked) {
+        sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
+        continue;
+    }
+
+    let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
+    out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
+
+    questions.push({
+        ...out,
+        number: questions.length + 1
+    });
+
+    const finalKey = makeStemKey({ text: out.text, marks: mPerQ });
+    if (finalKey) subjectSeenKeys.add(finalKey);
+
+                                           if (_mixedActual && out._assignedLevel) {
+                                            _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (sec.type === "internal") {
+                                let missingPairs = 0;
+
+                                for (let p = 0; p < (sec.pairs || []).length; p++) {
+                                    const pairAChapter = sec.pairs[p].chapterA ? [sec.pairs[p].chapterA] : [];
+                                    const pairBChapter = sec.pairs[p].chapterB ? [sec.pairs[p].chapterB] : [];
+
+                                   const qA = await fetchQuestions({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: pairAChapter,
+    marksPerQuestion: sec.marksPerQuestion,
+    mcqType: "Descriptive",
+    count: 1,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
+
+const qB = await fetchQuestions({
+    selectedClass,
+    selectedBoard,
+    selectedSubject: subjData.subject,
+    chapters: pairBChapter,
+    marksPerQuestion: sec.marksPerQuestion,
+    mcqType: "Descriptive",
+    count: 1,
+    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+});
+
+                                    if (!qA.length || !qB.length) {
+                                        missingPairs++;
+                                        continue;
+                                    }
+
+                                    const qAText = getQuestionTextFromDoc(qA[0]);
+                                    const qBText = getQuestionTextFromDoc(qB[0]);
+
+                                    questions.push({
+                                        number: p + 1,
+                                        text: `(A) ${qAText}<br><div style="text-align:center;"><b>(OR)</b></div>(B) ${qBText}`,
+                                        marks: sec.marksPerQuestion,
+                                        options: [],
+                                        answer: "",
+                                        image: qA[0].image || qB[0].image || null
+                                    });
+                                }
+
+                                if (missingPairs > 0 || questions.length < sec.numPairs) {
+                                    sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${questions.length} of ${sec.numPairs} pairs found.`);
+                                }
+                            }
+
+                            const patchedSec = { ...sec };
+                            if (sec.type === "all" || sec.type === "any") patchedSec.numQuestions = (questions || []).length;
+                            if (sec.type === "internal") patchedSec.numPairs = (questions || []).length;
+
+                            subjectBlock.sections.push({
+                                ...patchedSec,
+                                questions,
+                                instructions: buildSectionInstructions(patchedSec)
+                            });
+
+                            if (sectionErrors.length) {
+                                allSectionErrors = allSectionErrors.concat(sectionErrors);
+                            }
+                        }
+
+                        finalPaper.subjects.push(subjectBlock);
+                    }
+                } else {
+                    let rawText = '';
+                    const pasteText = (document.getElementById('global-paste-area')?.value || '').trim();
+                    const hasPaste = pasteText.length > 0;
+                    const hasDocx  = !!window._globalDocxArrayBuffer;
+                    let effective  = sourceTypeGlobal;
+
+                    if (effective === 'Upload .docx' && !hasDocx && hasPaste) effective = 'Paste';
+                    if (effective === 'Paste' && !hasPaste && hasDocx) effective = 'Upload .docx';
+
+                    if (effective === 'Paste') {
+                        rawText = pasteText;
+                    } else if (effective === 'Upload .docx') {
+                        if (!hasDocx) {
+                            allSectionErrors.push('No .docx file selected.');
+                        } else {
+                            try {
+                                const result = await window.mammoth.convertToHtml(
+                                    { arrayBuffer: window._globalDocxArrayBuffer },
+                                    {
+                                        convertImage: mammoth.images.inline(img =>
+                                            img.read("base64").then(b64 => ({
+                                                src: `data:${img.contentType};base64,${b64}`
+                                            }))
+                                        )
+                                    }
+                                );
+                                rawText = htmlToPlainText(result?.value || '');
+                            } catch {
+                                allSectionErrors.push('Failed to read .docx file.');
+                            }
+                        }
+                    }
+
+                    if ((effective === 'Paste' || effective === 'Upload .docx') && !rawText) {
+                        allSectionErrors.push('No questions detected in the provided source.');
+                    }
+
+                    const pool = parsePastedQuestionsToPool(rawText);
+
+                    const { errors: allocErrors } = allocateSequentiallyAcrossSections(
+                        subjectsData,
+                        pool,
+                        {
+                            shuffleQuestions: getGlobalShuffleQuestions(),
+                            shuffleOptions:  getGlobalShuffleOptions()
+                        }
+                    );
+
+                    if (allocErrors?.length) {
+                        allSectionErrors = allSectionErrors.concat(allocErrors);
+                    }
+
+                    for (const subjData of subjectsData) {
+                        const subjectBlock = {
+                            subject: subjData.subject,
+                            chapters: [],
+                            sections: []
+                        };
+
+                        for (const sec of subjData.sections) {
+                            const patched = { ...sec };
+                            if (sec.type === 'all' || sec.type === 'any') patched.numQuestions = (sec.questions || []).length;
+                            if (sec.type === 'internal') patched.numPairs = (sec.questions || []).length;
+
+                            subjectBlock.sections.push({
+                                ...patched,
+                                questions: sec.questions || [],
+                                instructions: buildSectionInstructions(patched)
+                            });
+                        }
+
+                        finalPaper.subjects.push(subjectBlock);
+                    }
+                }
+
+              if (allSectionErrors.length > 0) {
+    const currentlyUnselected = getUnselectedDifficultyLevels();
+    const shortageOnlySelectedLevels = allSectionErrors.some(e =>
+    String(e).includes('Checked difficulty levels do not have enough questions.')
+);
+
+    if (sourceTypeGlobal === 'Question Bank' && shortageOnlySelectedLevels && currentlyUnselected.length > 0) {
+        const labels = currentlyUnselected.map(levelKeyToLabel).join(', ');
+        const allowMore = await showConfirmPrompt(
+            `<b>Checked levels do not have enough questions.</b><br><br>` +
+            `Do you want to use these unchecked levels: <b>${labels}</b>?`
+        );
+
+        if (allowMore) {
+            if (currentlyUnselected.includes('L1')) document.getElementById('diff-l1-check').checked = true;
+            if (currentlyUnselected.includes('L2')) document.getElementById('diff-l2-check').checked = true;
+            if (currentlyUnselected.includes('L3')) document.getElementById('diff-l3-check').checked = true;
+
+            const checkedNow = getAllowedDifficultyLevels();
+            const equalPercent = Math.floor(100 / checkedNow.length);
+            const remainder = 100 - (equalPercent * checkedNow.length);
+
+            document.getElementById('diff-l1-percent').value = checkedNow.includes('L1') ? equalPercent : 0;
+            document.getElementById('diff-l2-percent').value = checkedNow.includes('L2') ? equalPercent : 0;
+            document.getElementById('diff-l3-percent').value = checkedNow.includes('L3') ? equalPercent : 0;
+
+            if (checkedNow.length) {
+                const last = checkedNow[checkedNow.length - 1];
+                const el = document.getElementById(
+                    last === 'L1' ? 'diff-l1-percent' :
+                    last === 'L2' ? 'diff-l2-percent' :
+                    'diff-l3-percent'
+                );
+                el.value = Number(el.value || 0) + remainder;
+            }
+
+            refreshDifficultyTotalNote();
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+            document.getElementById('exam-setup-form').dispatchEvent(new Event('submit'));
+            return;
+        } else {
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+            return;
+        }
+    }
+
+   const cleanedErrors = allSectionErrors
+    .filter(e => !String(e).includes('Checked difficulty levels do not have enough questions.'))
+    .map(e => String(e));
+
+if (cleanedErrors.length) {
+    showModalPrompt(`<b>Please review:</b><br><ul style="text-align:left">${cleanedErrors.map(e => `<li>${e}</li>`).join('')}</ul>`);
+}
+    btn.disabled = false;
+    btn.textContent = "Build Exam Draft";
+    return;
+}
+
+                 if (
+    sourceTypeGlobal === 'Question Bank' &&
+    !(
+        (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
+        (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
+        (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
+    )
+) {
+    const actual = { L1: 0, L2: 0, L3: 0 };
+
+                    for (const subj of finalPaper.subjects || []) {
+                        for (const sec of subj.sections || []) {
+                            if (sec.type === "all" || sec.type === "any") {
+                                for (const q of (sec.questions || [])) {
+                                    if (q._assignedLevel === 'L1') actual.L1 += (q.marks || 0);
+                                    if (q._assignedLevel === 'L2') actual.L2 += (q.marks || 0);
+                                    if (q._assignedLevel === 'L3') actual.L3 += (q.marks || 0);
+                                }
+                            }
+                        }
+                    }
+
+                    const g = (typeof _mixedG !== 'undefined' && _mixedG) ? _mixedG : 1;
+                    const tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
+
+                    const d1 = Math.abs((actual.L1||0) - (tgt.L1||0));
+                    const d2 = Math.abs((actual.L2||0) - (tgt.L2||0));
+                    const d3 = Math.abs((actual.L3||0) - (tgt.L3||0));
+                    const ok = (d1 <= g) && (d2 <= g) && (d3 <= g);
+
+                    if (!ok) {
+                        showToast(`Mixed: totals L1/L2/L3 achieved ${actual.L1}/${actual.L2}/${actual.L3} (target ${tgt.L1}/${tgt.L2}/${tgt.L3}, ±${g} allowed)`, 'info');
+                    }
+                }
+
+                function _finalStemKey(raw, marks) {
+                    let t = String(raw || '');
+                    t = t.replace(/^\s*(?:Q\.?\s*)?\d+\s*[:.)-]?\s*/i, '');
+                    t = t.replace(/<img[^>]*>/gi, ' ')
+                         .replace(/<[^>]+>/g, ' ')
+                         .replace(/\s+[A-D][).:][\s\S]*$/i, '')
+                         .replace(/\bAns?\s*:\s*.*$/i, '');
+
+                    try { t = t.normalize('NFKC'); } catch (e) {}
+                    t = t.replace(/[\u200B-\u200D\uFEFF]/g, '')
+                         .replace(/[\u2010-\u2015\u2212]/g, '-')
+                         .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+                         .replace(/[\u201C\u201D\u2033]/g, '"')
+                         .replace(/\u00A0/g, ' ')
+                         .replace(/\s+/g, ' ')
+                         .trim()
+                         .toLowerCase()
+                         .replace(/[.,;:!?]+$/g, '');
+                    return t ? (t + '||m=' + (marks ?? '')) : '';
+                }
+
+                try {
+                    if (sourceTypeGlobal === 'Question Bank') {
+                        (finalPaper.subjects || []).forEach(s => {
+                            const subjectSeen = new Set();
+
+                            (s.sections || []).forEach(sec => {
+                                const perSectionSeen = new Set();
+                                const out = [];
+                                const fallbackMarks = Number(sec.marksPerQuestion ?? 0);
+
+                                for (const q of (sec.questions || [])) {
+                                    if (q && 'srcId' in q) delete q.srcId;
+                                    const stem  = q?.text ?? q?.question ?? '';
+                                    const marks = Number(q?.marks ?? fallbackMarks);
+                                    const k = _finalStemKey(stem, marks);
+
+                                    if (!k) {
+                                        out.push(q);
+                                        continue;
+                                    }
+                                    if (perSectionSeen.has(k) || subjectSeen.has(k)) continue;
+
+                                    perSectionSeen.add(k);
+                                    subjectSeen.add(k);
+                                    out.push(q);
+                                }
+
+                                sec.questions = out.map((q, i) => ({ ...q, number: i + 1 }));
+
+                                if (sec.type === 'internal') {
+                                    sec.numPairs = sec.questions.length;
+                                } else {
+                                    sec.numQuestions = sec.questions.length;
+                                }
+                            });
+                        });
+                    } else {
+                        (finalPaper.subjects || []).forEach(s => {
+                            (s.sections || []).forEach(sec => {
+                                const fallbackMarks = Number(sec.marksPerQuestion ?? 0);
+                                sec.questions = (sec.questions || []).map((q, i) => {
+                                    if (q && 'srcId' in q) delete q.srcId;
+                                    if (q && (q.marks == null || isNaN(q.marks))) q.marks = fallbackMarks;
+                                    return { ...q, number: i + 1 };
+                                });
+
+                                if (sec.type === 'internal') {
+                                    sec.numPairs = sec.questions.length;
+                                } else {
+                                    sec.numQuestions = sec.questions.length;
+                                }
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.warn('final cleanup error:', e);
+                }
+
+                sessionStorage.setItem('examPaper', JSON.stringify(finalPaper));
+                window.location.href = 'exam-review.html';
+
+            } catch (err) {
+                showToast("Error building exam: " + (err.message || err), "error");
+            }
+
+            btn.disabled = false;
+            btn.textContent = "Build Exam Draft";
+        });
+    });
+});
+</script>
+</body>
+</html>
