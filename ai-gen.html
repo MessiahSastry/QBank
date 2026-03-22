@@ -2759,7 +2759,7 @@ async function openInChatGptWithPrefill(prompt) {
 
   __qb_toast(copied ? 'Copied prompt. Opening ChatGPT…' : 'Opening ChatGPT… (paste prompt manually)');
 
-  const url = new URL('https://chatgpt.com/');
+  const url = new URL('https://chatgpt.com/?temporary-chat=true');
   url.searchParams.set('q', prompt); // pre-fill message
   window.open(url.toString(), '_blank', 'noopener');
 }
