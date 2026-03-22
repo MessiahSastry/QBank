@@ -1367,7 +1367,18 @@ qDiv.appendChild(qTextDiv);
 
   const aDiv = document.createElement('div');
   aDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px; line-height:1.7;';
-   aDiv.innerHTML = '<span style="color:#7A2230;font-weight:700;">Answer:</span><br><span style="color:#111111;">' + ((answerText && String(answerText).trim()) ? String(answerText).replace(/\n/g, '<br>') : 'No answer available.') + '</span>';
+   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
+const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+
+if (isPointWise) {
+  aDiv.innerHTML =
+    '<div style="color:#7A2230;font-weight:700;">Answer:</div>' +
+    '<div style="color:#111111;padding-left:18px;">' + ansRaw.replace(/\n/g, '<br>') + '</div>';
+} else {
+  aDiv.innerHTML =
+    '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
+    '<span style="color:#111111;">' + ansRaw + '</span>';
+}
 
   wrap.appendChild(qDiv);
 
