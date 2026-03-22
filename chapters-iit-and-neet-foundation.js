@@ -331,7 +331,6 @@
     "General Organic Chemistry - I: Assimilation 2 (Conformational Isomerism, Saw Horse Projection, Newman Projection, Dihedral Angle, Conformation Of Etahne, Conformation Of Propane, Conformation Of Butane, Geometrical Isomerism, Absolute Configuration Of Geometrical Isomers, Geometrical Isomerism In Cumulenes, Gometrical Isomerism In Cyclo Alkanes, Number Of Geomertical Isomers)",
     "General Organic Chemistry - I: Assimilation 3 (Optical isomerism, Elements Of Symentrty, Enantiomers, Diastreomers, Classification Of Optical Active Compounds, Golden Rule, Number Of Optical Isomers, D,L system, Erythro And Threo Configuration, Resolution)"
   ],
-
   "Biology NEET": [
     "Origin & Evolution",
     "How Do Organisms Reproduce",
