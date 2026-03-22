@@ -939,9 +939,9 @@ function buildQuestionHTML(item, __parent = printable) {
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-        <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;white-space:pre-wrap;">
-          ${String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ')}
-        </div>
+            <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+          .replace(/^\s+/, '')
+          .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
                 <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
           ${
