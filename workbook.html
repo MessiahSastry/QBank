@@ -55,9 +55,9 @@
     #filter-form {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;
     }
-    @media (max-width: 560px) {
-      #filter-form { grid-template-columns: 1fr; gap: 15px; }
-    }
+   @media (max-width: 560px) {
+  #filter-form { grid-template-columns: 1fr; gap: 15px; }
+}
     .form-group label {
       font-weight: 600; margin-bottom: 5px; color: #185496; display: block;
     }
@@ -66,11 +66,11 @@
       padding: 10px 12px; color: #12416c; background: #f7fafd; border-radius: 6px;
       border: 1.3px solid #bcd6ef; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .dropdown-options {
-      display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff;
-      border: 1.3px solid #bcd6ef; border-top: none; border-radius: 0 0 6px 6px;
-      box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1); z-index: 1000; max-height: 200px; overflow-y: auto;
-    }
+   .dropdown-options {
+  display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff;
+  border: 1.3px solid #bcd6ef; border-top: none; border-radius: 0 0 6px 6px;
+  box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1); z-index: 1000; max-height: 200px; overflow-y: auto;
+}
     .custom-dropdown.open .dropdown-options { display: block; }
     .dropdown-options div[data-value] { padding: 10px 15px; cursor: pointer; }
     .dropdown-options div[data-value]:hover { background: #e0eaff; }
@@ -118,7 +118,23 @@
     }
     .main-btn:hover { background: #144e83; }
 
-    .question-actions { position: absolute; top: 12px; right: 10px; z-index: 10; }
+    .question-select-box{
+  position:absolute;
+  top:12px;
+  left:10px;
+  z-index:11;
+  display:none;
+}
+.question-select-box input[type="checkbox"]{
+  width:18px;
+  height:18px;
+  accent-color:#1762a7;
+  cursor:pointer;
+}
+.question-item.manual-select-mode .question-select-box{
+  display:block;
+}
+.question-actions { position: absolute; top: 12px; right: 10px; z-index: 10; }
     .q-action-btn {
       background: none; border: none; color: #54656f; font-size: 1.18em; cursor: pointer;
       padding: 5px; border-radius: 50%; width: 32px; height: 32px; line-height: 22px;
@@ -195,7 +211,7 @@
 
     <main>
       <div class="setup-form-container">
-        <h2>Workbook</h2>
+        <h2>Question Bank</h2>
 
         <form id="filter-form">
           <div class="form-group">
@@ -203,9 +219,13 @@
             <div id="class-dropdown" class="custom-dropdown"></div>
           </div>
           <div class="form-group">
-            <label>Subject:</label>
-            <div id="subject-dropdown" class="custom-dropdown"></div>
-          </div>
+          <label>Board:</label>
+          <div id="board-dropdown" class="custom-dropdown"></div>
+        </div>
+        <div class="form-group">
+          <label>Subject:</label>
+          <div id="subject-dropdown" class="custom-dropdown"></div>
+        </div>
           <div class="form-group">
             <label>Question Type:</label>
             <div id="qtype-dropdown" class="custom-dropdown"></div>
@@ -227,10 +247,21 @@
         <div id="export-btns">
           <button id="download-pdf-btn"><i class="fa-solid fa-file-pdf"></i> Download Worksheet</button>
           <button id="create-quiz-btn" class="main-btn" style="margin-top:16px;"><i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz</button>
+<button id="manage-students-btn" class="main-btn" style="margin-top:12px; background:#0f8b6d;"><i class="fa-solid fa-users"></i> Manage Classes & Students</button>
         </div>
       </div>
 
-      <div id="questions-display-area">
+      <div id="manual-quiz-toolbar" style="display:none; width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+          <div style="color:#0f3d6b; font-weight:700;">Selected Questions: <span id="manual-selected-count">0</span></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="manual-select-all-btn" style="border:none; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; background:#1762a7; color:#fff;">Select All</button>
+            <button type="button" id="manual-unselect-all-btn" style="border:none; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; background:#eef4fb; color:#1a4b78;">Unselect All</button>
+          </div>
+        </div>
+      </div>
+
+           <div id="questions-display-area">
         <p class="no-questions-message">Select filters to view questions.</p>
       </div>
     </main>
@@ -241,7 +272,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <script>
-    const scimentraConfig = {
+   const scimentraConfig = {
   apiKey: "AIzaSyCvmAUKhINkAXkOdvXlZN3yESl5XC9iCkE",
   authDomain: "scimentra-qbank.firebaseapp.com",
   projectId: "scimentra-qbank",
@@ -259,76 +290,364 @@ const stpatricksConfig = {
   messagingSenderId: "917615322861",
   appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
 };
+    const scimentraApp =
+  firebase.apps.find(app => app.name === 'scimentraApp') ||
+  firebase.initializeApp(scimentraConfig, 'scimentraApp');
 
-const authApp = firebase.apps.find(app => app.name === "[DEFAULT]")
-  || firebase.initializeApp(scimentraConfig);
+const stpatricksApp =
+  firebase.apps.find(app => app.name === 'stpatricksApp') ||
+  firebase.initializeApp(stpatricksConfig, 'stpatricksApp');
 
-const dbApp = firebase.apps.find(app => app.name === "stPatricksDB")
-  || firebase.initializeApp(stpatricksConfig, "stPatricksDB");
+const auth = scimentraApp.auth();
+const db = scimentraApp.firestore();
+const questionsDb = stpatricksApp.firestore();
 
-const auth = authApp.auth();
-const db = dbApp.firestore();
-
-// CampusConnect custom alert (replaces window.alert)
-(function setupCampusConnectAlert(){
-  const dlgId = 'dlgAppAlert';
-  if (document.getElementById(dlgId)) return;
-
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = `
-    <dialog id="dlgAppAlert" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
-      <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
-        CampusConnect
-      </div>
-      <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
-        <p id="appAlertText" style="margin:0 0 12px 0;"></p>
-        <div style="text-align:right;margin-top:4px;">
-          <button id="btnAppAlertOk"
-                  style="background:#0f3d6b;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
-            OK
-          </button>
+// SciMentra custom alert + confirm
+(function setupSciMentraDialogs(){
+  if (!document.getElementById('dlgAppAlert')) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <dialog id="dlgAppAlert" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
+        <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
+          SciMentra
         </div>
-      </div>
-    </dialog>
-  `;
-  const dialog = wrapper.firstElementChild;
-  document.body.appendChild(dialog);
+        <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
+          <p id="appAlertText" style="margin:0 0 12px 0;"></p>
+          <div style="text-align:right;margin-top:4px;">
+            <button id="btnAppAlertOk"
+                    style="background:#0f3d6b;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              OK
+            </button>
+          </div>
+        </div>
+      </dialog>
+    `;
+    const dialog = wrapper.firstElementChild;
+    document.body.appendChild(dialog);
 
-  const textEl = dialog.querySelector('#appAlertText');
-  const okBtn  = dialog.querySelector('#btnAppAlertOk');
+    const textEl = dialog.querySelector('#appAlertText');
+    const okBtn  = dialog.querySelector('#btnAppAlertOk');
 
-  function show(msg){
-    if (textEl) textEl.textContent = msg;
-    dialog.showModal();
+    function show(msg){
+      if (textEl) textEl.textContent = msg;
+      dialog.showModal();
+    }
+
+    if (okBtn) okBtn.onclick = () => dialog.close();
+
+    window.alert = show;
   }
 
-  if (okBtn) okBtn.onclick = () => dialog.close();
+  if (!document.getElementById('dlgAppConfirm')) {
+    const wrapper2 = document.createElement('div');
+    wrapper2.innerHTML = `
+      <dialog id="dlgAppConfirm" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
+        <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
+          SciMentra
+        </div>
+        <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
+          <p id="appConfirmText" style="margin:0 0 12px 0;"></p>
+          <div style="text-align:right;margin-top:4px;display:flex;justify-content:flex-end;gap:8px;">
+            <button id="btnAppConfirmCancel"
+                    style="background:#eef3f9;color:#35506b;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+            <button id="btnAppConfirmOk"
+                    style="background:#0f3d6b;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              OK
+            </button>
+          </div>
+        </div>
+      </dialog>
+    `;
+    const dialog2 = wrapper2.firstElementChild;
+    document.body.appendChild(dialog2);
 
-  // Override native alert
-  window.alert = show;
+    const textEl2 = dialog2.querySelector('#appConfirmText');
+    const okBtn2 = dialog2.querySelector('#btnAppConfirmOk');
+    const cancelBtn2 = dialog2.querySelector('#btnAppConfirmCancel');
+
+   window.appConfirm = function(msg){
+      return new Promise(resolve => {
+        if (textEl2) textEl2.textContent = msg;
+        dialog2.showModal();
+
+        okBtn2.onclick = () => {
+          dialog2.close();
+          resolve(true);
+        };
+
+        cancelBtn2.onclick = () => {
+          dialog2.close();
+          resolve(false);
+        };
+      });
+    };
+  }
+
+  if (!document.getElementById('dlgAppPrompt')) {
+    const wrapper3 = document.createElement('div');
+    wrapper3.innerHTML = `
+      <dialog id="dlgAppPrompt" style="border:none;border-radius:16px;padding:0;max-width:420px;width:92vw;">
+        <div style="background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;font-weight:600;font-size:15px;text-align:left;">
+          SciMentra
+        </div>
+        <div style="padding:14px 16px 10px 16px;font-size:14px;line-height:1.5;">
+          <p id="appPromptText" style="margin:0 0 12px 0;"></p>
+          <input id="appPromptInput" type="text"
+                 style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;">
+          <div style="text-align:right;margin-top:4px;display:flex;justify-content:flex-end;gap:8px;">
+            <button id="btnAppPromptCancel"
+                    style="background:#eef3f9;color:#35506b;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+            <button id="btnAppPromptOk"
+                    style="background:#0f3d6b;color:#fff;border:none;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer;">
+              OK
+            </button>
+          </div>
+        </div>
+      </dialog>
+    `;
+    const dialog3 = wrapper3.firstElementChild;
+    document.body.appendChild(dialog3);
+
+    const textEl3 = dialog3.querySelector('#appPromptText');
+    const inputEl3 = dialog3.querySelector('#appPromptInput');
+    const okBtn3 = dialog3.querySelector('#btnAppPromptOk');
+    const cancelBtn3 = dialog3.querySelector('#btnAppPromptCancel');
+
+        window.appPrompt = function(msg, defaultValue = ''){
+      return new Promise(resolve => {
+        if (textEl3) textEl3.textContent = msg;
+        if (inputEl3) inputEl3.value = defaultValue || '';
+        dialog3.showModal();
+
+        setTimeout(() => {
+          if (inputEl3) {
+            inputEl3.focus();
+            inputEl3.select();
+          }
+        }, 0);
+
+        okBtn3.onclick = () => {
+          const val = inputEl3 ? inputEl3.value : '';
+          dialog3.close();
+          resolve(val);
+        };
+
+        cancelBtn3.onclick = () => {
+          dialog3.close();
+          resolve(null);
+        };
+      });
+    };
+  }
+
+  if (!window.appSelectPdfMode) {
+    window.appSelectPdfMode = function() {
+      return new Promise(resolve => {
+        document.querySelectorAll('.pdf-mode-dialog-overlay').forEach(el => el.remove());
+
+        const overlay = document.createElement('div');
+        overlay.className = 'pdf-mode-dialog-overlay';
+        overlay.innerHTML = `
+          <div style="
+            position:fixed;top:0;left:0;width:100vw;height:100vh;
+            background:rgba(0,0,0,0.18);z-index:100000;
+            display:flex;align-items:center;justify-content:center;
+            padding:16px;box-sizing:border-box;">
+            
+            <div style="
+              background:#fff;border-radius:18px;overflow:hidden;
+              width:100%;max-width:460px;
+              box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+              
+              <div style="
+                background:#0f3d6b;color:#fff;padding:14px 18px;
+                font-size:1.08em;font-weight:700;">
+                SciMentra
+              </div>
+
+              <div style="padding:18px 18px 14px 18px;">
+                <div style="font-size:1em;color:#1f2d3d;margin-bottom:14px;line-height:1.5;">
+                  Choose PDF type
+                </div>
+
+                               <input type="hidden" id="pdf-mode-selected" value="worksheet">
+
+                <div class="pdf-mode-card" data-value="worksheet" style="
+                  display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 14px;margin-bottom:10px;
+                  border:2px solid #1762a7;border-radius:14px;
+                  cursor:pointer;background:#eef6ff;
+                  transition:all 0.15s ease;box-shadow:0 4px 14px rgba(23,98,167,0.10);">
+                  <span style="font-weight:700;color:#12416c;">Worksheet</span>
+                  <span class="pdf-mode-tick" style="font-size:1.1em;color:#1762a7;font-weight:900;">✓</span>
+                </div>
+
+                <div class="pdf-mode-card" data-value="key" style="
+                  display:flex;align-items:center;justify-content:space-between;
+                  padding:14px 14px;margin-bottom:8px;
+                  border:1.5px solid #cfe0f2;border-radius:14px;
+                  cursor:pointer;background:#f9fcff;
+                  transition:all 0.15s ease;">
+                  <span style="font-weight:700;color:#12416c;">Key</span>
+                  <span class="pdf-mode-tick" style="font-size:1.1em;color:transparent;font-weight:900;">✓</span>
+                </div>
+                               <div style="
+                  display:flex;justify-content:flex-end;gap:10px;
+                  margin-top:16px;">
+                  <button type="button" id="pdf-mode-cancel-btn" style="
+                    border:none;border-radius:999px;
+                    padding:8px 18px;background:#eef3f9;color:#35506b;
+                    font-weight:700;cursor:pointer;">
+                    Cancel
+                  </button>
+                  <button type="button" id="pdf-mode-ok-btn" style="
+                    border:none;border-radius:999px;
+                    padding:8px 18px;background:#0f3d6b;color:#fff;
+                    font-weight:700;cursor:pointer;">
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const hidden = overlay.querySelector('#pdf-mode-selected');
+        const cards = overlay.querySelectorAll('.pdf-mode-card');
+
+        function setSelected(val) {
+          hidden.value = val;
+          cards.forEach(card => {
+            const active = card.getAttribute('data-value') === val;
+            const tick = card.querySelector('.pdf-mode-tick');
+
+            card.style.border = active ? '2px solid #1762a7' : '1.5px solid #cfe0f2';
+            card.style.background = active ? '#eef6ff' : '#f9fcff';
+            card.style.boxShadow = active ? '0 4px 14px rgba(23,98,167,0.10)' : 'none';
+            if (tick) tick.style.color = active ? '#1762a7' : 'transparent';
+          });
+        }
+
+        cards.forEach(card => {
+          card.onclick = function() {
+            setSelected(card.getAttribute('data-value'));
+          };
+        });
+
+        const closeDialog = (value) => {
+          overlay.remove();
+          resolve(value);
+        };
+
+        overlay.querySelector('#pdf-mode-cancel-btn').onclick = () => closeDialog(null);
+        overlay.querySelector('#pdf-mode-ok-btn').onclick = () => closeDialog(hidden.value || 'worksheet');
+      });
+    };
+  }
 })();
-
     let currentUser = null;
 
     const filterConfig = {
-      classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class"],
-      subjectMappings: {
-        "3rd Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
-        "4th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
-        "5th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
-        "6th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "7th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "8th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "9th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-        "10th Class": ["Telugu", "Hindi", "English 1", "English 2", "Math", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"]
+      classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"],
+      boards: [
+        "CBSE",
+        "ICSE",
+        "Olympiad",
+        "IIT & NEET Foundation",
+        "JEE Mains",
+        "JEE Advance",
+        "NEET",
+        "AP State Board (SCERT)",
+        "Other"
+      ],
+      boardSubjectMappings: {
+        "CBSE": [
+          "English",
+          "Hindi",
+          "Mathematics",
+          "Science",
+          "Social Science",
+          "Computer Science / IT",
+          "Sanskrit",
+          "Physical Education",
+          "General Knowledge",
+          "Environmental Studies",
+          "Other"
+        ],
+        "ICSE": [
+          "English Language",
+          "English Literature",
+          "Second Language",
+          "Mathematics",
+          "Physics",
+          "Chemistry",
+          "Biology",
+          "History & Civics",
+          "Geography",
+          "Computer Applications",
+          "Environmental Education",
+          "Commercial Studies / Economics",
+          "Other"
+        ],
+        "Olympiad": [
+          "Mathematics",
+          "Science",
+          "English",
+          "Reasoning",
+          "General Knowledge",
+          "Cyber / Computer"
+        ],
+        "IIT & NEET Foundation": [
+          "Mathematics",
+          "Physics",
+          "Chemistry",
+          "Biology",
+          "Reasoning"
+        ],
+        "JEE Mains": [
+          "Physics",
+          "Chemistry",
+          "Mathematics"
+        ],
+        "JEE Advance": [
+          "Physics",
+          "Chemistry",
+          "Mathematics"
+        ],
+        "NEET": [
+          "Physics",
+          "Chemistry",
+          "Biology"
+        ],
+        "AP State Board (SCERT)": [
+          "Telugu",
+          "Hindi",
+          "English",
+          "Mathematics",
+          "Physical Science",
+          "Biological Science",
+          "Social Studies",
+          "General Science",
+          "Computer / ICT",
+          "Other"
+        ],
+        "Other": [
+          "Other"
+        ]
       },
       questionTypes: [
-      "MCQ (Single)",
-      "MCQ (Multiple)",
-      "Descriptive",
-      "Text Book (MCQ Single)",
-      "Text Book (MCQ Multiple)"
-    ],
+        "MCQ (Single)",
+        "MCQ (Multiple)",
+        "Fill in the Blanks",
+        "Assertion and Reason (MCQ Single)",
+        "Descriptive"
+      ],
       marks: Array.from({ length: 10 }, (_, i) => i + 1),
       levels: ["Level 1", "Level 2", "Level 3"]
     };
@@ -339,7 +658,7 @@ const db = dbApp.firestore();
           currentUser = user;
           initializeApp();
         } else {
-          window.location.replace('index.html');
+          window.location.href = 'login.html';
         }
       });
 
@@ -354,17 +673,38 @@ const db = dbApp.firestore();
   setupDropdowns();
   // Do NOT fetch on load; wait until Class + Subject are chosen
   document.getElementById('questions-display-area').innerHTML =
-    '<p class="no-questions-message">Select Class and Subject to view questions.</p>';
+    '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
   document.getElementById('download-pdf-btn').addEventListener('click', exportPDF);
+  document.getElementById('manage-students-btn').addEventListener('click', showClassSectionStudentPopup);
 }
 
     // PDF EXPORT USING html2pdf.js
     async function exportPDF(e) {
       e.preventDefault();
       const pdfBtn = document.getElementById('download-pdf-btn');
-      const shuffleExport = confirm("Shuffle MCQ options in worksheet?");
+      const shuffleExport = await appConfirm("Shuffle MCQ options in worksheet?");
+
+const exportMode = await appSelectPdfMode();
+
+if (!exportMode) {
+  pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+  pdfBtn.disabled = false;
+  return;
+}
+
+const schoolNameInput = await appPrompt('Enter School Name', '');
+if (schoolNameInput === null) {
+  pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+  pdfBtn.disabled = false;
+  return;
+}
+
+const finalSchoolName = (schoolNameInput || '').trim();
+
+const includeWorksheet = exportMode === 'worksheet';
+const includeKey = exportMode === 'key';
       pdfBtn.disabled = true;
-      pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+      pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Preview...';
 
       const classVal = document.getElementById('class-value').value || '';
       const subjectVal = document.getElementById('subject-value').value || '';
@@ -393,7 +733,8 @@ const qtypeHeaderLine = (__chosenTypes.length === 1) ? __chosenTypes[0] : 'MIXED
 const avoidCSS = document.createElement('style');
 avoidCSS.textContent = `
   .keep-with-next { page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid; }
-  .no-split, .no-split * img { page-break-inside: avoid; break-inside: avoid; }
+  .no-split { page-break-inside: auto; break-inside: auto; }
+  .no-split img { page-break-inside: avoid; break-inside: avoid; }
 `;
 printable.prepend(avoidCSS);
       printable.id = 'printable-export';
@@ -405,26 +746,74 @@ printable.prepend(avoidCSS);
       printable.style.margin = "0 auto";
       printable.style.padding = "0";
       printable.style.lineHeight = "1.6";
+if (includeWorksheet) {
+  printable.innerHTML = `
+        ${finalSchoolName ? `
+    <div style="
+      text-align:center;
+      font-size:1.85em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      margin:10px 0 16px 0;
+      line-height:1.2;
+      text-transform:uppercase;
+      font-family:'Times New Roman', Times, serif;
+      color:#7A2230;
+      -webkit-text-fill-color:#7A2230;
+      -webkit-text-stroke:1.2px #163A63;
+    ">
+      ${__qbEscapeHtml(String(finalSchoolName).toUpperCase())}
+    </div>` : ''}
 
-     printable.innerHTML = `
-  <div style="
-    margin:22px auto 10px auto;
-    border:2.5px solid #bdd7f6;
-    border-radius:16px;
-    padding:18px 40px 14px 40px;
-    background:#fafdff;
-    box-sizing:border-box;
-    max-width:510px;
-  ">
-    <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
-      ${String(chapterTitleForBox || '').toUpperCase()}
+    <div style="
+      margin:0 auto 10px auto;
+      border:2.5px solid #bdd7f6;
+      border-radius:16px;
+      padding:18px 40px 14px 40px;
+      background:#fafdff;
+      box-sizing:border-box;
+      max-width:510px;
+    ">
+      <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
+        ${String(chapterTitleForBox || '').toUpperCase()}
+      </div>
+      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;text-align:center;margin-bottom:4px;">
+        WORKSHEET
+      </div>
     </div>
-    <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;text-align:center;margin-bottom:4px;">
-      WORKSHEET
+  `;
+} else {
+  printable.innerHTML = `
+    <div style="
+      text-align:center;
+      font-size:1.85em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      margin:10px 0 16px 0;
+      line-height:1.2;
+      text-transform:uppercase;
+    ">
+      ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
     </div>
-  </div>
-`;
 
+    <div style="
+      margin:0 auto 10px auto;
+      border:2.5px solid #bdd7f6;
+      border-radius:16px;
+      padding:18px 40px 14px 40px;
+      background:#fafdff;
+      box-sizing:border-box;
+      max-width:510px;
+    ">
+      <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
+        ${String(chapterTitleForBox || '').toUpperCase()}
+      </div>
+      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;text-align:center;margin-bottom:4px;">
+        Questions & Answers
+      </div>
+    </div>
+  `;
+}
       const displayArea = document.getElementById('questions-display-area');
       const nodes = displayArea.querySelectorAll('.question-item');
       if (!nodes.length) {
@@ -435,25 +824,18 @@ printable.prepend(avoidCSS);
       }
 
       // Helper for hanging indent
-      function createHangingDiv(qNum, text, isMCQ = false) {
-        if (isMCQ) {
-          return `
-            <div style="margin-bottom:2px;">
-              <div style="text-indent:-20px;padding-left:20px;font-size:11pt;display:flex;justify-content:space-between;align-items:center;max-width:98%;">
-                <span style="flex:1;">${qNum}. ${text}</span>
-                <span style=" display:inline-block; text-align:right; font-weight:normal; font-size:1.15em; letter-spacing:2px; min-width:38px; font-family:'Times New Roman', Times, serif; ">
-                  ( &nbsp;&nbsp; )
-                </span>
+           function createHangingDiv(qNum, text, isMCQ = false) {
+        return `
+          <div class="question-container" style="display:flex;align-items:flex-start;width:100%;box-sizing:border-box;">
+            <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;flex:0 0 auto;">
+              ${qNum}.
+            </div>
+            <div class="question-body" style="flex:1;line-height:1.6;">
+              <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
+                ${text || ''}
               </div>
-            </div>`;
-        } else {
-          return `
-            <div style="margin-bottom:2px;">
-              <div style="text-indent:-20px;padding-left:20px;font-size:11pt;">
-                ${qNum}. ${text}
-              </div>
-            </div>`;
-        }
+            </div>
+          </div>`;
       }
 
       // MCQ Option Formatter
@@ -571,12 +953,19 @@ function buildQuestionHTML(item, __parent = printable) {
   }
   const isMCQ = options.length === 4;
 
-  const questionHtml = `
-    <div class="question-container" style="display:flex;align-items:flex-start;margin-bottom:10px;page-break-inside:avoid;break-inside:avoid;">
-      <div class="question-body" style="flex:1;">
-        ${createHangingDiv(qCounter, questionLine, isMCQ)}
+   const questionHtml = `
+   <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <tr>
+                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#163A63;font-weight:700;">
+            ${qCounter}.
+          </td>
+          <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
+                    <div class="question-text" style="line-height:1.25;font-size:11pt;color:#163A63;font-weight:700;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+          .replace(/^\s+/, '')
+          .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
-        <div class="options-block" style="margin-top:2px;padding-left:20px;">
+                <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
           ${
             isMCQ ? (() => {
               let optionLinesRaw = options.slice(0, 4).map((opt) => {
@@ -590,9 +979,10 @@ function buildQuestionHTML(item, __parent = printable) {
               }
             }
             
-            let optionLines = optionLinesRaw.map((text, i) => {
+                        let optionLines = optionLinesRaw.map((text, i) => {
               return String.fromCharCode(65 + i) + ") " + text;
             });
+            const optionHtmlLines = optionLines.map(opt => __qbFormatOptionForPrint(opt));
 
               // ✅ 4-in-one-line → else 2+2 → else one-by-one (PDF-stable)
        const pwRaw = printable.getBoundingClientRect().width || 820;
@@ -623,7 +1013,7 @@ function buildQuestionHTML(item, __parent = printable) {
         if (fitsFour) {
           return `
             <div style="display:flex;flex-wrap:nowrap;gap:32px;margin-bottom:3px;width:100%;">
-              ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;">${opt.trim()}</span>`).join('')}
+                            ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;">${opt}</span>`).join('')}
             </div>`;
         }
         
@@ -641,17 +1031,17 @@ function buildQuestionHTML(item, __parent = printable) {
         if (!anyTooWideForTwoCols) {
              return `
         <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;">
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[0]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[1]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[2]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionLines[3]}</span>
+                    <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
+          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
+          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
+          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
         </div>`;
 
         }
         
         // 3) Else one-by-one (4 lines)
-        return optionLines
-          .map(opt => `<div style="margin-bottom:2px;">${opt.trim().replace(/\n/g, '<br>')}</div>`)
+              return optionHtmlLines
+          .map(opt => `<div style="margin-bottom:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
           .join('');
             })()
             : (options.length > 0
@@ -659,7 +1049,9 @@ function buildQuestionHTML(item, __parent = printable) {
                 : '')
           }
         </div>
-      </div>
+          </td>
+        </tr>
+      </table>
     </div>`;
 
   if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
@@ -701,7 +1093,7 @@ if (selChaptersForHeader.length >= 2) {
 // helpers
 function renderCenteredChapterTitle(text) {
   const t = document.createElement('div');
-  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;';
+  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid;display:block;width:100%;color:#163A63;';
   t.textContent = String(text || 'Unspecified').toUpperCase();
   printable.appendChild(t);
 }
@@ -713,31 +1105,39 @@ function renderTypeHeading(text, __parent = printable) {
   const t = String(text || '').trim();
   const h = document.createElement('div');
 
-  // Make DESCRIPTIVE heading centered & strong like your MCQ headings
   if (/^descriptive$/i.test(t)) {
-    h.style.cssText = `
-      font-size:1.12em;
-      font-weight:900;
-      letter-spacing:0.03em;
-      text-align:center;
-      margin:14px 0 10px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-    `;
-    h.textContent = 'DESCRIPTIVE';
-  } else {
-    // generic fallback
-    h.style.cssText = `
-      font-size:1.08em;
-      font-weight:900;
-      letter-spacing:0.02em;
-      text-align:center;
-      margin:14px 0 10px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-    `;
-    h.textContent = t.toUpperCase();
-  }
+  h.style.cssText = `
+    font-size:1.12em;
+    font-weight:900;
+    letter-spacing:0.03em;
+    text-align:center;
+    margin:14px 0 10px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+    width:100%;
+    color:#7A2230;
+  `;
+  h.textContent = 'DESCRIPTIVE';
+} else {
+  h.style.cssText = `
+    font-size:1.08em;
+    font-weight:900;
+    letter-spacing:0.02em;
+    text-align:center;
+    margin:14px 0 10px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+    width:100%;
+    color:#7A2230;
+  `;
+  h.textContent = t.toUpperCase();
+}
 
   __parent.appendChild(h);
   return h;
@@ -752,135 +1152,311 @@ function renderLeftHeading(text, __parent = printable) {
   const h = document.createElement('div');
 
   if (isLevel) {
-   h.style.cssText = `
-      width:100%;
-      box-sizing:border-box;
-      background:#fff;
-      color:#000;
-      border:2px solid #000;
-      text-align:center;
-      font-weight:900;
-      letter-spacing:0.06em;
-      padding:6px 10px;
-      border-radius:12px;
-      margin:10px 0 8px 0;
-      page-break-inside:avoid;
-      break-inside:avoid;
-    `;
-    h.textContent = t.toUpperCase();
-  } else if (isMCQHeading) {
+  h.style.cssText = `
+    width:100%;
+    box-sizing:border-box;
+    background:#F3F3F3;
+    color:#111111;
+    border:2px solid #111111;
+    text-align:center;
+    font-weight:900;
+    letter-spacing:0.06em;
+    padding:6px 10px;
+    border-radius:12px;
+    margin:10px 0 8px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+  `;
+  h.textContent = t.toUpperCase();
+} else if (isMCQHeading) {
+  h.style.cssText = `
+    font-size:1.12em;
+    font-weight:900;
+    letter-spacing:0.03em;
+    text-align:center;
+    margin:14px 0 10px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+    display:block;
+    width:100%;
+    color:#7A2230;
+  `;
+  h.textContent = t.toUpperCase();
+} else {
     h.style.cssText = `
-      font-size:1.12em;
-      font-weight:900;
-      letter-spacing:0.03em;
-      text-align:center;
-      margin:14px 0 10px 0;
+      font-size:1.05em;
+      font-weight:800;
+      letter-spacing:0.01em;
+      text-align:left;
+      margin:8px 0 6px 0;
       page-break-inside:avoid;
       break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
     `;
-    h.textContent = t.toUpperCase();
-  } else {
-    h.style.cssText = 'font-size:1.05em;font-weight:800;letter-spacing:0.01em;text-align:left;margin:8px 0 6px 0;';
     h.textContent = t;
   }
 
   __parent.appendChild(h);
   return h;
 }
-
 // Decide layout mode
 const includesDescriptive = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 const includesAnyMCQ = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)') || selectedQtypes.includes('MCQ (Multiple)');
 
 const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 
-// === RENDER ===
-if (!multipleChaptersSelected) {
-  // Single chapter: structured render (dynamic marks → levels) + MCQs
-  const list = Array.from(nodes);
+function __renderKeyOptionsLayout(optionLines, hostNode) {
+  if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-    // === ORDER: MCQ (Single) → MCQ (Multiple) → Descriptive ===
-  const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-  const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-  const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
-
-  // Helper: render MCQs grouped by Level only
-  function __renderMCQByLevel(listScope, typeLabel) {
-    const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-    if (!mcq.length) return;
-
-     renderLeftHeading(typeLabel);
-    const buckets = levelsOrder.map(lvl => ({
-      name: lvl,
-      items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-    }));
-    const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
-    if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
-
-    buckets.forEach(b => {
-      if (!b.items.length) return;
-      const __sec = document.createElement('div');
-      __sec.className = 'keep-with-next';
-      __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-      printable.appendChild(__sec);
-
-      renderLeftHeading(b.name, __sec);
-      buildQuestionHTML(b.items[0], __sec);
-      b.items.slice(1).forEach(item => buildQuestionHTML(item));
-    });
+  if (optionLines.length !== 4) {
+    return optionLines.map(opt =>
+      `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`
+    ).join('');
   }
 
-  // 1) MCQ (Single)
-if (wantSingle) {
-  __renderMCQByLevel(list, 'MCQ (Single)');
-}
+  const pageEl =
+    (hostNode && hostNode.closest && hostNode.closest('.a4-page')) ||
+    printable ||
+    document.body;
 
-if (wantMulti) {
-  __renderMCQByLevel(list, 'MCQ (Multiple)');
-}
+  const pwRaw = (pageEl && pageEl.getBoundingClientRect().width) || 820;
+  const pw = Math.min(pwRaw, 820);
 
-if (wantDesc) {
-  renderTypeHeading('DESCRIPTIVE');
-    const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
-
-    const presentMarks = Array.from(new Set(
-      descList.map(n => Number(n.getAttribute('data-marks') || ''))
-              .filter(m => Number.isFinite(m) && m > 0)
-    )).sort((a,b) => a - b);
-
-    presentMarks.forEach(m => {
-      const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
-
-      const groups = levelsOrder.map(lvl => ({
-        lvl,
-        items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-      })).filter(g => g.items.length);
-
-      if (!groups.length) return;
-
-      renderLeftHeading(`${m} Marks`);
-      groups.forEach(g => {
-        renderLeftHeading(g.lvl);
-        g.items.forEach(item => buildQuestionHTML(item));
-      });
-    });
+  function measureRowHTML(html) {
+    const d = document.createElement('div');
+    d.style.cssText = `
+      visibility:hidden; position:absolute; left:-99999px; top:0;
+      white-space:nowrap; padding:0; margin:0; border:none;
+      font-family:Times New Roman,Times,serif; font-size:11pt;
+    `;
+    d.innerHTML = html;
+    document.body.appendChild(d);
+    const w = d.getBoundingClientRect().width;
+    d.remove();
+    return w;
   }
 
+  const fourRowHTML = optionLines.map(opt =>
+    `<span style="display:inline-block;margin-right:32px;min-width:70px;">${String(opt).trim()}</span>`
+  ).join('');
+
+    const optionHtmlLines = optionLines.map(opt => __qbFormatOptionForPrint(opt));
+  const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
+
+  const isShortLatexSet = hasLatex && optionLines.every(opt => {
+    const s = String(opt)
+      .replace(/^([A-D])\)\s*/,'')
+      .replace(/\\\(|\\\)|\\\[|\\\]/g,'')
+      .replace(/\$/g,'')
+      .replace(/\\[a-zA-Z]+/g,'x')
+      .replace(/[{}]/g,'')
+      .trim();
+    return s.length <= 10;
+  });
+
+  const maxFour = Math.max(420, pw - 20);
+  const fitsFour = ((!hasLatex || isShortLatexSet) && (measureRowHTML(fourRowHTML) <= maxFour));
+
+  if (fitsFour) {
+    return `
+      <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
+                ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
+      </div>`;
+  }
+
+  const colGap = 24;
+  const halfWidth = Math.max(240, (pw - colGap) / 2);
+
+  const optWidths = optionLines.map(opt => measureRowHTML(
+    `<span style="display:inline-block;font-family:Times New Roman,Times,serif;font-size:11pt;">${String(opt).trim()}</span>`
+  ));
+
+  const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
+
+  if (!anyTooWideForTwoCols) {
+    return `
+      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
+               <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
+      </div>`;
+  }
+
+  return optionHtmlLines
+    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
+    .join('');
+}
+
+function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
+  const clone = item.cloneNode(true);
+  const qTextEl = clone.querySelector('.question-text');
+
+ let questionLine = '';
+  let options = [];
+  if (qTextEl) {
+    let html = qTextEl.innerHTML.replace(/<img[^>]*>/gi, '');
+    let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
+      .map(s => s.replace(/&nbsp;/g, ' ').trim())
+      .filter(Boolean);
+
+    parts = parts.filter(line => line && !/^<br\s*\/?>$/i.test(line));
+
+    if (parts.length > 0) {
+      questionLine = parts[0];
+
+      let optionLines = [];
+      for (let i = 1; i < parts.length; i++) {
+        let line = parts[i];
+        let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
+        if (inlineOpts && inlineOpts.length >= 2) {
+          optionLines.push(...inlineOpts.map(opt => opt.trim()));
+        } else if (line) {
+          optionLines.push(line);
+        }
+      }
+
+      if (optionLines.length === 4) {
+        options = optionLines.map((opt, i) =>
+          /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
+        );
+      } else {
+        options = optionLines;
+      }
+    }
+  }
+
+  const docId = item.getAttribute('data-id');
+  const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
+
+  let answerText = '';
+  let explanationText = '';
+
+  if (source) {
+    answerText =
+      source.parsedAnswer ||
+      source.answer ||
+      source.parsedAns ||
+      source.correctAnswer ||
+      source.correct_option ||
+      source.correctOption ||
+      source.finalAnswer ||
+      '';
+
+    explanationText =
+      source.explanation ||
+      source.solution ||
+      source.explain ||
+      '';
+  }
+
+  answerText = String(answerText || '')
+    .replace(/^\s*Answer\s*:\s*/i, '')
+    .replace(/^\s*Ans\s*:\s*/i, '')
+    .trim();
+
+  explanationText = String(explanationText || '')
+    .replace(/^\s*Explanation\s*:\s*/i, '')
+    .trim();
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
+
+  const qDiv = document.createElement('div');
+qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
+
+const qNoDiv = document.createElement('div');
+qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:bold; color:#163A63;';
+qNoDiv.textContent = 'Q' + qNum + '.';
+
+const qTextDiv = document.createElement('div');
+qTextDiv.style.cssText = 'flex:1; min-width:0; color:#163A63; font-weight:700;';
+qTextDiv.style.whiteSpace = 'pre-wrap';
+qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ');
+
+qDiv.appendChild(qNoDiv);
+qDiv.appendChild(qTextDiv);
+
+  const aDiv = document.createElement('div');
+  aDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px; line-height:1.7;';
+   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
+const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+
+if (isPointWise) {
+  const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
+
+  const formattedAnswer = ansLines.map(line => {
+    const numberedMatch = line.match(/^\s*(\d+[\.\)])\s+(.*)$/);
+    const bulletMatch = line.match(/^\s*([-•])\s+(.*)$/);
+
+    if (numberedMatch) {
+      return `
+        <div style="display:flex;align-items:flex-start;margin-bottom:4px;">
+          <span style="flex:0 0 26px;max-width:26px;">${numberedMatch[1]}</span>
+          <span style="flex:1;min-width:0;">${numberedMatch[2]}</span>
+        </div>
+      `;
+    }
+
+    if (bulletMatch) {
+      return `
+        <div style="display:flex;align-items:flex-start;margin-bottom:4px;">
+          <span style="flex:0 0 18px;max-width:18px;">${bulletMatch[1]}</span>
+          <span style="flex:1;min-width:0;">${bulletMatch[2]}</span>
+        </div>
+      `;
+    }
+
+    return `<div style="margin-bottom:4px;">${line}</div>`;
+  }).join('');
+
+  aDiv.innerHTML =
+    '<div style="color:#7A2230;font-weight:700;">Answer:</div>' +
+    '<div style="color:#111111;padding-left:18px;margin-top:2px;">' + formattedAnswer + '</div>';
 } else {
-  // Two or more chapters: per-chapter sections below the box
-  chapterOrder.forEach(ch => {
-    const list = chapterMap.get(ch) || [];
-    if (!list.length) return;
+  aDiv.innerHTML =
+    '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
+    '<span style="color:#111111;">' + ansRaw + '</span>';
+}
 
-    // Chapter name centered
-    renderCenteredChapterTitle(ch);
+  wrap.appendChild(qDiv);
 
-      // === ORDER per chapter: MCQ (Single) → MCQ (Multiple) → Descriptive ===
+  if (options.length) {
+    const optDiv = document.createElement('div');
+    optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
+    optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
+    wrap.appendChild(optDiv);
+  }
+
+  wrap.appendChild(aDiv);
+
+  if (explanationText && String(explanationText).trim()) {
+    const eDiv = document.createElement('div');
+    eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:6px; line-height:1.7;';
+       eDiv.innerHTML = '<span style="color:#7A2230;font-weight:700;">Explanation:</span><br><span style="color:#111111;">' + String(explanationText).replace(/\n/g, '<br>') + '</span>';
+    wrap.appendChild(eDiv);
+  }
+
+  __parent.appendChild(wrap);
+}
+if (includeWorksheet) {
+  // === RENDER WORKSHEET ===
+  if (!multipleChaptersSelected) {
+    const list = Array.from(nodes);
+
     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
     const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
     const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-    function __renderMCQByLevelFor(listScope, typeLabel) {
+    function __renderMCQByLevel(listScope, typeLabel) {
       const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
       if (!mcq.length) return;
 
@@ -894,7 +1470,7 @@ if (wantDesc) {
 
       buckets.forEach(b => {
         if (!b.items.length) return;
-       const __sec = document.createElement('div');
+        const __sec = document.createElement('div');
         __sec.className = 'keep-with-next';
         __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
         printable.appendChild(__sec);
@@ -905,23 +1481,98 @@ if (wantDesc) {
       });
     }
 
-   // 1) MCQ (Single)
-if (wantSingle) {
-  __renderMCQByLevelFor(list, 'MCQ (Single)');
-}
+    if (wantSingle) __renderMCQByLevel(list, 'MCQ (Single)');
+    if (wantMulti) __renderMCQByLevel(list, 'MCQ (Multiple)');
 
-if (wantMulti) {
-  __renderMCQByLevelFor(list, 'MCQ (Multiple)');
-}
+         if (wantDesc) {
+        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
 
-if (wantDesc) {
-    renderTypeHeading('DESCRIPTIVE');
+        const presentMarks = Array.from(new Set(
+          descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                  .filter(m => Number.isFinite(m) && m > 0)
+        )).sort((a,b) => a - b);
+
+        let __descHeadingShown = false;
+
+        presentMarks.forEach(m => {
+          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+
+          const groups = levelsOrder.map(lvl => ({
+            lvl,
+            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+          })).filter(g => g.items.length);
+
+          if (!groups.length) return;
+
+          groups.forEach((g, idx) => {
+            const __sec = document.createElement('div');
+            __sec.className = 'keep-with-next';
+            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+            printable.appendChild(__sec);
+
+            if (!__descHeadingShown) {
+              renderTypeHeading('DESCRIPTIVE', __sec);
+              __descHeadingShown = true;
+            }
+
+            if (idx === 0) {
+              renderLeftHeading(`${m} Marks`, __sec);
+            }
+
+            renderLeftHeading(g.lvl, __sec);
+            buildQuestionHTML(g.items[0], __sec);
+            g.items.slice(1).forEach(item => buildQuestionHTML(item));
+          });
+        });
+      }
+  } else {
+    chapterOrder.forEach(ch => {
+      const list = chapterMap.get(ch) || [];
+      if (!list.length) return;
+
+      renderCenteredChapterTitle(ch);
+
+      const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+      const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+      const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+
+      function __renderMCQByLevelFor(listScope, typeLabel) {
+        const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+        if (!mcq.length) return;
+
+        renderLeftHeading(typeLabel);
+        const buckets = levelsOrder.map(lvl => ({
+          name: lvl,
+          items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        }));
+        const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+        if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
+
+        buckets.forEach(b => {
+          if (!b.items.length) return;
+          const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          renderLeftHeading(b.name, __sec);
+          buildQuestionHTML(b.items[0], __sec);
+          b.items.slice(1).forEach(item => buildQuestionHTML(item));
+        });
+      }
+
+      if (wantSingle) __renderMCQByLevelFor(list, 'MCQ (Single)');
+      if (wantMulti) __renderMCQByLevelFor(list, 'MCQ (Multiple)');
+
+         if (wantDesc) {
       const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
 
       const presentMarks = Array.from(new Set(
         descList.map(n => Number(n.getAttribute('data-marks') || ''))
                 .filter(m => Number.isFinite(m) && m > 0)
       )).sort((a,b) => a - b);
+
+      let __descHeadingShown = false;
 
       presentMarks.forEach(m => {
         const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
@@ -933,22 +1584,239 @@ if (wantDesc) {
 
         if (!groups.length) return;
 
-        renderLeftHeading(`${m} Marks`);
-        groups.forEach(g => {
+        groups.forEach((g, idx) => {
           const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          if (!__descHeadingShown) {
+            renderTypeHeading('DESCRIPTIVE', __sec);
+            __descHeadingShown = true;
+          }
+
+          if (idx === 0) {
+            renderLeftHeading(`${m} Marks`, __sec);
+          }
+
+          renderLeftHeading(g.lvl, __sec);
+          buildQuestionHTML(g.items[0], __sec);
+          g.items.slice(1).forEach(item => buildQuestionHTML(item));
+        });
+      });
+    }
+    });
+  }
+}
+
+if (includeKey) {
+  if (includeWorksheet) {
+    const spacer = document.createElement('div');
+    spacer.style.cssText = 'height:24px;';
+    printable.appendChild(spacer);
+
+    const keySchool = document.createElement('div');
+    keySchool.style.cssText = `
+      text-align:center;
+      font-size:1.85em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      margin:10px 0 16px 0;
+      line-height:1.2;
+      text-transform:uppercase;
+    `;
+    keySchool.textContent = String(finalSchoolName || '').toUpperCase();
+    printable.appendChild(keySchool);
+
+    const keyHeader = document.createElement('div');
+    keyHeader.style.cssText = `
+      margin:0 auto 10px auto;
+      border:2.5px solid #bdd7f6;
+      border-radius:16px;
+      padding:18px 40px 14px 40px;
+      background:#fafdff;
+      box-sizing:border-box;
+      max-width:510px;
+      text-align:center;
+    `;
+    keyHeader.innerHTML = `
+      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
+        Questions & Answers
+      </div>
+    `;
+    printable.appendChild(keyHeader);
+  }
+
+  let keyCounter = 1;
+
+  function __renderKeyQuestion(item, __parent = printable) {
+    __getQuestionAnswerHTML(item, keyCounter, __parent);
+    keyCounter++;
+  }
+
+  if (!multipleChaptersSelected) {
+    const list = Array.from(nodes);
+
+    const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+    const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+    const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+
+    function __renderKeyMCQByLevel(listScope, typeLabel) {
+      const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+      if (!mcq.length) return;
+
+      renderLeftHeading(typeLabel);
+
+      const buckets = levelsOrder.map(lvl => ({
+        name: lvl,
+        items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+      }));
+      const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+      if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
+
+      buckets.forEach(b => {
+        if (!b.items.length) return;
+
+        const __sec = document.createElement('div');
         __sec.className = 'keep-with-next';
         __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
         printable.appendChild(__sec);
 
-        renderLeftHeading(g.lvl, __sec);
-        buildQuestionHTML(g.items[0], __sec);
-        g.items.slice(1).forEach(item => buildQuestionHTML(item));
+        renderLeftHeading(b.name, __sec);
+        __renderKeyQuestion(b.items[0], __sec);
+        b.items.slice(1).forEach(item => __renderKeyQuestion(item));
+      });
+    }
+
+    if (wantSingle) __renderKeyMCQByLevel(list, 'MCQ (Single)');
+    if (wantMulti)  __renderKeyMCQByLevel(list, 'MCQ (Multiple)');
+
+    if (wantDesc) {
+      const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
+
+      const presentMarks = Array.from(new Set(
+        descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                .filter(m => Number.isFinite(m) && m > 0)
+      )).sort((a,b) => a - b);
+
+      let __descHeadingShown = false;
+
+      presentMarks.forEach(m => {
+        const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+
+        const groups = levelsOrder.map(lvl => ({
+          lvl,
+          items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        })).filter(g => g.items.length);
+
+        if (!groups.length) return;
+
+        groups.forEach((g, idx) => {
+          const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          if (!__descHeadingShown) {
+            renderTypeHeading('DESCRIPTIVE', __sec);
+            __descHeadingShown = true;
+          }
+
+          if (idx === 0) {
+            renderLeftHeading(`${m} Marks`, __sec);
+          }
+
+          renderLeftHeading(g.lvl, __sec);
+          __renderKeyQuestion(g.items[0], __sec);
+          g.items.slice(1).forEach(item => __renderKeyQuestion(item));
         });
       });
     }
-  });
+  } else {
+    chapterOrder.forEach(ch => {
+      const list = chapterMap.get(ch) || [];
+      if (!list.length) return;
+
+      renderCenteredChapterTitle(ch);
+
+      const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+      const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+      const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+
+      function __renderKeyMCQByLevelFor(listScope, typeLabel) {
+        const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+        if (!mcq.length) return;
+
+        renderLeftHeading(typeLabel);
+
+        const buckets = levelsOrder.map(lvl => ({
+          name: lvl,
+          items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        }));
+        const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+        if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
+
+        buckets.forEach(b => {
+          if (!b.items.length) return;
+
+          const __sec = document.createElement('div');
+          __sec.className = 'keep-with-next';
+          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+          printable.appendChild(__sec);
+
+          renderLeftHeading(b.name, __sec);
+          __renderKeyQuestion(b.items[0], __sec);
+          b.items.slice(1).forEach(item => __renderKeyQuestion(item));
+        });
+      }
+
+      if (wantSingle) __renderKeyMCQByLevelFor(list, 'MCQ (Single)');
+      if (wantMulti)  __renderKeyMCQByLevelFor(list, 'MCQ (Multiple)');
+
+      if (wantDesc) {
+        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
+
+        const presentMarks = Array.from(new Set(
+          descList.map(n => Number(n.getAttribute('data-marks') || ''))
+                  .filter(m => Number.isFinite(m) && m > 0)
+        )).sort((a,b) => a - b);
+
+        let __descHeadingShown = false;
+
+        presentMarks.forEach(m => {
+          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+
+          const groups = levelsOrder.map(lvl => ({
+            lvl,
+            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+          })).filter(g => g.items.length);
+
+          if (!groups.length) return;
+
+          groups.forEach((g, idx) => {
+            const __sec = document.createElement('div');
+            __sec.className = 'keep-with-next';
+            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+            printable.appendChild(__sec);
+
+            if (!__descHeadingShown) {
+              renderTypeHeading('DESCRIPTIVE', __sec);
+              __descHeadingShown = true;
+            }
+
+            if (idx === 0) {
+              renderLeftHeading(`${m} Marks`, __sec);
+            }
+
+            renderLeftHeading(g.lvl, __sec);
+            __renderKeyQuestion(g.items[0], __sec);
+            g.items.slice(1).forEach(item => __renderKeyQuestion(item));
+          });
+        });
+      }
+    });
+  }
 }
-  
      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
       await window.MathJax.typesetPromise([printable]);
       await new Promise(res => setTimeout(res, 150));
@@ -972,26 +1840,23 @@ async function __waitForImages(root){
 }
 await __waitForImages(printable);
 
-      html2pdf().set({
-        margin: [1.5, 1.5, 1.5, 1.5],
-        filename: `Question_Bank_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((selChaptersForHeader.join('_')) || 'All').replace(/ /g, "_")}.pdf`,
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'cm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      }).from(printable)
-        .toPdf()
-        .save()
-    .then(() => {
-      __cleanupMount();
-      pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
-      pdfBtn.disabled = false;
-    })
-    .catch((err) => {
-      __cleanupMount();
-      alert("Failed to export PDF: " + err);
-      pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
-      pdfBtn.disabled = false;
-    });
+          const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((selChaptersForHeader.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
+
+      try {
+        await __qbOpenPrintWindowForPDF({
+          title: exportFileName.replace(/\.pdf$/i, ''),
+          contentHtml: printable.innerHTML
+        });
+
+        __cleanupMount();
+        pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+        pdfBtn.disabled = false;
+      } catch (err) {
+        __cleanupMount();
+        alert("Failed to open print PDF: " + err.message);
+        pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+        pdfBtn.disabled = false;
+      }
     }
 
     async function exportWord() {
@@ -1125,7 +1990,7 @@ await __waitForImages(printable);
       return bytes.buffer;
     }
 
-    function saveAs(blob, fileName) {
+   function saveAs(blob, fileName) {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = fileName;
@@ -1137,6 +2002,512 @@ await __waitForImages(printable);
       }, 50);
     }
 
+async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
+  const printWin = window.open('', '_blank');
+  if (!printWin) {
+    throw new Error('Popup blocked. Please allow popups for preview.');
+  }
+
+  const safeTitle = __qbEscapeHtml(String(title || 'Question_Bank'));
+  const contentJson = JSON.stringify(String(contentHtml || ''));
+
+  printWin.document.open();
+  printWin.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${safeTitle}</title>
+  <meta name="viewport" content="width=900, initial-scale=1.0, minimum-scale=0.25, maximum-scale=5.0, user-scalable=yes">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]], processEscapes: true },
+      svg: { fontCache: "global" },
+      options: {
+        ignoreHtmlClass: 'no-mjx',
+        processHtmlClass: 'mjx-process'
+      }
+    };
+  <\/script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"><\/script>
+
+  <style>
+        :root{
+      --qb-page-margin-side: 1.5cm;
+      --qb-page-margin-top: 2.1cm;
+      --qb-page-margin-bottom: 1.9cm;
+      --qb-question-gap: 10px;
+      --qb-line-height: 1.6;
+      --qb-question-font: 11pt;
+    }
+
+    @page{
+      size: A4;
+      margin: 0;
+    }
+
+    html, body{
+      margin:0;
+      padding:0;
+      background:#f4f8fc;
+      color:#000;
+      font-family:'Times New Roman', Times, serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      overflow:auto;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+
+    body{
+      min-width: 900px;
+    }
+
+    #page-container{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      padding:0 0 36px 0;
+      box-sizing:border-box;
+    }
+
+    .print-preview{
+      background:#fff;
+      min-height:297mm;
+      border-radius:13px;
+      padding:0;
+      overflow:visible;
+      position:relative;
+      width:100%;
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+        .a4-page{
+      width:210mm;
+      min-height:297mm;
+      margin:0 auto;
+      padding:var(--qb-page-margin-top) var(--qb-page-margin-side) var(--qb-page-margin-bottom) var(--qb-page-margin-side);
+      max-width:210mm;
+      box-sizing:border-box;
+      background:#fff;
+      color:#000;
+      font-family:'Times New Roman', Times, serif;
+      line-height:var(--qb-line-height);
+      font-size:var(--qb-question-font);
+      transition: padding .25s;
+    }
+    #print-root{
+      width:100%;
+      box-sizing:border-box;
+    }
+
+    .toolbar{
+      width:210mm;
+      max-width:210mm;
+      display:flex;
+      justify-content:center;
+      gap:24px;
+      margin:24px auto 12px auto;
+      position:relative;
+      z-index:11;
+    }
+
+    .toolbar button{
+      background:#1463ad;
+      color:#fff;
+      border:none;
+      padding:16px 42px;
+      border-radius:9px;
+      font-weight:bold;
+      font-size:1.1em;
+      cursor:pointer;
+      box-shadow:0 2px 12px rgba(0,61,107,0.08);
+      transition:background .16s, transform .1s;
+      display:flex;
+      align-items:center;
+      gap:9px;
+    }
+
+    .toolbar button:hover{
+      background:#0f3d6b;
+    }
+
+        #print-root .question-container{
+      margin-bottom:var(--qb-question-gap) !important;
+      display:flex;
+      align-items:flex-start;
+      width:100% !important;
+      box-sizing:border-box !important;
+      page-break-inside:auto !important;
+      break-inside:auto !important;
+    }
+
+    #print-root .question-number{
+      min-width:28px !important;
+      padding-right:4px !important;
+      box-sizing:border-box !important;
+      line-height:1.25 !important;
+      font-size:var(--qb-question-font) !important;
+      color:#163A63 !important;
+      flex:0 0 auto !important;
+    }
+
+    #print-root .question-body{
+      flex:1;
+      line-height:1.6 !important;
+      page-break-inside:auto !important;
+      break-inside:auto !important;
+    }
+
+    #print-root .question-text{
+      line-height:1.25 !important;
+      font-size:var(--qb-question-font) !important;
+      color:#163A63 !important;
+      margin-bottom:6px !important;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+    }
+
+    #print-root .question-text > div{
+      margin:0 !important;
+      padding:0 !important;
+      line-height:var(--qb-line-height) !important;
+    }
+
+    #print-root .options-block{
+      margin-top:2px !important;
+      line-height:1.22 !important;
+      page-break-inside:auto !important;
+      break-inside:auto !important;
+    }
+
+    #print-root .question-img-block,
+    #print-root .opt-grid-2x2,
+    #print-root .no-split{
+      page-break-inside:auto !important;
+      break-inside:auto !important;
+    }
+
+    #print-root img{
+      max-width:100%;
+      height:auto;
+      display:block;
+    }
+
+    #print-root .keep-with-next{
+      page-break-after:avoid !important;
+      break-after:avoid !important;
+    }
+
+    /* IMPORTANT: hide MathJax assistive text so duplicate letters do not appear */
+    mjx-assistive-mml,
+    .MJX_Assistive_MathML,
+    mjx-assistive-mml *{
+      position:absolute !important;
+      width:1px !important;
+      height:1px !important;
+      padding:0 !important;
+      margin:-1px !important;
+      overflow:hidden !important;
+      clip:rect(0, 0, 0, 0) !important;
+      white-space:nowrap !important;
+      border:0 !important;
+      display:block !important;
+    }
+
+    mjx-container{
+      display:inline-block !important;
+      min-width:0 !important;
+      min-height:0 !important;
+      vertical-align:middle !important;
+      margin:0 !important;
+      padding:0 !important;
+      line-height:1 !important;
+      max-width:100% !important;
+    }
+
+    mjx-container svg{
+      display:inline-block !important;
+      overflow:visible !important;
+      max-width:100% !important;
+    }
+
+    #print-root .options-block > div{
+      flex-wrap:wrap !important;
+      column-gap:18px !important;
+      row-gap:2px !important;
+    }
+
+    #print-root .options-block > div > span,
+    #print-root .options-block > div > div{
+      white-space:nowrap !important;
+      word-break:normal !important;
+      overflow-wrap:normal !important;
+    }
+
+    #floating-settings-btn{
+      position:fixed;
+      bottom:32px;
+      right:32px;
+      z-index:9999;
+      background:linear-gradient(90deg, #1762a7, #0f3d6b);
+      color:#fff;
+      border:none;
+      border-radius:50%;
+      box-shadow:0 4px 18px rgba(15,61,107,0.16);
+      width:60px;
+      height:60px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:2em;
+      cursor:pointer;
+      transition:background 0.15s;
+    }
+
+    #settings-popup-modal{
+      display:none;
+      position:fixed;
+      bottom:100px;
+      right:36px;
+      z-index:10000;
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 8px 32px #17386844;
+      padding:32px 24px 22px 24px;
+      min-width:280px;
+      border:2px solid #1463ad;
+      flex-direction:column;
+      align-items:flex-start;
+    }
+
+    @media (max-width: 700px){
+      #floating-settings-btn{
+        width:72px !important;
+        height:72px !important;
+        font-size:2.5em !important;
+        right:18px !important;
+        bottom:18px !important;
+        box-shadow:0 6px 22px rgba(15,61,107,0.25) !important;
+      }
+    }
+
+    @media print{
+      html, body{
+        background:#fff !important;
+        overflow:visible !important;
+      }
+
+      .toolbar,
+      #floating-settings-btn,
+      #settings-popup-modal{
+        display:none !important;
+      }
+
+      #page-container{
+        padding:0 !important;
+        margin:0 !important;
+      }
+
+      .print-preview{
+        background:#fff !important;
+        padding:0 !important;
+        margin:0 !important;
+        overflow:visible !important;
+      }
+
+      .a4-page{
+        width:100% !important;
+        max-width:none !important;
+        min-height:auto !important;
+        margin:0 !important;
+        border-radius:0 !important;
+        box-shadow:none !important;
+                padding:var(--qb-page-margin-top) var(--qb-page-margin-side) var(--qb-page-margin-bottom) var(--qb-page-margin-side) !important;
+        page-break-after:auto;
+      }
+
+      #print-root .question-text,
+      #print-root .question-body,
+      #print-root .options-block{
+        font-weight:normal !important;
+      }
+
+      mjx-container,
+      mjx-container *{
+        font-weight:normal !important;
+      }
+
+      mjx-container[jax="SVG"] svg,
+      mjx-container[jax="SVG"] svg *{
+        font-weight:400 !important;
+        stroke:none !important;
+      }
+
+      mjx-container[jax="SVG"] svg text,
+      mjx-container[jax="SVG"] svg tspan{
+        font-weight:400 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="page-container">
+    <div id="print-preview" class="print-preview">
+      <div id="print-root" class="a4-page mjx-process"></div>
+    </div>
+
+    <div class="toolbar">
+      <button id="preview-print-btn"><i class="fas fa-print"></i> Print / Save PDF</button>
+    </div>
+  </div>
+
+  <button id="floating-settings-btn" title="Settings">
+    <i class="fas fa-cog"></i>
+  </button>
+
+  <div id="settings-popup-modal">
+    <div style="font-weight:700;color:#12416c;font-size:1.2em;margin-bottom:18px;">
+      <i class="fas fa-sliders-h" style="margin-right:8px;color:#1463ad;"></i>Preview Settings
+    </div>
+
+    <div style="margin-bottom:18px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Gap between questions</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="gap-slider" type="range" min="4" max="36" value="10" style="width:100%;">
+        <span id="gap-slider-value">10px</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:18px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Page margin</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="margin-slider" type="range" min="0.5" max="2.5" step="0.1" value="1.5" style="width:100%;">
+        <span id="margin-slider-value">1.5cm</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:22px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Line height</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="line-slider" type="range" min="1.1" max="2.2" step="0.05" value="1.6" style="width:100%;">
+        <span id="line-slider-value">1.6</span>
+      </div>
+    </div>
+
+    <button id="close-settings-popup" style="
+      position:absolute;top:10px;right:18px;background:none;border:none;color:#185496;
+      font-size:1.5em;cursor:pointer;" title="Close">×</button>
+  </div>
+
+  <script>
+    const __CONTENT = ${contentJson};
+    const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
+
+    document.title = __TITLE;
+    document.getElementById('print-root').innerHTML = __CONTENT;
+
+    const floatingBtn = document.getElementById('floating-settings-btn');
+    const settingsModal = document.getElementById('settings-popup-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-popup');
+    const gapSlider = document.getElementById('gap-slider');
+    const gapValue = document.getElementById('gap-slider-value');
+    const marginSlider = document.getElementById('margin-slider');
+    const marginValue = document.getElementById('margin-slider-value');
+    const lineSlider = document.getElementById('line-slider');
+    const lineValue = document.getElementById('line-slider-value');
+
+    function updateGap(){
+      const px = gapSlider.value;
+      gapValue.textContent = px + 'px';
+      document.documentElement.style.setProperty('--qb-question-gap', px + 'px');
+      document.querySelectorAll('#print-root .question-container').forEach(div => {
+        div.style.marginBottom = px + 'px';
+      });
+    }
+
+       function updateMargin(){
+      const cm = parseFloat(marginSlider.value || '1.5');
+      const topCm = (cm + 0.6).toFixed(1);
+      const bottomCm = (cm + 0.4).toFixed(1);
+
+      marginValue.textContent = cm.toFixed(1) + 'cm';
+
+      document.documentElement.style.setProperty('--qb-page-margin-side', cm.toFixed(1) + 'cm');
+      document.documentElement.style.setProperty('--qb-page-margin-top', topCm + 'cm');
+      document.documentElement.style.setProperty('--qb-page-margin-bottom', bottomCm + 'cm');
+
+      const root = document.getElementById('print-root');
+      if (root) {
+                root.style.padding = topCm + 'cm ' + cm.toFixed(1) + 'cm ' + bottomCm + 'cm ' + cm.toFixed(1) + 'cm';
+      }
+    }
+
+    function updateLineHeight(){
+      const lh = lineSlider.value;
+      lineValue.textContent = lh;
+      document.documentElement.style.setProperty('--qb-line-height', lh);
+      document.querySelectorAll('#print-root .question-text, #print-root .question-body').forEach(el => {
+        el.style.lineHeight = lh;
+      });
+    }
+
+    async function afterMathReady(){
+      const root = document.getElementById('print-root');
+
+      if (window.MathJax && typeof window.MathJax.typesetClear === 'function') {
+        window.MathJax.typesetClear([root]);
+      }
+
+      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+        try {
+          await window.MathJax.typesetPromise([root]);
+        } catch (err) {
+          console.error('Preview MathJax failed:', err);
+        }
+      }
+
+      root.querySelectorAll('mjx-assistive-mml').forEach(el => {
+        el.setAttribute('aria-hidden', 'true');
+      });
+    }
+
+    floatingBtn.onclick = function(){
+      settingsModal.style.display = 'flex';
+    };
+
+    closeSettingsBtn.onclick = function(){
+      settingsModal.style.display = 'none';
+    };
+
+    document.getElementById('preview-print-btn').onclick = function(){
+      window.print();
+    };
+
+    gapSlider.addEventListener('input', updateGap);
+    marginSlider.addEventListener('input', updateMargin);
+    lineSlider.addEventListener('input', updateLineHeight);
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      updateGap();
+      updateMargin();
+      updateLineHeight();
+
+      if (window.MathJax?.startup?.promise) {
+        await window.MathJax.startup.promise;
+      }
+
+      await afterMathReady();
+    });
+  <\/script>
+</body>
+</html>`);
+  printWin.document.close();
+}
     // Dropdown HTML
     function createDropdownHTML(id, options, defaultValueText = 'All') {
   const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
@@ -1245,6 +2616,10 @@ function getMultiSelected(idPrefix) {
       classDropdown.innerHTML = createDropdownHTML('class', filterConfig.classes, 'Select Class');
       document.getElementById('class-value').value = '';
 
+     const boardDropdown = document.getElementById('board-dropdown');
+      boardDropdown.innerHTML = createDropdownHTML('board', filterConfig.boards, 'Select Board');
+      document.getElementById('board-value').value = '';
+
       const subjectDropdown = document.getElementById('subject-dropdown');
       subjectDropdown.innerHTML = createDropdownHTML('subject', [], 'Select Subject');
       document.getElementById('subject-value').value = '';
@@ -1273,35 +2648,68 @@ const levelOpts = filterConfig.levels.filter(l => l !== 'Mixed');
 levelDropdown.innerHTML = createMultiDropdownHTML('level', levelOpts, 'Select Level');
 addMultiDropdownListener('level-dropdown', __debouncedFetch);
 
-addDropdownListener('class-dropdown', onClassChange);
-addDropdownListener('subject-dropdown', onSubjectChange);
+addDropdownListener('class-dropdown', onClassChange, 'class-value', 'Select Class');
+addDropdownListener('board-dropdown', onBoardChange, 'board-value', 'Select Board');
+addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Select Subject');
 
     }
 
-    function addDropdownListener(dropdownId, callback) {
-      const dropdown = document.getElementById(dropdownId);
-      const input = document.getElementById(`${dropdownId.split('-')[0]}-value`);
-      const selectedDisplay = dropdown.querySelector('.selected-option');
+    function addDropdownListener(dropdownId, callback, hiddenInputId = null, defaultText = 'Select') {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
 
-      dropdown.querySelector('.selected-option').addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('open');
-      });
+  const input = hiddenInputId
+    ? document.getElementById(hiddenInputId)
+    : document.getElementById(`${dropdownId.split('-')[0]}-value`);
 
-      dropdown.querySelector('.dropdown-options').addEventListener('click', (e) => {
-        if (e.target && e.target.dataset.value) {
-          const value = e.target.dataset.value;
-          input.value = value;
-          selectedDisplay.textContent = value;
-          dropdown.classList.remove('open');
-          if (callback) callback();
-        }
-      });
-    }
+  const selectedDisplay = dropdown.querySelector('.selected-option');
+  if (!selectedDisplay) return;
 
+  selectedDisplay.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  });
+
+  const optionsWrap = dropdown.querySelector('.dropdown-options');
+  if (!optionsWrap) return;
+
+  optionsWrap.addEventListener('click', (e) => {
+    if (!e.target || !('value' in e.target.dataset)) return;
+
+    const value = e.target.dataset.value;
+
+    if (input) input.value = value;
+    selectedDisplay.textContent = value || defaultText;
+    dropdown.classList.remove('open');
+
+    if (callback) callback(value);
+  });
+}
     function onClassChange() {
-      const className = document.getElementById('class-value').value;
-      const subjects = className && className !== 'All' ? filterConfig.subjectMappings[className] || [] : [];
+      const boardDropdown = document.getElementById('board-dropdown');
+      const boardInput = document.getElementById('board-value');
+      const boardSelected = boardDropdown.querySelector('.selected-option');
+
+      const subjectDropdown = document.getElementById('subject-dropdown');
+      subjectDropdown.innerHTML = createDropdownHTML('subject', [], 'Select Subject');
+      addDropdownListener('subject-dropdown', onSubjectChange);
+
+      const subjectInput = document.getElementById('subject-value');
+      const subjectSelected = subjectDropdown.querySelector('.selected-option');
+
+      boardInput.value = '';
+      boardSelected.textContent = 'Select Board';
+
+      subjectInput.value = '';
+      subjectSelected.textContent = 'Select Subject';
+
+      updateChapterDropdown();
+      fetchAndDisplayQuestions();
+    }
+
+   function onBoardChange() {
+      const boardName = document.getElementById('board-value').value;
+      const subjects = boardName && boardName !== 'All' ? filterConfig.boardSubjectMappings[boardName] || [] : [];
 
       const subjectDropdown = document.getElementById('subject-dropdown');
       subjectDropdown.innerHTML = createDropdownHTML('subject', subjects, 'Select Subject');
@@ -1309,6 +2717,7 @@ addDropdownListener('subject-dropdown', onSubjectChange);
 
       const subjectInput = document.getElementById('subject-value');
       const subjectSelected = subjectDropdown.querySelector('.selected-option');
+
       if (subjects.length > 0) {
         subjectInput.value = subjects[0];
         subjectSelected.textContent = subjects[0];
@@ -1316,7 +2725,9 @@ addDropdownListener('subject-dropdown', onSubjectChange);
         subjectInput.value = '';
         subjectSelected.textContent = 'Select Subject';
       }
-      onSubjectChange();
+
+      updateChapterDropdown();
+      fetchAndDisplayQuestions();
     }
 
     function onSubjectChange() {
@@ -1326,20 +2737,21 @@ addDropdownListener('subject-dropdown', onSubjectChange);
 
     async function updateChapterDropdown() {
       const classVal = document.getElementById('class-value').value;
+      const boardVal = document.getElementById('board-value').value;
       const subjectVal = document.getElementById('subject-value').value;
       const chapterDropdown = document.getElementById('chapter-dropdown');
 
-       if (!classVal || classVal === 'All' || !subjectVal || subjectVal === 'All') {
+       if (!classVal || classVal === 'All' || !boardVal || boardVal === 'All' || !subjectVal || subjectVal === 'All') {
     chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', [], 'Select Chapter');
     addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
     return;
   }
 
-  try {
-    const q = db.collection('questions')
+    try {
+    const q = questionsquestionsDb.collection('questions')
       .where('class', '==', classVal)
+      .where('board', '==', boardVal)
       .where('subject', '==', subjectVal);
-
     const snapshot = await q.get();
     const chapters = new Set();
     snapshot.forEach(doc => {
@@ -1360,12 +2772,13 @@ addDropdownListener('subject-dropdown', onSubjectChange);
 
       const displayArea = document.getElementById('questions-display-area');
 
-      const classVal   = document.getElementById('class-value').value;
+     const classVal   = document.getElementById('class-value').value;
+      const boardVal   = document.getElementById('board-value').value;
       const subjectVal = document.getElementById('subject-value').value;
       
-      // Require Class + Subject before querying
-      if (!classVal || !subjectVal || classVal === 'All' || subjectVal === 'All') {
-        displayArea.innerHTML = '<p class="no-questions-message">Select Class and Subject to view questions.</p>';
+      // Require Class + Board + Subject before querying
+      if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
+        displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
         return;
       }
       
@@ -1377,9 +2790,13 @@ const selQtypes   = getMultiSelected('qtype');            // array of types
 const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
 const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
 
-        let query = db.collection('questions');
+    let query = questionsquestionsDb.collection('questions');
+
 if (classVal && classVal !== 'Select Class' && classVal !== 'All') {
   query = query.where('class', '==', classVal);
+}
+if (boardVal && boardVal !== 'Select Board' && boardVal !== 'All') {
+  query = query.where('board', '==', boardVal);
 }
 if (subjectVal && subjectVal !== 'Select Subject' && subjectVal !== 'All') {
   query = query.where('subject', '==', subjectVal);
@@ -1396,7 +2813,7 @@ if (selChapters.length === 1) {
 query = query.orderBy("questionNumber");
 
         const snapshot = await query.get();
-
+window.__pdfQuestionDataMap = {};
         if (snapshot.empty) {
           displayArea.innerHTML = '<p class="no-questions-message">No questions found matching your criteria.</p>';
           return;
@@ -1407,6 +2824,7 @@ query = query.orderBy("questionNumber");
 
         snapshot.forEach(doc => {
           const data = doc.data();
+window.__pdfQuestionDataMap[doc.id] = data;
           if (Array.isArray(data.options)) {
             console.log("Options for", doc.id, data.options);
           }
@@ -1477,15 +2895,18 @@ if (selQtypes.length > 0) {
      data-chapter="${data.chapter || ''}"
      data-marks="${(data.marks ?? '')}"
      style="position:relative;">
+              <div class="question-select-box">
+                <input type="checkbox" class="quiz-question-checkbox" data-id="${doc.id}">
+              </div>
 
               <div class="question-meta">
-                Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${data.mcqType ? ` [${data.mcqType}]` : ''}
+                Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
               </div>
               <div class="question-text">
                 ${
                   Array.isArray(data.options) && data.options.length === 4
                     ? `
-                        <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;">${autoLatexAll(data.question)}</div>
+                        <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${autoLatexAll(String(data.question || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): '))}</div>
                         <div style="margin-left:18px;">
                           <div>${autoLatexAll(data.options[0].replace(/^[A-D][).]\s*/, ''))}</div>
                           <div>${autoLatexAll(data.options[1].replace(/^[A-D][).]\s*/, ''))}</div>
@@ -1502,7 +2923,10 @@ if (selQtypes.length > 0) {
                     : ''
                 }
               </div>
-                 <!-- Ask AI button replaces the old image button -->
+              <div class="question-actions">
+                <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
+              </div>
+             <!-- Ask AI button replaces the old image button -->
             <button type="button" class="ask-ai-btn">💡 Explain It</button>
             </div>`;
         });
@@ -1520,7 +2944,20 @@ if (selQtypes.length > 0) {
 
           if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
 
-/* ==== Explain It (AI) — open directly in ChatGPT (copy prompt + toast + open tab) ==== */
+if (window.__quizSelectionMode === 'manual') {
+  document.querySelectorAll('.question-item').forEach(item => {
+    item.classList.add('manual-select-mode');
+  });
+} else {
+  document.querySelectorAll('.question-item').forEach(item => {
+    item.classList.remove('manual-select-mode');
+    const cb = item.querySelector('.quiz-question-checkbox');
+    if (cb) cb.checked = false;
+  });
+}
+
+bindManualQuizToolbar();
+/* ==== Explain It popup ==== */
 if (!window.__explainItBound) {
   window.__explainItBound = true;
   document.addEventListener('click', async (e) => {
@@ -1531,66 +2968,85 @@ if (!window.__explainItBound) {
     const docId = card?.getAttribute('data-id');
     if (!docId) return;
 
-    // tiny inline toast helper
-    function __qb_toast(msg) {
-      const t = document.createElement('div');
-      t.textContent = msg;
-      t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#0f3d6b;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:100000;font-weight:600;letter-spacing:.2px;font-size:14px;opacity:0.98';
-      document.body.appendChild(t);
-      setTimeout(() => { t.style.transition='opacity .35s'; t.style.opacity='0'; }, 1200);
-      setTimeout(() => t.remove(), 1600);
-    }
-
     try {
-      // Pull freshest data for this question
-      const snap = await db.collection('questions').doc(docId).get();
+      const snap = await questionsDb.collection('questions').doc(docId).get();
       const data = snap.data() || {};
+      const explanation = String(data.explanation || '')
+  .replace(/^\s*Explanation\s*:\s*/i, '')
+  .trim();
 
-      // Build a clean prompt
-      const cls     = data.class || document.getElementById('class-value')?.value || '';
-      const subject = data.subject || document.getElementById('subject-value')?.value || '';
-      const chapterSel = getMultiSelected('chapter');
-      const chapter = data.chapter || (chapterSel.length ? chapterSel.join(', ') : '');
-      const level   = data.difficulty || data.level || '';
-      const type    = data.mcqType || (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive');
-      const marks   = (data.marks ?? '');
+const answer = String(data.parsedAnswer || data.answer || data.parsedAns || '')
+  .replace(/^\s*Answer\s*:\s*/i, '')
+  .replace(/^\s*Ans\s*:\s*/i, '')
+  .trim();
 
-      const qText   = (data.question || data.body || data.text || '').trim();
-      const options = Array.isArray(data.options) ? data.options.filter(Boolean) : [];
+const popupTitle = explanation ? 'Explanation' : 'Answer';
+const popupContent = explanation || answer || 'No explanation or answer available.';
 
-      let prompt = `Please solve and explain clearly.\n`;
-      const meta = [subject && `Subject: ${subject}`, cls && `Class: ${cls}`, chapter && `Chapter: ${chapter}`, level && `Level: ${level}`, type && `Type: ${type}`, marks!=='' && `Marks: ${marks}`]
-        .filter(Boolean).join(' · ');
-      if (meta) prompt += meta + `\n\n`;
-      prompt += `Question:\n${qText}\n`;
-      if (options.length) {
-        prompt += `\nOptions:\n` + options.map((o,i)=>`${String.fromCharCode(65+i)}) ${o.replace(/^[A-D][).]\s*/, '')}`).join('\n');
-        prompt += `\n\nRespond with the correct option (A–D) and a step-by-step explanation.`;
-      } else {
-        prompt += `\n\nRespond with the final answer and a step-by-step explanation.`;
+document.querySelectorAll('.explanation-popup-overlay').forEach(el => el.remove());
+
+const overlay = document.createElement('div');
+overlay.className = 'explanation-popup-overlay';
+overlay.innerHTML = `
+  <div style="
+    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    background:rgba(0,0,0,0.75);z-index:100000;
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;box-sizing:border-box;">
+    
+    <div style="
+      background:#111827;color:#ffffff;
+      width:100%;max-width:700px;max-height:85vh;
+      border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.35);
+      display:flex;flex-direction:column;overflow:hidden;">
+      
+      <div style="
+        padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.12);
+        font-size:1.12em;font-weight:700;text-align:center;">
+        ${popupTitle}
+      </div>
+
+      <div id="explanation-popup-body" style="
+        padding:18px;overflow-y:auto;line-height:1.7;
+        white-space:pre-wrap;font-size:1em;color:#ffffff;">
+        ${__qbEscapeHtml(popupContent)}
+      </div>
+
+            <div style="
+              padding:14px 18px;border-top:1px solid rgba(255,255,255,0.12);
+              display:flex;justify-content:flex-end;">
+              <button type="button" id="close-explanation-popup" style="
+                border:none;border-radius:10px;padding:10px 18px;
+                background:#ffffff;color:#111827;font-weight:700;cursor:pointer;">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      document.getElementById('close-explanation-popup').onclick = function() {
+        overlay.remove();
+      };
+
+      overlay.onclick = function(ev) {
+        if (ev.target === overlay.firstElementChild) {
+          overlay.remove();
+        }
+      };
+
+      const bodyEl = document.getElementById('explanation-popup-body');
+      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+        window.MathJax.typesetPromise([bodyEl]).catch(function(err){
+          console.error('MathJax explanation render error:', err);
+        });
       }
-
-      // Copy to clipboard for quick paste
-      let copied = false;
-      try {
-        await navigator.clipboard.writeText(prompt);
-        copied = true;
-      } catch (_) {
-        copied = false;
-      }
-
-      __qb_toast(copied ? 'Copied prompt. Opening ChatGPT…' : 'Opening ChatGPT… (paste prompt manually)');
-
-      // Open ChatGPT (model selector in URL if supported)
-      const handoffUrl = new URL('https://chatgpt.com/');
-      handoffUrl.searchParams.set('q', prompt); // pre-fill the message
-
-      // Open ChatGPT with the prefilled prompt
-      window.open(handoffUrl.toString(), '_blank', 'noopener');
 
     } catch (err) {
-      console.error('Explain It handoff failed:', err);
-      alert('Could not open in ChatGPT. Please try again.');
+      console.error('Explanation popup failed:', err);
+      alert('Could not load explanation.');
     }
   });
 }
@@ -1617,7 +3073,7 @@ if (!window.__explainItBound) {
                 }
                 img.src = e.target.result;
                 const docId = input.closest('.question-item').getAttribute('data-id');
-                await db.collection('questions').doc(docId).update({ image: e.target.result });
+                await questionsDb.collection('questions').doc(docId).update({ image: e.target.result });
                 alert('Image saved!');
               };
               reader.readAsDataURL(file);
@@ -1629,9 +3085,9 @@ if (!window.__explainItBound) {
               const container = btn.closest('.question-item');
               const docId = container.getAttribute('data-id');
               if (!docId) return;
-              if (!confirm("Delete the image from this question?")) return;
+              if (!(await appConfirm("Delete the image from this question?"))) return;
               try {
-                await db.collection('questions').doc(docId).update({ image: firebase.firestore.FieldValue.delete() });
+                await questionsDb.collection('questions').doc(docId).update({ image: firebase.firestore.FieldValue.delete() });
                 fetchAndDisplayQuestions();
               } catch (err) {
                 alert("Could not delete image: " + err.message);
@@ -1648,7 +3104,61 @@ if (!window.__explainItBound) {
       }
     }
 
-    function autoLatexAll(str) {
+   function updateManualQuizToolbar() {
+  const toolbar = document.getElementById('manual-quiz-toolbar');
+  const countEl = document.getElementById('manual-selected-count');
+  const quizBtn = document.getElementById('create-quiz-btn');
+  if (!toolbar || !countEl) return;
+
+  const isManual = window.__quizSelectionMode === 'manual';
+  if (!isManual) {
+    toolbar.style.display = 'none';
+    countEl.textContent = '0';
+    if (quizBtn) {
+      quizBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz';
+    }
+    return;
+  }
+
+  toolbar.style.display = 'block';
+  const checked = document.querySelectorAll('.quiz-question-checkbox:checked').length;
+  countEl.textContent = checked;
+
+  if (quizBtn) {
+    quizBtn.innerHTML = `<i class="fa-solid fa-check-double"></i> Create Quiz with Selected (${checked})`;
+  }
+}
+function bindManualQuizToolbar() {
+  const selectAllBtn = document.getElementById('manual-select-all-btn');
+  const unselectAllBtn = document.getElementById('manual-unselect-all-btn');
+
+  if (selectAllBtn && !selectAllBtn.dataset.bound) {
+    selectAllBtn.dataset.bound = '1';
+    selectAllBtn.onclick = function() {
+      document.querySelectorAll('.quiz-question-checkbox').forEach(cb => cb.checked = true);
+      updateManualQuizToolbar();
+    };
+  }
+
+  if (unselectAllBtn && !unselectAllBtn.dataset.bound) {
+    unselectAllBtn.dataset.bound = '1';
+    unselectAllBtn.onclick = function() {
+      document.querySelectorAll('.quiz-question-checkbox').forEach(cb => cb.checked = false);
+      updateManualQuizToolbar();
+    };
+  }
+
+  document.querySelectorAll('.quiz-question-checkbox').forEach(cb => {
+    if (!cb.dataset.bound) {
+      cb.dataset.bound = '1';
+      cb.addEventListener('change', updateManualQuizToolbar);
+    }
+  });
+
+  updateManualQuizToolbar();
+}
+
+function autoLatexAll(str) {
       if (!str) return '';
       let match = str.match(/(\$[^\$]+\$)/g);
       if (match && match.length >= 2) {
@@ -1660,8 +3170,76 @@ if (!window.__explainItBound) {
 
     // 3-dot menu actions for each question in Question Bank
     function setupQuestionActionMenus() {
-  // three-dot menu removed
-}
+      document.querySelectorAll('.q-action-btn').forEach((btn) => {
+        btn.onclick = function(e) {
+          e.stopPropagation();
+
+          document.querySelectorAll('.actions-menu').forEach(m => m.remove());
+
+          const questionItem = btn.closest('.question-item');
+          const docId = questionItem.getAttribute('data-id');
+          const menu = document.createElement('div');
+          menu.className = 'actions-menu';
+
+          menu.innerHTML = `
+            <button class="menu-show-answer-btn">Show Answer</button>
+            <button class="menu-edit-btn">Edit / Meta</button>
+            <button class="menu-delete-btn">Delete</button>
+          `;
+          questionItem.appendChild(menu);
+
+          menu.querySelector('.menu-show-answer-btn').onclick = async (event) => {
+            event.stopPropagation();
+            let tempAns = questionItem.querySelector('.temp-answer');
+            if (tempAns) {
+              tempAns.remove();
+              menu.querySelector('.menu-show-answer-btn').textContent = 'Show Answer';
+              menu.remove();
+              return;
+            }
+            let answer = '';
+            try {
+              const docSnap = await questionsDb.collection('questions').doc(docId).get();
+              const data = docSnap.data();
+              answer = data.parsedAnswer || data.answer || data.parsedAns || 'No answer available.';
+            } catch (e) {
+              answer = 'No answer found.';
+            }
+            const ansDiv = document.createElement('div');
+            ansDiv.className = 'temp-answer';
+            ansDiv.textContent = answer;
+            questionItem.appendChild(ansDiv);
+            menu.querySelector('.menu-show-answer-btn').textContent = 'Hide Answer';
+            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+              window.MathJax.typesetPromise([ansDiv]);
+            }
+            menu.remove();
+          };
+
+          menu.querySelector('.menu-edit-btn').onclick = async () => {
+            menu.remove();
+            const docSnap = await questionsDb.collection('questions').doc(docId).get();
+            const data = docSnap.data();
+            showEditPopupForBank(docId, data);
+          };
+
+          menu.querySelector('.menu-delete-btn').onclick = async () => {
+            menu.remove();
+            if (!(await appConfirm("Are you sure you want to delete this question?"))) return;
+            await questionsDb.collection('questions').doc(docId).delete();
+            fetchAndDisplayQuestions();
+          };
+        };
+      });
+
+      document.addEventListener('click', function(event) {
+        document.querySelectorAll('.actions-menu').forEach(menu => {
+          if (!menu.contains(event.target) && !event.target.closest('.q-action-btn')) {
+            menu.remove();
+          }
+        });
+      });
+    }
 
     if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
 
@@ -1676,6 +3254,7 @@ if (!window.__explainItBound) {
 
       const initMarks = (typeof data.marks === 'number' || /^[0-9]+$/.test(String(data.marks))) ? data.marks : '';
       const initLevel = data.difficulty || '';
+      const initBoard = data.board || '';
       const initChapter = data.chapter || '';
       const initQNo = (typeof data.questionNumber === 'number' || /^[0-9]+$/.test(String(data.questionNumber))) ? data.questionNumber : '';
 
@@ -1686,17 +3265,20 @@ if (!window.__explainItBound) {
       popup.innerHTML = `
         <div style="
           background:#fff;border-radius:18px;box-shadow:0 6px 24px rgba(23,98,167,0.20);
-          padding:28px 20px 20px 20px;max-width:98vw;width:620px;margin:0 auto;position:relative;">
+          padding:28px 20px 20px 20px;max-width:98vw;width:620px;margin:0 auto;position:relative;
+          max-height:none;">
           <div style="font-weight:bold;font-size:1.24em;margin-bottom:12px;letter-spacing:0.01em;text-align:center;">Edit Question & Meta</div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
             <div>
               <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question Type</label>
               <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-                <option value="Descriptive">Descriptive</option>
-                <option value="MCQ (Single)">MCQ (Single)</option>
-                <option value="MCQ (Multiple)">MCQ (Multiple)</option>
-              </select>
+              <option value="Descriptive">Descriptive</option>
+              <option value="MCQ (Single)">MCQ (Single)</option>
+              <option value="MCQ (Multiple)">MCQ (Multiple)</option>
+              <option value="Fill in the Blanks">Fill in the Blanks</option>
+              <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
+            </select>
             </div>
             <div>
               <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
@@ -1712,6 +3294,10 @@ if (!window.__explainItBound) {
               </select>
             </div>
             <div>
+              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Board</label>
+              <input id="edit-q-board" type="text" value="${initBoard.replace(/"/g,'&quot;')}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+            </div>
+            <div>
               <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question No.</label>
               <input id="edit-q-number" type="number" min="1" step="1" value="${initQNo}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
             </div>
@@ -1721,8 +3307,11 @@ if (!window.__explainItBound) {
             </div>
           </div>
 
-          <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
+                   <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
           <textarea id="edit-q-text" rows="8" style="width:100%;min-height:140px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.05em;resize:vertical;">${(data.question || data.body || data.text || '').replace(/</g,'&lt;')}</textarea>
+
+          <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Explanation</label>
+          <textarea id="edit-q-explanation" rows="6" style="width:100%;min-height:110px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.02em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
 
           <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1755,9 +3344,19 @@ if (!window.__explainItBound) {
       `;
 
       Object.assign(popup.style, {
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-        background: 'rgba(12,29,68,0.12)', zIndex: 5000, display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: '10px'
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(12,29,68,0.12)',
+        zIndex: 5000,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '20px 10px',
+        overflowY: 'auto',
+        boxSizing: 'border-box'
       });
       document.body.appendChild(popup);
 
@@ -1768,7 +3367,11 @@ if (!window.__explainItBound) {
 
       const mcqBlock = popup.querySelector('#edit-mcq-block');
       const toggleMCQBlock = () => {
-        mcqBlock.style.display = (selType.value === 'MCQ (Single)' || selType.value === 'MCQ (Multiple)') ? 'block' : 'none';
+       mcqBlock.style.display = (
+  selType.value === 'MCQ (Single)' ||
+  selType.value === 'MCQ (Multiple)' ||
+  selType.value === 'Assertion and Reason (MCQ Single)'
+) ? 'block' : 'none';
       };
       selType.addEventListener('change', toggleMCQBlock);
       toggleMCQBlock();
@@ -1776,19 +3379,22 @@ if (!window.__explainItBound) {
       popup.querySelector('#edit-cancel').onclick = () => popup.remove();
 
       popup.querySelector('#edit-save').onclick = async () => {
-        const qType = selType.value;
+               const qType = selType.value;
         const qText = popup.querySelector('#edit-q-text').value.trim();
+        const explanationText = popup.querySelector('#edit-q-explanation').value.trim();
         const marksRaw = popup.querySelector('#edit-q-marks').value.trim();
         const levelVal = selLevel.value || '';
+        const boardVal = popup.querySelector('#edit-q-board').value.trim();
         const chapterVal = popup.querySelector('#edit-q-chapter').value.trim();
         const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
-
         if (!qText) { alert("Question text is required."); return; }
 
-        const updateObj = {
+                const updateObj = {
   question: qText,
   difficulty: levelVal || firebase.firestore.FieldValue.delete(),
+  board: boardVal || firebase.firestore.FieldValue.delete(),
   chapter: chapterVal || firebase.firestore.FieldValue.delete(),
+  explanation: explanationText || firebase.firestore.FieldValue.delete(),
 };
 
 // Normalize old subjects to new ones (Math / Math IIT)
@@ -1816,7 +3422,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.questionNumber = qn;
         }
 
-        if (qType === 'Descriptive') {
+        if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
           updateObj.mcqType = firebase.firestore.FieldValue.delete();
           updateObj.options = firebase.firestore.FieldValue.delete();
           updateObj.body = qText;
@@ -1838,7 +3444,7 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
         }
 
         try {
-          await db.collection('questions').doc(docId).update(updateObj);
+          await questionsDb.collection('questions').doc(docId).update(updateObj);
           popup.remove();
           fetchAndDisplayQuestions();
         } catch (err) {
@@ -1847,107 +3453,1414 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
       };
     }
 
-    // --- Create Practice Quiz Button Handler ---
-    document.getElementById('create-quiz-btn').addEventListener('click', async function() {
-      document.getElementById('quiz-spinner').style.display = 'flex';
+    function showClassSectionStudentPopup() {
+  document.querySelectorAll('.class-student-popup').forEach(el => el.remove());
 
-      try {
-        const displayArea = document.getElementById('questions-display-area');
-        const nodes = displayArea.querySelectorAll('.question-item');
-        if (nodes.length < 1) {
-          alert("No questions found for this quiz!");
-          document.getElementById('quiz-spinner').style.display = 'none';
-          return;
-        }
+  const modal = document.createElement('div');
+  modal.className = 'class-student-popup';
+  modal.innerHTML = `
+    <div style="
+      position:fixed;top:0;left:0;width:100vw;height:100vh;
+      background:rgba(12,29,68,0.16);z-index:99999;
+      display:flex;align-items:center;justify-content:center;
+      padding:16px;box-sizing:border-box;">
+      
+     <div style="
+        background:#fff;border-radius:18px;padding:22px 18px;
+        width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+        box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+        
+        <div style="font-size:1.2em;font-weight:700;color:#0f3d6b;margin-bottom:14px;text-align:center;">
+          Manage Classes & Students
+        </div>
 
-        const questions = [];
-        for (let item of nodes) {
-          const docId = item.getAttribute('data-id');
-          const snap = await db.collection('questions').doc(docId).get();
-          const data = snap.data();
-          questions.push({
-            question: data.question,
-            options: data.options,
-            answer: data.parsedAnswer || data.answer || "",
-            level: data.level || ""
-          });
-        }
+        <div style="display:grid;gap:12px;">
+            <div style="border:1.2px solid #d9e6f5;border-radius:12px;padding:12px;background:#f9fcff;">
+            <label style="display:block;font-weight:700;color:#0f3d6b;margin-bottom:8px;">Create Class</label>
+            <div style="display:flex;gap:10px;">
+              <input id="student-mgr-new-class" type="text" placeholder="Example: 8th Class"
+                style="flex:1;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+              <button id="student-mgr-add-class-btn" type="button" style="
+                border:none;border-radius:10px;padding:10px 14px;
+                background:#0f8b6d;color:#fff;font-weight:700;cursor:pointer;">
+                Create Class
+              </button>
+            </div>
 
-        const quizDoc = await db.collection('quizzes').add({
+            <div style="margin-top:10px;">
+              <div style="font-size:0.96em;font-weight:700;color:#185496;margin-bottom:6px;">Saved Classes</div>
+              <div id="student-mgr-class-list" style="
+                max-height:120px;overflow-y:auto;border:1.2px solid #d9e6f5;
+                border-radius:10px;background:#fff;padding:8px;">
+                <div style="color:#6b7b8c;text-align:center;">No classes loaded.</div>
+              </div>
+            </div>
+          </div>
+
+                    <div>
+            <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Class Name</label>
+           <div id="student-mgr-class-dropdown" class="custom-dropdown">
+  <input type="hidden" id="student-mgr-class" value="">
+  <div class="selected-option">Select Class</div>
+  <div class="dropdown-options">
+    <div data-value="">Select Class</div>
+  </div>
+</div>
+          </div>
+
+                              <div style="border:1.2px solid #d9e6f5;border-radius:12px;padding:12px;background:#f9fcff;">
+            <label style="display:block;font-weight:700;color:#0f3d6b;margin-bottom:8px;">Create Section</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;">
+  <div id="student-mgr-new-section-class-dropdown" class="custom-dropdown">
+  <input type="hidden" id="student-mgr-new-section-class" value="">
+  <div class="selected-option">Select Class</div>
+  <div class="dropdown-options">
+    <div data-value="">Select Class</div>
+  </div>
+</div>
+  <input id="student-mgr-new-section" type="text" placeholder="Section Name"
+    style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+  <button id="student-mgr-add-section-btn" type="button" style="
+    border:none;border-radius:10px;padding:10px 14px;
+    background:#1762a7;color:#fff;font-weight:700;cursor:pointer;">
+    Create Section
+  </button>
+</div>
+
+            <div style="margin-top:10px;">
+              <div style="font-size:0.96em;font-weight:700;color:#185496;margin-bottom:6px;">Saved Sections</div>
+              <div id="student-mgr-section-list" style="
+                max-height:140px;overflow-y:auto;border:1.2px solid #d9e6f5;
+                border-radius:10px;background:#fff;padding:8px;">
+                <div style="color:#6b7b8c;text-align:center;">No sections loaded.</div>
+              </div>
+            </div>
+          </div>
+                    <div>
+            <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Section Name</label>
+            <div id="student-mgr-section-dropdown" class="custom-dropdown">
+  <input type="hidden" id="student-mgr-section" value="">
+  <div class="selected-option">Select Section</div>
+  <div class="dropdown-options">
+    <div data-value="">Select Section</div>
+  </div>
+</div>
+          </div>
+
+          <div>
+            <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Student Name</label>
+            <input id="student-mgr-name" type="text" placeholder="Student full name"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Roll Number</label>
+              <input id="student-mgr-roll" type="text" placeholder="Roll No."
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;color:#185496;margin-bottom:5px;">Phone Number</label>
+              <input id="student-mgr-phone" type="text" placeholder="Phone"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+          </div>
+
+                    <div style="display:flex;gap:10px;">
+            <button id="student-mgr-save-btn" type="button" style="
+              flex:1;border:none;border-radius:10px;padding:12px 14px;
+              background:#1762a7;color:#fff;font-weight:700;cursor:pointer;">
+              Save Student
+            </button>
+
+            <button id="student-mgr-cancel-edit-btn" type="button" style="
+              display:none;flex:1;border:none;border-radius:10px;padding:12px 14px;
+              background:#eef3f9;color:#35506b;font-weight:700;cursor:pointer;">
+              Cancel Edit
+            </button>
+          </div>
+
+          <div id="student-mgr-status" style="font-size:0.95em;color:#35506b;text-align:center;"></div>
+        </div>
+
+                <div style="margin-top:18px;border-top:1px solid #e3edf8;padding-top:14px;">
+          <div style="font-size:1.05em;font-weight:700;color:#0f3d6b;margin-bottom:10px;">
+            Saved Students
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <input id="student-mgr-filter-class" type="text" placeholder="Filter by Class"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            <input id="student-mgr-filter-section" type="text" placeholder="Filter by Section"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+          </div>
+
+          <button id="student-mgr-load-btn" type="button" style="
+            border:none;border-radius:10px;padding:10px 14px;
+            background:#0f8b6d;color:#fff;font-weight:700;cursor:pointer;
+            margin-bottom:10px;width:100%;">
+            Load Students
+          </button>
+
+          <div id="student-mgr-list" style="
+            max-height:240px;overflow-y:auto;border:1.2px solid #d9e6f5;
+            border-radius:10px;background:#f9fcff;padding:10px;">
+            <div style="color:#6b7b8c;text-align:center;">No students loaded.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <button id="student-mgr-close-btn" type="button" style="
+            border:none;border-radius:10px;padding:10px 16px;
+            background:#eef3f9;color:#35506b;font-weight:600;cursor:pointer;">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+      document.getElementById('student-mgr-close-btn').onclick = function() {
+    modal.remove();
+  };
+
+  document.getElementById('student-mgr-cancel-edit-btn').onclick = function() {
+    document.getElementById('student-mgr-class').value = '';
+document.getElementById('student-mgr-section').value = '';
+document.getElementById('student-mgr-name').value = '';
+document.getElementById('student-mgr-roll').value = '';
+document.getElementById('student-mgr-phone').value = '';
+
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+if (classSelected) classSelected.textContent = 'Select Class';
+
+const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+const sectionOptions = sectionDropdown ? sectionDropdown.querySelector('.dropdown-options') : null;
+
+if (sectionSelected) sectionSelected.textContent = 'Select Section';
+if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Section</div>';
+
+    const saveBtn = document.getElementById('student-mgr-save-btn');
+    saveBtn.removeAttribute('data-edit-id');
+    saveBtn.textContent = 'Save Student';
+
+    document.getElementById('student-mgr-cancel-edit-btn').style.display = 'none';
+    document.getElementById('student-mgr-status').textContent = '';
+  };
+
+    async function loadManagedClasses() {
+    const listEl = document.getElementById('student-mgr-class-list');
+    if (!listEl) return;
+
+    try {
+      listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">Loading classes...</div>';
+
+      const snap = await db.collection('classes')
+  .where('createdBy', '==', currentUser.uid)
+  .get();
+
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">No classes found.</div>';
+        return;
+      }
+
+            let html = '';
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        html += `
+          <div style="border-bottom:1px solid #e3edf8;padding:8px 4px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <div style="color:#0f3d6b;font-weight:600;">${d.className || ''}</div>
+            <button type="button" class="student-mgr-delete-class-btn" data-id="${doc.id}" style="
+              border:none;border-radius:8px;padding:6px 10px;
+              background:#c82333;color:#fff;font-weight:600;cursor:pointer;">
+              Delete
+            </button>
+          </div>
+        `;
+      });
+
+            listEl.innerHTML = html;
+
+const classHidden = document.getElementById('student-mgr-class');
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+const classOptions = classDropdown ? classDropdown.querySelector('.dropdown-options') : null;
+
+const sectionClassHidden = document.getElementById('student-mgr-new-section-class');
+const sectionClassDropdown = document.getElementById('student-mgr-new-section-class-dropdown');
+const sectionClassSelected = sectionClassDropdown ? sectionClassDropdown.querySelector('.selected-option') : null;
+const sectionClassOptions = sectionClassDropdown ? sectionClassDropdown.querySelector('.dropdown-options') : null;
+
+if (classHidden) classHidden.value = '';
+if (classSelected) classSelected.textContent = 'Select Class';
+if (classOptions) classOptions.innerHTML = '<div data-value="">Select Class</div>';
+
+if (sectionClassHidden) sectionClassHidden.value = '';
+if (sectionClassSelected) sectionClassSelected.textContent = 'Select Class';
+if (sectionClassOptions) sectionClassOptions.innerHTML = '<div data-value="">Select Class</div>';
+
+snap.forEach(doc => {
+  const d = doc.data() || {};
+  const className = d.className || '';
+
+  if (classOptions) {
+    classOptions.innerHTML += `<div data-value="${className}">${className}</div>`;
+  }
+  if (sectionClassOptions) {
+    sectionClassOptions.innerHTML += `<div data-value="${className}">${className}</div>`;
+  }
+});
+      listEl.querySelectorAll('.student-mgr-delete-class-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          if (!(await appConfirm('Delete this class?'))) return;
+
+          try {
+            await db.collection('classes').doc(id).delete();
+            loadManagedClasses();
+          } catch (err) {
+            alert('Failed to delete class: ' + err.message);
+          }
+        };
+      });
+   } catch (err) {
+  console.error('LOAD CLASSES ERROR', err);
+  listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load classes.</div>';
+}
+  }
+
+    async function loadManagedSections() {
+    const listEl = document.getElementById('student-mgr-section-list');
+    if (!listEl) return;
+
+    try {
+      listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">Loading sections...</div>';
+
+      const snap = await db.collection('sections')
+  .where('createdBy', '==', currentUser.uid)
+  .get();
+
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">No sections found.</div>';
+        return;
+      }
+
+           let html = '';
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        html += `
+          <div style="border-bottom:1px solid #e3edf8;padding:8px 4px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <div style="color:#0f3d6b;font-weight:600;">
+              ${(d.className || '')} - ${(d.sectionName || '')}
+            </div>
+            <button type="button" class="student-mgr-delete-section-btn" data-id="${doc.id}" style="
+              border:none;border-radius:8px;padding:6px 10px;
+              background:#c82333;color:#fff;font-weight:600;cursor:pointer;">
+              Delete
+            </button>
+          </div>
+        `;
+      });
+
+            listEl.innerHTML = html;
+
+      listEl.querySelectorAll('.student-mgr-delete-section-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+          if (!(await appConfirm('Delete this section?'))) return;
+
+          try {
+            await db.collection('sections').doc(id).delete();
+            loadManagedSections();
+          } catch (err) {
+            alert('Failed to delete section: ' + err.message);
+          }
+        };
+      });
+    } catch (err) {
+  console.error('LOAD SECTIONS ERROR', err);
+  listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load sections.</div>';
+}
+  }
+
+  async function loadManagedStudents() {
+    const classFilter = (document.getElementById('student-mgr-filter-class').value || '').trim().toLowerCase();
+    const sectionFilter = (document.getElementById('student-mgr-filter-section').value || '').trim().toLowerCase();
+    const listEl = document.getElementById('student-mgr-list');
+
+    try {
+      listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">Loading students...</div>';
+
+     const snap = await db.collection('students')
+  .where('createdBy', '==', currentUser.uid)
+  .get();
+
+      if (snap.empty) {
+        listEl.innerHTML = '<div style="color:#6b7b8c;text-align:center;">No students found.</div>';
+        return;
+      }
+
+      let html = '';
+      let count = 0;
+
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        const cls = String(d.className || '');
+        const sec = String(d.sectionName || '');
+        const name = String(d.studentName || '');
+        const roll = String(d.rollNumber || '');
+        const phone = String(d.phoneNumber || '');
+
+        if (classFilter && !cls.toLowerCase().includes(classFilter)) return;
+        if (sectionFilter && !sec.toLowerCase().includes(sectionFilter)) return;
+
+        count++;
+                html += `
+          <div style="border-bottom:1px solid #e3edf8;padding:8px 4px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+             <div style="flex:1;min-width:0;">
+  <div style="font-weight:700;color:#0f3d6b;">${name}</div>
+  <div style="font-size:0.94em;color:#35506b;">Class: ${cls}</div>
+  <div style="font-size:0.94em;color:#35506b;">Section: ${sec}</div>
+  <div style="font-size:0.94em;color:#35506b;">Roll: ${roll}</div>
+  <div style="font-size:0.92em;color:#5d6d7e;">Phone: ${phone}</div>
+</div>
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button type="button" class="student-edit-btn" data-id="${doc.id}" style="
+                  border:none;border-radius:8px;padding:6px 10px;
+                  background:#1762a7;color:#fff;font-weight:600;cursor:pointer;">
+                  Edit
+                </button>
+                <button type="button" class="student-delete-btn" data-id="${doc.id}" style="
+                  border:none;border-radius:8px;padding:6px 10px;
+                  background:#c82333;color:#fff;font-weight:600;cursor:pointer;">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+           listEl.innerHTML = count
+        ? html
+        : '<div style="color:#6b7b8c;text-align:center;">No students match this filter.</div>';
+
+            listEl.querySelectorAll('.student-delete-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+         if (!(await appConfirm('Delete this student?'))) return;
+
+          try {
+            await db.collection('students').doc(id).delete();
+            loadManagedStudents();
+          } catch (err) {
+            alert('Failed to delete student: ' + err.message);
+          }
+        };
+      });
+
+      listEl.querySelectorAll('.student-edit-btn').forEach(btn => {
+        btn.onclick = async function() {
+          const id = this.getAttribute('data-id');
+          if (!id) return;
+
+          try {
+            const snap = await db.collection('students').doc(id).get();
+            const d = snap.data() || {};
+
+            document.getElementById('student-mgr-class').value = d.className || '';
+document.getElementById('student-mgr-name').value = d.studentName || '';
+document.getElementById('student-mgr-roll').value = d.rollNumber || '';
+document.getElementById('student-mgr-phone').value = d.phoneNumber || '';
+
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+if (classSelected) classSelected.textContent = d.className || 'Select Class';
+
+await loadStudentMgrSectionsForClass(d.className || '');
+
+document.getElementById('student-mgr-section').value = d.sectionName || '';
+const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+if (sectionSelected) sectionSelected.textContent = d.sectionName || 'Select Section';
+
+                        document.getElementById('student-mgr-save-btn').setAttribute('data-edit-id', id);
+            document.getElementById('student-mgr-save-btn').textContent = 'Update Student';
+            document.getElementById('student-mgr-status').textContent = 'Editing selected student.';
+            document.getElementById('student-mgr-cancel-edit-btn').style.display = 'block';
+          } catch (err) {
+            alert('Failed to load student for editing: ' + err.message);
+          }
+        };
+      });
+    } catch (err) {
+      listEl.innerHTML = '<div style="color:#c82333;text-align:center;">Failed to load students.</div>';
+    }
+  }
+
+  document.getElementById('student-mgr-load-btn').onclick = loadManagedStudents;
+  document.getElementById('student-mgr-filter-class').addEventListener('input', loadManagedStudents);
+  document.getElementById('student-mgr-filter-section').addEventListener('input', loadManagedStudents);
+
+ loadManagedStudents();
+loadManagedClasses();
+loadManagedSections();
+
+addDropdownListener('student-mgr-class-dropdown', async function(value) {
+  await loadStudentMgrSectionsForClass(value);
+}, 'student-mgr-class', 'Select Class');
+addDropdownListener('student-mgr-new-section-class-dropdown', null, 'student-mgr-new-section-class', 'Select Class');
+addDropdownListener('student-mgr-section-dropdown', null, 'student-mgr-section', 'Select Section');
+
+async function loadStudentMgrSectionsForClass(selectedClass) {
+  const sectionHidden = document.getElementById('student-mgr-section');
+  const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+  const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+  const sectionOptions = sectionDropdown ? sectionDropdown.querySelector('.dropdown-options') : null;
+
+  if (!sectionHidden || !sectionDropdown || !sectionSelected || !sectionOptions) return;
+
+  sectionHidden.value = '';
+  sectionSelected.textContent = 'Select Section';
+  sectionOptions.innerHTML = '<div data-value="">Select Section</div>';
+
+  if (!selectedClass) return;
+
+  try {
+    const snap = await db.collection('sections')
+      .where('createdBy', '==', currentUser.uid)
+      .where('className', '==', selectedClass)
+      .get();
+
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      const sectionName = d.sectionName || '';
+      if (sectionName) {
+        sectionOptions.innerHTML += `<div data-value="${sectionName}">${sectionName}</div>`;
+      }
+    });
+  } catch (err) {
+    console.error('FAILED TO LOAD SECTIONS FOR CLASS', err);
+  }
+}
+
+   document.getElementById('student-mgr-add-class-btn').onclick = async function() {
+  const newClassEl = document.getElementById('student-mgr-new-class');
+  const statusEl = document.getElementById('student-mgr-status');
+  const className = (newClassEl.value || '').trim();
+
+  if (!className) {
+    statusEl.textContent = 'Please enter a class name.';
+    alert('Please enter a class name.');
+    return;
+  }
+
+  try {
+    statusEl.textContent = 'Creating class...';
+    console.log('CREATE CLASS START', className, currentUser && currentUser.uid);
+
+    const dupSnap = await db.collection('classes')
+      .where('createdBy', '==', currentUser.uid)
+      .where('className', '==', className)
+      .get();
+
+    if (!dupSnap.empty) {
+      statusEl.textContent = 'This class already exists.';
+      alert('This class already exists.');
+      return;
+    }
+
+    const docRef = await db.collection('classes').add({
+      createdBy: currentUser.uid,
+      className: className,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log('CLASS CREATED', docRef.id);
+
+    newClassEl.value = '';
+    statusEl.textContent = 'Class created successfully.';
+    alert('Class created successfully.');
+
+    await loadManagedClasses();
+  } catch (err) {
+    console.error('FAILED TO CREATE CLASS', err);
+    statusEl.textContent = 'Failed to create class: ' + err.message;
+    alert('Failed to create class: ' + err.message);
+  }
+};
+
+ document.getElementById('student-mgr-add-section-btn').onclick = async function() {
+  const classEl = document.getElementById('student-mgr-new-section-class');
+  const sectionEl = document.getElementById('student-mgr-new-section');
+  const statusEl = document.getElementById('student-mgr-status');
+
+  const className = (classEl.value || '').trim();
+  const sectionName = (sectionEl.value || '').trim();
+
+  if (!className || !sectionName) {
+    statusEl.textContent = 'Please enter class name and section name.';
+    alert('Please enter class name and section name.');
+    return;
+  }
+
+  try {
+    statusEl.textContent = 'Creating section...';
+    console.log('CREATE SECTION START', className, sectionName, currentUser && currentUser.uid);
+
+    const dupSnap = await db.collection('sections')
+      .where('createdBy', '==', currentUser.uid)
+      .where('className', '==', className)
+      .where('sectionName', '==', sectionName)
+      .get();
+
+    if (!dupSnap.empty) {
+      statusEl.textContent = 'This section already exists for that class.';
+      alert('This section already exists for that class.');
+      return;
+    }
+
+    const docRef = await db.collection('sections').add({
+      createdBy: currentUser.uid,
+      className: className,
+      sectionName: sectionName,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log('SECTION CREATED', docRef.id);
+
+    classEl.value = '';
+    sectionEl.value = '';
+    statusEl.textContent = 'Section created successfully.';
+    alert('Section created successfully.');
+
+    await loadManagedSections();
+  } catch (err) {
+    console.error('FAILED TO CREATE SECTION', err);
+    statusEl.textContent = 'Failed to create section: ' + err.message;
+    alert('Failed to create section: ' + err.message);
+  }
+};
+  document.getElementById('student-mgr-save-btn').onclick = async function() {
+    const saveBtn = document.getElementById('student-mgr-save-btn');
+    const editId = saveBtn.getAttribute('data-edit-id') || '';
+    const className = (document.getElementById('student-mgr-class').value || '').trim();
+    const sectionName = (document.getElementById('student-mgr-section').value || '').trim();
+    const studentName = (document.getElementById('student-mgr-name').value || '').trim();
+    const rollNumber = (document.getElementById('student-mgr-roll').value || '').trim();
+    const phoneNumber = (document.getElementById('student-mgr-phone').value || '').trim();
+    const statusEl = document.getElementById('student-mgr-status');
+
+    if (!className || !sectionName || !studentName || !rollNumber || !phoneNumber) {
+      statusEl.textContent = 'Please fill Class, Section, Student Name, Roll Number, and Phone Number.';
+      return;
+    }
+
+       try {
+      statusEl.textContent = editId ? 'Updating...' : 'Saving...';
+
+      const duplicateSnap = await db.collection('students')
+        .where('createdBy', '==', currentUser.uid)
+        .where('className', '==', className)
+        .where('sectionName', '==', sectionName)
+        .where('rollNumber', '==', rollNumber)
+        .get();
+
+      let duplicateFound = false;
+      duplicateSnap.forEach(doc => {
+        if (doc.id !== editId) duplicateFound = true;
+      });
+
+      if (duplicateFound) {
+        statusEl.textContent = 'A student with this roll number already exists in this class and section.';
+        return;
+      }
+
+      if (editId) {
+        await db.collection('students').doc(editId).update({
+          className: className,
+          sectionName: sectionName,
+          studentName: studentName,
+          rollNumber: rollNumber,
+          phoneNumber: phoneNumber,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        await db.collection('students').add({
           createdBy: currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          level: (getMultiSelected('level').join(', ') || "Mixed"),
-          questions: questions
+          className: className,
+          sectionName: sectionName,
+          studentName: studentName,
+          rollNumber: rollNumber,
+          phoneNumber: phoneNumber
         });
-        const quizId = quizDoc.id;
-        const quizLink = `${window.location.origin}/Question-Bank/quiz.html?quiz=${quizId}`;
+      }
 
-        const classVal = document.getElementById('class-value').value;
-        const subjectVal = document.getElementById('subject-value').value;
-        const chapterVal = (getMultiSelected('chapter').join(', ') || 'All');
-    const levelVal = (getMultiSelected('level').join(', ') || 'Mixed');
-        const message = `*St. PATRICK'S SCHOOL*
+      document.getElementById('student-mgr-class').value = '';
+document.getElementById('student-mgr-section').value = '';
+document.getElementById('student-mgr-name').value = '';
+document.getElementById('student-mgr-roll').value = '';
+document.getElementById('student-mgr-phone').value = '';
+
+const classDropdown = document.getElementById('student-mgr-class-dropdown');
+const classSelected = classDropdown ? classDropdown.querySelector('.selected-option') : null;
+if (classSelected) classSelected.textContent = 'Select Class';
+
+const sectionDropdown = document.getElementById('student-mgr-section-dropdown');
+const sectionSelected = sectionDropdown ? sectionDropdown.querySelector('.selected-option') : null;
+const sectionOptions = sectionDropdown ? sectionDropdown.querySelector('.dropdown-options') : null;
+
+if (sectionSelected) sectionSelected.textContent = 'Select Section';
+if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Section</div>';
+
+                 saveBtn.removeAttribute('data-edit-id');
+      saveBtn.textContent = 'Save Student';
+      document.getElementById('student-mgr-cancel-edit-btn').style.display = 'none';
+
+      statusEl.textContent = editId ? 'Student updated successfully.' : 'Student saved successfully.';
+      loadManagedStudents();
+
+      setTimeout(() => {
+        if (document.getElementById('student-mgr-save-btn')) {
+          document.getElementById('student-mgr-save-btn').removeAttribute('data-edit-id');
+          document.getElementById('student-mgr-save-btn').textContent = 'Save Student';
+        }
+      }, 100);
+    } catch (err) {
+      statusEl.textContent = 'Failed to save student: ' + err.message;
+    }
+  };
+}
+
+function __qbEscapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function __qbFormatOptionForPrint(opt) {
+  const s = String(opt || '').trim();
+  const m = s.match(/^([A-D]\))\s*(.*)$/);
+  if (!m) return s;
+  return `<span style="color:#7A2230;font-weight:700;">${m[1]}</span> <span style="color:#111111;">${m[2]}</span>`;
+}
+
+function __qbNormalizeOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options.map((opt, i) => {
+    const clean = String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
+    return `${String.fromCharCode(65 + i)}) ${clean}`;
+  });
+}
+
+function __qbShuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function __qbShuffleQuestionOptions(questionObj) {
+  if (!questionObj || !Array.isArray(questionObj.options) || questionObj.options.length !== 4) {
+    return questionObj;
+  }
+
+  const rawOptions = questionObj.options.map(opt =>
+    String(opt || '').replace(/^[A-D][).]\s*/, '').trim()
+  );
+
+  const originalAnswer = String(questionObj.answer || '').toUpperCase().replace(/\s+/g, '');
+  const answerLetters = originalAnswer
+    .split(',')
+    .map(x => x.trim())
+    .filter(x => /^[A-D]$/.test(x));
+
+  const indexed = rawOptions.map((text, index) => ({
+    oldLetter: String.fromCharCode(65 + index),
+    text
+  }));
+
+  const shuffled = __qbShuffleArray(indexed);
+
+  const newOptions = shuffled.map((item, idx) => {
+    return `${String.fromCharCode(65 + idx)}) ${item.text}`;
+  });
+
+  const newAnswerLetters = shuffled
+    .map((item, idx) => answerLetters.includes(item.oldLetter) ? String.fromCharCode(65 + idx) : null)
+    .filter(Boolean);
+
+  return {
+    ...questionObj,
+    options: newOptions,
+    answer: newAnswerLetters.join(', ')
+  };
+}
+
+async function __qbLoadTeacherSections() {
+  const snap = await db.collection('sections')
+    .where('createdBy', '==', currentUser.uid)
+    .get();
+  const sections = [];
+  snap.forEach(doc => {
+    const d = doc.data() || {};
+    sections.push({
+      id: doc.id,
+      className: d.className || '',
+      sectionName: d.sectionName || '',
+      label: `${d.className || ''} - ${d.sectionName || ''}`
+    });
+  });
+
+  sections.sort((a, b) => {
+    const classCompare = String(a.className || '').localeCompare(String(b.className || ''));
+    if (classCompare !== 0) return classCompare;
+    return String(a.sectionName || '').localeCompare(String(b.sectionName || ''));
+  });
+
+  return sections;
+}
+
+async function __qbOpenAssignmentPopup(quizPayload) {
+  return new Promise(async (resolve) => {
+    document.querySelectorAll('.quiz-assignment-popup').forEach(el => el.remove());
+
+    let sections = [];
+    try {
+      sections = await __qbLoadTeacherSections();
+    } catch (err) {
+      alert('Could not load sections: ' + err.message);
+      resolve(null);
+      return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'quiz-assignment-popup';
+
+    const sectionsHtml = sections.length
+      ? sections.map(sec => `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #edf3fa;cursor:pointer;">
+            <input type="checkbox" class="quiz-assign-section-chk" value="${__qbEscapeHtml(sec.id)}"
+              data-class="${__qbEscapeHtml(sec.className)}"
+              data-section="${__qbEscapeHtml(sec.sectionName)}">
+            <span style="color:#12416c;font-weight:600;">${__qbEscapeHtml(sec.label)}</span>
+          </label>
+        `).join('')
+      : `<div style="padding:10px;color:#6b7b8c;text-align:center;">No sections found. Please create sections first.</div>`;
+
+    modal.innerHTML = `
+      <div style="
+        position:fixed;top:0;left:0;width:100vw;height:100vh;
+        background:rgba(12,29,68,0.16);z-index:100000;
+        display:flex;align-items:center;justify-content:center;
+        padding:16px;box-sizing:border-box;">
+        
+        <div style="
+          background:#fff;border-radius:18px;padding:22px 18px;
+          width:100%;max-width:560px;max-height:92vh;overflow-y:auto;
+          box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+          
+          <div style="font-size:1.18em;font-weight:700;color:#0f3d6b;margin-bottom:6px;text-align:center;">
+            Assign Practice Quiz
+          </div>
+          <div style="font-size:0.96em;color:#4b5b6b;text-align:center;margin-bottom:16px;line-height:1.5;">
+            Choose sections, quiz status, and optional timing.
+          </div>
+
+          <div style="border:1px solid #d9e8f7;border-radius:12px;padding:12px;background:#f9fcff;margin-bottom:14px;">
+            <div style="font-weight:700;color:#0f3d6b;margin-bottom:8px;">Quiz Summary</div>
+            <div style="font-size:0.95em;color:#35506b;line-height:1.6;">
+              <div><b>School:</b> ${__qbEscapeHtml(quizPayload.schoolName || '')}</div>
+              <div><b>Title:</b> ${__qbEscapeHtml(quizPayload.quizTitle || '')}</div>
+              <div><b>Class:</b> ${__qbEscapeHtml(quizPayload.class || '')}</div>
+              <div><b>Board:</b> ${__qbEscapeHtml(quizPayload.board || '')}</div>
+              <div><b>Subject:</b> ${__qbEscapeHtml(quizPayload.subject || '')}</div>
+              <div><b>Chapter:</b> ${__qbEscapeHtml(quizPayload.chapter || '')}</div>
+              <div><b>Level:</b> ${__qbEscapeHtml(quizPayload.level || '')}</div>
+              <div><b>Total Questions:</b> ${Number(quizPayload.totalQuestions || 0)}</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-weight:700;color:#185496;margin-bottom:8px;">Assign to Sections</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+              <button type="button" id="quiz-assign-select-all" style="border:none;border-radius:8px;padding:8px 12px;background:#1762a7;color:#fff;font-weight:600;cursor:pointer;">Select All</button>
+              <button type="button" id="quiz-assign-clear-all" style="border:none;border-radius:8px;padding:8px 12px;background:#eef4fb;color:#1a4b78;font-weight:600;cursor:pointer;">Clear</button>
+            </div>
+            <div id="quiz-assign-section-wrap" style="max-height:220px;overflow-y:auto;border:1.2px solid #d9e6f5;border-radius:10px;background:#fff;">
+              ${sectionsHtml}
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Quiz Status</label>
+              <select id="quiz-assign-status" style="width:100%;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
+                <option value="live">live</option>
+                <option value="upcoming">upcoming</option>
+                <option value="closed">closed</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Attempt Rule</label>
+              <select id="quiz-assign-attempt-rule" style="width:100%;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;background:#fff;">
+                <option value="single">One Final Attempt</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Start Time (optional)</label>
+              <input id="quiz-assign-start" type="datetime-local"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+            <div>
+              <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">End Time (optional)</label>
+              <input id="quiz-assign-end" type="datetime-local"
+                style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+            </div>
+          </div>
+
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-weight:700;color:#185496;margin-bottom:6px;">Duration in Minutes (optional)</label>
+            <input id="quiz-assign-duration" type="number" min="1" step="1" placeholder="Example: 30"
+              style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.3px solid #bcd6ef;border-radius:8px;">
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;">
+              <input id="quiz-assign-show-leaderboard" type="checkbox" checked>
+              <span style="font-weight:600;color:#12416c;">Allow Leaderboard</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;">
+              <input id="quiz-assign-auto-submit" type="checkbox">
+              <span style="font-weight:600;color:#12416c;">Auto Submit Later</span>
+            </label>
+          </div>
+
+          <div id="quiz-assign-status-msg" style="font-size:0.94em;color:#35506b;text-align:center;margin-bottom:10px;"></div>
+
+          <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button type="button" id="quiz-assign-cancel" style="border:none;border-radius:10px;padding:10px 16px;background:#eef3f9;color:#35506b;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+            <button type="button" id="quiz-assign-save" style="border:none;border-radius:10px;padding:10px 16px;background:#1762a7;color:#fff;font-weight:700;cursor:pointer;">
+              Save Quiz & Assign
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeModal = (value) => {
+      modal.remove();
+      resolve(value);
+    };
+
+    document.getElementById('quiz-assign-cancel').onclick = () => closeModal(null);
+
+    document.getElementById('quiz-assign-select-all').onclick = () => {
+      modal.querySelectorAll('.quiz-assign-section-chk').forEach(cb => cb.checked = true);
+    };
+
+    document.getElementById('quiz-assign-clear-all').onclick = () => {
+      modal.querySelectorAll('.quiz-assign-section-chk').forEach(cb => cb.checked = false);
+    };
+
+    document.getElementById('quiz-assign-save').onclick = () => {
+      const statusEl = document.getElementById('quiz-assign-status-msg');
+      const checked = Array.from(modal.querySelectorAll('.quiz-assign-section-chk:checked'));
+
+      if (!checked.length) {
+        statusEl.textContent = 'Please select at least one section.';
+        return;
+      }
+
+      const startTime = (document.getElementById('quiz-assign-start').value || '').trim();
+      const endTime = (document.getElementById('quiz-assign-end').value || '').trim();
+      const durationRaw = (document.getElementById('quiz-assign-duration').value || '').trim();
+
+      if (startTime && endTime && new Date(endTime) <= new Date(startTime)) {
+        statusEl.textContent = 'End time must be greater than start time.';
+        return;
+      }
+
+      const durationMinutes = durationRaw ? Number(durationRaw) : null;
+      if (durationRaw && (!Number.isInteger(durationMinutes) || durationMinutes < 1)) {
+        statusEl.textContent = 'Duration must be a positive whole number.';
+        return;
+      }
+
+      closeModal({
+        assignedSections: checked.map(cb => ({
+          sectionId: cb.value,
+          className: cb.getAttribute('data-class') || '',
+          sectionName: cb.getAttribute('data-section') || ''
+        })),
+        quizStatus: document.getElementById('quiz-assign-status').value || 'live',
+        startTime: startTime || null,
+        endTime: endTime || null,
+        durationMinutes: durationMinutes || null,
+        attemptRule: document.getElementById('quiz-assign-attempt-rule').value || 'single',
+        allowLeaderboard: !!document.getElementById('quiz-assign-show-leaderboard').checked,
+        autoSubmitEnabled: !!document.getElementById('quiz-assign-auto-submit').checked
+      });
+    };
+  });
+}
+
+function __qbOpenShareModal(payload) {
+  document.querySelectorAll('.quiz-share-modal').forEach(el => el.remove());
+
+  const { schoolName, quizTitle, className, subjectName, chapterName, levelName, totalQuestions, assignmentLinks } = payload;
+
+  const linkLines = (assignmentLinks || []).map((item, idx) => {
+    return `${idx + 1}. ${item.className} - ${item.sectionName}\n${item.link}`;
+  }).join('\n\n');
+
+  const message = `*${schoolName}*
 *IIT & NEET FOUNDATION*
-*QUIZ*
+*${String(quizTitle || '').toUpperCase()}*
 
 Dear Students,
 You have a new online practice quiz!
 
-   *• Class: ${classVal}*
-   *• Subject: ${subjectVal}*
-   *• Chapter: ${chapterVal}*
-   *• Level: ${levelVal}*
+*Class:* ${className}
+*Subject:* ${subjectName}
+*Chapter:* ${chapterName}
+*Level:* ${levelName}
+*Total Questions:* ${totalQuestions}
 
-Please click the link below to start your quiz:
-${quizLink}
+*Section Links:*
+${linkLines}
+
+Please open the correct section link and attend the quiz.
 
 All the Best`;
 
-        document.querySelectorAll('.quiz-share-modal').forEach(el => el.remove());
+  const modal = document.createElement('div');
+  modal.className = 'quiz-share-modal';
+  modal.innerHTML = `
+    <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;background:rgba(12,29,68,0.12);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;">
+      <div style="background:#fff;padding:24px 18px 16px 18px;border-radius:14px;max-width:94vw;width:460px;box-shadow:0 6px 22px rgba(23,98,167,0.14);display:flex;flex-direction:column;align-items:center;">
+        <div style="font-weight:bold;font-size:1.16em;color:#175799;text-align:center;margin-bottom:14px;">Quiz and Assignment Links Saved</div>
+        <textarea id="quiz-share-textarea"
+          style="width:100%;height:290px;font-size:1.03em;padding:10px 8px;border-radius:8px;border:1.1px solid #bcd6ef;background:#f9fcff;resize:none;margin-bottom:14px;font-family:'Times New Roman', Times, serif;text-align:left;"
+          readonly>${message}</textarea>
 
-        const modal = document.createElement('div');
-        modal.className = 'quiz-share-modal';
-        modal.innerHTML = `
-          <div style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;background:rgba(12,29,68,0.12);display:flex;align-items:center;justify-content:center;">
-            <div style="background:#fff;padding:28px 22px 18px 22px;border-radius:14px;max-width:94vw;width:410px;box-shadow:0 6px 22px rgba(23,98,167,0.14);display:flex;flex-direction:column;align-items:center;">
-              <div style="font-weight:bold;font-size:1.19em;color:#175799;text-align:center;margin-bottom:16px;">Share this message with students</div>
-              <textarea id="quiz-share-textarea"
-                style="width:100%;height:210px;font-size:1.15em;
-                       padding:10px 8px;
-                       border-radius:8px;
-                       border:1.1px solid #bcd6ef;
-                       background:#f9fcff;
-                       resize:none;
-                       margin-bottom:18px;
-                       font-family:'Times New Roman', Times, serif;
-                       text-align:left;"
-                readonly>${message}</textarea>
-              <button id="copy-quiz-message-btn" style="padding:10px 24px;font-size:1em;border:none;border-radius:7px;background:#1762a7;color:#fff;font-weight:600;cursor:pointer;margin-bottom:8px;">Copy</button>
-              <button id="close-quiz-message-btn" style="background:#eee;border:none;border-radius:7px;padding:7px 20px;font-weight:500;color:#134579;cursor:pointer;">Close</button>
-            </div>
-          </div>
-        `;
-        document.body.appendChild(modal);
+        <div style="width:100%;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button id="copy-quiz-message-btn" style="padding:10px 20px;font-size:1em;border:none;border-radius:7px;background:#1762a7;color:#fff;font-weight:600;cursor:pointer;">Copy Message</button>
+          <button id="close-quiz-message-btn" style="background:#eee;border:none;border-radius:7px;padding:10px 20px;font-weight:500;color:#134579;cursor:pointer;">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
 
-        document.getElementById('copy-quiz-message-btn').onclick = function() {
-          const textarea = document.getElementById('quiz-share-textarea');
-          textarea.select();
-          textarea.setSelectionRange(0, 99999);
-          document.execCommand('copy');
-          this.textContent = "Copied!";
-          setTimeout(() => { this.textContent = "Copy"; }, 1300);
-        };
+  document.getElementById('copy-quiz-message-btn').onclick = function() {
+    const textarea = document.getElementById('quiz-share-textarea');
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    this.textContent = "Copied!";
+    setTimeout(() => { this.textContent = "Copy Message"; }, 1300);
+  };
 
-        document.getElementById('close-quiz-message-btn').onclick = function() {
-          modal.remove();
-        };
+  document.getElementById('close-quiz-message-btn').onclick = function() {
+    modal.remove();
+  };
+}
 
-      } catch (err) {
-        alert("Quiz creation failed: " + err.message);
+function showQuizSelectionModePopup() {
+  document.querySelectorAll('.quiz-selection-popup').forEach(el => el.remove());
+
+  const displayArea = document.getElementById('questions-display-area');
+  const totalDisplayed = displayArea.querySelectorAll('.question-item').length;
+
+  const modal = document.createElement('div');
+  modal.className = 'quiz-selection-popup';
+  modal.innerHTML = `
+    <div style="
+      position:fixed;top:0;left:0;width:100vw;height:100vh;
+      background:rgba(12,29,68,0.14);z-index:99999;
+      display:flex;align-items:center;justify-content:center;
+      padding:16px;box-sizing:border-box;">
+      
+      <div style="
+        background:#fff;border-radius:18px;padding:24px 18px;
+        width:100%;max-width:470px;
+        box-shadow:0 8px 28px rgba(0,0,0,0.18);
+        text-align:center;">
+        
+        <div style="font-size:1.18em;font-weight:700;color:#0f3d6b;margin-bottom:8px;">
+          Create Practice Quiz
+        </div>
+        <div style="font-size:0.98em;color:#4b5b6b;margin-bottom:10px;line-height:1.5;">
+          Choose how you want to select questions for this quiz.
+        </div>
+
+        <div style="margin-bottom:14px;padding:10px 12px;border:1px solid #d9e8f7;border-radius:10px;background:#f9fcff;color:#12416c;font-weight:700;">
+          Total Available Questions: <span id="quiz-total-available">${totalDisplayed}</span>
+        </div>
+
+        <button id="quiz-mode-all" style="
+          width:100%;padding:12px 14px;margin-bottom:10px;
+          border:none;border-radius:10px;background:#1762a7;color:#fff;
+          font-weight:700;cursor:pointer;">
+          Use All Displayed Questions
+        </button>
+
+        <button id="quiz-mode-manual" style="
+          width:100%;padding:12px 14px;margin-bottom:10px;
+          border:1.5px solid #1762a7;border-radius:10px;background:#fff;color:#1762a7;
+          font-weight:700;cursor:pointer;">
+          Select Questions Manually
+        </button>
+
+        <button id="quiz-mode-random" style="
+          width:100%;padding:12px 14px;margin-bottom:14px;
+          border:1.5px solid #0f8b6d;border-radius:10px;background:#fff;color:#0f8b6d;
+          font-weight:700;cursor:pointer;">
+          Randomly Choose by Count
+        </button>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;text-align:left;">
+            <input id="quiz-shuffle-question-order" type="checkbox">
+            <span style="font-weight:600;color:#12416c;">Shuffle Question Order</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.2px solid #d9e6f5;border-radius:10px;background:#f9fcff;cursor:pointer;text-align:left;">
+            <input id="quiz-shuffle-options" type="checkbox">
+            <span style="font-weight:600;color:#12416c;">Shuffle MCQ Options</span>
+          </label>
+        </div>
+
+        <button id="quiz-mode-cancel" style="
+          width:100%;padding:11px 14px;
+          border:none;border-radius:10px;background:#eef3f9;color:#35506b;
+          font-weight:600;cursor:pointer;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const closeModal = () => modal.remove();
+
+  document.getElementById('quiz-mode-cancel').onclick = function() {
+    closeModal();
+  };
+
+ function __saveQuizModeSettings(mode, randomCount = null) {
+    const shuffleQuestionEl = document.getElementById('quiz-shuffle-question-order');
+    const shuffleOptionsEl = document.getElementById('quiz-shuffle-options');
+
+    window.__quizSelectionMode = mode;
+    window.__quizRandomCount = randomCount;
+    window.__quizShuffleQuestionOrder = !!(shuffleQuestionEl && shuffleQuestionEl.checked);
+    window.__quizShuffleOptions = !!(shuffleOptionsEl && shuffleOptionsEl.checked);
+  }
+  document.getElementById('quiz-mode-all').onclick = function() {
+    closeModal();
+    __saveQuizModeSettings('all', null);
+    document.getElementById('quiz-spinner').style.display = 'flex';
+    setTimeout(() => {
+      document.getElementById('quiz-spinner').style.display = 'none';
+      document.getElementById('create-quiz-btn').click();
+    }, 100);
+  };
+
+  document.getElementById('quiz-mode-manual').onclick = function() {
+    closeModal();
+    __saveQuizModeSettings('manual', null);
+    fetchAndDisplayQuestions();
+    setTimeout(() => {
+      alert('Now tick the questions you want, then click Create Practice Quiz again.');
+    }, 250);
+  };
+
+  document.getElementById('quiz-mode-random').onclick = async function() {
+    if (!totalDisplayed) {
+      closeModal();
+      alert('No questions are available to choose randomly.');
+      return;
+    }
+
+    const raw = await appPrompt('How many questions do you want to choose randomly?\n\nAvailable: ' + totalDisplayed, '');
+    if (raw === null) return;
+
+    const count = Number(raw);
+    if (!Number.isInteger(count) || count < 1) {
+      alert('Please enter a valid positive number.');
+      return;
+    }
+    if (count > totalDisplayed) {
+      alert('You entered more than available questions.');
+      return;
+    }
+
+    closeModal();
+    __saveQuizModeSettings('random', count);
+    document.getElementById('quiz-spinner').style.display = 'flex';
+    setTimeout(() => {
+      document.getElementById('quiz-spinner').style.display = 'none';
+      document.getElementById('create-quiz-btn').click();
+    }, 100);
+  };
+}
+
+// --- Create Practice Quiz Button Handler ---
+document.getElementById('create-quiz-btn').addEventListener('click', async function() {
+  if (!window.__quizSelectionMode) {
+    showQuizSelectionModePopup();
+    return;
+  }
+
+  const spinner = document.getElementById('quiz-spinner');
+  spinner.style.display = 'flex';
+
+  try {
+    const displayArea = document.getElementById('questions-display-area');
+    const allNodes = Array.from(displayArea.querySelectorAll('.question-item'));
+    let nodes = allNodes;
+
+    if (window.__quizSelectionMode === 'manual') {
+      nodes = allNodes.filter(item => {
+        const cb = item.querySelector('.quiz-question-checkbox');
+        return cb && cb.checked;
+      });
+    }
+
+    if (window.__quizSelectionMode === 'random') {
+      const shuffled = __qbShuffleArray(allNodes);
+      nodes = shuffled.slice(0, Number(window.__quizRandomCount || 0));
+    }
+
+    if (window.__quizSelectionMode === 'all' && window.__quizShuffleQuestionOrder) {
+      nodes = __qbShuffleArray(nodes);
+    }
+    if (window.__quizSelectionMode === 'manual' && window.__quizShuffleQuestionOrder) {
+      nodes = __qbShuffleArray(nodes);
+    }
+    if (window.__quizSelectionMode === 'random' && window.__quizShuffleQuestionOrder) {
+      nodes = __qbShuffleArray(nodes);
+    }
+
+    if (nodes.length < 1) {
+      alert(
+        window.__quizSelectionMode === 'manual'
+          ? "Please select at least one question for this quiz!"
+          : "No questions found for this quiz!"
+      );
+      window.__quizSelectionMode = null;
+      window.__quizRandomCount = null;
+      window.__quizShuffleQuestionOrder = false;
+      window.__quizShuffleOptions = false;
+      updateManualQuizToolbar();
+      spinner.style.display = 'none';
+      return;
+    }
+
+    const confirmMsg =
+      window.__quizSelectionMode === 'manual'
+        ? `Total available: ${allNodes.length}\nSelected: ${nodes.length}\n\nCreate quiz with selected questions?`
+        : window.__quizSelectionMode === 'random'
+          ? `Total available: ${allNodes.length}\nRandomly selected: ${nodes.length}\n\nCreate quiz now?`
+          : `Total available: ${allNodes.length}\nSelected: ${nodes.length}\n\nCreate quiz with all displayed questions?`;
+
+    if (!(await appConfirm(confirmMsg))) {
+      spinner.style.display = 'none';
+      return;
+    }
+
+    const questions = [];
+    for (const item of nodes) {
+      const docId = item.getAttribute('data-id');
+      if (!docId) continue;
+
+      const snap = await questionsDb.collection('questions').doc(docId).get();
+      const data = snap.data() || {};
+
+            let qObj = {
+        questionId: docId,
+        question: data.question || data.body || data.text || '',
+        options: __qbNormalizeOptions(data.options || []),
+        answer: data.parsedAnswer || data.answer || '',
+        explanation: data.explanation || data.solution || data.explain || '',
+        level: data.difficulty || data.level || '',
+        marks: Number(data.marks || 0),
+        chapter: data.chapter || '',
+        type: data.mcqType || data.type || (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive'),
+        board: data.board || '',
+        subject: data.subject || '',
+        image: data.image || '',
+        originalQuestionNumber: data.questionNumber ?? null
+      };
+      if (window.__quizShuffleOptions) {
+        qObj = __qbShuffleQuestionOptions(qObj);
       }
 
-      document.getElementById('quiz-spinner').style.display = 'none';
+      questions.push(qObj);
+    }
+
+    if (!questions.length) {
+      alert('No valid questions were prepared for this quiz.');
+      spinner.style.display = 'none';
+      return;
+    }
+
+    const classVal = document.getElementById('class-value').value || '';
+    const boardVal = document.getElementById('board-value').value || '';
+    const subjectVal = document.getElementById('subject-value').value || '';
+    const chapterVal = (getMultiSelected('chapter').join(', ') || 'All');
+    const levelVal = (getMultiSelected('level').join(', ') || 'Mixed');
+    const qtypeVal = (getMultiSelected('qtype').join(', ') || 'All');
+    const marksVal = (getMultiSelected('marks').join(', ') || 'All');
+
+    const schoolName = await appPrompt("Enter School Name", "SciMentra");
+    if (schoolName === null) {
+      spinner.style.display = 'none';
+      return;
+    }
+    const finalSchoolName = (schoolName || '').trim() || 'SciMentra';
+
+    const quizTitleInput = await appPrompt("Enter Quiz Title", `${subjectVal} Practice Quiz`);
+    if (quizTitleInput === null) {
+      spinner.style.display = 'none';
+      return;
+    }
+    const finalQuizTitle = (quizTitleInput || '').trim() || `${subjectVal} Practice Quiz`;
+
+    const quizPayload = {
+      createdBy: currentUser.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      schoolName: finalSchoolName,
+      quizTitle: finalQuizTitle,
+      class: classVal,
+      board: boardVal,
+      subject: subjectVal,
+      chapter: chapterVal,
+      level: levelVal,
+      questionType: qtypeVal,
+      marksFilter: marksVal,
+      selectionMode: window.__quizSelectionMode || 'all',
+      randomCount: window.__quizSelectionMode === 'random' ? Number(window.__quizRandomCount || 0) : null,
+      shuffleQuestionOrder: !!window.__quizShuffleQuestionOrder,
+      shuffleOptions: !!window.__quizShuffleOptions,
+      totalAvailableBeforeSelection: allNodes.length,
+      totalQuestions: questions.length,
+      questions: questions,
+      assignmentReady: true
+    };
+
+    const assignmentSettings = await __qbOpenAssignmentPopup(quizPayload);
+    if (!assignmentSettings) {
+      spinner.style.display = 'none';
+      return;
+    }
+
+    const quizDoc = await db.collection('quizzes').add({
+      ...quizPayload,
+      quizStatus: assignmentSettings.quizStatus,
+      startTime: assignmentSettings.startTime || null,
+      endTime: assignmentSettings.endTime || null,
+      durationMinutes: assignmentSettings.durationMinutes || null,
+      attemptRule: assignmentSettings.attemptRule || 'single',
+      allowLeaderboard: !!assignmentSettings.allowLeaderboard,
+      autoSubmitEnabled: !!assignmentSettings.autoSubmitEnabled,
+      assignedSectionIds: assignmentSettings.assignedSections.map(x => x.sectionId),
+      assignedSections: assignmentSettings.assignedSections
     });
+
+    const quizId = quizDoc.id;
+    const assignmentLinks = [];
+
+    for (const sec of assignmentSettings.assignedSections) {
+      const assignmentDoc = await db.collection('quizAssignments').add({
+        createdBy: currentUser.uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        quizId: quizId,
+        schoolName: finalSchoolName,
+        quizTitle: finalQuizTitle,
+        class: classVal,
+        board: boardVal,
+        subject: subjectVal,
+        chapter: chapterVal,
+        level: levelVal,
+        totalQuestions: questions.length,
+        sectionId: sec.sectionId,
+        className: sec.className,
+        sectionName: sec.sectionName,
+        quizStatus: assignmentSettings.quizStatus,
+        startTime: assignmentSettings.startTime || null,
+        endTime: assignmentSettings.endTime || null,
+        durationMinutes: assignmentSettings.durationMinutes || null,
+        attemptRule: assignmentSettings.attemptRule || 'single',
+        allowLeaderboard: !!assignmentSettings.allowLeaderboard,
+        autoSubmitEnabled: !!assignmentSettings.autoSubmitEnabled,
+        isActive: assignmentSettings.quizStatus !== 'closed'
+      });
+
+      const assignmentId = assignmentDoc.id;
+      const quizLink = `${window.location.origin}/QBank/quiz.html?quiz=${encodeURIComponent(quizId)}&assignment=${encodeURIComponent(assignmentId)}`;
+
+      await assignmentDoc.update({
+        assignmentLink: quizLink
+      });
+
+      assignmentLinks.push({
+        assignmentId,
+        className: sec.className,
+        sectionName: sec.sectionName,
+        link: quizLink
+      });
+    }
+
+    __qbOpenShareModal({
+      schoolName: finalSchoolName,
+      quizTitle: finalQuizTitle,
+      className: classVal,
+      subjectName: subjectVal,
+      chapterName: chapterVal,
+      levelName: levelVal,
+      totalQuestions: questions.length,
+      assignmentLinks
+    });
+
+    if (window.__quizSelectionMode === 'manual') {
+      document.querySelectorAll('.quiz-question-checkbox').forEach(cb => cb.checked = false);
+    }
+
+    window.__quizSelectionMode = null;
+    window.__quizRandomCount = null;
+    window.__quizShuffleQuestionOrder = false;
+    window.__quizShuffleOptions = false;
+    updateManualQuizToolbar();
+
+  } catch (err) {
+    alert("Quiz creation failed: " + err.message);
+  }
+
+  spinner.style.display = 'none';
+});
   </script>
 
   <!-- Quiz Creation Spinner -->
@@ -1963,21 +4876,3 @@ All the Best`;
   </div>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
