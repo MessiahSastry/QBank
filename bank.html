@@ -932,16 +932,18 @@ function buildQuestionHTML(item, __parent = printable) {
   const isMCQ = options.length === 4;
 
    const questionHtml = `
-    <div class="question-container" style="display:flex;align-items:flex-start;margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
-      <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;flex:0 0 auto;">
-        ${qCounter}.
-      </div>
-      <div class="question-body" style="flex:1;line-height:1.6;page-break-inside:auto;break-inside:auto;">
+   <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <tr>
+          <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;">
+            ${qCounter}.
+          </td>
+          <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
         <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;white-space:pre-wrap;">
           ${String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ')}
         </div>
         ${imgHtml ? imgHtml : ''}
-        <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
+                <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
           ${
             isMCQ ? (() => {
               let optionLinesRaw = options.slice(0, 4).map((opt) => {
@@ -1024,7 +1026,9 @@ function buildQuestionHTML(item, __parent = printable) {
                 : '')
           }
         </div>
-      </div>
+          </td>
+        </tr>
+      </table>
     </div>`;
 
   if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
