@@ -199,12 +199,13 @@
         Welcome, <span id="display-name"></span>!
       </div>
       <div class="nav-buttons-container">
-        <h2 style="text-align:center; color: #0f3d6b;">Choose a Section</h2>
-        <div class="nav-button" onclick="location.href='ai-gen.html'"><i class="fas fa-brain"></i> Question Generator</div>
-        <div class="nav-button" onclick="location.href='bank.html'"><i class="fas fa-book"></i> Question Bank</div>
-        <div class="nav-button" onclick="location.href='exam-builder.html'"><i class="fas fa-file-alt"></i> Exam Builder</div>
-        <div class="nav-button" onclick="location.href='workbook.html'"><i class="fas fa-book-open"></i> Workbook</div>  
-      </div>
+  <h2 style="text-align:center; color: #0f3d6b;">Choose a Section</h2>
+  <div class="nav-button" onclick="location.href='ai-gen.html'"><i class="fas fa-brain"></i> Question Generator</div>
+  <div class="nav-button" onclick="location.href='bank.html'"><i class="fas fa-book"></i> Question Bank</div>
+  <div class="nav-button" onclick="location.href='exam-builder.html'"><i class="fas fa-file-alt"></i> Exam Builder</div>
+  <div class="nav-button" onclick="location.href='workbook.html'"><i class="fas fa-book-open"></i> Workbook</div>
+  <div class="nav-button" id="admin-btn" onclick="location.href='admin-dashboard.html'" style="display:none;"><i class="fas fa-user-shield"></i> Admin</div>
+</div>
     </main>
   </div>
   <!-- Settings Popup -->
@@ -236,31 +237,40 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    const splash = document.getElementById("splash");
-    const dashboard = document.getElementById("dashboard-section");
-    const settingsPopup = document.getElementById("settings-popup");
-    const displayNameSpan = document.getElementById("display-name");
-    const settingsBtn = document.getElementById("settings-btn");
-    const closeSettingsBtn = document.getElementById("close-settings-btn");
-    const editNameInput = document.getElementById("edit-name");
-    const saveNameBtn = document.getElementById("save-name-btn");
-    const logoutBtn = document.getElementById("logout-btn");
+   const splash = document.getElementById("splash");
+const dashboard = document.getElementById("dashboard-section");
+const settingsPopup = document.getElementById("settings-popup");
+const displayNameSpan = document.getElementById("display-name");
+const settingsBtn = document.getElementById("settings-btn");
+const closeSettingsBtn = document.getElementById("close-settings-btn");
+const editNameInput = document.getElementById("edit-name");
+const saveNameBtn = document.getElementById("save-name-btn");
+const logoutBtn = document.getElementById("logout-btn");
+const adminBtn = document.getElementById("admin-btn");
 
     let currentUser = null;
 
     auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUser = user;
-        setTimeout(() => {
-          splash.classList.add('hidden');
-          dashboard.style.display = "flex";
-        }, 500);
-        displayNameSpan.textContent = user.displayName || user.email.split('@')[0];
-      } else {
-        window.location.replace("index.html");
-      }
-    });
+  if (user) {
+    currentUser = user;
+    setTimeout(() => {
+      splash.classList.add('hidden');
+      dashboard.style.display = "flex";
+    }, 500);
 
+    displayNameSpan.textContent = user.displayName || user.email.split('@')[0];
+
+    const userEmail = (user.email || "").toLowerCase().trim();
+    if (userEmail === "messiahsastry20@gmail.com") {
+      adminBtn.style.display = "block";
+    } else {
+      adminBtn.style.display = "none";
+    }
+
+  } else {
+    window.location.replace("index.html");
+  }
+});
     settingsBtn.onclick = () => {
       settingsPopup.style.display = "flex";
       editNameInput.value = displayNameSpan.textContent;
