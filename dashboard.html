@@ -307,12 +307,19 @@ const adminBtn = document.getElementById("admin-btn");
 
     displayNameSpan.textContent = user.displayName || user.email.split('@')[0];
 
-    const userEmail = (user.email || "").toLowerCase().trim();
-    if (userEmail === "messiahsastry20@gmail.com") {
-      adminBtn.style.display = "block";
-    } else {
-      adminBtn.style.display = "none";
-    }
+   const userEmail = (user.email || "").toLowerCase().trim();
+
+const adminEmails = [
+  "messiahsastry20@gmail.com",
+  "subhanshaik4660@gmail.com",
+  "thirdadmin@gmail.com"
+];
+
+if (adminEmails.includes(userEmail)) {
+  adminBtn.style.display = "block";
+} else {
+  adminBtn.style.display = "none";
+}
 
   } else {
     window.location.replace("index.html");
