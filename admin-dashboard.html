@@ -208,14 +208,19 @@
 
       const userEmail = (user.email || "").toLowerCase().trim();
 
-      if (userEmail !== "messiahsastry20@gmail.com") {
-        alert("Access denied.");
-        window.location.replace("dashboard.html");
-        return;
-      }
+const adminEmails = [
+  "messiahsastry20@gmail.com",
+  "secondadmin@gmail.com"
+];
 
-      displayNameSpan.textContent = user.displayName || user.email.split('@')[0];
-      adminDashboard.style.display = "flex";
+if (!adminEmails.includes(userEmail)) {
+  alert("Access denied.");
+  window.location.replace("dashboard.html");
+  return;
+}
+
+displayNameSpan.textContent = user.displayName || user.email.split('@')[0];
+adminDashboard.style.display = "flex";
     });
   </script>
 </body>
