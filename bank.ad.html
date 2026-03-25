@@ -1016,11 +1016,11 @@ function buildQuestionHTML(item, __parent = printable) {
    <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000000;font-weight:700;">
+                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#5A2E1B;font-weight:400;">
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-                    <div class="question-text" style="line-height:1.35;font-size:12pt;color:#000000;font-weight:600;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+                    <div class="question-text" style="line-height:1.35;font-size:12pt;color:#5A2E1B;font-weight:400;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
           .replace(/^\s+/, '')
           .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
@@ -1435,11 +1435,11 @@ wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
 const qNoDiv = document.createElement('div');
-qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:bold; color:#163A63;';
+qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:400; color:#5A2E1B;';
 qNoDiv.textContent = 'Q' + qNum + '.';
 
 const qTextDiv = document.createElement('div');
-qTextDiv.style.cssText = 'flex:1; min-width:0; color:#000000; font-weight:400;';
+qTextDiv.style.cssText = 'flex:1; min-width:0; color:#5A2E1B; font-weight:400;';
 qTextDiv.style.whiteSpace = 'pre-wrap';
 qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ');
 
@@ -2299,7 +2299,8 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       box-sizing:border-box !important;
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
-      color:#163A63 !important;
+      color:#5A2E1B !important;
+      font-weight:400 !important;
       flex:0 0 auto !important;
     }
 
@@ -2311,7 +2312,8 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 
     .a4-page .question-text{
       font-size:var(--qb-question-font) !important;
-      color:#163A63 !important;
+      color:#5A2E1B !important;
+      font-weight:400 !important;
       word-break:normal !important;
       overflow-wrap:normal !important;
     }
