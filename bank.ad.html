@@ -2128,7 +2128,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       padding-bottom:24px;
     }
 
-   .a4-page{
+  .a4-page{
   width:210mm;
   height:297mm;
   max-width:210mm;
@@ -2142,7 +2142,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   page-break-after:always;
 }
 
-  .a4-page-inner{
+ .a4-page-inner{
   width:100%;
   height:100%;
   box-sizing:border-box;
@@ -2523,13 +2523,13 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       const inner = document.createElement('div');
       inner.className = 'a4-page-inner';
 
-    inner.style.paddingTop = settings.marginTop + 'cm';
+   inner.style.paddingTop = settings.marginTop + 'cm';
 inner.style.paddingRight = settings.marginSide + 'cm';
 inner.style.paddingBottom = settings.marginBottom + 'cm';
 inner.style.paddingLeft = settings.marginSide + 'cm';
 inner.style.lineHeight = settings.lineHeight;
 inner.style.fontSize = '11pt';
-inner.style.height = '100%';
+inner.style.height = '297mm';
 
       const content = document.createElement('div');
       content.className = 'a4-page-content';
@@ -2695,7 +2695,7 @@ if (node.classList.contains('worksheet-flow-block')) {
           measureShell.content.appendChild(testBlock);
           normalizeBlockSpacing(measureShell.page, settings);
 
-          const overflow = measureShell.inner.scrollHeight > measureShell.inner.clientHeight + 1;
+          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
             measureShell.content.removeChild(testBlock);
