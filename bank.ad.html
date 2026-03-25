@@ -2560,12 +2560,50 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
     }
 
     function getSourceBlocks(){
-      return Array.from(sourceRoot.childNodes)
-        .filter(node => {
-          if (node.nodeType === 3) return node.textContent.trim() !== '';
-          return true;
-        });
+  const blocks = [];
+
+  Array.from(sourceRoot.childNodes).forEach(node => {
+    if (node.nodeType === 3) {
+      if (node.textContent.trim()) blocks.push(node.cloneNode(true));
+      return;
     }
+
+    if (node.nodeType !== 1) return;
+
+    // If this node itself is a question wrapper / section / heading, keep it
+    if (
+      node.classList.contains('no-split') ||
+      node.classList.contains('keep-with-next') ||
+      node.classList.contains('question-container') ||
+      node.classList.contains('question-img-block') ||
+      node.classList.contains('opt-grid-2x2')
+    ) {
+      blocks.push(node.cloneNode(true));
+      return;
+    }
+
+    // If normal element has children, split them one by one instead of treating whole content as one giant block
+    const childElements = Array.from(node.childNodes).filter(ch => {
+      if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+      return ch.nodeType === 1;
+    });
+
+    if (childElements.length <= 1) {
+      blocks.push(node.cloneNode(true));
+      return;
+    }
+
+    childElements.forEach(ch => {
+      if (ch.nodeType === 3) {
+        if (ch.textContent.trim()) blocks.push(ch.cloneNode(true));
+      } else {
+        blocks.push(ch.cloneNode(true));
+      }
+    });
+  });
+
+  return blocks;
+}
 
     async function paginatePreview(){
       pagesHost.innerHTML = '';
