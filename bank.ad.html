@@ -2757,10 +2757,15 @@ inner.style.height = '297mm';
       window.print();
     };
 
-    pageSelect.addEventListener('change', function(){
-      currentPageIndex = Number(this.value || 0);
-      updateSliderUIFromPage();
-    });
+   pageSelect.addEventListener('change', function(){
+  currentPageIndex = Number(this.value || 0);
+  updateSliderUIFromPage();
+
+  const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
+  if (targetPage) {
+    targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
 
     gapSlider.addEventListener('input', queueRepaginate);
     marginSlider.addEventListener('input', queueRepaginate);
