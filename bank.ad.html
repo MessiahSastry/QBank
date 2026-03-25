@@ -2141,6 +2141,24 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
     }
 
     .a4-page-inner{
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  overflow:hidden;
+  font-family:'Times New Roman', Times, serif;
+  font-size:var(--qb-question-font);
+  color:#000;
+  display:flex;
+  flex-direction:column;
+}
+
+.a4-page-content{
+  width:100%;
+  flex:1 1 auto;
+  min-height:0;
+  box-sizing:border-box;
+  overflow:hidden;
+}
       width:100%;
       height:100%;
       box-sizing:border-box;
@@ -2518,12 +2536,13 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       const inner = document.createElement('div');
       inner.className = 'a4-page-inner';
 
-      inner.style.paddingTop = settings.marginTop + 'cm';
-      inner.style.paddingRight = settings.marginSide + 'cm';
-      inner.style.paddingBottom = settings.marginBottom + 'cm';
-      inner.style.paddingLeft = settings.marginSide + 'cm';
-      inner.style.lineHeight = settings.lineHeight;
-      inner.style.fontSize = '11pt';
+     inner.style.paddingTop = settings.marginTop + 'cm';
+inner.style.paddingRight = settings.marginSide + 'cm';
+inner.style.paddingBottom = settings.marginBottom + 'cm';
+inner.style.paddingLeft = settings.marginSide + 'cm';
+inner.style.lineHeight = settings.lineHeight;
+inner.style.fontSize = '11pt';
+inner.style.height = '297mm';
 
       const content = document.createElement('div');
       content.className = 'a4-page-content';
@@ -2628,7 +2647,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
           measureShell.content.appendChild(testBlock);
           normalizeBlockSpacing(measureShell.page, settings);
 
-          const overflow = measureShell.inner.scrollHeight > measureShell.inner.clientHeight + 1;
+          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 1;
 
           if (overflow) {
             measureShell.content.removeChild(testBlock);
