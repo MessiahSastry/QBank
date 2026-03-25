@@ -2560,14 +2560,21 @@ inner.style.height = '297mm';
     }
 
     function normalizeBlockSpacing(root, settings){
-      root.querySelectorAll('.question-container').forEach(div => {
-        div.style.marginBottom = settings.questionGap + 'px';
-      });
+  const qBlocks = Array.from(root.querySelectorAll('.question-container'));
 
-      root.querySelectorAll('.question-text, .question-body').forEach(el => {
-        el.style.lineHeight = settings.lineHeight;
-      });
-    }
+  qBlocks.forEach(div => {
+    div.style.marginBottom = settings.questionGap + 'px';
+  });
+
+  // remove extra bottom gap from the last question on that page
+  if (qBlocks.length) {
+    qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
+  }
+
+  root.querySelectorAll('.question-text, .question-body').forEach(el => {
+    el.style.lineHeight = settings.lineHeight;
+  });
+}
 
     async function waitForImages(root){
       const imgs = Array.from(root.querySelectorAll('img'));
@@ -2649,7 +2656,7 @@ inner.style.height = '297mm';
           measureShell.content.appendChild(testBlock);
           normalizeBlockSpacing(measureShell.page, settings);
 
-          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 1;
+          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
             measureShell.content.removeChild(testBlock);
