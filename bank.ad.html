@@ -1058,10 +1058,12 @@ function buildQuestionHTML(item, __parent = printable) {
   if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
 
   const wrap = document.createElement('div');
-  wrap.className = 'no-split';
-  wrap.style.cssText = 'page-break-inside:avoid; break-inside:avoid; display:block;';
-  wrap.innerHTML = questionHtml;
-  __parent.appendChild(wrap);
+wrap.className = includeKey ? 'no-split' : 'worksheet-flow-block';
+wrap.style.cssText = includeKey
+  ? 'page-break-inside:avoid; break-inside:avoid; display:block;'
+  : 'page-break-inside:auto; break-inside:auto; display:block;';
+wrap.innerHTML = questionHtml;
+__parent.appendChild(wrap);
 
   qCounter++;
   return wrap;
@@ -1369,7 +1371,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .trim();
 
 const wrap = document.createElement('div');
-wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
+wrap.className = 'page-keep-block';
+wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:avoid; color:#000;';
   const qDiv = document.createElement('div');
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
@@ -2557,9 +2560,16 @@ inner.style.height = '297mm';
       return { page, inner, content };
     }
 function normalizeBlockSpacing(root, settings){
-  root.querySelectorAll('.question-container').forEach(div => {
+  const qBlocks = Array.from(root.querySelectorAll('.question-container'));
+
+  qBlocks.forEach(div => {
     div.style.marginBottom = settings.questionGap + 'px';
   });
+
+  // remove extra bottom gap from the last question on that page
+  if (qBlocks.length) {
+    qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
+  }
 
   root.querySelectorAll('.question-text, .question-body').forEach(el => {
     el.style.lineHeight = settings.lineHeight;
@@ -2576,7 +2586,7 @@ function normalizeBlockSpacing(root, settings){
       );
     }
 
-    function getSourceBlocks(){
+   function getSourceBlocks(){
   const blocks = [];
 
   Array.from(sourceRoot.childNodes).forEach(node => {
@@ -2587,11 +2597,9 @@ function normalizeBlockSpacing(root, settings){
 
     if (node.nodeType !== 1) return;
 
-    // If this node itself is a question wrapper / section / heading, keep it
-  if (
-  node.classList.contains('no-split') ||
-  node.classList.contains('keep-with-next') ||
-  node.classList.contains('question-container') ||
+    // Keep full answer/explanation block together
+   if (
+  node.classList.contains('page-keep-block') ||
   node.classList.contains('question-img-block') ||
   node.classList.contains('opt-grid-2x2')
 ) {
@@ -2599,7 +2607,64 @@ function normalizeBlockSpacing(root, settings){
   return;
 }
 
-    // If normal element has children, split them one by one instead of treating whole content as one giant block
+if (node.classList.contains('question-container')) {
+  blocks.push(node.cloneNode(true));
+  return;
+}
+
+    // IMPORTANT:
+    // keep-with-next should mean:
+    // keep heading + first question together
+    // NOT the whole wrapper together
+    if (node.classList.contains('keep-with-next')) {
+      const kids = Array.from(node.childNodes).filter(ch => {
+        if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+        return ch.nodeType === 1;
+      });
+
+      if (kids.length <= 1) {
+        blocks.push(node.cloneNode(true));
+        return;
+      }
+
+      const pairWrap = document.createElement('div');
+      pairWrap.className = 'keep-with-next-pair';
+      pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+
+      // keep first heading + first question together
+      pairWrap.appendChild(kids[0].cloneNode(true));
+      pairWrap.appendChild(kids[1].cloneNode(true));
+      blocks.push(pairWrap);
+
+      // remaining children can flow normally
+      for (let i = 2; i < kids.length; i++) {
+        blocks.push(kids[i].cloneNode(true));
+      }
+      return;
+    }
+
+   if (node.classList.contains('no-split')) {
+  blocks.push(node.cloneNode(true));
+  return;
+}
+
+if (node.classList.contains('worksheet-flow-block')) {
+  const kids = Array.from(node.childNodes).filter(ch => {
+    if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+    return ch.nodeType === 1;
+  });
+
+  if (kids.length <= 1) {
+    blocks.push(node.cloneNode(true));
+    return;
+  }
+
+  kids.forEach(ch => {
+    blocks.push(ch.cloneNode(true));
+  });
+  return;
+}
+
     const childElements = Array.from(node.childNodes).filter(ch => {
       if (ch.nodeType === 3) return ch.textContent.trim() !== '';
       return ch.nodeType === 1;
@@ -2645,7 +2710,7 @@ function normalizeBlockSpacing(root, settings){
           measureShell.content.appendChild(testBlock);
           normalizeBlockSpacing(measureShell.page, settings);
 
-          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 1;
+          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
             measureShell.content.removeChild(testBlock);
