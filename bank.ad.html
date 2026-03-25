@@ -2142,7 +2142,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       page-break-after:always;
     }
 
-    .a4-page-inner{
+   .a4-page-inner{
   width:100%;
   height:100%;
   box-sizing:border-box;
@@ -2161,22 +2161,6 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   box-sizing:border-box;
   overflow:hidden;
 }
-      width:100%;
-      height:100%;
-      box-sizing:border-box;
-      overflow:hidden;
-      font-family:'Times New Roman', Times, serif;
-      font-size:var(--qb-question-font);
-      color:#000;
-    }
-
-    .a4-page-content{
-      width:100%;
-      height:100%;
-      box-sizing:border-box;
-      overflow:hidden;
-    }
-
     .a4-page-number{
       position:absolute;
       right:14px;
@@ -2371,14 +2355,15 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
         padding:0 !important;
       }
 
-      .a4-page{
-        width:210mm !important;
-        height:297mm !important;
-        margin:0 !important;
-        border-radius:0 !important;
-        box-shadow:none !important;
-        page-break-after:always !important;
-      }
+     .a4-page{
+  width:210mm !important;
+  height:297mm !important;
+  margin:0 auto !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  page-break-after:always !important;
+  overflow:hidden !important;
+}
 
       .a4-page:last-child{
         page-break-after:auto !important;
