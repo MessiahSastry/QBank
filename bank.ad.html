@@ -2020,7 +2020,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 <head>
   <meta charset="UTF-8">
   <title>${safeTitle}</title>
-  <meta name="viewport" content="width=900, initial-scale=1.0, minimum-scale=0.25, maximum-scale=5.0, user-scalable=yes">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
   <script>
@@ -2062,10 +2062,18 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       touch-action:pan-x pan-y pinch-zoom;
     }
 
-    body{
-      min-width:900px;
-    }
+   @media screen{
+  body{
+    min-width:900px;
+  }
+}
 
+@media print{
+  body{
+    min-width:0 !important;
+    width:auto !important;
+  }
+}
     #page-container{
       display:flex;
       flex-direction:column;
@@ -2334,11 +2342,14 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
     }
 
     @media print{
-      html, body{
-        background:#fff !important;
-        overflow:visible !important;
-      }
-
+     html, body{
+  background:#fff !important;
+  overflow:visible !important;
+  min-width:0 !important;
+  width:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+}
       .toolbar,
       #floating-settings-btn,
       #settings-popup-modal{
@@ -2355,7 +2366,16 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
         padding:0 !important;
       }
 
-     .a4-page{
+     #page-container,
+.print-preview,
+#pages-host{
+  width:210mm !important;
+  max-width:210mm !important;
+  margin:0 auto !important;
+  padding:0 !important;
+}
+
+.a4-page{
   width:210mm !important;
   height:297mm !important;
   margin:0 auto !important;
