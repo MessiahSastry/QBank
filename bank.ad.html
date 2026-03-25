@@ -742,7 +742,7 @@ printable.prepend(avoidCSS);
       printable.style.background = "#fff";
       printable.style.color = "#000";
       printable.style.fontFamily = "'Times New Roman', Times, serif";
-      printable.style.fontSize = "11pt";
+     printable.style.fontSize = "12pt";
       printable.style.maxWidth = "820px";
       printable.style.margin = "0 auto";
       printable.style.padding = "0";
@@ -768,18 +768,59 @@ if (includeWorksheet) {
 
     <div style="
       margin:0 auto 10px auto;
-      border:2.5px solid #bdd7f6;
-      border-radius:16px;
-      padding:18px 40px 14px 40px;
-      background:#fafdff;
+      max-width:540px;
+      border:2.5px solid #1b4f8a;
+      border-radius:18px;
+      background:#ffffff;
+      overflow:hidden;
       box-sizing:border-box;
-      max-width:510px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.06);
     ">
-      <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
-        ${String(chapterTitleForBox || '').toUpperCase()}
-      </div>
-      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;text-align:center;margin-bottom:4px;">
-        WORKSHEET
+      <div style="
+        height:10px;
+        background:linear-gradient(90deg, #1762a7, #0f3d6b);
+      "></div>
+
+      <div style="
+        margin:8px;
+        border:1.5px solid #7A2230;
+        border-radius:12px;
+        padding:14px 20px 12px 20px;
+        text-align:center;
+        background:linear-gradient(to bottom, rgba(23,98,167,0.05), rgba(255,255,255,0.98));
+      ">
+        <div style="
+          font-size:0.88em;
+          font-weight:700;
+          letter-spacing:0.14em;
+          color:#1762a7;
+          margin-bottom:4px;
+        ">
+          LESSON
+        </div>
+
+        <div style="
+          font-size:1.18em;
+          font-weight:900;
+          letter-spacing:0.03em;
+          text-align:center;
+          color:#163A63;
+          text-transform:uppercase;
+          margin-bottom:5px;
+          line-height:1.25;
+        ">
+          ${String(chapterTitleForBox || '').toUpperCase()}
+        </div>
+
+        <div style="
+          font-size:1em;
+          font-weight:800;
+          letter-spacing:0.08em;
+          text-align:center;
+          color:#7A2230;
+        ">
+          WORKSHEET
+        </div>
       </div>
     </div>
   `;
@@ -799,18 +840,59 @@ if (includeWorksheet) {
 
     <div style="
       margin:0 auto 10px auto;
-      border:2.5px solid #bdd7f6;
-      border-radius:16px;
-      padding:18px 40px 14px 40px;
-      background:#fafdff;
+      max-width:540px;
+      border:2.5px solid #1b4f8a;
+      border-radius:18px;
+      background:#ffffff;
+      overflow:hidden;
       box-sizing:border-box;
-      max-width:510px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.06);
     ">
-      <div style="font-size:1.15em;font-weight:900;letter-spacing:0.02em;text-align:center;margin-bottom:6px;">
-        ${String(chapterTitleForBox || '').toUpperCase()}
-      </div>
-      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;text-align:center;margin-bottom:4px;">
-        Questions & Answers
+      <div style="
+        height:10px;
+        background:linear-gradient(90deg, #1762a7, #0f3d6b);
+      "></div>
+
+      <div style="
+        margin:8px;
+        border:1.5px solid #7A2230;
+        border-radius:12px;
+        padding:14px 20px 12px 20px;
+        text-align:center;
+        background:linear-gradient(to bottom, rgba(23,98,167,0.05), rgba(255,255,255,0.98));
+      ">
+        <div style="
+          font-size:0.88em;
+          font-weight:700;
+          letter-spacing:0.14em;
+          color:#1762a7;
+          margin-bottom:4px;
+        ">
+          LESSON
+        </div>
+
+        <div style="
+          font-size:1.18em;
+          font-weight:900;
+          letter-spacing:0.03em;
+          text-align:center;
+          color:#163A63;
+          text-transform:uppercase;
+          margin-bottom:5px;
+          line-height:1.25;
+        ">
+          ${String(chapterTitleForBox || '').toUpperCase()}
+        </div>
+
+        <div style="
+          font-size:1em;
+          font-weight:800;
+          letter-spacing:0.08em;
+          text-align:center;
+          color:#7A2230;
+        ">
+          QUESTIONS & ANSWERS
+        </div>
       </div>
     </div>
   `;
@@ -828,11 +910,11 @@ if (includeWorksheet) {
            function createHangingDiv(qNum, text, isMCQ = false) {
         return `
           <div class="question-container" style="display:flex;align-items:flex-start;width:100%;box-sizing:border-box;">
-            <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#000;flex:0 0 auto;">
+            <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000;flex:0 0 auto;">
               ${qNum}.
             </div>
             <div class="question-body" style="flex:1;line-height:1.6;">
-              <div class="question-text" style="line-height:1.25;font-size:11pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
+              <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
                 ${text || ''}
               </div>
             </div>
@@ -958,11 +1040,11 @@ function buildQuestionHTML(item, __parent = printable) {
    <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:11pt;color:#163A63;font-weight:700;">
+                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#163A63;font-weight:700;">
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-                    <div class="question-text" style="line-height:1.25;font-size:11pt;color:#163A63;font-weight:700;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+                    <div class="question-text" style="line-height:1.25;font-size:12pt;color:#163A63;font-weight:700;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
           .replace(/^\s+/, '')
           .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
@@ -994,7 +1076,7 @@ function buildQuestionHTML(item, __parent = printable) {
           d.style.cssText = `
             visibility:hidden; position:absolute; left:-99999px; top:0;
             white-space:nowrap; padding:0; margin:0; border:none;
-            font-family:Times New Roman,Times,serif; font-size:11pt;
+            font-family:'Times New Roman', Times, serif; font-size:12pt;
           `;
           d.innerHTML = html;
           document.body.appendChild(d);
@@ -1024,7 +1106,7 @@ function buildQuestionHTML(item, __parent = printable) {
         
         // measure each option as it would appear in a column
         const optWidths = optionLines.map(opt => measureRowHTML(
-          `<span style="display:inline-block;font-family:Times New Roman,Times,serif;font-size:11pt;">${opt.trim()}</span>`
+          `<span style="display:inline-block;font-family:'Times New Roman', Times, serif;font-size:12pt;">${opt.trim()}</span>`
         ));
         
         const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
@@ -1238,7 +1320,7 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
     d.style.cssText = `
       visibility:hidden; position:absolute; left:-99999px; top:0;
       white-space:nowrap; padding:0; margin:0; border:none;
-      font-family:Times New Roman,Times,serif; font-size:11pt;
+      font-family:'Times New Roman', Times, serif; font-size:12pt;
     `;
     d.innerHTML = html;
     document.body.appendChild(d);
@@ -1279,7 +1361,7 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
   const halfWidth = Math.max(240, (pw - colGap) / 2);
 
   const optWidths = optionLines.map(opt => measureRowHTML(
-    `<span style="display:inline-block;font-family:Times New Roman,Times,serif;font-size:11pt;">${String(opt).trim()}</span>`
+    `<span style="display:inline-block;font-family:'Times New Roman', Times, serif;font-size:12pt;">${String(opt).trim()}</span>`
   ));
 
   const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
@@ -1632,19 +1714,50 @@ if (includeKey) {
     printable.appendChild(keySchool);
 
     const keyHeader = document.createElement('div');
-    keyHeader.style.cssText = `
+   keyHeader.style.cssText = `
       margin:0 auto 10px auto;
-      border:2.5px solid #bdd7f6;
-      border-radius:16px;
-      padding:18px 40px 14px 40px;
-      background:#fafdff;
+      max-width:540px;
+      border:2.5px solid #1b4f8a;
+      border-radius:18px;
+      background:#ffffff;
+      overflow:hidden;
       box-sizing:border-box;
-      max-width:510px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.06);
       text-align:center;
     `;
     keyHeader.innerHTML = `
-      <div style="font-size:1.24em;font-weight:800;letter-spacing:0.01em;">
-        Questions & Answers
+      <div style="
+        height:10px;
+        background:linear-gradient(90deg, #1762a7, #0f3d6b);
+      "></div>
+
+      <div style="
+        margin:8px;
+        border:1.5px solid #7A2230;
+        border-radius:12px;
+        padding:14px 20px 12px 20px;
+        text-align:center;
+        background:linear-gradient(to bottom, rgba(23,98,167,0.05), rgba(255,255,255,0.98));
+      ">
+        <div style="
+          font-size:0.88em;
+          font-weight:700;
+          letter-spacing:0.14em;
+          color:#1762a7;
+          margin-bottom:4px;
+        ">
+          LESSON
+        </div>
+
+        <div style="
+          font-size:1em;
+          font-weight:800;
+          letter-spacing:0.08em;
+          text-align:center;
+          color:#7A2230;
+        ">
+          QUESTIONS & ANSWERS
+        </div>
       </div>
     `;
     printable.appendChild(keyHeader);
@@ -2042,7 +2155,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       --qb-default-margin-bottom:1.9cm;
       --qb-default-gap:10px;
       --qb-default-line-height:1.6;
-      --qb-question-font:11pt;
+      --qb-question-font:12pt;
     }
 
     @page{
@@ -2548,7 +2661,7 @@ inner.style.paddingRight = settings.marginSide + 'cm';
 inner.style.paddingBottom = settings.marginBottom + 'cm';
 inner.style.paddingLeft = settings.marginSide + 'cm';
 inner.style.lineHeight = settings.lineHeight;
-inner.style.fontSize = '11pt';
+inner.style.fontSize = '12pt';
 inner.style.height = '297mm';
 
       const content = document.createElement('div');
