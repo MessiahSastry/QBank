@@ -885,16 +885,14 @@ if (includeWorksheet) {
       }
 
       // Helper for hanging indent
-           function createHangingDiv(qNum, text, isMCQ = false) {
+          function createHangingDiv(qNum, text, isMCQ = false) {
         return `
           <div class="question-container" style="display:flex;align-items:flex-start;width:100%;box-sizing:border-box;">
-            <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000;flex:0 0 auto;">
+            <div class="question-number" style="min-width:28px;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000000;flex:0 0 auto;">
               ${qNum}.
             </div>
             <div class="question-body" style="flex:1;line-height:1.6;">
-              <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000000;font-weight:400;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
-                ${text || ''}
-              </div>
+              <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000000;font-weight:400;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${text || ''}</div>
             </div>
           </div>`;
       }
