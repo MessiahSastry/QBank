@@ -1368,10 +1368,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
 
- const wrap = document.createElement('div');
-wrap.className = 'page-keep-block';
-wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:avoid; color:#000;';
-
+const wrap = document.createElement('div');
+wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
   const qDiv = document.createElement('div');
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
@@ -2558,18 +2556,10 @@ inner.style.height = '297mm';
 
       return { page, inner, content };
     }
-
-    function normalizeBlockSpacing(root, settings){
-  const qBlocks = Array.from(root.querySelectorAll('.question-container'));
-
-  qBlocks.forEach(div => {
+function normalizeBlockSpacing(root, settings){
+  root.querySelectorAll('.question-container').forEach(div => {
     div.style.marginBottom = settings.questionGap + 'px';
   });
-
-  // remove extra bottom gap from the last question on that page
-  if (qBlocks.length) {
-    qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
-  }
 
   root.querySelectorAll('.question-text, .question-body').forEach(el => {
     el.style.lineHeight = settings.lineHeight;
@@ -2598,10 +2588,9 @@ inner.style.height = '297mm';
     if (node.nodeType !== 1) return;
 
     // If this node itself is a question wrapper / section / heading, keep it
-   if (
+  if (
   node.classList.contains('no-split') ||
   node.classList.contains('keep-with-next') ||
-  node.classList.contains('page-keep-block') ||
   node.classList.contains('question-container') ||
   node.classList.contains('question-img-block') ||
   node.classList.contains('opt-grid-2x2')
@@ -2656,7 +2645,7 @@ inner.style.height = '297mm';
           measureShell.content.appendChild(testBlock);
           normalizeBlockSpacing(measureShell.page, settings);
 
-          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
+          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 1;
 
           if (overflow) {
             measureShell.content.removeChild(testBlock);
