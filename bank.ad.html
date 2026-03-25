@@ -892,7 +892,7 @@ if (includeWorksheet) {
               ${qNum}.
             </div>
             <div class="question-body" style="flex:1;line-height:1.6;">
-              <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">
+              <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000000;font-weight:400;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
                 ${text || ''}
               </div>
             </div>
@@ -1018,11 +1018,11 @@ function buildQuestionHTML(item, __parent = printable) {
    <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#163A63;font-weight:400;">
+                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000000;font-weight:400;">
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-                    <div class="question-text" style="line-height:1.25;font-size:12pt;color:#163A63;font-weight:400;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+                    <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000000;font-weight:400;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
           .replace(/^\s+/, '')
           .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
@@ -1441,7 +1441,7 @@ qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:bold; color:#
 qNoDiv.textContent = 'Q' + qNum + '.';
 
 const qTextDiv = document.createElement('div');
-qTextDiv.style.cssText = 'flex:1; min-width:0; color:#163A63; font-weight:400;';
+qTextDiv.style.cssText = 'flex:1; min-width:0; color:#000000; font-weight:400;';
 qTextDiv.style.whiteSpace = 'pre-wrap';
 qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ');
 
