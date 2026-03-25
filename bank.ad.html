@@ -1016,15 +1016,15 @@ function buildQuestionHTML(item, __parent = printable) {
    <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000000;font-weight:400;">
+                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#000000;font-weight:700;">
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-                    <div class="question-text" style="line-height:1.25;font-size:12pt;color:#000000;font-weight:400;margin-bottom:6px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+                    <div class="question-text" style="line-height:1.35;font-size:12pt;color:#000000;font-weight:600;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
           .replace(/^\s+/, '')
           .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
-                <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.22;">
+                <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.15;">
           ${
             isMCQ ? (() => {
               let optionLinesRaw = options.slice(0, 4).map((opt) => {
@@ -4571,7 +4571,7 @@ function __qbFormatOptionForPrint(opt) {
   const s = String(opt || '').trim();
   const m = s.match(/^([A-D]\))\s*(.*)$/);
   if (!m) return s;
-  return `<span style="color:#7A2230;font-weight:700;">${m[1]}</span> <span style="color:#111111;">${m[2]}</span>`;
+  return `<span style="color:#444444;font-weight:600;">${m[1]}</span> <span style="color:#000000;font-weight:400;">${m[2]}</span>`;
 }
 
 function __qbNormalizeOptions(options) {
