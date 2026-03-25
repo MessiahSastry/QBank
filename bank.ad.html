@@ -1058,10 +1058,12 @@ function buildQuestionHTML(item, __parent = printable) {
   if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
 
   const wrap = document.createElement('div');
-  wrap.className = 'no-split';
-  wrap.style.cssText = 'page-break-inside:avoid; break-inside:avoid; display:block;';
-  wrap.innerHTML = questionHtml;
-  __parent.appendChild(wrap);
+wrap.className = includeKey ? 'no-split' : 'worksheet-flow-block';
+wrap.style.cssText = includeKey
+  ? 'page-break-inside:avoid; break-inside:avoid; display:block;'
+  : 'page-break-inside:auto; break-inside:auto; display:block;';
+wrap.innerHTML = questionHtml;
+__parent.appendChild(wrap);
 
   qCounter++;
   return wrap;
@@ -1368,9 +1370,9 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
 
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
-
+const wrap = document.createElement('div');
+wrap.className = 'page-keep-block';
+wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:avoid; color:#000;';
   const qDiv = document.createElement('div');
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
@@ -2034,18 +2036,18 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"><\/script>
 
   <style>
-        :root{
-      --qb-page-margin-side: 1.5cm;
-      --qb-page-margin-top: 2.1cm;
-      --qb-page-margin-bottom: 1.9cm;
-      --qb-question-gap: 10px;
-      --qb-line-height: 1.6;
-      --qb-question-font: 11pt;
+    :root{
+      --qb-default-margin-side:1.5cm;
+      --qb-default-margin-top:2.1cm;
+      --qb-default-margin-bottom:1.9cm;
+      --qb-default-gap:10px;
+      --qb-default-line-height:1.6;
+      --qb-question-font:11pt;
     }
 
     @page{
-      size: A4;
-      margin: 0;
+      size:A4;
+      margin:0;
     }
 
     html, body{
@@ -2054,14 +2056,14 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       background:#f4f8fc;
       color:#000;
       font-family:'Times New Roman', Times, serif;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
       overflow:auto;
-      touch-action: pan-x pan-y pinch-zoom;
+      touch-action:pan-x pan-y pinch-zoom;
     }
 
     body{
-      min-width: 900px;
+      min-width:900px;
     }
 
     #page-container{
@@ -2073,61 +2075,32 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       box-sizing:border-box;
     }
 
-    .print-preview{
-      background:#fff;
-      min-height:297mm;
-      border-radius:13px;
-      padding:0;
-      overflow:visible;
-      position:relative;
-      width:100%;
-      box-sizing:border-box;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-    }
-
-        .a4-page{
-      width:210mm;
-      min-height:297mm;
-      margin:0 auto;
-      padding:var(--qb-page-margin-top) var(--qb-page-margin-side) var(--qb-page-margin-bottom) var(--qb-page-margin-side);
-      max-width:210mm;
-      box-sizing:border-box;
-      background:#fff;
-      color:#000;
-      font-family:'Times New Roman', Times, serif;
-      line-height:var(--qb-line-height);
-      font-size:var(--qb-question-font);
-      transition: padding .25s;
-    }
-    #print-root{
-      width:100%;
-      box-sizing:border-box;
-    }
-
     .toolbar{
       width:210mm;
       max-width:210mm;
       display:flex;
       justify-content:center;
-      gap:24px;
+      gap:12px;
+      flex-wrap:wrap;
       margin:24px auto 12px auto;
       position:relative;
       z-index:11;
     }
 
+    .toolbar button,
+    .toolbar select{
+      border:none;
+      border-radius:9px;
+      font-weight:bold;
+      font-size:1em;
+      box-shadow:0 2px 12px rgba(0,61,107,0.08);
+    }
+
     .toolbar button{
       background:#1463ad;
       color:#fff;
-      border:none;
-      padding:16px 42px;
-      border-radius:9px;
-      font-weight:bold;
-      font-size:1.1em;
+      padding:14px 26px;
       cursor:pointer;
-      box-shadow:0 2px 12px rgba(0,61,107,0.08);
-      transition:background .16s, transform .1s;
       display:flex;
       align-items:center;
       gap:9px;
@@ -2137,17 +2110,108 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       background:#0f3d6b;
     }
 
-        #print-root .question-container{
-      margin-bottom:var(--qb-question-gap) !important;
+    .toolbar select{
+      background:#fff;
+      color:#12416c;
+      padding:14px 16px;
+      border:1.5px solid #bdd7f6;
+      cursor:pointer;
+    }
+
+    #pages-host{
+      width:100%;
       display:flex;
-      align-items:flex-start;
+      flex-direction:column;
+      align-items:center;
+      gap:18px;
+      box-sizing:border-box;
+      padding-bottom:24px;
+    }
+
+   .a4-page{
+  width:210mm;
+  height:297mm;
+  max-width:210mm;
+  background:#fff;
+  color:#000;
+  position:relative;
+  box-sizing:border-box;
+  border-radius:13px;
+  box-shadow:0 3px 18px rgba(0,27,68,0.08);
+  overflow:hidden;
+  page-break-after:always;
+}
+
+  .a4-page-inner{
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  overflow:hidden;
+  font-family:'Times New Roman', Times, serif;
+  font-size:var(--qb-question-font);
+  color:#000;
+  display:flex;
+  flex-direction:column;
+}
+
+.a4-page-content{
+  width:100%;
+  flex:1 1 auto;
+  min-height:0;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+    .a4-page-number{
+      position:absolute;
+      right:14px;
+      bottom:8px;
+      font-size:10pt;
+      color:#5b6780;
+      background:rgba(255,255,255,0.92);
+      padding:1px 8px;
+      border-radius:999px;
+      z-index:3;
+    }
+
+    .print-preview{
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    .measure-wrap{
+      position:absolute !important;
+      left:-99999px !important;
+      top:0 !important;
+      visibility:hidden !important;
+      pointer-events:none !important;
+      z-index:-1 !important;
+    }
+
+    #source-root{
+      position:absolute;
+      left:-99999px;
+      top:0;
+      visibility:hidden;
+      pointer-events:none;
+      width:210mm;
+      box-sizing:border-box;
+    }
+
+    #source-root .question-container{
+      width:100% !important;
+      box-sizing:border-box !important;
+    }
+
+    .a4-page .question-container{
       width:100% !important;
       box-sizing:border-box !important;
       page-break-inside:auto !important;
       break-inside:auto !important;
     }
 
-    #print-root .question-number{
+    .a4-page .question-number{
       min-width:28px !important;
       padding-right:4px !important;
       box-sizing:border-box !important;
@@ -2157,54 +2221,40 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       flex:0 0 auto !important;
     }
 
-    #print-root .question-body{
+    .a4-page .question-body{
       flex:1;
-      line-height:1.6 !important;
       page-break-inside:auto !important;
       break-inside:auto !important;
     }
 
-    #print-root .question-text{
-      line-height:1.25 !important;
+    .a4-page .question-text{
       font-size:var(--qb-question-font) !important;
       color:#163A63 !important;
-      margin-bottom:6px !important;
       word-break:normal !important;
       overflow-wrap:normal !important;
     }
 
-    #print-root .question-text > div{
+    .a4-page .question-text > div{
       margin:0 !important;
       padding:0 !important;
-      line-height:var(--qb-line-height) !important;
     }
 
-    #print-root .options-block{
-      margin-top:2px !important;
-      line-height:1.22 !important;
+    .a4-page .options-block{
       page-break-inside:auto !important;
       break-inside:auto !important;
     }
 
-    #print-root .question-img-block,
-    #print-root .opt-grid-2x2,
-    #print-root .no-split{
-      page-break-inside:auto !important;
-      break-inside:auto !important;
-    }
-
-    #print-root img{
+    .a4-page img{
       max-width:100%;
       height:auto;
       display:block;
     }
 
-    #print-root .keep-with-next{
+    .a4-page .keep-with-next{
       page-break-after:avoid !important;
       break-after:avoid !important;
     }
 
-    /* IMPORTANT: hide MathJax assistive text so duplicate letters do not appear */
     mjx-assistive-mml,
     .MJX_Assistive_MathML,
     mjx-assistive-mml *{
@@ -2214,7 +2264,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       padding:0 !important;
       margin:-1px !important;
       overflow:hidden !important;
-      clip:rect(0, 0, 0, 0) !important;
+      clip:rect(0,0,0,0) !important;
       white-space:nowrap !important;
       border:0 !important;
       display:block !important;
@@ -2237,19 +2287,6 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       max-width:100% !important;
     }
 
-    #print-root .options-block > div{
-      flex-wrap:wrap !important;
-      column-gap:18px !important;
-      row-gap:2px !important;
-    }
-
-    #print-root .options-block > div > span,
-    #print-root .options-block > div > div{
-      white-space:nowrap !important;
-      word-break:normal !important;
-      overflow-wrap:normal !important;
-    }
-
     #floating-settings-btn{
       position:fixed;
       bottom:32px;
@@ -2267,7 +2304,6 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       justify-content:center;
       font-size:2em;
       cursor:pointer;
-      transition:background 0.15s;
     }
 
     #settings-popup-modal{
@@ -2279,14 +2315,14 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       background:#fff;
       border-radius:18px;
       box-shadow:0 8px 32px #17386844;
-      padding:32px 24px 22px 24px;
-      min-width:280px;
+      padding:24px 22px 20px 22px;
+      min-width:300px;
       border:2px solid #1463ad;
       flex-direction:column;
       align-items:flex-start;
     }
 
-    @media (max-width: 700px){
+    @media (max-width:700px){
       #floating-settings-btn{
         width:72px !important;
         height:72px !important;
@@ -2314,28 +2350,27 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
         margin:0 !important;
       }
 
-      .print-preview{
-        background:#fff !important;
+      #pages-host{
+        gap:0 !important;
         padding:0 !important;
-        margin:0 !important;
-        overflow:visible !important;
       }
 
-      .a4-page{
-        width:100% !important;
-        max-width:none !important;
-        min-height:auto !important;
-        margin:0 !important;
-        border-radius:0 !important;
-        box-shadow:none !important;
-                padding:var(--qb-page-margin-top) var(--qb-page-margin-side) var(--qb-page-margin-bottom) var(--qb-page-margin-side) !important;
-        page-break-after:auto;
+     .a4-page{
+  width:210mm !important;
+  height:297mm !important;
+  margin:0 auto !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  page-break-after:always !important;
+  overflow:hidden !important;
+}
+
+      .a4-page:last-child{
+        page-break-after:auto !important;
       }
 
-      #print-root .question-text,
-      #print-root .question-body,
-      #print-root .options-block{
-        font-weight:normal !important;
+      .a4-page-number{
+        display:none !important;
       }
 
       mjx-container,
@@ -2358,12 +2393,16 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 </head>
 <body>
   <div id="page-container">
-    <div id="print-preview" class="print-preview">
-      <div id="print-root" class="a4-page mjx-process"></div>
-    </div>
-
     <div class="toolbar">
       <button id="preview-print-btn"><i class="fas fa-print"></i> Print / Save PDF</button>
+
+      <select id="page-select">
+        <option value="0">Page 1</option>
+      </select>
+    </div>
+
+    <div class="print-preview">
+      <div id="pages-host"></div>
     </div>
   </div>
 
@@ -2372,8 +2411,13 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   </button>
 
   <div id="settings-popup-modal">
-    <div style="font-weight:700;color:#12416c;font-size:1.2em;margin-bottom:18px;">
-      <i class="fas fa-sliders-h" style="margin-right:8px;color:#1463ad;"></i>Preview Settings
+    <div style="font-weight:700;color:#12416c;font-size:1.2em;margin-bottom:14px;">
+      <i class="fas fa-sliders-h" style="margin-right:8px;color:#1463ad;"></i>Page-wise Preview Settings
+    </div>
+
+    <div style="margin-bottom:14px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:0.98em;">Editing Page</label>
+      <div id="current-page-label" style="margin-top:6px;color:#12416c;font-weight:700;">Page 1</div>
     </div>
 
     <div style="margin-bottom:18px;width:100%;">
@@ -2405,76 +2449,348 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       font-size:1.5em;cursor:pointer;" title="Close">×</button>
   </div>
 
+  <div id="source-root" class="mjx-process"></div>
+  <div id="measure-host" class="measure-wrap"></div>
+
   <script>
     const __CONTENT = ${contentJson};
     const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
 
     document.title = __TITLE;
-    document.getElementById('print-root').innerHTML = __CONTENT;
+
+    const sourceRoot = document.getElementById('source-root');
+    const pagesHost = document.getElementById('pages-host');
+    const measureHost = document.getElementById('measure-host');
 
     const floatingBtn = document.getElementById('floating-settings-btn');
     const settingsModal = document.getElementById('settings-popup-modal');
     const closeSettingsBtn = document.getElementById('close-settings-popup');
+
+    const pageSelect = document.getElementById('page-select');
+    const currentPageLabel = document.getElementById('current-page-label');
+
     const gapSlider = document.getElementById('gap-slider');
     const gapValue = document.getElementById('gap-slider-value');
+
     const marginSlider = document.getElementById('margin-slider');
     const marginValue = document.getElementById('margin-slider-value');
+
     const lineSlider = document.getElementById('line-slider');
     const lineValue = document.getElementById('line-slider-value');
 
-    function updateGap(){
-      const px = gapSlider.value;
-      gapValue.textContent = px + 'px';
-      document.documentElement.style.setProperty('--qb-question-gap', px + 'px');
-      document.querySelectorAll('#print-root .question-container').forEach(div => {
-        div.style.marginBottom = px + 'px';
-      });
-    }
+    const defaultSettings = {
+      marginSide: 1.5,
+      marginTop: 2.1,
+      marginBottom: 1.9,
+      questionGap: 10,
+      lineHeight: 1.6
+    };
 
-       function updateMargin(){
-      const cm = parseFloat(marginSlider.value || '1.5');
-      const topCm = (cm + 0.6).toFixed(1);
-      const bottomCm = (cm + 0.4).toFixed(1);
+    let pageSettings = [];
+    let currentPageIndex = 0;
 
-      marginValue.textContent = cm.toFixed(1) + 'cm';
+    sourceRoot.innerHTML = __CONTENT;
 
-      document.documentElement.style.setProperty('--qb-page-margin-side', cm.toFixed(1) + 'cm');
-      document.documentElement.style.setProperty('--qb-page-margin-top', topCm + 'cm');
-      document.documentElement.style.setProperty('--qb-page-margin-bottom', bottomCm + 'cm');
-
-      const root = document.getElementById('print-root');
-      if (root) {
-                root.style.padding = topCm + 'cm ' + cm.toFixed(1) + 'cm ' + bottomCm + 'cm ' + cm.toFixed(1) + 'cm';
+    function ensurePageSettings(index){
+      if (!pageSettings[index]) {
+        pageSettings[index] = { ...defaultSettings };
       }
+      return pageSettings[index];
     }
 
-    function updateLineHeight(){
-      const lh = lineSlider.value;
-      lineValue.textContent = lh;
-      document.documentElement.style.setProperty('--qb-line-height', lh);
-      document.querySelectorAll('#print-root .question-text, #print-root .question-body').forEach(el => {
-        el.style.lineHeight = lh;
+    function getCurrentSettings(){
+      return ensurePageSettings(currentPageIndex);
+    }
+
+    function updateSliderUIFromPage(){
+      const s = getCurrentSettings();
+      currentPageLabel.textContent = 'Page ' + (currentPageIndex + 1);
+      gapSlider.value = s.questionGap;
+      gapValue.textContent = s.questionGap + 'px';
+
+      marginSlider.value = s.marginSide;
+      marginValue.textContent = Number(s.marginSide).toFixed(1) + 'cm';
+
+      lineSlider.value = s.lineHeight;
+      lineValue.textContent = s.lineHeight;
+    }
+
+    function buildPageShell(pageIndex, settings){
+      const page = document.createElement('div');
+      page.className = 'a4-page';
+      page.setAttribute('data-page-index', String(pageIndex));
+
+      const inner = document.createElement('div');
+      inner.className = 'a4-page-inner';
+
+    inner.style.paddingTop = settings.marginTop + 'cm';
+inner.style.paddingRight = settings.marginSide + 'cm';
+inner.style.paddingBottom = settings.marginBottom + 'cm';
+inner.style.paddingLeft = settings.marginSide + 'cm';
+inner.style.lineHeight = settings.lineHeight;
+inner.style.fontSize = '11pt';
+inner.style.height = '100%';
+
+      const content = document.createElement('div');
+      content.className = 'a4-page-content';
+
+      const pageNo = document.createElement('div');
+      pageNo.className = 'a4-page-number';
+      pageNo.textContent = 'Page ' + (pageIndex + 1);
+
+      inner.appendChild(content);
+      page.appendChild(inner);
+      page.appendChild(pageNo);
+
+      return { page, inner, content };
+    }
+function normalizeBlockSpacing(root, settings){
+  const qBlocks = Array.from(root.querySelectorAll('.question-container'));
+
+  qBlocks.forEach(div => {
+    div.style.marginBottom = settings.questionGap + 'px';
+  });
+
+  // remove extra bottom gap from the last question on that page
+  if (qBlocks.length) {
+    qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
+  }
+
+  root.querySelectorAll('.question-text, .question-body').forEach(el => {
+    el.style.lineHeight = settings.lineHeight;
+  });
+}
+
+    async function waitForImages(root){
+      const imgs = Array.from(root.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        }))
+      );
+    }
+
+   function getSourceBlocks(){
+  const blocks = [];
+
+  Array.from(sourceRoot.childNodes).forEach(node => {
+    if (node.nodeType === 3) {
+      if (node.textContent.trim()) blocks.push(node.cloneNode(true));
+      return;
+    }
+
+    if (node.nodeType !== 1) return;
+
+    // Keep full answer/explanation block together
+   if (
+  node.classList.contains('page-keep-block') ||
+  node.classList.contains('question-img-block') ||
+  node.classList.contains('opt-grid-2x2')
+) {
+  blocks.push(node.cloneNode(true));
+  return;
+}
+
+if (node.classList.contains('question-container')) {
+  blocks.push(node.cloneNode(true));
+  return;
+}
+
+    // IMPORTANT:
+    // keep-with-next should mean:
+    // keep heading + first question together
+    // NOT the whole wrapper together
+    if (node.classList.contains('keep-with-next')) {
+      const kids = Array.from(node.childNodes).filter(ch => {
+        if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+        return ch.nodeType === 1;
       });
+
+      if (kids.length <= 1) {
+        blocks.push(node.cloneNode(true));
+        return;
+      }
+
+      const pairWrap = document.createElement('div');
+      pairWrap.className = 'keep-with-next-pair';
+      pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+
+      // keep first heading + first question together
+      pairWrap.appendChild(kids[0].cloneNode(true));
+      pairWrap.appendChild(kids[1].cloneNode(true));
+      blocks.push(pairWrap);
+
+      // remaining children can flow normally
+      for (let i = 2; i < kids.length; i++) {
+        blocks.push(kids[i].cloneNode(true));
+      }
+      return;
     }
 
-    async function afterMathReady(){
-      const root = document.getElementById('print-root');
+   if (node.classList.contains('no-split')) {
+  blocks.push(node.cloneNode(true));
+  return;
+}
 
+if (node.classList.contains('worksheet-flow-block')) {
+  const kids = Array.from(node.childNodes).filter(ch => {
+    if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+    return ch.nodeType === 1;
+  });
+
+  if (kids.length <= 1) {
+    blocks.push(node.cloneNode(true));
+    return;
+  }
+
+  kids.forEach(ch => {
+    blocks.push(ch.cloneNode(true));
+  });
+  return;
+}
+
+    const childElements = Array.from(node.childNodes).filter(ch => {
+      if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+      return ch.nodeType === 1;
+    });
+
+    if (childElements.length <= 1) {
+      blocks.push(node.cloneNode(true));
+      return;
+    }
+
+    childElements.forEach(ch => {
+      if (ch.nodeType === 3) {
+        if (ch.textContent.trim()) blocks.push(ch.cloneNode(true));
+      } else {
+        blocks.push(ch.cloneNode(true));
+      }
+    });
+  });
+
+  return blocks;
+}
+
+    async function paginatePreview(){
+      pagesHost.innerHTML = '';
+      measureHost.innerHTML = '';
+
+      const blocks = getSourceBlocks().map(node => node.cloneNode(true));
+      let pageIndex = 0;
+      let safety = 0;
+
+      while (blocks.length && safety < 5000) {
+        safety++;
+
+        const settings = ensurePageSettings(pageIndex);
+
+        const measureShell = buildPageShell(pageIndex, settings);
+        measureHost.appendChild(measureShell.page);
+
+        let pageHasContent = false;
+
+        while (blocks.length) {
+          const testBlock = blocks[0].cloneNode(true);
+          measureShell.content.appendChild(testBlock);
+          normalizeBlockSpacing(measureShell.page, settings);
+
+          const overflow = measureShell.inner.scrollHeight > measureShell.inner.clientHeight + 1;
+
+          if (overflow) {
+            measureShell.content.removeChild(testBlock);
+
+            if (!pageHasContent) {
+              testBlock.style.breakInside = 'auto';
+              testBlock.style.pageBreakInside = 'auto';
+              measureShell.content.appendChild(testBlock);
+              normalizeBlockSpacing(measureShell.page, settings);
+              blocks.shift();
+            }
+            break;
+          } else {
+            pageHasContent = true;
+            blocks.shift();
+          }
+        }
+
+        const finalShell = buildPageShell(pageIndex, settings);
+        finalShell.content.innerHTML = measureShell.content.innerHTML;
+        normalizeBlockSpacing(finalShell.page, settings);
+        pagesHost.appendChild(finalShell.page);
+
+        measureShell.page.remove();
+        pageIndex++;
+      }
+
+      while (pageSettings.length > pageIndex) {
+        pageSettings.pop();
+      }
+
+      rebuildPagePicker();
+      await waitForImages(pagesHost);
+    }
+
+    function rebuildPagePicker(){
+      const pageCount = pagesHost.querySelectorAll('.a4-page').length || 1;
+      pageSelect.innerHTML = '';
+
+      for (let i = 0; i < pageCount; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = 'Page ' + (i + 1);
+        pageSelect.appendChild(opt);
+      }
+
+      if (currentPageIndex >= pageCount) currentPageIndex = pageCount - 1;
+      if (currentPageIndex < 0) currentPageIndex = 0;
+
+      pageSelect.value = String(currentPageIndex);
+      updateSliderUIFromPage();
+    }
+
+    async function renderAndPaginate(){
       if (window.MathJax && typeof window.MathJax.typesetClear === 'function') {
-        window.MathJax.typesetClear([root]);
+        window.MathJax.typesetClear([sourceRoot]);
       }
 
       if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
         try {
-          await window.MathJax.typesetPromise([root]);
+          await window.MathJax.typesetPromise([sourceRoot]);
         } catch (err) {
           console.error('Preview MathJax failed:', err);
         }
       }
 
-      root.querySelectorAll('mjx-assistive-mml').forEach(el => {
+      sourceRoot.querySelectorAll('mjx-assistive-mml').forEach(el => {
         el.setAttribute('aria-hidden', 'true');
       });
+
+      await waitForImages(sourceRoot);
+      await paginatePreview();
+    }
+
+    function saveCurrentPageSettings(){
+      const s = ensurePageSettings(currentPageIndex);
+
+      s.questionGap = Number(gapSlider.value || 10);
+      s.marginSide = Number(marginSlider.value || 1.5);
+      s.marginTop = Number((s.marginSide + 0.6).toFixed(1));
+      s.marginBottom = Number((s.marginSide + 0.4).toFixed(1));
+      s.lineHeight = Number(lineSlider.value || 1.6);
+
+      gapValue.textContent = s.questionGap + 'px';
+      marginValue.textContent = Number(s.marginSide).toFixed(1) + 'cm';
+      lineValue.textContent = s.lineHeight;
+    }
+
+    let repaginateTimer = null;
+    function queueRepaginate(){
+      saveCurrentPageSettings();
+      clearTimeout(repaginateTimer);
+      repaginateTimer = setTimeout(async () => {
+        await paginatePreview();
+      }, 120);
     }
 
     floatingBtn.onclick = function(){
@@ -2489,20 +2805,26 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
       window.print();
     };
 
-    gapSlider.addEventListener('input', updateGap);
-    marginSlider.addEventListener('input', updateMargin);
-    lineSlider.addEventListener('input', updateLineHeight);
+   pageSelect.addEventListener('change', function(){
+  currentPageIndex = Number(this.value || 0);
+  updateSliderUIFromPage();
+
+  const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
+  if (targetPage) {
+    targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+
+    gapSlider.addEventListener('input', queueRepaginate);
+    marginSlider.addEventListener('input', queueRepaginate);
+    lineSlider.addEventListener('input', queueRepaginate);
 
     window.addEventListener('DOMContentLoaded', async () => {
-      updateGap();
-      updateMargin();
-      updateLineHeight();
-
       if (window.MathJax?.startup?.promise) {
         await window.MathJax.startup.promise;
       }
 
-      await afterMathReady();
+      await renderAndPaginate();
     });
   <\/script>
 </body>
