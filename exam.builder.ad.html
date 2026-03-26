@@ -2193,23 +2193,29 @@ function applyPaperTypePreset() {
     if (!l1Check || !l2Check || !l3Check || !l1Percent || !l2Percent || !l3Percent) return;
 
     if (paperType === 'Pinnacle Paper') {
-        l1Check.checked = true;
-        l2Check.checked = true;
-        l3Check.checked = true;
+    l1Check.checked = true;
+    l2Check.checked = true;
+    l3Check.checked = true;
 
-        l1Percent.value = 40;
-        l2Percent.value = 30;
-        l3Percent.value = 30;
-    } else if (paperType === 'Core Paper') {
-        l1Check.checked = true;
-        l2Check.checked = true;
-        l3Check.checked = false;
+    // Fixed scalable Pinnacle distribution
+    // 25 marks  ->  6 / 10 /  9
+    // 50 marks  -> 12 / 20 / 18
+    // 100 marks -> 24 / 40 / 36
+    l1Percent.value = 24;
+    l2Percent.value = 40;
+    l3Percent.value = 36;
+} else if (paperType === 'Core Paper') {
+    l1Check.checked = true;
+    l2Check.checked = true;
+    l3Check.checked = false;
 
-        l1Percent.value = 60;
-        l2Percent.value = 40;
-        l3Percent.value = 0;
-    }
-
+    // 25 marks  -> 15 / 10 / 0
+    // 50 marks  -> 30 / 20 / 0
+    // 100 marks -> 60 / 40 / 0
+    l1Percent.value = 60;
+    l2Percent.value = 40;
+    l3Percent.value = 0;
+}
     refreshDifficultyTotalNote();
 }
 
