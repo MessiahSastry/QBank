@@ -2714,110 +2714,214 @@ const cleanPool = manualPool;
             });
         }
     } else {
-        const mySlots = strictSlots.filter(sl =>
-                                        sl.sIdx === sIdx &&
-                                        sl.secIdx === secIdx &&
-                                        sl.marksPerQuestion === mPerQ
-                                    );
+    const mySlots = strictSlots.filter(sl =>
+        sl.sIdx === sIdx &&
+        sl.secIdx === secIdx &&
+        sl.marksPerQuestion === mPerQ
+    );
 
-                                    const takeCount = Math.min(requestedCount, mySlots.length);
+    const takeCount = Math.min(requestedCount, mySlots.length);
 
-                                   const allowed = Array.isArray(window._allowedDifficultyLevels) ? window._allowedDifficultyLevels : ['L1','L2','L3'];
+    const allowed = Array.isArray(window._allowedDifficultyLevels)
+        ? window._allowedDifficultyLevels
+        : ['L1', 'L2', 'L3'];
 
-const preloadedPools = {
-    L1: await fetchQuestionsWithMarksFallback({
-        selectedClass,
-        selectedBoard,
-        selectedSubject: subjData.subject,
-        chapters: subjData.chapters,
-        marksPerQuestion: mPerQ,
-        mcqType: sec.mcqType,
-        count: Math.max(80, requestedCount * 4),
-        forceDifficulty: "Level 1",
-        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-    }),
-    L2: await fetchQuestionsWithMarksFallback({
-        selectedClass,
-        selectedBoard,
-        selectedSubject: subjData.subject,
-        chapters: subjData.chapters,
-        marksPerQuestion: mPerQ,
-        mcqType: sec.mcqType,
-        count: Math.max(80, requestedCount * 4),
-        forceDifficulty: "Level 2",
-        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-    }),
-    L3: await fetchQuestionsWithMarksFallback({
-        selectedClass,
-        selectedBoard,
-        selectedSubject: subjData.subject,
-        chapters: subjData.chapters,
-        marksPerQuestion: mPerQ,
-        mcqType: sec.mcqType,
-        count: Math.max(80, requestedCount * 4),
-        forceDifficulty: "Level 3",
-        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-    })
-};
+    const levelMap = {
+        L1: 'Level 1',
+        L2: 'Level 2',
+        L3: 'Level 3'
+    };
 
-const poolIndex = { L1: 0, L2: 0, L3: 0 };
+    const selectedChapters = Array.isArray(subjData.chapters)
+        ? subjData.chapters.filter(Boolean)
+        : [];
 
-for (let i = 0; i < takeCount; i++) {
-    const slot = mySlots[i];
-    const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets) ? _mixedTargets : { L1:0, L2:0, L3:0 };
-    const _act = (typeof _mixedActual  !== 'undefined' && _mixedActual)  ? _mixedActual  : { L1:0, L2:0, L3:0 };
+    // Chapter balance plan: 3 chapters + 2 questions => [ch1, ch2]
+    // 3 chapters + 5 questions => [ch1, ch1, ch2, ch2, ch3]
+    const chapterPlan = [];
+    if (selectedChapters.length) {
+        const perChapter = splitEvenAcrossChapters(takeCount, selectedChapters);
+        perChapter.forEach((cnt, idx) => {
+            for (let n = 0; n < cnt; n++) {
+                chapterPlan.push(selectedChapters[idx]);
+            }
+        });
+    }
 
-    const deficits = [
-        { k:"L1", d: (_tgt.L1 - _act.L1) },
-        { k:"L2", d: (_tgt.L2 - _act.L2) },
-        { k:"L3", d: (_tgt.L3 - _act.L3) },
-    ].sort((a,b)=> b.d - a.d).map(x=>x.k);
+    const fullPool = await getSubjectQuestionPool(selectedClass, selectedBoard, subjData.subject);
+    const poolCache = new Map();
+    const poolIndex = new Map();
 
-    const preferred = slot?.assigned || deficits[0];
-    const levelsTry = [preferred, ...deficits.filter(k => k !== preferred)].filter(k => allowed.includes(k));
+    function getPool(chapterName, levelKey) {
+        const poolKey = `${chapterName || '__ALL__'}|${levelKey || '__ANY__'}`;
 
-    let picked = null, pickedLevel = null;
-    const sectionSeen = new Set(questions.map(q => makeStemKey({ text: q.text, marks: mPerQ })));
+        if (!poolCache.has(poolKey)) {
+            let rows = filterQuestionsFromPool(fullPool, {
+                chapters: chapterName
+                    ? [chapterName]
+                    : (selectedChapters.length ? selectedChapters : undefined),
+                marksPerQuestion: mPerQ,
+                mcqType: sec.mcqType,
+                forceDifficulty: levelKey ? levelMap[levelKey] : undefined,
+                allowedDifficulties: levelKey ? undefined : allowed.map(k => levelMap[k])
+            });
 
-    for (const lv of levelsTry) {
-        const pool = preloadedPools[lv] || [];
-        let idx = poolIndex[lv] || 0;
+            rows = uniqueByIdOrText(rows);
+            shuffleArray(rows);
+            poolCache.set(poolKey, rows);
+        }
+
+        return poolCache.get(poolKey) || [];
+    }
+
+    function takeFromPool(chapterName, levelKey, sectionSeen) {
+        const poolKey = `${chapterName || '__ALL__'}|${levelKey || '__ANY__'}`;
+        const pool = getPool(chapterName, levelKey);
+        let idx = poolIndex.get(poolKey) || 0;
 
         while (idx < pool.length) {
             const d = pool[idx++];
             const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
+
             if (k && (sectionSeen.has(k) || subjectSeenKeys.has(k))) continue;
 
-            picked = d;
-            pickedLevel = lv;
-            break;
+            poolIndex.set(poolKey, idx);
+            return d;
         }
 
-        poolIndex[lv] = idx;
-        if (picked) break;
+        poolIndex.set(poolKey, idx);
+        return null;
     }
 
-    if (!picked) {
-        sectionErrors.push(`${subjData.subject} - ${sec.label}: Checked difficulty levels do not have enough questions.`);
-        continue;
+    for (let i = 0; i < takeCount; i++) {
+        const slot = mySlots[i];
+        const preferredChapter = chapterPlan[i] || selectedChapters[0] || null;
+        const otherChapters = selectedChapters.filter(ch => ch !== preferredChapter);
+
+        const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets)
+            ? _mixedTargets
+            : { L1: 0, L2: 0, L3: 0 };
+
+        const _act = (typeof _mixedActual !== 'undefined' && _mixedActual)
+            ? _mixedActual
+            : { L1: 0, L2: 0, L3: 0 };
+
+        const deficits = [
+            { k: 'L1', d: (_tgt.L1 - _act.L1) },
+            { k: 'L2', d: (_tgt.L2 - _act.L2) },
+            { k: 'L3', d: (_tgt.L3 - _act.L3) }
+        ].sort((a, b) => b.d - a.d).map(x => x.k);
+
+        const preferredLevel = slot?.assigned || deficits[0];
+        const levelsTry = [preferredLevel, ...deficits.filter(k => k !== preferredLevel)]
+            .filter(k => allowed.includes(k));
+
+        const sectionSeen = new Set(
+            questions.map(q => makeStemKey({ text: q.text, marks: mPerQ }))
+        );
+
+        let picked = null;
+        let pickedLevel = null;
+
+        // 1) Preferred chapter + preferred level order
+        if (preferredChapter) {
+            for (const lv of levelsTry) {
+                picked = takeFromPool(preferredChapter, lv, sectionSeen);
+                if (picked) {
+                    pickedLevel = lv;
+                    break;
+                }
+            }
+        }
+
+        // 2) Preferred chapter + any allowed level
+        if (!picked && preferredChapter) {
+            picked = takeFromPool(preferredChapter, null, sectionSeen);
+            if (picked) {
+                const diffRaw = String(picked.difficulty || picked.level || '').toLowerCase();
+                pickedLevel =
+                    diffRaw.includes('1') ? 'L1' :
+                    diffRaw.includes('2') ? 'L2' :
+                    'L3';
+            }
+        }
+
+        // 3) Other selected chapters + preferred level order
+        if (!picked) {
+            for (const ch of otherChapters) {
+                for (const lv of levelsTry) {
+                    picked = takeFromPool(ch, lv, sectionSeen);
+                    if (picked) {
+                        pickedLevel = lv;
+                        break;
+                    }
+                }
+                if (picked) break;
+            }
+        }
+
+        // 4) Other selected chapters + any allowed level
+        if (!picked) {
+            for (const ch of otherChapters) {
+                picked = takeFromPool(ch, null, sectionSeen);
+                if (picked) {
+                    const diffRaw = String(picked.difficulty || picked.level || '').toLowerCase();
+                    pickedLevel =
+                        diffRaw.includes('1') ? 'L1' :
+                        diffRaw.includes('2') ? 'L2' :
+                        'L3';
+                    break;
+                }
+            }
+        }
+
+        // 5) If no chapters selected, fallback to all
+        if (!picked && !selectedChapters.length) {
+            for (const lv of levelsTry) {
+                picked = takeFromPool(null, lv, sectionSeen);
+                if (picked) {
+                    pickedLevel = lv;
+                    break;
+                }
+            }
+
+            if (!picked) {
+                picked = takeFromPool(null, null, sectionSeen);
+                if (picked) {
+                    const diffRaw = String(picked.difficulty || picked.level || '').toLowerCase();
+                    pickedLevel =
+                        diffRaw.includes('1') ? 'L1' :
+                        diffRaw.includes('2') ? 'L2' :
+                        'L3';
+                }
+            }
+        }
+
+        if (!picked) {
+            sectionErrors.push(`${subjData.subject} - ${sec.label}: Could not keep chapter balance and level balance with available questions.`);
+            continue;
+        }
+
+        let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
+        out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
+
+        questions.push({
+            ...out,
+            number: questions.length + 1
+        });
+
+        const finalKey = makeStemKey({ text: out.text, marks: mPerQ });
+        if (finalKey) subjectSeenKeys.add(finalKey);
+
+        if (_mixedActual && out._assignedLevel) {
+            _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
+        }
     }
 
-    let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
-    out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
-
-    questions.push({
-        ...out,
-        number: questions.length + 1
-    });
-
-    const finalKey = makeStemKey({ text: out.text, marks: mPerQ });
-    if (finalKey) subjectSeenKeys.add(finalKey);
-
-                                           if (_mixedActual && out._assignedLevel) {
-                                            _mixedActual[out._assignedLevel] = (_mixedActual[out._assignedLevel] || 0) + mPerQ;
-                                        }
-                                    }
-                                }
+    if (questions.length < requestedCount) {
+        sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${questions.length} of ${requestedCount} questions found after chapter balancing.`);
+    }
+}
                             }
                         } else if (sec.type === "internal") {
                                 let missingPairs = 0;
