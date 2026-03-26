@@ -708,6 +708,14 @@ function formatExamTime(mins) {
   return result;
 }
 
+function formatPaperTypeLine(paperType) {
+  const type = String(paperType || '').trim().toLowerCase();
+
+  if (type === 'pinnacle paper') return 'Pinnacle Paper';
+  if (type === 'core paper') return 'Core Paper';
+
+  return '';
+}
 function fitsInLine(option1, option2, maxWidth = 700) {
     let dummy = document.createElement('span');
     dummy.style.cssText = 'visibility:hidden;position:absolute;white-space:nowrap;padding:0;margin:0;border:none;font-family:Times New Roman, Times, serif;font-size:1.15em;';
@@ -865,7 +873,12 @@ function renderPrintPreview() {
       <div class="school-headings">
         <div class="school-title school-title-themed">${exam.schoolName || 'SciMentra'}</div>
         <div class="subtitle">IIT & NEET FOUNDATION</div>
-        <div class="exam-title">${exam.examName || ''}</div>
+               <div class="exam-title">${exam.examName || ''}</div>
+        ${
+          formatPaperTypeLine(exam.paperType)
+            ? `<div style="font-size:1.02em;font-weight:600;margin-top:4px;color:#163A63;">${formatPaperTypeLine(exam.paperType)}</div>`
+            : ''
+        }
       </div>
       <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
     </div>
