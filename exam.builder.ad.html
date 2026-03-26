@@ -2179,6 +2179,106 @@ function getPaperType() {
     return (document.getElementById('paper-type-dropdown')?.dataset?.value) || '';
 }
 
+function repeatFixedPlan(basePlan, times) {
+    const out = [];
+    for (let i = 0; i < times; i++) out.push(...basePlan);
+    return out;
+}
+
+function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, marksPerQuestion }) {
+    const totalMarks = Number(maxMarks || 0);
+    const qCount = Number(numQuestions || 0);
+    const mpq = Number(marksPerQuestion || 0);
+    const type = String(mcqType || '').trim();
+
+    const base25Templates = {
+        "Core Paper": {
+            "MCQ (Single)|5|1": ["L1", "L1", "L1", "L2", "L1"],
+            "MCQ (Multiple)|4|1": ["L1", "L1", "L1", "L2"],
+            "Fill in the Blanks|4|1": ["L1", "L1", "L2", "L2"],
+            "Descriptive|2|2": ["L1", "L2"],
+            "Descriptive|2|4": ["L1", "L2"]
+        },
+        "Pinnacle Paper": {
+            "MCQ (Single)|5|1": ["L1", "L2", "L3", "L2", "L3"],
+            "MCQ (Multiple)|4|1": ["L1", "L2", "L3", "L2"],
+            "Fill in the Blanks|4|1": ["L1", "L1", "L2", "L2"],
+            "Descriptive|2|2": ["L1", "L3"],
+            "Descriptive|2|4": ["L2", "L3"]
+        }
+    };
+
+    const scaleMap = {
+        25: {
+            factor: 1,
+            signatures: {
+                "MCQ (Single)|5|1": "MCQ (Single)|5|1",
+                "MCQ (Multiple)|4|1": "MCQ (Multiple)|4|1",
+                "Fill in the Blanks|4|1": "Fill in the Blanks|4|1",
+                "Descriptive|2|2": "Descriptive|2|2",
+                "Descriptive|2|4": "Descriptive|2|4"
+            }
+        },
+        50: {
+            factor: 2,
+            signatures: {
+                "MCQ (Single)|10|1": "MCQ (Single)|5|1",
+                "MCQ (Multiple)|8|1": "MCQ (Multiple)|4|1",
+                "Fill in the Blanks|8|1": "Fill in the Blanks|4|1",
+                "Descriptive|4|2": "Descriptive|2|2",
+                "Descriptive|4|4": "Descriptive|2|4"
+            }
+        },
+        100: {
+            factor: 4,
+            signatures: {
+                "MCQ (Single)|20|1": "MCQ (Single)|5|1",
+                "MCQ (Multiple)|16|1": "MCQ (Multiple)|4|1",
+                "Fill in the Blanks|16|1": "Fill in the Blanks|4|1",
+                "Descriptive|8|2": "Descriptive|2|2",
+                "Descriptive|8|4": "Descriptive|2|4"
+            }
+        }
+    };
+
+    const paperTemplates = base25Templates[paperType];
+    const scaleInfo = scaleMap[totalMarks];
+    if (!paperTemplates || !scaleInfo) return null;
+
+    const signature = `${type}|${qCount}|${mpq}`;
+    const baseSignature = scaleInfo.signatures[signature];
+    if (!baseSignature) return null;
+
+    const basePlan = paperTemplates[baseSignature];
+    if (!Array.isArray(basePlan) || !basePlan.length) return null;
+
+    return repeatFixedPlan(basePlan, scaleInfo.factor);
+}
+
+function buildFairChapterPlan(chapters, totalNeed) {
+    const chs = Array.isArray(chapters) ? chapters.filter(Boolean) : [];
+    if (!chs.length || totalNeed <= 0) return [];
+
+    const perChapter = splitEvenAcrossChapters(totalNeed, chs);
+    const decorated = chs.map((ch, idx) => ({
+        ch,
+        idx,
+        count: perChapter[idx]
+    }));
+
+    // rotate starting point so first chapters are not always favored
+    const seed = Date.now() % chs.length;
+    const rotated = decorated.map((_, i) => decorated[(seed + i) % decorated.length]);
+
+    const plan = [];
+    rotated.forEach(item => {
+        for (let i = 0; i < item.count; i++) {
+            plan.push(item.ch);
+        }
+    });
+
+    return plan;
+}
 function applyPaperTypePreset() {
     const paperType = getPaperType();
 
@@ -2192,15 +2292,11 @@ function applyPaperTypePreset() {
 
     if (!l1Check || !l2Check || !l3Check || !l1Percent || !l2Percent || !l3Percent) return;
 
-    if (paperType === 'Pinnacle Paper') {
+   if (paperType === 'Pinnacle Paper') {
     l1Check.checked = true;
     l2Check.checked = true;
     l3Check.checked = true;
 
-    // Fixed scalable Pinnacle distribution
-    // 25 marks  ->  6 / 10 /  9
-    // 50 marks  -> 12 / 20 / 18
-    // 100 marks -> 24 / 40 / 36
     l1Percent.value = 24;
     l2Percent.value = 40;
     l3Percent.value = 36;
@@ -2209,9 +2305,6 @@ function applyPaperTypePreset() {
     l2Check.checked = true;
     l3Check.checked = false;
 
-    // 25 marks  -> 15 / 10 / 0
-    // 50 marks  -> 30 / 20 / 0
-    // 100 marks -> 60 / 40 / 0
     l1Percent.value = 60;
     l2Percent.value = 40;
     l3Percent.value = 0;
@@ -2719,14 +2812,12 @@ const cleanPool = manualPool;
                 return { ...out, number: i + 1 };
             });
         }
-    } else {
+   } else {
     const mySlots = strictSlots.filter(sl =>
         sl.sIdx === sIdx &&
         sl.secIdx === secIdx &&
         sl.marksPerQuestion === mPerQ
     );
-
-    const takeCount = Math.min(requestedCount, mySlots.length);
 
     const allowed = Array.isArray(window._allowedDifficultyLevels)
         ? window._allowedDifficultyLevels
@@ -2738,21 +2829,23 @@ const cleanPool = manualPool;
         L3: 'Level 3'
     };
 
+    const fixedLevelPlan = getFixedSectionLevelPlan({
+        paperType: getPaperType(),
+        maxMarks: Number(maxMarks || 0),
+        mcqType: sec.mcqType,
+        numQuestions: requestedCount,
+        marksPerQuestion: mPerQ
+    });
+
+    const takeCount = fixedLevelPlan
+        ? Math.min(requestedCount, fixedLevelPlan.length)
+        : Math.min(requestedCount, mySlots.length);
+
     const selectedChapters = Array.isArray(subjData.chapters)
         ? subjData.chapters.filter(Boolean)
         : [];
 
-    // Chapter balance plan: 3 chapters + 2 questions => [ch1, ch2]
-    // 3 chapters + 5 questions => [ch1, ch1, ch2, ch2, ch3]
-    const chapterPlan = [];
-    if (selectedChapters.length) {
-        const perChapter = splitEvenAcrossChapters(takeCount, selectedChapters);
-        perChapter.forEach((cnt, idx) => {
-            for (let n = 0; n < cnt; n++) {
-                chapterPlan.push(selectedChapters[idx]);
-            }
-        });
-    }
+    const chapterPlan = buildFairChapterPlan(selectedChapters, takeCount);
 
     const fullPool = await getSubjectQuestionPool(selectedClass, selectedBoard, subjData.subject);
     const poolCache = new Map();
@@ -2801,35 +2894,42 @@ const cleanPool = manualPool;
 
     for (let i = 0; i < takeCount; i++) {
         const slot = mySlots[i];
-        const preferredChapter = chapterPlan[i] || selectedChapters[0] || null;
+        const preferredChapter = chapterPlan[i] || null;
         const otherChapters = selectedChapters.filter(ch => ch !== preferredChapter);
-
-        const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets)
-            ? _mixedTargets
-            : { L1: 0, L2: 0, L3: 0 };
-
-        const _act = (typeof _mixedActual !== 'undefined' && _mixedActual)
-            ? _mixedActual
-            : { L1: 0, L2: 0, L3: 0 };
-
-        const deficits = [
-            { k: 'L1', d: (_tgt.L1 - _act.L1) },
-            { k: 'L2', d: (_tgt.L2 - _act.L2) },
-            { k: 'L3', d: (_tgt.L3 - _act.L3) }
-        ].sort((a, b) => b.d - a.d).map(x => x.k);
-
-        const preferredLevel = slot?.assigned || deficits[0];
-        const levelsTry = [preferredLevel, ...deficits.filter(k => k !== preferredLevel)]
-            .filter(k => allowed.includes(k));
 
         const sectionSeen = new Set(
             questions.map(q => makeStemKey({ text: q.text, marks: mPerQ }))
         );
 
+        let preferredLevel = null;
+        let levelsTry = [];
+
+        if (fixedLevelPlan && fixedLevelPlan[i]) {
+            preferredLevel = fixedLevelPlan[i];
+            levelsTry = [preferredLevel, ...allowed.filter(k => k !== preferredLevel)];
+        } else {
+            const _tgt = (typeof _mixedTargets !== 'undefined' && _mixedTargets)
+                ? _mixedTargets
+                : { L1: 0, L2: 0, L3: 0 };
+
+            const _act = (typeof _mixedActual !== 'undefined' && _mixedActual)
+                ? _mixedActual
+                : { L1: 0, L2: 0, L3: 0 };
+
+            const deficits = [
+                { k: 'L1', d: (_tgt.L1 - _act.L1) },
+                { k: 'L2', d: (_tgt.L2 - _act.L2) },
+                { k: 'L3', d: (_tgt.L3 - _act.L3) }
+            ].sort((a, b) => b.d - a.d).map(x => x.k);
+
+            preferredLevel = slot?.assigned || deficits[0];
+            levelsTry = [preferredLevel, ...deficits.filter(k => k !== preferredLevel)]
+                .filter(k => allowed.includes(k));
+        }
+
         let picked = null;
         let pickedLevel = null;
 
-        // 1) Preferred chapter + preferred level order
         if (preferredChapter) {
             for (const lv of levelsTry) {
                 picked = takeFromPool(preferredChapter, lv, sectionSeen);
@@ -2840,7 +2940,6 @@ const cleanPool = manualPool;
             }
         }
 
-        // 2) Preferred chapter + any allowed level
         if (!picked && preferredChapter) {
             picked = takeFromPool(preferredChapter, null, sectionSeen);
             if (picked) {
@@ -2852,7 +2951,6 @@ const cleanPool = manualPool;
             }
         }
 
-        // 3) Other selected chapters + preferred level order
         if (!picked) {
             for (const ch of otherChapters) {
                 for (const lv of levelsTry) {
@@ -2866,7 +2964,6 @@ const cleanPool = manualPool;
             }
         }
 
-        // 4) Other selected chapters + any allowed level
         if (!picked) {
             for (const ch of otherChapters) {
                 picked = takeFromPool(ch, null, sectionSeen);
@@ -2881,7 +2978,6 @@ const cleanPool = manualPool;
             }
         }
 
-        // 5) If no chapters selected, fallback to all
         if (!picked && !selectedChapters.length) {
             for (const lv of levelsTry) {
                 picked = takeFromPool(null, lv, sectionSeen);
@@ -2904,12 +3000,12 @@ const cleanPool = manualPool;
         }
 
         if (!picked) {
-            sectionErrors.push(`${subjData.subject} - ${sec.label}: Could not keep chapter balance and level balance with available questions.`);
+            sectionErrors.push(`${subjData.subject} - ${sec.label}: Could not keep chapter balance and fixed level template with available questions.`);
             continue;
         }
 
         let out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
-        out._assignedLevel = pickedLevel || (slot?.assigned || 'L1');
+        out._assignedLevel = pickedLevel || preferredLevel || (slot?.assigned || 'L1');
 
         questions.push({
             ...out,
