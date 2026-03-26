@@ -264,7 +264,7 @@
                         <input type="date" id="date-input">
                     </div>
 
-                    <div class="form-grid-2-col">
+                   <div class="form-grid-2-col">
     <div class="form-group">
         <label>Question Source</label>
         <div id="exam-source-dropdown" class="custom-dropdown"></div>
@@ -274,6 +274,11 @@
         <label>Selection Mode</label>
         <div id="selection-mode-dropdown" class="custom-dropdown"></div>
     </div>
+</div>
+
+<div class="form-group" style="margin-top:15px;">
+    <label>Paper Type</label>
+    <div id="paper-type-dropdown" class="custom-dropdown"></div>
 </div>
 
                     <div class="form-group" id="global-paste-wrap" style="display:none;">
@@ -2170,6 +2175,44 @@ function getSelectionMode() {
     return (document.getElementById('selection-mode-dropdown')?.dataset?.value) || 'Auto Select';
 }
 
+function getPaperType() {
+    return (document.getElementById('paper-type-dropdown')?.dataset?.value) || '';
+}
+
+function applyPaperTypePreset() {
+    const paperType = getPaperType();
+
+    const l1Check = document.getElementById('diff-l1-check');
+    const l2Check = document.getElementById('diff-l2-check');
+    const l3Check = document.getElementById('diff-l3-check');
+
+    const l1Percent = document.getElementById('diff-l1-percent');
+    const l2Percent = document.getElementById('diff-l2-percent');
+    const l3Percent = document.getElementById('diff-l3-percent');
+
+    if (!l1Check || !l2Check || !l3Check || !l1Percent || !l2Percent || !l3Percent) return;
+
+    if (paperType === 'Pinnacle Paper') {
+        l1Check.checked = true;
+        l2Check.checked = true;
+        l3Check.checked = true;
+
+        l1Percent.value = 40;
+        l2Percent.value = 30;
+        l3Percent.value = 30;
+    } else if (paperType === 'Core Paper') {
+        l1Check.checked = true;
+        l2Check.checked = true;
+        l3Check.checked = false;
+
+        l1Percent.value = 60;
+        l2Percent.value = 40;
+        l3Percent.value = 0;
+    }
+
+    refreshDifficultyTotalNote();
+}
+
 function getGlobalShuffleQuestions() {
     return !!window._shuffleQuestions;
 }
@@ -2191,6 +2234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         createDropdown('board-dropdown', config.boards, 'Select Board');
         createDropdown('exam-source-dropdown', ["Question Bank", "Paste", "Upload .docx"], 'Question Bank');
 createDropdown('selection-mode-dropdown', ["Auto Select", "Manual Select"], 'Auto Select');
+createDropdown('paper-type-dropdown', ["Pinnacle Paper", "Core Paper"], 'Select Paper Type');
 refreshDifficultyTotalNote();
 
 [
@@ -2210,8 +2254,12 @@ refreshDifficultyTotalNote();
         });
 
         document.getElementById('board-dropdown').addEventListener('change', function () {
-            updateSubjectsForBoardAndClass();
-        });
+    updateSubjectsForBoardAndClass();
+});
+
+document.getElementById('paper-type-dropdown').addEventListener('change', function () {
+    applyPaperTypePreset();
+});
 
         (function wireGlobalSourceUI(){
             const dd = document.getElementById('exam-source-dropdown');
@@ -2408,10 +2456,11 @@ const selectionMode = getSelectionMode();
                     });
                 }
 
-               const finalPaper = {
+              const finalPaper = {
     class: selectedClass,
     board: selectedBoard,
     examName,
+    paperType: getPaperType(),
     date,
     time,
     maxMarks,
