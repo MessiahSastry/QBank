@@ -2046,28 +2046,6 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
 
             const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
 
-            return {
-                number: 0,
-                text: shuffled.question || stem,
-                marks: Number(marksPerQuestion || norm.marks || 0),
-                options: shuffled.options || clean,
-                answer: letterAns,
-                explanation: norm.explanation || '',
-                image: norm.image || ''
-            };
-        }
-
-        return {
-            number: 0,
-            text: stem,
-            marks: Number(marksPerQuestion || norm.marks || 0),
-            options: clean,
-            answer: answerLetters,
-            explanation: norm.explanation || '',
-            image: norm.image || ''
-        };
-    }
-
     if (sectionMcqType === "Fill in the Blanks") {
         return {
             number: 0,
@@ -2613,10 +2591,10 @@ const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
     if (docMarks !== mPerQ) return false;
 
     const docType = inferMcqType(d);
-if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
-if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
-if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
-if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
+    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
+    if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
+    if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
+    if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
 
     const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
     return !(k && subjectSeenKeys.has(k));
