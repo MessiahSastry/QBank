@@ -1142,6 +1142,8 @@ function extractAnswerLetters(ans) {
 function normalizeMcqType(s) {
   const t = String(s || '').trim().toLowerCase();
   if (!t) return 'Descriptive';
+  if (t.includes('assertion') || t.includes('reason')) return 'MCQ (Single)';
+  if ((t.includes('fill') && t.includes('blank')) || t === 'fib') return 'Fill in the Blanks';
   if (t.includes('multiple')) return 'MCQ (Multiple)';
   if (t.includes('single')) return 'MCQ (Single)';
   if (t.includes('desc')) return 'Descriptive';
@@ -1149,7 +1151,12 @@ function normalizeMcqType(s) {
 }
 function inferMcqType(d) {
   const norm = normalizeMcqType(d?.mcqType || d?.type || '');
-  if (norm === 'MCQ (Single)' || norm === 'MCQ (Multiple)' || norm === 'Descriptive') return norm;
+  if (
+    norm === 'MCQ (Single)' ||
+    norm === 'MCQ (Multiple)' ||
+    norm === 'Fill in the Blanks' ||
+    norm === 'Descriptive'
+  ) return norm;
 
   const letters = String(
     d?.parsedAnswer ||
@@ -1330,10 +1337,10 @@ function _isAllowedMcqType(doc, mcqType) {
   const typ = inferMcqType(doc);
   if (mcqType === "MCQ (Single)") return typ === "MCQ (Single)";
   if (mcqType === "MCQ (Multiple)") return typ === "MCQ (Multiple)";
+  if (mcqType === "Fill in the Blanks") return typ === "Fill in the Blanks";
   if (mcqType === "Descriptive") return typ === "Descriptive";
   return true;
 }
-
 async function getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject) {
   const cacheKey = [currentUser?.uid || '', selectedClass, selectedBoard, selectedSubject].join('|');
 
@@ -1797,7 +1804,7 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     sectionLabelDropdown.style.width = "120px";
     sectionLabelDropdown.style.marginRight = "8px";
 
-    const mcqTypeOptions = ["MCQ (Single)", "MCQ (Multiple)", "Descriptive"];
+    const mcqTypeOptions = ["MCQ (Single)", "MCQ (Multiple)", "Fill in the Blanks", "Descriptive"];
     const mcqTypeDropdown = createSectionDropdown(mcqTypeOptions, "MCQ Type", mcqTypeOptions[0], null);
     mcqTypeDropdown.classList.add('mcq-type-dropdown');
     mcqTypeDropdown.style.width = "150px";
@@ -2020,11 +2027,11 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         : (Array.isArray(extractedOptions) && extractedOptions.length === 4 ? extractedOptions : []);
 
     const answerLetters = String(norm.answer || '')
-    .toUpperCase()
-    .split(',')
-    .map(x => x.trim())
-    .filter(x => /^[A-D]$/.test(x))
-    .join(',');
+        .toUpperCase()
+        .split(',')
+        .map(x => x.trim())
+        .filter(x => /^[A-D]$/.test(x))
+        .join(',');
 
     if ((sectionMcqType === "MCQ (Single)" || sectionMcqType === "MCQ (Multiple)") && options.length === 4) {
         const clean = options.map(o => String(o).replace(/^[A-D][).]\s*/i, '').trim());
@@ -2049,6 +2056,40 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                 image: norm.image || ''
             };
         }
+
+        return {
+            number: 0,
+            text: stem,
+            marks: Number(marksPerQuestion || norm.marks || 0),
+            options: clean,
+            answer: answerLetters,
+            explanation: norm.explanation || '',
+            image: norm.image || ''
+        };
+    }
+
+    if (sectionMcqType === "Fill in the Blanks") {
+        return {
+            number: 0,
+            text: stem,
+            marks: Number(marksPerQuestion || norm.marks || 0),
+            options: [],
+            answer: norm.answer || '',
+            explanation: norm.explanation || '',
+            image: norm.image || ''
+        };
+    }
+
+    return {
+        number: 0,
+        text: stem,
+        marks: Number(marksPerQuestion || norm.marks || 0),
+        options: [],
+        answer: '',
+        explanation: norm.explanation || '',
+        image: norm.image || ''
+    };
+}
 
         return {
             number: 0,
@@ -2572,9 +2613,10 @@ const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
     if (docMarks !== mPerQ) return false;
 
     const docType = inferMcqType(d);
-    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
-    if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
-    if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
+if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
+if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
+if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
+if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
 
     const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
     return !(k && subjectSeenKeys.has(k));
