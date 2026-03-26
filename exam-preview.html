@@ -874,22 +874,20 @@ function renderPrintPreview() {
         <div class="school-title school-title-themed">${exam.schoolName || 'SciMentra'}</div>
         <div class="subtitle">IIT & NEET FOUNDATION</div>
                <div class="exam-title">${exam.examName || ''}</div>
-        ${
-          formatPaperTypeLine(exam.paperType)
-            ? `<div style="font-size:1.02em;font-weight:600;margin-top:4px;color:#163A63;">${formatPaperTypeLine(exam.paperType)}</div>`
-            : ''
-        }
       </div>
       <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
     </div>
     <div class="details-rect">
       <div class="rect-row">
         <span class="rect-label">Class: ${exam.class || ''}</span>
-        <span class="rect-subject">${
-          (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
-            ? (exam.subjects[0].subject || '').toUpperCase()
-            : (exam.subject || '').toUpperCase()
-        }</span>
+        <span class="rect-subject">
+  <div>${
+    (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
+      ? (exam.subjects[0].subject || '').toUpperCase()
+      : (exam.subject || '').toUpperCase()
+  }</div>
+  ${exam.paperType ? `<div style="font-size:0.62em;font-weight:normal;margin-top:4px;text-transform:none;">${exam.paperType}</div>` : ''}
+</span>
         <span class="rect-label">Date: ${formatDate(exam.date) || ''}</span>
       </div>
       <div class="rect-row">
