@@ -879,20 +879,18 @@ function renderPrintPreview() {
     </div>
     <div class="details-rect">
       <div class="rect-row">
-        <span class="rect-label">Class: ${exam.class || ''}</span>
-        <span class="rect-subject">
-  <div>${
-    (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
-      ? (exam.subjects[0].subject || '').toUpperCase()
-      : (exam.subject || '').toUpperCase()
-  }</div>
-  ${exam.paperType ? `<div style="font-size:0.62em;font-weight:normal;margin-top:4px;text-transform:none;">${exam.paperType}</div>` : ''}
-</span>
+        <span class="rect-subject">${
+  (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
+    ? (exam.subjects[0].subject || '').toUpperCase()
+    : (exam.subject || '').toUpperCase()
+}</span>
         <span class="rect-label">Date: ${formatDate(exam.date) || ''}</span>
       </div>
       <div class="rect-row">
         <span class="rect-label">Time: ${exam.time ? formatExamTime(exam.time) : ''}</span>
-        <span style="flex:1;"></span>
+        <span style="flex:1;text-align:center;font-size:1.18em;font-weight:600;color:#163A63;">
+          ${exam.paperType || ''}
+        </span>
         <span class="rect-label">Max Marks: ${exam.maxMarks || ''}</span>
       </div>
     </div>
