@@ -878,7 +878,8 @@ function renderPrintPreview() {
       <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
     </div>
     <div class="details-rect">
-      <div class="rect-row">
+     <div class="rect-row">
+        <span class="rect-label">Class: ${exam.class || ''}</span>
         <span class="rect-subject">${
   (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
     ? (exam.subjects[0].subject || '').toUpperCase()
