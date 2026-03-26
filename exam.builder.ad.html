@@ -2021,10 +2021,27 @@ function normalizeQuestionDoc(doc) {
 function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
     const norm = normalizeQuestionDoc(q);
     const stem = norm.question || '';
-    const extractedOptions = extractMCQOptions(norm);
-    const options = Array.isArray(norm.options) && norm.options.length === 4
-        ? norm.options.slice(0, 4)
-        : (Array.isArray(extractedOptions) && extractedOptions.length === 4 ? extractedOptions : []);
+
+    let options = [];
+    if (Array.isArray(norm.options) && norm.options.length >= 4) {
+        options = norm.options.slice(0, 4);
+    } else if (
+        norm.options &&
+        typeof norm.options === 'object' &&
+        !Array.isArray(norm.options) &&
+        norm.options.A && norm.options.B && norm.options.C && norm.options.D
+    ) {
+        options = [norm.options.A, norm.options.B, norm.options.C, norm.options.D];
+    } else {
+        const extractedOptions = extractMCQOptions(norm);
+        if (Array.isArray(extractedOptions) && extractedOptions.length === 4) {
+            options = extractedOptions;
+        }
+    }
+
+    const clean = options.map(o =>
+        String(o || '').replace(/^[A-D][).:\-]\s*/i, '').trim()
+    );
 
     const answerLetters = String(norm.answer || '')
         .toUpperCase()
@@ -2033,18 +2050,50 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         .filter(x => /^[A-D]$/.test(x))
         .join(',');
 
-    if ((sectionMcqType === "MCQ (Single)" || sectionMcqType === "MCQ (Multiple)") && options.length === 4) {
-        const clean = options.map(o => String(o).replace(/^[A-D][).]\s*/i, '').trim());
+    if (sectionMcqType === "MCQ (Single)" || sectionMcqType === "MCQ (Multiple)") {
+        if (clean.length === 4) {
+            if (getGlobalShuffleOptions()) {
+                const shuffled = shuffleMCQQuestion({
+                    ...norm,
+                    question: stem,
+                    options: clean,
+                    answer: norm.answer
+                });
 
-        if (getGlobalShuffleOptions()) {
-            const shuffled = shuffleMCQQuestion({
-                ...norm,
-                question: stem,
+                const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+
+                return {
+                    number: 0,
+                    text: shuffled.question || stem,
+                    marks: Number(marksPerQuestion || norm.marks || 0),
+                    options: shuffled.options || clean,
+                    answer: letterAns,
+                    explanation: norm.explanation || '',
+                    image: norm.image || ''
+                };
+            }
+
+            return {
+                number: 0,
+                text: stem,
+                marks: Number(marksPerQuestion || norm.marks || 0),
                 options: clean,
-                answer: norm.answer
-            });
+                answer: answerLetters,
+                explanation: norm.explanation || '',
+                image: norm.image || ''
+            };
+        }
 
-            const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+        return {
+            number: 0,
+            text: stem,
+            marks: Number(marksPerQuestion || norm.marks || 0),
+            options: [],
+            answer: answerLetters,
+            explanation: norm.explanation || '',
+            image: norm.image || ''
+        };
+    }
 
     if (sectionMcqType === "Fill in the Blanks") {
         return {
@@ -2053,28 +2102,6 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
             marks: Number(marksPerQuestion || norm.marks || 0),
             options: [],
             answer: norm.answer || '',
-            explanation: norm.explanation || '',
-            image: norm.image || ''
-        };
-    }
-
-    return {
-        number: 0,
-        text: stem,
-        marks: Number(marksPerQuestion || norm.marks || 0),
-        options: [],
-        answer: '',
-        explanation: norm.explanation || '',
-        image: norm.image || ''
-    };
-}
-
-        return {
-            number: 0,
-            text: stem,
-            marks: Number(marksPerQuestion || norm.marks || 0),
-            options: clean,
-            answer: answerLetters,
             explanation: norm.explanation || '',
             image: norm.image || ''
         };
