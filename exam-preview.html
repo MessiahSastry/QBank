@@ -725,94 +725,100 @@ function fitsInLine(option1, option2, maxWidth = 700) {
     document.body.removeChild(dummy);
     return fits;
 }
-  function renderOptionsLayout(optionLines, hostNode) {
+ function renderOptionsLayout(optionLines, hostNode) {
   if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-  // Non-4 options → always stacked
-  if (optionLines.length !== 4) {
-   return optionLines.map(opt =>
-      `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`
-    ).join('');
-  }
+  const stackHTML = optionLines
+    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`)
+    .join('');
 
-  // --- Bank.html style: measure using printable width (PDF-stable) ---
-  const pageEl =
-    (hostNode && hostNode.closest && hostNode.closest('.a4-page')) ||
+  // Non-4 options -> always stacked
+  if (optionLines.length !== 4) return stackHTML;
+
+  // IMPORTANT: use actual available width of the options area, not full A4 page width
+  const widthSource =
+    hostNode ||
+    document.querySelector('.options-block') ||
+    document.querySelector('.question-body') ||
     document.querySelector('.a4-page') ||
     document.body;
 
-  const pwRaw = (pageEl && pageEl.getBoundingClientRect().width) || 820;
-  const pw = Math.min(pwRaw, 820); // preview needs wider cap
+  let availableWidth = Math.floor((widthSource.getBoundingClientRect?.().width || 0));
 
-  function measureRowHTML(html) {
-    const d = document.createElement('div');
-    d.style.cssText = `
-      visibility:hidden; position:absolute; left:-99999px; top:0;
-      white-space:nowrap; padding:0; margin:0; border:none;
-      font-family:Times New Roman,Times,serif; font-size:11pt;
+  // If we are measuring from .question-body / .options-block, keep a tiny safety buffer
+  availableWidth = Math.max(220, availableWidth - 8);
+
+  function measureHTML(html) {
+    const probe = document.createElement('div');
+    probe.style.cssText = `
+      visibility:hidden;
+      position:absolute;
+      left:-99999px;
+      top:0;
+      white-space:nowrap;
+      padding:0;
+      margin:0;
+      border:none;
+      font-family:'Times New Roman', Times, serif;
+      font-size:1.15em;
+      line-height:1.22;
     `;
-    d.innerHTML = html;
-    document.body.appendChild(d);
-    const w = d.getBoundingClientRect().width;
-    d.remove();
+    probe.innerHTML = html;
+    document.body.appendChild(probe);
+    const w = probe.getBoundingClientRect().width;
+    probe.remove();
     return w;
   }
 
-  // 1) Try all 4 in one line
-  const fourRowHTML = optionLines.map(opt =>
-    `<span style="display:inline-block;margin-right:32px;min-width:70px;">${String(opt).trim()}</span>`
-  ).join('');
+  const rendered = optionLines.map(opt => formatPreviewOption(String(opt).trim()));
+  const optionWidths = rendered.map(html =>
+    measureHTML(`<span style="display:inline-block;white-space:nowrap;">${html}</span>`)
+  );
 
- // ✅ LaTeX exists? Allow 4-in-one-row ONLY if LaTeX options are SHORT (√, simple fractions etc.)
-const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
+  // ---------- 1) Try all 4 in one row ----------
+  const gap4 = 26;
+  const totalOneRowWidth = optionWidths.reduce((a, b) => a + b, 0) + (gap4 * 3);
 
-const isShortLatexSet = hasLatex && optionLines.every(opt => {
-  const s = String(opt)
-    .replace(/^([A-D])\)\s*/,'')          // remove A) label
-    .replace(/\\\(|\\\)|\\\[|\\\]/g,'')   // remove \( \) \[ \]
-    .replace(/\$/g,'')                   // remove $
-    .replace(/\\[a-zA-Z]+/g,'x')          // commands → x (keeps length realistic)
-    .replace(/[{}]/g,'')
-    .trim();
-  return s.length <= 10;                 // ✅ short math like √13, 4/3, 2√5 etc.
-});
+  const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
+  const isShortLatexSet = hasLatex && optionLines.every(opt => {
+    const s = String(opt)
+      .replace(/^([A-D])\)\s*/, '')
+      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
+      .replace(/\$/g, '')
+      .replace(/\\[a-zA-Z]+/g, 'x')
+      .replace(/[{}]/g, '')
+      .trim();
+    return s.length <= 10;
+  });
 
-const maxFour = Math.max(420, pw - 20);
-
-// ✅ Allow 4-in-row if no LaTeX OR if LaTeX is short-set
-const fitsFour = ( (!hasLatex || isShortLatexSet) && (measureRowHTML(fourRowHTML) <= maxFour) );
-
-if (fitsFour) {
-  return `
-    <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
-      ${optionLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${formatPreviewOption(String(opt).trim())}</span>`).join('')}
-    </div>`;
-}
-
-  // 2) Else try 2+2 ONLY if each option fits comfortably in half width
-  const colGap = 24;
-  const halfWidth = Math.max(240, (pw - colGap) / 2);
-
-  const optWidths = optionLines.map(opt => measureRowHTML(
-    `<span style="display:inline-block;font-family:Times New Roman,Times,serif;font-size:11pt;">${String(opt).trim()}</span>`
-  ));
-
-  const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
-
-  if (!anyTooWideForTwoCols) {
-   return `
-      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[0]).trim())}</span>
-        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[1]).trim())}</span>
-        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[2]).trim())}</span>
-        <span style="min-width:70px;display:block;width:100%;">${formatPreviewOption(String(optionLines[3]).trim())}</span>
-      </div>`;
+  if ((!hasLatex || isShortLatexSet) && totalOneRowWidth <= availableWidth) {
+    return `
+      <div style="display:flex;flex-wrap:nowrap;gap:${gap4}px;margin-bottom:3px;width:100%;margin-left:2px;">
+        ${rendered.map(html => `<span style="display:inline-block;white-space:nowrap;">${html}</span>`).join('')}
+      </div>
+    `;
   }
 
-  // 3) Else one-by-one (4 lines)
-  return optionLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`)
-    .join('');
+  // ---------- 2) Try 2 + 2 ----------
+  const colGap = 24;
+  const colWidth = Math.floor((availableWidth - colGap) / 2);
+
+  // Every single option must fit safely inside one column
+  const fitsTwoCols = optionWidths.every(w => w <= colWidth);
+
+  if (fitsTwoCols) {
+    return `
+      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
+        <span style="display:block;width:100%;white-space:nowrap;">${rendered[0]}</span>
+        <span style="display:block;width:100%;white-space:nowrap;">${rendered[1]}</span>
+        <span style="display:block;width:100%;white-space:nowrap;">${rendered[2]}</span>
+        <span style="display:block;width:100%;white-space:nowrap;">${rendered[3]}</span>
+      </div>
+    `;
+  }
+
+  // ---------- 3) Otherwise stack all 4 ----------
+  return stackHTML;
 }
 
 function formatQuestionText(text) {
