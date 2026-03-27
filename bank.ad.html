@@ -3177,11 +3177,7 @@ if (node.classList.contains('worksheet-flow-block')) {
     break;
   }
 
-  const testBlock = nextBlock.cloneNode(true);
-  measureShell.content.appendChild(testBlock);
-  normalizeBlockSpacing(measureShell.page, settings);
-
-  const testBlock = nextBlock.cloneNode(true);
+ const testBlock = nextBlock.cloneNode(true);
   const blockChapterName = (
     testBlock.nodeType === 1 &&
     testBlock.classList &&
