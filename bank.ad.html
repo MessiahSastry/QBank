@@ -2416,16 +2416,22 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }
       box-sizing:border-box;
     }
 
-    .toolbar{
+   .toolbar{
       width:210mm;
       max-width:210mm;
       display:flex;
       justify-content:center;
       gap:12px;
       flex-wrap:wrap;
-      margin:24px auto 12px auto;
-      position:relative;
-      z-index:11;
+      margin:16px auto 12px auto;
+      position:sticky;
+      top:12px;
+      z-index:999;
+      background:rgba(244,248,252,0.96);
+      padding:10px 12px;
+      border-radius:16px;
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
     }
 
     .toolbar button,
