@@ -2150,9 +2150,10 @@ await __waitForImages(printable);
 
       try {
         await __qbOpenPrintWindowForPDF({
-          title: exportFileName.replace(/\.pdf$/i, ''),
-          contentHtml: printable.innerHTML
-        });
+  title: exportFileName.replace(/\.pdf$/i, ''),
+  contentHtml: printable.innerHTML,
+  headerText: `${classVal} / ${subjectVal}`
+});
 
         __cleanupMount();
         pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
@@ -2308,7 +2309,7 @@ await __waitForImages(printable);
       }, 50);
     }
 
-async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
+async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }) {
   const printWin = window.open('', '_blank');
   if (!printWin) {
     throw new Error('Popup blocked. Please allow popups for preview.');
@@ -2472,16 +2473,45 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
   box-sizing:border-box;
   overflow:hidden;
 }
+
+.a4-running-header{
+  width:100%;
+  text-align:right;
+  font-size:11pt;
+  font-weight:700;
+  color:#163A63;
+  line-height:1.2;
+  margin:0 0 10px 0;
+  box-sizing:border-box;
+}
     .a4-page-number{
       position:absolute;
-      right:14px;
-      bottom:8px;
-      font-size:10pt;
-      color:#5b6780;
-      background:rgba(255,255,255,0.92);
-      padding:1px 8px;
-      border-radius:999px;
-      z-index:3;
+      top:50%;
+      transform:translateY(-50%);
+      width:68px;
+      height:42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      font-weight:800;
+      color:#ffffff;
+      background:#1762a7;
+      z-index:4;
+      line-height:1;
+      letter-spacing:0.02em;
+      box-shadow:0 6px 16px rgba(0,0,0,0.18);
+      font-family:'Segoe UI', Arial, sans-serif;
+    }
+
+    .a4-page-number.right-ribbon{
+      right:0;
+      clip-path:polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%, 14% 50%);
+    }
+
+    .a4-page-number.left-ribbon{
+      left:0;
+      clip-path:polygon(22% 0, 100% 0, 86% 50%, 100% 100%, 22% 100%, 0 50%);
     }
 
     .print-preview{
@@ -2694,8 +2724,11 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
         page-break-after:auto !important;
       }
 
-      .a4-page-number{
-        display:none !important;
+           .a4-page-number{
+        display:flex !important;
+        box-shadow:none !important;
+        -webkit-print-color-adjust:exact !important;
+        print-color-adjust:exact !important;
       }
 
       mjx-container,
@@ -2779,7 +2812,8 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml }) {
 
   <script>
     const __CONTENT = ${contentJson};
-    const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
+const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
+const __HEADER_TEXT = ${JSON.stringify('' + (headerText || ''))};
 
     document.title = __TITLE;
 
@@ -2857,15 +2891,22 @@ inner.style.fontSize = '12pt';
 inner.style.height = '297mm';
 
       const content = document.createElement('div');
-      content.className = 'a4-page-content';
+content.className = 'a4-page-content';
 
-      const pageNo = document.createElement('div');
-      pageNo.className = 'a4-page-number';
-      pageNo.textContent = 'Page ' + (pageIndex + 1);
+if (__HEADER_TEXT && (pageIndex % 2 === 0)) {
+  const runningHeader = document.createElement('div');
+  runningHeader.className = 'a4-running-header';
+  runningHeader.textContent = __HEADER_TEXT;
+  inner.appendChild(runningHeader);
+}
 
-      inner.appendChild(content);
-      page.appendChild(inner);
-      page.appendChild(pageNo);
+const pageNo = document.createElement('div');
+pageNo.className = 'a4-page-number ' + ((pageIndex % 2 === 0) ? 'right-ribbon' : 'left-ribbon');
+pageNo.textContent = String(pageIndex + 1).padStart(2, '0');
+
+inner.appendChild(content);
+page.appendChild(inner);
+page.appendChild(pageNo);
 
       return { page, inner, content };
     }
