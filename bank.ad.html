@@ -2484,33 +2484,33 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }
   margin:0 0 10px 0;
   box-sizing:border-box;
 }
-    .a4-page-number{
+   .a4-page-number{
       position:absolute;
       top:50%;
       transform:translateY(-50%);
-      width:68px;
-      height:42px;
+      width:56px;
+      height:34px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:18px;
-      font-weight:800;
+      font-size:12pt;
+      font-weight:700;
       color:#ffffff;
       background:#1762a7;
       z-index:4;
       line-height:1;
-      letter-spacing:0.02em;
-      box-shadow:0 6px 16px rgba(0,0,0,0.18);
-      font-family:'Segoe UI', Arial, sans-serif;
+      letter-spacing:0;
+      box-shadow:0 4px 12px rgba(0,0,0,0.16);
+      font-family:'Times New Roman', Times, serif;
     }
 
-    .a4-page-number.right-ribbon{
-      right:0;
+   .a4-page-number.right-ribbon{
+      right:18px;
       clip-path:polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%, 14% 50%);
     }
 
     .a4-page-number.left-ribbon{
-      left:0;
+      left:18px;
       clip-path:polygon(22% 0, 100% 0, 86% 50%, 100% 100%, 22% 100%, 0 50%);
     }
 
@@ -2901,8 +2901,14 @@ if (__HEADER_TEXT && (pageIndex % 2 === 0)) {
 }
 
 const pageNo = document.createElement('div');
-pageNo.className = 'a4-page-number ' + ((pageIndex % 2 === 0) ? 'right-ribbon' : 'left-ribbon');
-pageNo.textContent = String(pageIndex + 1).padStart(2, '0');
+pageNo.className = 'a4-page-number';
+
+if (pageIndex % 2 === 0) {
+  pageNo.classList.add('right-ribbon');
+  pageNo.textContent = String(pageIndex + 1).padStart(2, '0');
+} else {
+  pageNo.style.display = 'none';
+}
 
 inner.appendChild(content);
 page.appendChild(inner);
