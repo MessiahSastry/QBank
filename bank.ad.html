@@ -1322,6 +1322,7 @@ if (orderedSelectedChapters.length >= 2) {
 function renderCenteredChapterTitle(text, chapterLabel = '') {
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
+  t.setAttribute('data-chapter-name', String(text || ''));
   t.style.cssText = `
     display:block;
     width:100%;
@@ -2513,14 +2514,42 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }
 }
 
 .a4-running-header{
-  width:100%;
-  text-align:right;
-  font-size:11pt;
-  font-weight:700;
-  color:#163A63;
-  line-height:1.2;
-  margin:0 0 10px 0;
+  width:108mm;
+  max-width:78%;
+  min-height:14mm;
+  display:flex;
+  align-items:center;
   box-sizing:border-box;
+  padding:0 16px;
+  margin:0 0 10px 0;
+  font-size:10.8pt;
+  font-weight:700;
+  color:#ffffff;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-family:'Times New Roman', Times, serif;
+  -webkit-print-color-adjust:exact !important;
+  print-color-adjust:exact !important;
+}
+
+.a4-running-header.odd{
+  margin-left:auto;
+  justify-content:flex-end;
+  text-align:right;
+  background:linear-gradient(to left, #1762a7 0%, #1762a7 48%, rgba(23,98,167,0.55) 80%, rgba(23,98,167,0) 100%);
+}
+
+.a4-running-header.even{
+  margin-right:auto;
+  justify-content:flex-start;
+  text-align:left;
+  background:linear-gradient(to right, #1762a7 0%, #1762a7 48%, rgba(23,98,167,0.55) 80%, rgba(23,98,167,0) 100%);
+}
+
+.a4-running-header.hide{
+  display:none !important;
 }
    .a4-page-number{
       display:none !important;
@@ -2909,15 +2938,13 @@ inner.style.lineHeight = settings.lineHeight;
 inner.style.fontSize = '12pt';
 inner.style.height = '297mm';
 
-      const content = document.createElement('div');
+     const content = document.createElement('div');
 content.className = 'a4-page-content';
 
-if (__HEADER_TEXT && (pageIndex % 2 === 0)) {
-  const runningHeader = document.createElement('div');
-  runningHeader.className = 'a4-running-header';
-  runningHeader.textContent = __HEADER_TEXT;
-  inner.appendChild(runningHeader);
-}
+const runningHeader = document.createElement('div');
+runningHeader.className = 'a4-running-header ' + ((pageIndex % 2 === 0) ? 'odd' : 'even');
+runningHeader.textContent = '';
+inner.appendChild(runningHeader);
 
 const footerWrap = document.createElement('div');
 footerWrap.style.position = 'absolute';
@@ -3125,11 +3152,13 @@ if (node.classList.contains('worksheet-flow-block')) {
       const blocks = getSourceBlocks().map(node => node.cloneNode(true));
       let pageIndex = 0;
       let safety = 0;
+      let activeChapterName = '';
 
       while (blocks.length && safety < 5000) {
         safety++;
 
-        const settings = ensurePageSettings(pageIndex);
+       const settings = ensurePageSettings(pageIndex);
+        let pageChapterName = activeChapterName || '';
 
         const measureShell = buildPageShell(pageIndex, settings);
         measureHost.appendChild(measureShell.page);
@@ -3152,6 +3181,16 @@ if (node.classList.contains('worksheet-flow-block')) {
   measureShell.content.appendChild(testBlock);
   normalizeBlockSpacing(measureShell.page, settings);
 
+  const testBlock = nextBlock.cloneNode(true);
+  const blockChapterName = (
+    testBlock.nodeType === 1 &&
+    testBlock.classList &&
+    testBlock.classList.contains('chapter-start-block')
+  ) ? String(testBlock.getAttribute('data-chapter-name') || '').trim() : '';
+
+  measureShell.content.appendChild(testBlock);
+  normalizeBlockSpacing(measureShell.page, settings);
+
   const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
@@ -3162,10 +3201,21 @@ if (node.classList.contains('worksheet-flow-block')) {
               testBlock.style.pageBreakInside = 'auto';
               measureShell.content.appendChild(testBlock);
               normalizeBlockSpacing(measureShell.page, settings);
+
+              if (blockChapterName) {
+                pageChapterName = blockChapterName;
+                activeChapterName = blockChapterName;
+              }
+
               blocks.shift();
             }
             break;
           } else {
+            if (blockChapterName) {
+              pageChapterName = blockChapterName;
+              activeChapterName = blockChapterName;
+            }
+
             pageHasContent = true;
             blocks.shift();
           }
@@ -3174,6 +3224,27 @@ if (node.classList.contains('worksheet-flow-block')) {
         const finalShell = buildPageShell(pageIndex, settings);
         finalShell.content.innerHTML = measureShell.content.innerHTML;
         normalizeBlockSpacing(finalShell.page, settings);
+
+        const headerEl = finalShell.page.querySelector('.a4-running-header');
+        const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
+
+        if (headerEl) {
+          if (isChapterTitlePage) {
+            headerEl.classList.add('hide');
+            headerEl.textContent = '';
+          } else if (pageIndex % 2 === 0) {
+            headerEl.textContent = __HEADER_TEXT || '';
+            if (!(__HEADER_TEXT || '').trim()) {
+              headerEl.classList.add('hide');
+            }
+          } else {
+            headerEl.textContent = pageChapterName || '';
+            if (!(pageChapterName || '').trim()) {
+              headerEl.classList.add('hide');
+            }
+          }
+        }
+
         pagesHost.appendChild(finalShell.page);
 
         measureShell.page.remove();
