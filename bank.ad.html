@@ -550,6 +550,161 @@ const questionsDb = stpatricksApp.firestore();
         overlay.querySelector('#pdf-mode-ok-btn').onclick = () => closeDialog(hidden.value || 'worksheet');
       });
     };
+    }
+
+  if (!window.appOrderChapters) {
+    window.appOrderChapters = function(chapters = []) {
+      return new Promise(resolve => {
+        document.querySelectorAll('.chapter-order-dialog-overlay').forEach(el => el.remove());
+
+        const rows = (chapters || []).map((ch, idx) => `
+          <div style="
+            display:grid;
+            grid-template-columns: 1fr 90px;
+            gap:12px;
+            align-items:center;
+            padding:10px 12px;
+            border:1px solid #d9e8f7;
+            border-radius:10px;
+            background:#f9fcff;
+            margin-bottom:8px;">
+            <div style="
+              font-weight:600;
+              color:#12416c;
+              line-height:1.4;
+              word-break:break-word;">
+              ${__qbEscapeHtml(ch)}
+            </div>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value="${idx + 1}"
+              class="chapter-order-input"
+              data-idx="${idx}"
+              style="
+                width:100%;
+                box-sizing:border-box;
+                padding:10px 12px;
+                border:1.3px solid #bcd6ef;
+                border-radius:8px;
+                font-weight:700;
+                color:#0f3d6b;">
+          </div>
+        `).join('');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'chapter-order-dialog-overlay';
+        overlay.innerHTML = `
+          <div style="
+            position:fixed;top:0;left:0;width:100vw;height:100vh;
+            background:rgba(0,0,0,0.18);z-index:100000;
+            display:flex;align-items:center;justify-content:center;
+            padding:16px;box-sizing:border-box;">
+
+            <div style="
+              background:#fff;border-radius:18px;overflow:hidden;
+              width:100%;max-width:640px;
+              box-shadow:0 8px 28px rgba(0,0,0,0.18);">
+
+              <div style="
+                background:#0f3d6b;color:#fff;padding:14px 18px;
+                font-size:1.08em;font-weight:700;">
+                SciMentra
+              </div>
+
+              <div style="padding:18px 18px 14px 18px;">
+                <div style="font-size:1em;color:#1f2d3d;margin-bottom:8px;font-weight:700;">
+                  Set Chapter Print Order
+                </div>
+
+                <div style="font-size:0.96em;color:#4b5b6b;margin-bottom:14px;line-height:1.5;">
+                  Enter chapter numbers. The PDF will print chapters in ascending order.
+                </div>
+
+                <div style="
+                  display:grid;
+                  grid-template-columns: 1fr 90px;
+                  gap:12px;
+                  padding:0 12px 8px 12px;
+                  font-weight:700;
+                  color:#185496;">
+                  <div>Chapter Name</div>
+                  <div>Order</div>
+                </div>
+
+                <div id="chapter-order-rows" style="max-height:360px;overflow:auto;margin-bottom:10px;">
+                  ${rows}
+                </div>
+
+                <div id="chapter-order-error" style="
+                  min-height:20px;
+                  color:#c82333;
+                  font-size:0.94em;
+                  margin-bottom:10px;">
+                </div>
+
+                <div style="
+                  display:flex;justify-content:flex-end;gap:10px;
+                  margin-top:8px;">
+                  <button type="button" id="chapter-order-cancel-btn" style="
+                    border:none;border-radius:999px;
+                    padding:8px 18px;background:#eef3f9;color:#35506b;
+                    font-weight:700;cursor:pointer;">
+                    Cancel
+                  </button>
+                  <button type="button" id="chapter-order-ok-btn" style="
+                    border:none;border-radius:999px;
+                    padding:8px 18px;background:#0f3d6b;color:#fff;
+                    font-weight:700;cursor:pointer;">
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const errorEl = overlay.querySelector('#chapter-order-error');
+
+        const closeDialog = (value) => {
+          overlay.remove();
+          resolve(value);
+        };
+
+        overlay.querySelector('#chapter-order-cancel-btn').onclick = () => closeDialog(null);
+
+        overlay.querySelector('#chapter-order-ok-btn').onclick = () => {
+          const inputs = Array.from(overlay.querySelectorAll('.chapter-order-input'));
+
+          const entries = inputs.map(inp => {
+            const idx = Number(inp.getAttribute('data-idx'));
+            return {
+              chapter: chapters[idx],
+              order: Number(inp.value)
+            };
+          });
+
+          if (entries.some(x => !Number.isInteger(x.order) || x.order < 1)) {
+            errorEl.textContent = 'Please enter valid positive numbers for all chapters.';
+            return;
+          }
+
+          const orders = entries.map(x => x.order);
+          const uniqueOrders = new Set(orders);
+
+          if (uniqueOrders.size !== orders.length) {
+            errorEl.textContent = 'Duplicate order numbers are not allowed.';
+            return;
+          }
+
+          entries.sort((a, b) => a.order - b.order);
+          closeDialog(entries.map(x => x.chapter));
+        };
+      });
+    };
   }
 })();
     let currentUser = null;
@@ -710,13 +865,23 @@ const includeKey = exportMode === 'key';
       const classVal = document.getElementById('class-value').value || '';
       const subjectVal = document.getElementById('subject-value').value || '';
      const selChaptersForHeader = getMultiSelected('chapter');
+let orderedSelectedChapters = [...selChaptersForHeader];
+
+if (selChaptersForHeader.length >= 2) {
+  orderedSelectedChapters = await appOrderChapters(selChaptersForHeader);
+
+  if (!orderedSelectedChapters) {
+    pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+    pdfBtn.disabled = false;
+    return;
+  }
+}
 
 // Chapter line for box
 const chapterTitleForBox =
-  (selChaptersForHeader.length === 1) ? selChaptersForHeader[0]
-  : (selChaptersForHeader.length >= 2) ? 'MULTIPLE CHAPTERS'
+  (orderedSelectedChapters.length === 1) ? orderedSelectedChapters[0]
+  : (orderedSelectedChapters.length >= 2) ? ''
   : 'ALL CHAPTERS';
-
 // Use actual selected types to drive layout later
 const selectedQtypes = getMultiSelected('qtype'); // [] means All
 const __typesOrderHdr = ['MCQ (Single)','MCQ (Multiple)','Descriptive'];
@@ -1137,12 +1302,12 @@ nodes.forEach(node => {
 
 // Determine ordering of chapters
 let chapterOrder = [];
-if (selChaptersForHeader.length >= 2) {
-  // preserve user selection order if multiple selected
-  chapterOrder = selChaptersForHeader.filter(c => chapterMap.has(c));
-} else if (selChaptersForHeader.length === 1) {
+if (orderedSelectedChapters.length >= 2) {
+  // use popup order for multiple selected chapters
+  chapterOrder = orderedSelectedChapters.filter(c => chapterMap.has(c));
+} else if (orderedSelectedChapters.length === 1) {
   // single selected: just that chapter (others, if any, appended)
-  const only = selChaptersForHeader[0];
+  const only = orderedSelectedChapters[0];
   chapterOrder = chapterMap.has(only)
     ? [only, ...Array.from(chapterMap.keys()).filter(k => k !== only)]
     : Array.from(chapterMap.keys());
@@ -1154,8 +1319,54 @@ if (selChaptersForHeader.length >= 2) {
 // helpers
 function renderCenteredChapterTitle(text) {
   const t = document.createElement('div');
-  t.style.cssText = 'font-size:1.15em;font-weight:800;letter-spacing:0.02em;text-align:center;margin:16px 0 8px 0;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid;display:block;width:100%;color:#163A63;';
-  t.textContent = String(text || 'Unspecified').toUpperCase();
+  t.className = 'chapter-start-block';
+  t.style.cssText = `
+    display:block;
+    width:100%;
+    margin:0 0 14px 0;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    page-break-after:avoid;
+    break-after:avoid;
+  `;
+
+  t.innerHTML = `
+    <div style="
+      margin:0 auto 10px auto;
+      max-width:540px;
+      border:2.5px solid #1b4f8a;
+      border-radius:18px;
+      background:#ffffff;
+      box-sizing:border-box;
+      box-shadow:0 3px 10px rgba(0,0,0,0.06);
+    ">
+      <div style="
+        margin:8px;
+        border:1.5px solid #7A2230;
+        border-radius:12px;
+        padding:16px 20px 14px 20px;
+        text-align:center;
+        background:#ffffff;
+      ">
+        <div style="
+          font-size:1.34em;
+          font-weight:900;
+          letter-spacing:0.03em;
+          text-align:center;
+          text-transform:uppercase;
+          line-height:1.15;
+          font-family:'Times New Roman', Times, serif;
+          color:#7A2230;
+          -webkit-text-fill-color:#7A2230;
+          -webkit-text-stroke:1px #163A63;
+          text-shadow:0 0 0 #163A63;
+        ">
+          ${__qbEscapeHtml(String(text || 'Unspecified').toUpperCase())}
+        </div>
+      </div>
+    </div>
+  `;
+
   printable.appendChild(t);
 }
 
@@ -1917,7 +2128,7 @@ async function __waitForImages(root){
 }
 await __waitForImages(printable);
 
-          const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((selChaptersForHeader.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
+          const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((orderedSelectedChapters.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
 
       try {
         await __qbOpenPrintWindowForPDF({
@@ -2787,11 +2998,22 @@ if (node.classList.contains('worksheet-flow-block')) {
         let pageHasContent = false;
 
         while (blocks.length) {
-          const testBlock = blocks[0].cloneNode(true);
-          measureShell.content.appendChild(testBlock);
-          normalizeBlockSpacing(measureShell.page, settings);
+  const nextBlock = blocks[0];
 
-          const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
+  if (
+    pageHasContent &&
+    nextBlock.nodeType === 1 &&
+    nextBlock.classList &&
+    nextBlock.classList.contains('chapter-start-block')
+  ) {
+    break;
+  }
+
+  const testBlock = nextBlock.cloneNode(true);
+  measureShell.content.appendChild(testBlock);
+  normalizeBlockSpacing(measureShell.page, settings);
+
+  const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
             measureShell.content.removeChild(testBlock);
