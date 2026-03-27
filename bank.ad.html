@@ -1319,7 +1319,7 @@ if (orderedSelectedChapters.length >= 2) {
 }
 
 // helpers
-function renderCenteredChapterTitle(text) {
+function renderCenteredChapterTitle(text, chapterLabel = '') {
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
   t.style.cssText = `
@@ -1345,7 +1345,30 @@ function renderCenteredChapterTitle(text) {
       background:#ffffff;
       box-sizing:border-box;
       box-shadow:0 3px 10px rgba(0,0,0,0.06);
+      position:relative;
+      padding-top:${chapterLabel ? '18px' : '0'};
     ">
+      ${chapterLabel ? `
+      <div style="
+        position:absolute;
+        top:-16px;
+        left:50%;
+        transform:translateX(-50%);
+        background:#1762a7;
+        color:#ffffff;
+        font-family:'Times New Roman', Times, serif;
+        font-size:1em;
+        font-weight:800;
+        letter-spacing:0.03em;
+        text-transform:uppercase;
+        padding:6px 20px 7px 20px;
+        border-radius:999px;
+        box-shadow:0 3px 10px rgba(0,0,0,0.14);
+        white-space:nowrap;
+      ">
+        ${__qbEscapeHtml(String(chapterLabel))}
+      </div>` : ''}
+
       <div style="
         margin:8px;
         border:1.5px solid #7A2230;
@@ -1816,11 +1839,11 @@ if (includeWorksheet) {
         });
       }
   } else {
-    chapterOrder.forEach(ch => {
-      const list = chapterMap.get(ch) || [];
-      if (!list.length) return;
+    chapterOrder.forEach((ch, chapterIdx) => {
+  const list = chapterMap.get(ch) || [];
+  if (!list.length) return;
 
-      renderCenteredChapterTitle(ch);
+  renderCenteredChapterTitle(ch, `Chapter ${chapterIdx + 1}`);
 
       const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
       const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
@@ -2039,11 +2062,11 @@ if (includeKey) {
       });
     }
   } else {
-    chapterOrder.forEach(ch => {
-      const list = chapterMap.get(ch) || [];
-      if (!list.length) return;
+    chapterOrder.forEach((ch, chapterIdx) => {
+  const list = chapterMap.get(ch) || [];
+  if (!list.length) return;
 
-      renderCenteredChapterTitle(ch);
+  renderCenteredChapterTitle(ch, `Chapter ${chapterIdx + 1}`);
 
       const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
       const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
