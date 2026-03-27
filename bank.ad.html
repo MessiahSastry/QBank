@@ -912,7 +912,9 @@ printable.prepend(avoidCSS);
       printable.style.margin = "0 auto";
       printable.style.padding = "0";
       printable.style.lineHeight = "1.6";
-if (includeWorksheet) {
+if (orderedSelectedChapters.length >= 2) {
+  printable.innerHTML = ``;
+} else if (includeWorksheet) {
   printable.innerHTML = `
         ${finalSchoolName ? `
     <div style="
@@ -1330,6 +1332,10 @@ function renderCenteredChapterTitle(text) {
     break-after:avoid;
   `;
 
+  const subLine = includeWorksheet
+    ? 'WORKSHEET'
+    : (includeKey ? 'QUESTIONS & ANSWERS' : '');
+
   t.innerHTML = `
     <div style="
       margin:0 auto 10px auto;
@@ -1354,6 +1360,7 @@ function renderCenteredChapterTitle(text) {
           letter-spacing:0.03em;
           text-align:center;
           text-transform:uppercase;
+          margin-bottom:6px;
           line-height:1.15;
           font-family:'Times New Roman', Times, serif;
           color:#7A2230;
@@ -1363,13 +1370,24 @@ function renderCenteredChapterTitle(text) {
         ">
           ${__qbEscapeHtml(String(text || 'Unspecified').toUpperCase())}
         </div>
+
+        ${subLine ? `
+        <div style="
+          font-size:1em;
+          font-weight:800;
+          letter-spacing:0.08em;
+          text-align:center;
+          color:#7A2230;
+          font-family:'Times New Roman', Times, serif;
+        ">
+          ${subLine}
+        </div>` : ''}
       </div>
     </div>
   `;
 
   printable.appendChild(t);
 }
-
 // removed: renderTypeHeading (MCQ headings handled by renderLeftHeading(typeLabel))
 
 // ✅ Added back: used by Descriptive sections (fixes "renderTypeHeading is not defined")
