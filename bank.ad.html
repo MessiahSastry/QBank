@@ -2929,19 +2929,20 @@ if (__HEADER_TEXT && (pageIndex % 2 === 0)) {
   inner.appendChild(runningHeader);
 }
 
-const pageNo = document.createElement('div');
-pageNo.className = 'a4-page-number';
+let pageNo = null;
 
 if (pageIndex % 2 === 0) {
-  pageNo.classList.add('right-ribbon');
+  pageNo = document.createElement('div');
+  pageNo.className = 'a4-page-number right-ribbon';
   pageNo.textContent = String(pageIndex + 1).padStart(2, '0');
-} else {
-  pageNo.style.display = 'none';
 }
 
 inner.appendChild(content);
 page.appendChild(inner);
-page.appendChild(pageNo);
+
+if (pageNo) {
+  page.appendChild(pageNo);
+}
 
       return { page, inner, content };
     }
