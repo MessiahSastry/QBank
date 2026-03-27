@@ -1338,21 +1338,23 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
 
   t.innerHTML = `
     <div style="
-      margin:0 auto 10px auto;
+      margin:${chapterLabel ? '24px' : '0'} auto 10px auto;
       max-width:540px;
       border:2.5px solid #1b4f8a;
       border-radius:18px;
       background:#ffffff;
       box-sizing:border-box;
       position:relative;
-      padding-top:${chapterLabel ? '10px' : '0'};
+      overflow:visible;
     ">
       ${chapterLabel ? `
       <div style="
         position:absolute;
-        top:0;
+        top:-18px;
         left:50%;
-        transform:translate(-50%, -50%);
+        transform:translateX(-50%);
+        min-width:170px;
+        text-align:center;
         background:#1762a7;
         color:#ffffff;
         font-family:'Times New Roman', Times, serif;
@@ -1360,20 +1362,22 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
         font-weight:800;
         letter-spacing:0.04em;
         text-transform:uppercase;
-        padding:8px 30px 8px 30px;
+        padding:10px 18px 10px 18px;
         border-radius:10px;
         border:2px solid #7A2230;
         white-space:nowrap;
         line-height:1;
+        z-index:10;
+        box-sizing:border-box;
       ">
         ${__qbEscapeHtml(String(chapterLabel))}
       </div>` : ''}
 
       <div style="
-        margin:14px 12px 12px 12px;
+        margin:30px 14px 12px 14px;
         border:1.5px solid #7A2230;
         border-radius:12px;
-        padding:16px 20px 14px 20px;
+        padding:20px 20px 16px 20px;
         text-align:center;
         background:#ffffff;
       ">
