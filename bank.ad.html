@@ -5035,13 +5035,21 @@ if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Sectio
 }
 
 function __qbParseAnswerLetters(answer) {
-  return Array.from(new Set(
-    String(answer || '')
-      .toUpperCase()
-      .split(',')
-      .map(x => x.trim())
-      .filter(x => /^[A-D]$/.test(x))
-  )).sort();
+  const raw = String(answer || '').toUpperCase().trim();
+  if (!raw) return [];
+
+  const normalized = raw
+    .replace(/OPTION\s+/g, '')
+    .replace(/\bAND\b/g, ',')
+    .replace(/&/g, ',')
+    .replace(/\//g, ',')
+    .replace(/[()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const matches = normalized.match(/[A-D](?=\s*[\),.\-]|\s|,|$)/g) || [];
+
+  return Array.from(new Set(matches)).sort();
 }
 
 function __qbGetOriginalAnswer(data) {
@@ -5225,16 +5233,35 @@ async function __qbEnsureWorkbookShuffleForQuestionNodes(questionNodes = []) {
   const savedEntries = eligibleEntries.filter(entry => __qbHasWorkbookShuffle(entry.data));
   const unsavedEntries = eligibleEntries.filter(entry => !__qbHasWorkbookShuffle(entry.data));
 
+     if (!eligibleEntries.length) {
+    await appInfo('No MCQ questions with valid answer letters were found for workbook shuffle.');
+    return { didSaveNew: false, savedCount: 0, newlySavedCount: 0 };
+  }
+
   if (!unsavedEntries.length) {
+    await appInfo(
+      `All selected MCQ questions are already shuffled and saved.\n\n` +
+      `Eligible MCQs: ${eligibleEntries.length}\n` +
+      `Already shuffled: ${savedEntries.length}`
+    );
     return { didSaveNew: false, savedCount: savedEntries.length, newlySavedCount: 0 };
   }
 
   if (!savedEntries.length) {
-    await appInfo('MCQ options are being shuffled and saved for this workbook. Click OK to continue.');
+    await appInfo(
+      `MCQ options are being shuffled and saved for this workbook.\n\n` +
+      `Eligible MCQs: ${eligibleEntries.length}\n` +
+      `To shuffle now: ${unsavedEntries.length}\n\n` +
+      `Click OK to continue.`
+    );
   } else {
-    await appInfo('Some questions are already shuffled. The remaining questions are now being shuffled and saved. Click OK to continue.');
+    await appInfo(
+      `Some questions are already shuffled.\n\n` +
+      `Already shuffled: ${savedEntries.length}\n` +
+      `Remaining to shuffle now: ${unsavedEntries.length}\n\n` +
+      `Click OK to continue.`
+    );
   }
-
   const singleHistory = [];
   const singleCounts = { A: 0, B: 0, C: 0, D: 0 };
 
