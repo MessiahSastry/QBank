@@ -3281,11 +3281,41 @@ if (node.classList.contains('worksheet-flow-block')) {
   }
 
  const testBlock = nextBlock.cloneNode(true);
-  const blockChapterName = (
+   const blockChapterName = (
     testBlock.nodeType === 1 &&
     testBlock.classList &&
     testBlock.classList.contains('chapter-start-block')
-  ) ? String(testBlock.getAttribute('data-chapter-name') || '').trim() : '';
+  ) ? (function(raw){
+      const src = String(raw || '').replace(/\r/g, '').trim();
+      if (!src) return '';
+
+      const cleaned = src
+        .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*?\)\s*$/i, '')
+        .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
+        .trim();
+
+      const lines = cleaned
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .filter(line => !/^[•*-]\s*/.test(line));
+
+      const assimilation = lines.find(line => /^Assimilation\s*\d+\b/i.test(line)) || '';
+
+      const mainTitle = (
+        lines.find(line =>
+          !/^Assimilation\s*\d+\b/i.test(line) &&
+          !/^SUBTOPICS?\s*:/i.test(line)
+        ) || ''
+      )
+        .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*$/i, '')
+        .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
+        .replace(/\s*[:\-]\s*$/, '')
+        .trim();
+
+      if (!mainTitle) return '';
+      return assimilation ? `${mainTitle} (${assimilation})` : mainTitle;
+    })(testBlock.getAttribute('data-chapter-name') || '') : '';
 
   measureShell.content.appendChild(testBlock);
   normalizeBlockSpacing(measureShell.page, settings);
