@@ -974,7 +974,7 @@ if (orderedSelectedChapters.length >= 2) {
   printable.innerHTML = ``;
 } else if (includeWorksheet) {
   printable.innerHTML = `
-        ${finalSchoolName ? `
+    ${finalSchoolName ? `
     <div style="
       text-align:center;
       font-size:1.85em;
@@ -989,102 +989,11 @@ if (orderedSelectedChapters.length >= 2) {
       -webkit-text-stroke:1.2px #163A63;
     ">
       ${__qbEscapeHtml(String(finalSchoolName).toUpperCase())}
-       </div>` : ''}
-
-   <div style="
-  margin:0 auto 10px auto;
-  max-width:540px;
-  border:2.5px solid #1b4f8a;
-  border-radius:18px;
-  background:#ffffff;
-  box-sizing:border-box;
-  box-shadow:0 3px 10px rgba(0,0,0,0.06);
-  position:relative;
-  overflow:visible;
-">
-  ${__singleChapterLabel ? `
-  <div style="
-    position:absolute;
-    left:50%;
-    top:-16px;
-    transform:translateX(-50%);
-    min-width:170px;
-    text-align:center;
-    background:#1762a7;
-    color:#ffffff;
-    font-family:'Times New Roman', Times, serif;
-    font-size:0.98em;
-    font-weight:800;
-    letter-spacing:0.04em;
-    text-transform:uppercase;
-    padding:10px 18px;
-    border-radius:10px;
-    border:2px solid #7A2230;
-    white-space:nowrap;
-    line-height:1;
-    z-index:20;
-    box-sizing:border-box;
-  ">
-    ${__qbEscapeHtml(__singleChapterLabel)}
-  </div>` : ''}
-
-  <div style="
-    margin:14px;
-    border:1.5px solid #7A2230;
-    border-radius:12px;
-    padding:34px 20px 16px 20px;
-    text-align:center;
-    background:#ffffff;
-    position:relative;
-    z-index:1;
-  ">
-                <div style="
-          font-size:1.34em;
-          font-weight:900;
-          letter-spacing:0.03em;
-          text-align:center;
-          text-transform:uppercase;
-          margin-bottom:${__boxChapterInfo.assimilationTitle ? '4px' : '6px'};
-          line-height:1.15;
-          font-family:'Times New Roman', Times, serif;
-          color:#7A2230;
-          -webkit-text-fill-color:#7A2230;
-          -webkit-text-stroke:1px #163A63;
-          text-shadow:0 0 0 #163A63;
-        ">
-          ${__qbEscapeHtml(String(__boxChapterInfo.mainTitle || '').toUpperCase())}
-        </div>
-
-        ${__boxChapterInfo.assimilationTitle ? `
-        <div style="
-          font-size:1.02em;
-          font-weight:800;
-          letter-spacing:0.05em;
-          text-align:center;
-          text-transform:uppercase;
-          margin-bottom:6px;
-          line-height:1.1;
-          color:#7A2230;
-          font-family:'Times New Roman', Times, serif;
-        ">
-          ${__qbEscapeHtml(String(__boxChapterInfo.assimilationTitle).toUpperCase())}
-        </div>` : ''}
-
-        <div style="
-          font-size:1em;
-          font-weight:800;
-          letter-spacing:0.08em;
-          text-align:center;
-          color:#7A2230;
-          font-family:'Times New Roman', Times, serif;
-        ">
-          WORKSHEET
-        </div>
-      </div>
-    </div>
+    </div>` : ''}
   `;
 } else {
   printable.innerHTML = `
+    ${finalSchoolName ? `
     <div style="
       text-align:center;
       font-size:1.85em;
@@ -1095,99 +1004,7 @@ if (orderedSelectedChapters.length >= 2) {
       text-transform:uppercase;
     ">
       ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-        </div>
-
-   <div style="
-  margin:0 auto 10px auto;
-  max-width:540px;
-  border:2.5px solid #1b4f8a;
-  border-radius:18px;
-  background:#ffffff;
-  box-sizing:border-box;
-  box-shadow:0 3px 10px rgba(0,0,0,0.06);
-  position:relative;
-  overflow:visible;
-">
-  ${__singleChapterLabel ? `
-  <div style="
-    position:absolute;
-    left:50%;
-    top:-16px;
-    transform:translateX(-50%);
-    min-width:170px;
-    text-align:center;
-    background:#1762a7;
-    color:#ffffff;
-    font-family:'Times New Roman', Times, serif;
-    font-size:0.98em;
-    font-weight:800;
-    letter-spacing:0.04em;
-    text-transform:uppercase;
-    padding:10px 18px;
-    border-radius:10px;
-    border:2px solid #7A2230;
-    white-space:nowrap;
-    line-height:1;
-    z-index:20;
-    box-sizing:border-box;
-  ">
-    ${__qbEscapeHtml(__singleChapterLabel)}
-  </div>` : ''}
-
-  <div style="
-    margin:14px;
-    border:1.5px solid #7A2230;
-    border-radius:12px;
-    padding:34px 20px 16px 20px;
-    text-align:center;
-    background:#ffffff;
-    position:relative;
-    z-index:1;
-  ">
-               <div style="
-          font-size:1.34em;
-          font-weight:900;
-          letter-spacing:0.03em;
-          text-align:center;
-          text-transform:uppercase;
-          margin-bottom:${__boxChapterInfo.assimilationTitle ? '4px' : '6px'};
-          line-height:1.15;
-          font-family:'Times New Roman', Times, serif;
-          color:#7A2230;
-          -webkit-text-fill-color:#7A2230;
-          -webkit-text-stroke:1px #163A63;
-          text-shadow:0 0 0 #163A63;
-        ">
-          ${__qbEscapeHtml(String(__boxChapterInfo.mainTitle || '').toUpperCase())}
-        </div>
-
-        ${__boxChapterInfo.assimilationTitle ? `
-        <div style="
-          font-size:1.02em;
-          font-weight:800;
-          letter-spacing:0.05em;
-          text-align:center;
-          text-transform:uppercase;
-          margin-bottom:6px;
-          line-height:1.1;
-          color:#7A2230;
-          font-family:'Times New Roman', Times, serif;
-        ">
-          ${__qbEscapeHtml(String(__boxChapterInfo.assimilationTitle).toUpperCase())}
-        </div>` : ''}
-
-        <div style="
-          font-size:1em;
-          font-weight:800;
-          letter-spacing:0.08em;
-          text-align:center;
-          color:#7A2230;
-          font-family:'Times New Roman', Times, serif;
-        ">
-          QUESTIONS & ANSWERS
-        </div>
-      </div>
-    </div>
+    </div>` : ''}
   `;
 }
       const displayArea = document.getElementById('questions-display-area');
@@ -1982,8 +1799,12 @@ if (isPointWise) {
 }
 if (includeWorksheet) {
   // === RENDER WORKSHEET ===
-  if (!multipleChaptersSelected) {
+ if (!multipleChaptersSelected) {
     const list = Array.from(nodes);
+
+    if (orderedSelectedChapters.length === 1) {
+      renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
+    }
 
     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
     const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
@@ -2203,8 +2024,12 @@ if (includeKey) {
     keyCounter++;
   }
 
-  if (!multipleChaptersSelected) {
+ if (!multipleChaptersSelected) {
     const list = Array.from(nodes);
+
+    if (orderedSelectedChapters.length === 1) {
+      renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
+    }
 
     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
     const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
