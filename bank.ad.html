@@ -1843,24 +1843,33 @@ qDiv.appendChild(qTextDiv);
     }
   }
 
-  function __plainAiText(htmlOrText) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = String(htmlOrText || '').replace(/<br\s*\/?>/gi, '\n');
-    return String(tmp.textContent || tmp.innerText || '')
+   function __plainAiText(htmlOrText) {
+    return String(htmlOrText || '')
       .replace(/\u00a0/g, ' ')
-      .replace(/\s+\n/g, '\n')
-      .replace(/\n\s+/g, '\n')
+      .replace(/\r/g, '')
       .trim();
   }
 
-  const __aiQuestionText = __plainAiText(questionLine || '');
-  const __aiOptionsText = Array.isArray(options) && options.length
-    ? options.map(opt => __plainAiText(opt)).join('\n')
+  const __aiQuestionRaw = __plainAiText(
+    (source && (source.question || source.body || source.text)) || ''
+  );
+
+  const __aiRawOptions = Array.isArray(source && source.options)
+    ? source.options
+    : [];
+
+  const __aiOptionsText = __aiRawOptions.length
+    ? __aiRawOptions.map((opt, i) => {
+        const rawOpt = __plainAiText(opt);
+        return /^[A-D][).]\s*/.test(rawOpt)
+          ? rawOpt
+          : (String.fromCharCode(65 + i) + ') ' + rawOpt);
+      }).join('\n')
     : '';
 
   const __aiPrompt =
     'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.' +
-    '\n\nQuestion:\n' + __aiQuestionText +
+    '\n\nQuestion:\n' + __aiQuestionRaw +
     (__aiOptionsText ? ('\n' + __aiOptionsText) : '');
 
   const __aiUrl = 'https://chatgpt.com/?prompt=' + encodeURIComponent(__aiPrompt);
