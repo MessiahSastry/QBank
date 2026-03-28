@@ -917,6 +917,8 @@ const chapterTitleForBox =
   (orderedSelectedChapters.length === 1) ? orderedSelectedChapters[0]
   : (orderedSelectedChapters.length >= 2) ? ''
   : 'ALL CHAPTERS';
+
+const __boxChapterInfo = __qbSplitChapterDisplay(chapterTitleForBox);
 // Use actual selected types to drive layout later
 const selectedQtypes = getMultiSelected('qtype'); // [] means All
 const __typesOrderHdr = ['MCQ (Single)','MCQ (Multiple)','Descriptive'];
@@ -985,13 +987,13 @@ if (orderedSelectedChapters.length >= 2) {
         text-align:center;
         background:#ffffff;
       ">
-        <div style="
+                <div style="
           font-size:1.34em;
           font-weight:900;
           letter-spacing:0.03em;
           text-align:center;
           text-transform:uppercase;
-          margin-bottom:6px;
+          margin-bottom:${__boxChapterInfo.assimilationTitle ? '4px' : '6px'};
           line-height:1.15;
           font-family:'Times New Roman', Times, serif;
           color:#7A2230;
@@ -999,8 +1001,23 @@ if (orderedSelectedChapters.length >= 2) {
           -webkit-text-stroke:1px #163A63;
           text-shadow:0 0 0 #163A63;
         ">
-          ${String(chapterTitleForBox || '').toUpperCase()}
+          ${__qbEscapeHtml(String(__boxChapterInfo.mainTitle || '').toUpperCase())}
         </div>
+
+        ${__boxChapterInfo.assimilationTitle ? `
+        <div style="
+          font-size:1.02em;
+          font-weight:800;
+          letter-spacing:0.05em;
+          text-align:center;
+          text-transform:uppercase;
+          margin-bottom:6px;
+          line-height:1.1;
+          color:#7A2230;
+          font-family:'Times New Roman', Times, serif;
+        ">
+          ${__qbEscapeHtml(String(__boxChapterInfo.assimilationTitle).toUpperCase())}
+        </div>` : ''}
 
         <div style="
           font-size:1em;
@@ -1046,13 +1063,13 @@ if (orderedSelectedChapters.length >= 2) {
         text-align:center;
         background:#ffffff;
       ">
-        <div style="
+               <div style="
           font-size:1.34em;
           font-weight:900;
           letter-spacing:0.03em;
           text-align:center;
           text-transform:uppercase;
-          margin-bottom:6px;
+          margin-bottom:${__boxChapterInfo.assimilationTitle ? '4px' : '6px'};
           line-height:1.15;
           font-family:'Times New Roman', Times, serif;
           color:#7A2230;
@@ -1060,8 +1077,23 @@ if (orderedSelectedChapters.length >= 2) {
           -webkit-text-stroke:1px #163A63;
           text-shadow:0 0 0 #163A63;
         ">
-          ${String(chapterTitleForBox || '').toUpperCase()}
+          ${__qbEscapeHtml(String(__boxChapterInfo.mainTitle || '').toUpperCase())}
         </div>
+
+        ${__boxChapterInfo.assimilationTitle ? `
+        <div style="
+          font-size:1.02em;
+          font-weight:800;
+          letter-spacing:0.05em;
+          text-align:center;
+          text-transform:uppercase;
+          margin-bottom:6px;
+          line-height:1.1;
+          color:#7A2230;
+          font-family:'Times New Roman', Times, serif;
+        ">
+          ${__qbEscapeHtml(String(__boxChapterInfo.assimilationTitle).toUpperCase())}
+        </div>` : ''}
 
         <div style="
           font-size:1em;
@@ -1372,6 +1404,8 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
     ? 'WORKSHEET'
     : (includeKey ? 'QUESTIONS & ANSWERS' : '');
 
+  const __chapterInfo = __qbSplitChapterDisplay(text);
+
   t.innerHTML = `
     <div style="
       margin:0 auto 10px auto;
@@ -1419,13 +1453,13 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
         position:relative;
         z-index:1;
       ">
-        <div style="
+                <div style="
           font-size:1.34em;
           font-weight:900;
           letter-spacing:0.03em;
           text-align:center;
           text-transform:uppercase;
-          margin-bottom:6px;
+          margin-bottom:${__chapterInfo.assimilationTitle ? '4px' : '6px'};
           line-height:1.15;
           font-family:'Times New Roman', Times, serif;
           color:#7A2230;
@@ -1433,8 +1467,23 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
           -webkit-text-stroke:1px #163A63;
           text-shadow:0 0 0 #163A63;
         ">
-          ${__qbEscapeHtml(String(text || 'Unspecified').toUpperCase())}
+          ${__qbEscapeHtml(String(__chapterInfo.mainTitle || 'Unspecified').toUpperCase())}
         </div>
+
+        ${__chapterInfo.assimilationTitle ? `
+        <div style="
+          font-size:1.02em;
+          font-weight:800;
+          letter-spacing:0.05em;
+          text-align:center;
+          text-transform:uppercase;
+          margin-bottom:6px;
+          line-height:1.1;
+          color:#7A2230;
+          font-family:'Times New Roman', Times, serif;
+        ">
+          ${__qbEscapeHtml(String(__chapterInfo.assimilationTitle).toUpperCase())}
+        </div>` : ''}
 
         ${subLine ? `
         <div style="
@@ -1721,8 +1770,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .trim();
 
 const wrap = document.createElement('div');
-wrap.className = 'page-keep-block';
-wrap.style.cssText = 'margin-bottom:12px; page-break-inside:avoid; break-inside:avoid; color:#000;';
+wrap.className = 'page-flow-block';
+wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
   const qDiv = document.createElement('div');
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
@@ -3091,11 +3140,27 @@ function normalizeBlockSpacing(root, settings){
 
     // Keep full answer/explanation block together
    if (
-  node.classList.contains('page-keep-block') ||
   node.classList.contains('question-img-block') ||
   node.classList.contains('opt-grid-2x2')
 ) {
   blocks.push(node.cloneNode(true));
+  return;
+}
+
+if (node.classList.contains('page-flow-block')) {
+  const kids = Array.from(node.childNodes).filter(ch => {
+    if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+    return ch.nodeType === 1;
+  });
+
+  if (kids.length <= 1) {
+    blocks.push(node.cloneNode(true));
+    return;
+  }
+
+  kids.forEach(ch => {
+    blocks.push(ch.cloneNode(true));
+  });
   return;
 }
 
@@ -5340,6 +5405,50 @@ async function __qbEnsureWorkbookShuffleForQuestionNodes(questionNodes = []) {
   };
 }
 
+function __qbSplitChapterDisplay(raw) {
+  const src = String(raw || '').replace(/\r/g, '').trim();
+  if (!src) {
+    return { mainTitle: 'UNSPECIFIED', assimilationTitle: '' };
+  }
+
+  const lines = src
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .filter(line => !/^[•*-]\s*/.test(line)); // remove bullet/subtopic lines
+
+  let assimilationTitle = '';
+  const assimLine = lines.find(line => /^Assimilation\s*\d+\b/i.test(line));
+  if (assimLine) {
+    assimilationTitle = assimLine.match(/^Assimilation\s*\d+\b/i)?.[0] || assimLine;
+  } else {
+    const assimInline = src.match(/\bAssimilation\s*\d+\b/i);
+    if (assimInline) assimilationTitle = assimInline[0];
+  }
+
+  let mainTitle = '';
+  if (lines.length) {
+    mainTitle = lines.find(line => !/^Assimilation\s*\d+\b/i.test(line)) || '';
+  }
+
+  if (!mainTitle && assimilationTitle) {
+    mainTitle = src.split(new RegExp(assimilationTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))[0].trim();
+  }
+
+  if (!mainTitle) {
+    mainTitle = src.replace(/\bAssimilation\s*\d+\b[\s\S]*$/i, '').trim();
+  }
+
+  mainTitle = mainTitle
+    .replace(/\s*[:\-]\s*$/, '')
+    .trim();
+
+  return {
+    mainTitle: mainTitle || 'UNSPECIFIED',
+    assimilationTitle: assimilationTitle || ''
+  };
+}
+
 function __qbEscapeHtml(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -5348,7 +5457,6 @@ function __qbEscapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
 function __qbFormatOptionForPrint(opt) {
   const s = String(opt || '').trim();
   const m = s.match(/^([A-D]\))\s*(.*)$/);
