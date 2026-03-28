@@ -3281,37 +3281,37 @@ if (node.classList.contains('worksheet-flow-block')) {
   }
 
  const testBlock = nextBlock.cloneNode(true);
-   const blockChapterName = (
+  const blockChapterName = (
     testBlock.nodeType === 1 &&
     testBlock.classList &&
     testBlock.classList.contains('chapter-start-block')
   ) ? (function(raw){
-      const src = String(raw || '').replace(/\r/g, '').trim();
+      const src = String(raw || '').split(String.fromCharCode(13)).join('').trim();
       if (!src) return '';
 
-      const cleaned = src
-        .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*?\)\s*$/i, '')
-        .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
-        .trim();
-
-      const lines = cleaned
-        .split('\n')
-        .map(s => s.trim())
+      const lines = src
+        .split(String.fromCharCode(10))
+        .map(function(s){ return String(s || '').trim(); })
         .filter(Boolean)
-        .filter(line => !/^[•*-]\s*/.test(line));
+        .filter(function(line){
+          return line.charAt(0) !== '•' && line.charAt(0) !== '*' && line.charAt(0) !== '-';
+        });
 
-      const assimilation = lines.find(line => /^Assimilation\s*\d+\b/i.test(line)) || '';
+      let mainTitle = '';
+      let assimilation = '';
 
-      const mainTitle = (
-        lines.find(line =>
-          !/^Assimilation\s*\d+\b/i.test(line) &&
-          !/^SUBTOPICS?\s*:/i.test(line)
-        ) || ''
-      )
-        .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*$/i, '')
-        .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
-        .replace(/\s*[:\-]\s*$/, '')
-        .trim();
+      for (const line of lines) {
+        const upper = line.toUpperCase();
+
+        if (!assimilation && upper.indexOf('ASSIMILATION ') === 0) {
+          assimilation = line;
+          continue;
+        }
+
+        if (!mainTitle && upper.indexOf('SUBTOPICS:') !== 0) {
+          mainTitle = line;
+        }
+      }
 
       if (!mainTitle) return '';
       return assimilation ? (mainTitle + ' (' + assimilation + ')') : mainTitle;
