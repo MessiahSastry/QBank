@@ -5407,39 +5407,38 @@ async function __qbEnsureWorkbookShuffleForQuestionNodes(questionNodes = []) {
 
 function __qbSplitChapterDisplay(raw) {
   const src = String(raw || '').replace(/\r/g, '').trim();
+
   if (!src) {
     return { mainTitle: 'UNSPECIFIED', assimilationTitle: '' };
   }
 
-  const lines = src
+  // Remove inline "(SUBTOPICS: ...)" block if present
+  let cleaned = src
+    .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*?\)\s*$/i, '')
+    .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
+    .trim();
+
+  const lines = cleaned
     .split('\n')
     .map(s => s.trim())
     .filter(Boolean)
-    .filter(line => !/^[•*-]\s*/.test(line)); // remove bullet/subtopic lines
+    .filter(line => !/^[•*-]\s*/.test(line));
 
   let assimilationTitle = '';
   const assimLine = lines.find(line => /^Assimilation\s*\d+\b/i.test(line));
   if (assimLine) {
     assimilationTitle = assimLine.match(/^Assimilation\s*\d+\b/i)?.[0] || assimLine;
-  } else {
-    const assimInline = src.match(/\bAssimilation\s*\d+\b/i);
-    if (assimInline) assimilationTitle = assimInline[0];
   }
 
-  let mainTitle = '';
-  if (lines.length) {
-    mainTitle = lines.find(line => !/^Assimilation\s*\d+\b/i.test(line)) || '';
-  }
-
-  if (!mainTitle && assimilationTitle) {
-    mainTitle = src.split(new RegExp(assimilationTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))[0].trim();
-  }
-
-  if (!mainTitle) {
-    mainTitle = src.replace(/\bAssimilation\s*\d+\b[\s\S]*$/i, '').trim();
-  }
+  let mainTitle =
+    lines.find(line =>
+      !/^Assimilation\s*\d+\b/i.test(line) &&
+      !/^SUBTOPICS?\s*:/i.test(line)
+    ) || '';
 
   mainTitle = mainTitle
+    .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*$/i, '')
+    .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
     .replace(/\s*[:\-]\s*$/, '')
     .trim();
 
