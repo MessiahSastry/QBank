@@ -329,12 +329,27 @@ const questionsDb = stpatricksApp.firestore();
     const textEl = dialog.querySelector('#appAlertText');
     const okBtn  = dialog.querySelector('#btnAppAlertOk');
 
-    function show(msg){
+        function show(msg){
       if (textEl) textEl.textContent = msg;
       dialog.showModal();
     }
 
     if (okBtn) okBtn.onclick = () => dialog.close();
+
+    window.appInfo = function(msg){
+      return new Promise(resolve => {
+        if (textEl) textEl.textContent = msg;
+
+        const onClose = () => resolve(true);
+        dialog.addEventListener('close', onClose, { once: true });
+
+        if (okBtn) {
+          okBtn.onclick = () => dialog.close();
+        }
+
+        dialog.showModal();
+      });
+    };
 
     window.alert = show;
   }
@@ -837,8 +852,28 @@ const questionsDb = stpatricksApp.firestore();
     // PDF EXPORT USING html2pdf.js
     async function exportPDF(e) {
       e.preventDefault();
-      const pdfBtn = document.getElementById('download-pdf-btn');
-      const shuffleExport = await appConfirm("Shuffle MCQ options in worksheet?");
+           const pdfBtn = document.getElementById('download-pdf-btn');
+      const shuffleExport = false;
+
+      pdfBtn.disabled = true;
+      pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Workbook...';
+
+      try {
+        const currentQuestionNodes = Array.from(
+          document.querySelectorAll('#questions-display-area .question-item')
+        );
+
+        const shuffleResult = await __qbEnsureWorkbookShuffleForQuestionNodes(currentQuestionNodes);
+
+        if (shuffleResult.didSaveNew) {
+          await fetchAndDisplayQuestions();
+        }
+      } catch (err) {
+        pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+        pdfBtn.disabled = false;
+        alert('Workbook shuffle setup failed: ' + err.message);
+        return;
+      }
 
 const exportMode = await appSelectPdfMode();
 
@@ -1661,10 +1696,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   let explanationText = '';
 
   if (source) {
-    answerText =
-      source.parsedAnswer ||
-      source.answer ||
-      source.parsedAns ||
+        answerText =
+      __qbGetWorkbookAnswer(source) ||
       source.correctAnswer ||
       source.correct_option ||
       source.correctOption ||
@@ -3741,6 +3774,8 @@ if (selQtypes.length > 0) {
   }
 }
 
+          const __displayOptions = __qbGetWorkbookOptions(data);
+
           questionCount++;
           questionsHTML += `
            <div class="question-item"
@@ -3758,15 +3793,15 @@ if (selQtypes.length > 0) {
                 Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
               </div>
               <div class="question-text">
-                ${
-                  Array.isArray(data.options) && data.options.length === 4
+                               ${
+                  Array.isArray(__displayOptions) && __displayOptions.length === 4
                     ? `
                         <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${autoLatexAll(String(data.question || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): '))}</div>
                         <div style="margin-left:18px;">
-                          <div>${autoLatexAll(data.options[0].replace(/^[A-D][).]\s*/, ''))}</div>
-                          <div>${autoLatexAll(data.options[1].replace(/^[A-D][).]\s*/, ''))}</div>
-                          <div>${autoLatexAll(data.options[2].replace(/^[A-D][).]\s*/, ''))}</div>
-                          <div>${autoLatexAll(data.options[3].replace(/^[A-D][).]\s*/, ''))}</div>
+                          <div>${autoLatexAll(__displayOptions[0].replace(/^[A-D][).]\s*/, ''))}</div>
+                          <div>${autoLatexAll(__displayOptions[1].replace(/^[A-D][).]\s*/, ''))}</div>
+                          <div>${autoLatexAll(__displayOptions[2].replace(/^[A-D][).]\s*/, ''))}</div>
+                          <div>${autoLatexAll(__displayOptions[3].replace(/^[A-D][).]\s*/, ''))}</div>
                         </div>
                       `
                     : (data.body || data.text || data.question || '')
@@ -3830,7 +3865,7 @@ if (!window.__explainItBound) {
   .replace(/^\s*Explanation\s*:\s*/i, '')
   .trim();
 
-const answer = String(data.parsedAnswer || data.answer || data.parsedAns || '')
+const answer = String(__qbGetWorkbookAnswer(data) || '')
   .replace(/^\s*Answer\s*:\s*/i, '')
   .replace(/^\s*Ans\s*:\s*/i, '')
   .trim();
@@ -4056,7 +4091,7 @@ function autoLatexAll(str) {
             try {
               const docSnap = await questionsDb.collection('questions').doc(docId).get();
               const data = docSnap.data();
-              answer = data.parsedAnswer || data.answer || data.parsedAns || 'No answer available.';
+              answer = __qbGetWorkbookAnswer(data) || 'No answer available.';
             } catch (e) {
               answer = 'No answer found.';
             }
@@ -4244,12 +4279,15 @@ function autoLatexAll(str) {
         const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
         if (!qText) { alert("Question text is required."); return; }
 
-                const updateObj = {
+                    const updateObj = {
   question: qText,
   difficulty: levelVal || firebase.firestore.FieldValue.delete(),
   board: boardVal || firebase.firestore.FieldValue.delete(),
   chapter: chapterVal || firebase.firestore.FieldValue.delete(),
   explanation: explanationText || firebase.firestore.FieldValue.delete(),
+  workbookShuffledOptions: firebase.firestore.FieldValue.delete(),
+  workbookShuffledAnswer: firebase.firestore.FieldValue.delete(),
+  workbookShuffleSavedAt: firebase.firestore.FieldValue.delete(),
 };
 
 // Normalize old subjects to new ones (Math / Math IIT)
@@ -4996,6 +5034,285 @@ if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Sectio
   };
 }
 
+function __qbParseAnswerLetters(answer) {
+  return Array.from(new Set(
+    String(answer || '')
+      .toUpperCase()
+      .split(',')
+      .map(x => x.trim())
+      .filter(x => /^[A-D]$/.test(x))
+  )).sort();
+}
+
+function __qbGetOriginalAnswer(data) {
+  return String(
+    (data && (data.parsedAnswer || data.answer || data.parsedAns || '')) || ''
+  ).trim();
+}
+
+function __qbHasWorkbookShuffle(data) {
+  return !!(
+    data &&
+    Array.isArray(data.workbookShuffledOptions) &&
+    data.workbookShuffledOptions.length === 4 &&
+    __qbParseAnswerLetters(data.workbookShuffledAnswer).length > 0
+  );
+}
+
+function __qbGetWorkbookOptions(data) {
+  if (__qbHasWorkbookShuffle(data)) {
+    return (data.workbookShuffledOptions || []).slice();
+  }
+  return Array.isArray(data && data.options) ? data.options.slice() : [];
+}
+
+function __qbGetWorkbookAnswer(data) {
+  if (__qbHasWorkbookShuffle(data)) {
+    return String(data.workbookShuffledAnswer || '').trim();
+  }
+  return __qbGetOriginalAnswer(data);
+}
+
+function __qbPickWeighted(weights) {
+  const entries = Object.entries(weights).filter(([, w]) => Number(w) > 0);
+  const total = entries.reduce((sum, [, w]) => sum + w, 0);
+
+  if (!entries.length || total <= 0) {
+    return Object.keys(weights)[0] || 'A';
+  }
+
+  let r = Math.random() * total;
+  for (const [key, weight] of entries) {
+    r -= weight;
+    if (r <= 0) return key;
+  }
+  return entries[entries.length - 1][0];
+}
+
+function __qbChooseSmartSingleLetter(history = [], counts = { A: 0, B: 0, C: 0, D: 0 }) {
+  const letters = ['A', 'B', 'C', 'D'];
+  const weights = { A: 1, B: 1, C: 1, D: 1 };
+  const minCount = Math.min(...letters.map(letter => Number(counts[letter] || 0)));
+
+  const last1 = history[history.length - 1] || null;
+  const last2 = history[history.length - 2] || null;
+  const last3 = history[history.length - 3] || null;
+
+  letters.forEach(letter => {
+    const used = Number(counts[letter] || 0);
+    weights[letter] -= Math.max(0, used - minCount) * 0.22;
+
+    if (last1 === letter) weights[letter] -= 0.18;             // allow doubles sometimes
+    if (last1 === letter && last2 === letter) weights[letter] -= 0.90; // avoid triple streak
+
+    if (last3 && last2 && last1 && last3 === last1 && last2 === letter) {
+      weights[letter] -= 0.34; // avoid ABAB-style pattern
+    }
+
+    if (weights[letter] < 0.08) weights[letter] = 0.08;
+  });
+
+  return __qbPickWeighted(weights);
+}
+
+function __qbGetLetterCombos(size) {
+  const letters = ['A', 'B', 'C', 'D'];
+  const result = [];
+
+  function walk(start, picked) {
+    if (picked.length === size) {
+      result.push(picked.join(', '));
+      return;
+    }
+    for (let i = start; i < letters.length; i++) {
+      walk(i + 1, [...picked, letters[i]]);
+    }
+  }
+
+  if (size < 1 || size > 4) return [];
+  walk(0, []);
+  return result;
+}
+
+function __qbChooseSmartCombo(history = [], counts = {}, size = 2) {
+  const combos = __qbGetLetterCombos(size);
+  if (!combos.length) return '';
+
+  const weights = {};
+  combos.forEach(combo => { weights[combo] = 1; });
+
+  const minCount = Math.min(...combos.map(combo => Number(counts[combo] || 0)));
+  const last1 = history[history.length - 1] || null;
+  const last2 = history[history.length - 2] || null;
+  const last3 = history[history.length - 3] || null;
+
+  combos.forEach(combo => {
+    const used = Number(counts[combo] || 0);
+    weights[combo] -= Math.max(0, used - minCount) * 0.24;
+
+    if (last1 === combo) weights[combo] -= 0.24;
+    if (last1 === combo && last2 === combo) weights[combo] -= 0.90;
+
+    if (last3 && last2 && last1 && last3 === last1 && last2 === combo) {
+      weights[combo] -= 0.34;
+    }
+
+    if (weights[combo] < 0.08) weights[combo] = 0.08;
+  });
+
+  return __qbPickWeighted(weights);
+}
+
+function __qbStripOptionLabel(opt) {
+  return String(opt || '').replace(/^[A-D][).\-]\s*/, '').trim();
+}
+
+function __qbShuffleQuestionToTargets(data, targetLetters) {
+  const originalOptions = Array.isArray(data && data.options) ? data.options.slice() : [];
+  if (originalOptions.length !== 4) return null;
+
+  const originalAnswerLetters = __qbParseAnswerLetters(__qbGetOriginalAnswer(data));
+  if (!originalAnswerLetters.length) return null;
+  if (targetLetters.length !== originalAnswerLetters.length) return null;
+
+  const cleanOptions = originalOptions.map(__qbStripOptionLabel);
+  const correctIndexes = originalAnswerLetters.map(letter => letter.charCodeAt(0) - 65);
+  const correctTexts = cleanOptions.filter((_, idx) => correctIndexes.includes(idx));
+  const wrongTexts = cleanOptions.filter((_, idx) => !correctIndexes.includes(idx));
+
+  const shuffledCorrectTexts = __qbShuffleArray(correctTexts);
+  const shuffledWrongTexts = __qbShuffleArray(wrongTexts);
+
+  const targetIndexes = targetLetters.map(letter => letter.charCodeAt(0) - 65);
+  const newOptions = ['', '', '', ''];
+
+  let c = 0;
+  let w = 0;
+
+  for (let i = 0; i < 4; i++) {
+    if (targetIndexes.includes(i)) {
+      newOptions[i] = shuffledCorrectTexts[c++] || '';
+    } else {
+      newOptions[i] = shuffledWrongTexts[w++] || '';
+    }
+  }
+
+  return {
+    options: newOptions.map((text, i) => `${String.fromCharCode(65 + i)}) ${text}`),
+    answer: targetLetters.join(', ')
+  };
+}
+
+async function __qbEnsureWorkbookShuffleForQuestionNodes(questionNodes = []) {
+  const rawEntries = (questionNodes || [])
+    .map(node => {
+      const id = node.getAttribute('data-id');
+      const data = (window.__pdfQuestionDataMap && id) ? window.__pdfQuestionDataMap[id] : null;
+      return { node, id, data };
+    })
+    .filter(entry =>
+      entry.id &&
+      entry.data &&
+      Array.isArray(entry.data.options) &&
+      entry.data.options.length === 4
+    );
+
+  const eligibleEntries = rawEntries.filter(entry => {
+    if (__qbHasWorkbookShuffle(entry.data)) return true;
+    return __qbParseAnswerLetters(__qbGetOriginalAnswer(entry.data)).length > 0;
+  });
+
+  const savedEntries = eligibleEntries.filter(entry => __qbHasWorkbookShuffle(entry.data));
+  const unsavedEntries = eligibleEntries.filter(entry => !__qbHasWorkbookShuffle(entry.data));
+
+  if (!unsavedEntries.length) {
+    return { didSaveNew: false, savedCount: savedEntries.length, newlySavedCount: 0 };
+  }
+
+  if (!savedEntries.length) {
+    await appInfo('MCQ options are being shuffled and saved for this workbook. Click OK to continue.');
+  } else {
+    await appInfo('Some questions are already shuffled. The remaining questions are now being shuffled and saved. Click OK to continue.');
+  }
+
+  const singleHistory = [];
+  const singleCounts = { A: 0, B: 0, C: 0, D: 0 };
+
+  const comboHistory = [];
+  const comboCounts = {};
+
+  for (const entry of eligibleEntries) {
+    const answerLetters = __qbParseAnswerLetters(__qbGetWorkbookAnswer(entry.data));
+
+    if (!answerLetters.length) continue;
+
+    if (__qbHasWorkbookShuffle(entry.data)) {
+      if (answerLetters.length === 1) {
+        const one = answerLetters[0];
+        singleHistory.push(one);
+        singleCounts[one] = Number(singleCounts[one] || 0) + 1;
+      } else {
+        const comboKey = answerLetters.join(', ');
+        comboHistory.push(comboKey);
+        comboCounts[comboKey] = Number(comboCounts[comboKey] || 0) + 1;
+      }
+    }
+  }
+
+  const saveTasks = [];
+
+  for (const entry of eligibleEntries) {
+    if (__qbHasWorkbookShuffle(entry.data)) continue;
+
+    const originalLetters = __qbParseAnswerLetters(__qbGetOriginalAnswer(entry.data));
+    if (!originalLetters.length) continue;
+
+    let targetLetters = [];
+
+    if (originalLetters.length === 1) {
+      const chosen = __qbChooseSmartSingleLetter(singleHistory, singleCounts);
+      targetLetters = [chosen];
+      singleHistory.push(chosen);
+      singleCounts[chosen] = Number(singleCounts[chosen] || 0) + 1;
+    } else {
+      const comboKey = __qbChooseSmartCombo(comboHistory, comboCounts, originalLetters.length);
+      targetLetters = comboKey.split(',').map(x => x.trim()).filter(Boolean);
+
+      if (!targetLetters.length) continue;
+
+      comboHistory.push(comboKey);
+      comboCounts[comboKey] = Number(comboCounts[comboKey] || 0) + 1;
+    }
+
+    const shuffled = __qbShuffleQuestionToTargets(entry.data, targetLetters);
+    if (!shuffled) continue;
+
+    saveTasks.push(
+      questionsDb.collection('questions').doc(entry.id).update({
+        workbookShuffledOptions: shuffled.options,
+        workbookShuffledAnswer: shuffled.answer,
+        workbookShuffleSavedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        if (window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[entry.id]) {
+          window.__pdfQuestionDataMap[entry.id] = {
+            ...window.__pdfQuestionDataMap[entry.id],
+            workbookShuffledOptions: shuffled.options,
+            workbookShuffledAnswer: shuffled.answer
+          };
+        }
+      })
+    );
+  }
+
+  await Promise.all(saveTasks);
+
+  return {
+    didSaveNew: saveTasks.length > 0,
+    savedCount: savedEntries.length,
+    newlySavedCount: saveTasks.length
+  };
+}
+
 function __qbEscapeHtml(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -5554,11 +5871,11 @@ document.getElementById('create-quiz-btn').addEventListener('click', async funct
       const snap = await questionsDb.collection('questions').doc(docId).get();
       const data = snap.data() || {};
 
-            let qObj = {
+                 let qObj = {
         questionId: docId,
         question: data.question || data.body || data.text || '',
-        options: __qbNormalizeOptions(data.options || []),
-        answer: data.parsedAnswer || data.answer || '',
+        options: __qbNormalizeOptions(__qbGetWorkbookOptions(data)),
+        answer: __qbGetWorkbookAnswer(data),
         explanation: data.explanation || data.solution || data.explain || '',
         level: data.difficulty || data.level || '',
         marks: Number(data.marks || 0),
