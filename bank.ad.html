@@ -1700,6 +1700,43 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
     .join('');
 }
 
+function __qbIsMathSubject(subject) {
+  const s = String(subject || '').toLowerCase().trim();
+  return (
+    s === 'math' ||
+    s === 'mathematics' ||
+    s === 'math iit' ||
+    s === 'math 1' ||
+    s === 'math 2' ||
+    s === 'mathematics (mains)' ||
+    s === 'mathematics (advance)'
+  );
+}
+
+function __qbFormatExplanationHTML(text, subject) {
+  const isMath = __qbIsMathSubject(subject);
+
+  const lines = String(text || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      if (!isMath) return line;
+
+      return line
+        .replace(/^\s*step\s*\d+\s*[:.)-]?\s*/i, '')
+        .replace(/^\s*\d+\s*[:.)-]\s*/, '')
+        .replace(/^\s*[•\-]\s*/, '')
+        .trim();
+    })
+    .filter(Boolean);
+
+  return lines
+    .map(line => `<div style="margin:0 0 4px 0; line-height:1.45;">${line}</div>`)
+    .join('');
+}
+
 function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const clone = item.cloneNode(true);
   const qTextEl = clone.querySelector('.question-text');
@@ -1765,9 +1802,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Ans\s*:\s*/i, '')
     .trim();
 
-  explanationText = String(explanationText || '')
+    explanationText = String(explanationText || '')
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
+
+  const subjectText = String((source && source.subject) || '').trim();
 
 const wrap = document.createElement('div');
 wrap.className = 'page-flow-block';
@@ -1840,10 +1879,14 @@ if (isPointWise) {
 
   wrap.appendChild(aDiv);
 
-  if (explanationText && String(explanationText).trim()) {
+   if (explanationText && String(explanationText).trim()) {
     const eDiv = document.createElement('div');
-    eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:6px; line-height:1.7;';
-       eDiv.innerHTML = '<span style="color:#7A2230;font-weight:700;">Explanation:</span><br><span style="color:#111111;">' + String(explanationText).replace(/\n/g, '<br>') + '</span>';
+    eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:6px;';
+    eDiv.innerHTML =
+      '<div style="color:#7A2230;font-weight:700;margin-bottom:4px;">Explanation:</div>' +
+      '<div style="color:#111111; line-height:1.45;">' +
+      __qbFormatExplanationHTML(explanationText, subjectText) +
+      '</div>';
     wrap.appendChild(eDiv);
   }
 
