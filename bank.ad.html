@@ -1731,21 +1731,33 @@ qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/g
 qDiv.appendChild(qNoDiv);
 qDiv.appendChild(qTextDiv);
 
-  const aDiv = document.createElement('div');
-  aDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:4px; line-height:1.7;';
-   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
-const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+   function __makeKeyFlowRow(html, extraCss = '') {
+    const row = document.createElement('div');
+    row.style.cssText =
+      'margin-left:18px; color:#111111; line-height:1.45; page-break-inside:auto; break-inside:auto;' + extraCss;
+    row.innerHTML = html;
+    return row;
+  }
 
-if (isPointWise) {
-  const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
+  function __appendKeyFlowRow(html, extraCss = '') {
+    wrap.appendChild(__makeKeyFlowRow(html, extraCss));
+  }
 
-  const formattedAnswer = ansLines.map(line => {
+  function __appendKeyHeadingWithFirstLine(labelHtml, firstLineHtml, labelCss = '', firstLineCss = '') {
+    const pair = document.createElement('div');
+    pair.style.cssText = 'page-break-inside:auto; break-inside:auto;';
+    pair.appendChild(__makeKeyFlowRow(labelHtml, labelCss));
+    pair.appendChild(__makeKeyFlowRow(firstLineHtml, firstLineCss));
+    wrap.appendChild(pair);
+  }
+
+  function __formatAnswerLineHtml(line) {
     const numberedMatch = line.match(/^\s*(\d+[\.\)])\s+(.*)$/);
     const bulletMatch = line.match(/^\s*([-•])\s+(.*)$/);
 
     if (numberedMatch) {
       return `
-        <div style="display:flex;align-items:flex-start;margin-bottom:4px;">
+        <div style="display:flex;align-items:flex-start;">
           <span style="flex:0 0 26px;max-width:26px;">${numberedMatch[1]}</span>
           <span style="flex:1;min-width:0;">${numberedMatch[2]}</span>
         </div>
@@ -1754,24 +1766,18 @@ if (isPointWise) {
 
     if (bulletMatch) {
       return `
-        <div style="display:flex;align-items:flex-start;margin-bottom:4px;">
+        <div style="display:flex;align-items:flex-start;">
           <span style="flex:0 0 18px;max-width:18px;">${bulletMatch[1]}</span>
           <span style="flex:1;min-width:0;">${bulletMatch[2]}</span>
         </div>
       `;
     }
 
-    return `<div style="margin-bottom:4px;">${line}</div>`;
-  }).join('');
+    return `<div>${line}</div>`;
+  }
 
-  aDiv.innerHTML =
-    '<div style="color:#7A2230;font-weight:700;">Answer:</div>' +
-    '<div style="color:#111111;padding-left:18px;margin-top:2px;">' + formattedAnswer + '</div>';
-} else {
-  aDiv.innerHTML =
-    '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
-    '<span style="color:#111111;">' + ansRaw + '</span>';
-}
+  const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
+  const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
 
   wrap.appendChild(qDiv);
 
@@ -1782,19 +1788,61 @@ if (isPointWise) {
     wrap.appendChild(optDiv);
   }
 
-  wrap.appendChild(aDiv);
+  if (isPointWise) {
+    const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
 
-   if (explanationText && String(explanationText).trim()) {
-    const eDiv = document.createElement('div');
-    eDiv.style.cssText = 'margin-left:18px; color:#000; margin-top:6px;';
-    eDiv.innerHTML =
-      '<div style="color:#7A2230;font-weight:700;margin-bottom:4px;">Explanation:</div>' +
-      '<div style="color:#111111; line-height:1.45;">' +
-      __qbFormatExplanationHTML(explanationText, subjectText) +
-      '</div>';
-    wrap.appendChild(eDiv);
+    if (ansLines.length) {
+      __appendKeyHeadingWithFirstLine(
+        '<span style="color:#7A2230;font-weight:700;">Answer:</span>',
+        __formatAnswerLineHtml(ansLines[0]),
+        'margin-top:4px; margin-bottom:2px;',
+        'padding-left:18px; margin-top:2px;'
+      );
+
+      ansLines.slice(1).forEach(line => {
+        __appendKeyFlowRow(__formatAnswerLineHtml(line), 'padding-left:18px; margin-top:2px;');
+      });
+    } else {
+      __appendKeyFlowRow(
+        '<span style="color:#7A2230;font-weight:700;">Answer:</span> <span style="color:#111111;">No answer available.</span>',
+        'margin-top:4px;'
+      );
+    }
+  } else {
+    __appendKeyHeadingWithFirstLine(
+      '<span style="color:#7A2230;font-weight:700;">Answer:</span>',
+      '<span style="color:#111111;">' + ansRaw + '</span>',
+      'margin-top:4px; margin-bottom:2px;',
+      ''
+    );
   }
 
+  if (explanationText && String(explanationText).trim()) {
+    const expTemp = document.createElement('div');
+    expTemp.innerHTML = __qbFormatExplanationHTML(explanationText, subjectText);
+
+    const expLines = Array.from(expTemp.children).length
+      ? Array.from(expTemp.children).map(el => el.innerHTML)
+      : [expTemp.innerHTML].filter(Boolean);
+
+    if (expLines.length) {
+      __appendKeyHeadingWithFirstLine(
+        '<span style="color:#7A2230;font-weight:700;">Explanation:</span>',
+        expLines[0],
+        'margin-top:6px; margin-bottom:2px;',
+        'margin-top:2px;'
+      );
+
+      expLines.slice(1).forEach(lineHtml => {
+        __appendKeyFlowRow(lineHtml, 'margin-top:2px;');
+      });
+    } else {
+      __appendKeyFlowRow(
+        '<span style="color:#7A2230;font-weight:700;">Explanation:</span>',
+        'margin-top:6px;'
+      );
+    }
+  }
   __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
