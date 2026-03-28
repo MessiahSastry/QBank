@@ -1872,57 +1872,66 @@ qDiv.appendChild(qTextDiv);
     '\n\nQuestion:\n' + __aiQuestionRaw +
     (__aiOptionsText ? ('\n' + __aiOptionsText) : '');
 
-  const __aiUrl = 'https://chatgpt.com/?prompt=' + encodeURIComponent(__aiPrompt);
-  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=52x52&margin=0&data=' + encodeURIComponent(__aiUrl);
+   const __aiUrl = 'https://chatgpt.com/?prompt=' + encodeURIComponent(__aiPrompt);
+  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=' + encodeURIComponent(__aiUrl);
 
-  const __aiBox = document.createElement('div');
-  __aiBox.style.cssText = 'margin-left:18px; margin-top:10px; page-break-inside:avoid; break-inside:avoid;';
+  const __aiBox = document.createElement('a');
+  __aiBox.href = __aiUrl;
+  __aiBox.target = '_blank';
+  __aiBox.rel = 'noopener noreferrer';
+  __aiBox.style.cssText = `
+    margin-left:18px;
+    margin-top:10px;
+    page-break-inside:avoid;
+    break-inside:avoid;
+    display:inline-flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    width:fit-content;
+    min-width:300px;
+    max-width:100%;
+    border:1.4px solid #cfdcf0;
+    border-radius:12px;
+    background:#f8fbff;
+    padding:8px 12px;
+    box-sizing:border-box;
+    text-decoration:none;
+    cursor:pointer;
+  `;
+
   __aiBox.innerHTML = `
-    <div style="
-      display:flex;
+    <span style="
+      display:inline-flex;
       align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      width:fit-content;
-      min-width:260px;
-      max-width:100%;
-      border:1.4px solid #cfdcf0;
-      border-radius:12px;
-      background:#f8fbff;
-      padding:8px 10px;
-      box-sizing:border-box;
+      gap:8px;
+      color:#12416c;
+      font-weight:700;
+      font-size:10.8pt;
+      line-height:1.2;
+      text-decoration:none;
     ">
-      <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
-        display:inline-flex;
-        align-items:center;
-        gap:8px;
-        text-decoration:none;
-        color:#12416c;
-        font-weight:700;
-        font-size:10.8pt;
-        line-height:1.2;
-      ">
-        <span style="font-size:1.42em; line-height:1;">🤖</span>
-        <span>Click Me for More</span>
-      </a>
+      <span style="font-size:1.55em; line-height:1;">🤖</span>
+      <span>Click Me for More</span>
+    </span>
 
-      <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        text-decoration:none;
-        flex:0 0 auto;
+    <span style="
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 auto;
+      background:#ffffff;
+      padding:2px;
+      border-radius:6px;
+    ">
+      <img src="${__qrUrl}" alt="QR" style="
+        width:46px;
+        height:46px;
+        display:block;
+        border:none;
+        box-shadow:none;
       ">
-        <img src="${__qrUrl}" alt="QR" style="
-          width:32px;
-          height:32px;
-          display:block;
-          border-radius:4px;
-          border:none;
-          box-shadow:none;
-        ">
-      </a>
-    </div>
+    </span>
   `;
 
   wrap.appendChild(__aiBox);
