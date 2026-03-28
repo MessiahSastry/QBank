@@ -900,30 +900,6 @@ const includeKey = exportMode === 'key';
       const classVal = document.getElementById('class-value').value || '';
       const subjectVal = document.getElementById('subject-value').value || '';
      const selChaptersForHeader = getMultiSelected('chapter');
-let orderedSelectedChapters = [...selChaptersForHeader];
-
-if (selChaptersForHeader.length >= 2) {
-  orderedSelectedChapters = await appOrderChapters(selChaptersForHeader);
-
-  if (!orderedSelectedChapters) {
-    pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
-    pdfBtn.disabled = false;
-    return;
-  }
-}
-
-let __chapterStartNumber = 1;
-if (orderedSelectedChapters.length >= 1) {
-  const chapterStartInput = await appPrompt('Enter Starting Chapter Number', '1');
-  if (chapterStartInput === null) {
-    pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
-    pdfBtn.disabled = false;
-    return;
-  }
-  __chapterStartNumber = Math.max(1, parseInt(chapterStartInput, 10) || 1);
-}
-
-const selChaptersForHeader = getMultiSelected('chapter');
 
 let __chapterEntries = selChaptersForHeader.map((ch, idx) => ({
   chapter: ch,
