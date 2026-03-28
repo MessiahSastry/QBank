@@ -1816,7 +1816,7 @@ qDiv.appendChild(qTextDiv);
     );
   }
 
-  if (explanationText && String(explanationText).trim()) {
+   if (explanationText && String(explanationText).trim()) {
     const expTemp = document.createElement('div');
     expTemp.innerHTML = __qbFormatExplanationHTML(explanationText, subjectText);
 
@@ -1842,6 +1842,81 @@ qDiv.appendChild(qTextDiv);
       );
     }
   }
+
+  function __plainAiText(htmlOrText) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = String(htmlOrText || '').replace(/<br\s*\/?>/gi, '\n');
+    return String(tmp.textContent || tmp.innerText || '')
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n\s+/g, '\n')
+      .trim();
+  }
+
+  const __aiQuestionText = __plainAiText(questionLine || '');
+  const __aiOptionsText = Array.isArray(options) && options.length
+    ? options.map(opt => __plainAiText(opt)).join('\n')
+    : '';
+
+  const __aiPrompt =
+    'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.' +
+    '\n\nQuestion:\n' + __aiQuestionText +
+    (__aiOptionsText ? ('\n' + __aiOptionsText) : '');
+
+  const __aiUrl = 'https://chatgpt.com/?prompt=' + encodeURIComponent(__aiPrompt);
+  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=52x52&margin=0&data=' + encodeURIComponent(__aiUrl);
+
+  const __aiBox = document.createElement('div');
+  __aiBox.style.cssText = 'margin-left:18px; margin-top:10px; page-break-inside:avoid; break-inside:avoid;';
+  __aiBox.innerHTML = `
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      width:fit-content;
+      min-width:260px;
+      max-width:100%;
+      border:1.4px solid #cfdcf0;
+      border-radius:12px;
+      background:#f8fbff;
+      padding:8px 10px;
+      box-sizing:border-box;
+    ">
+      <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        text-decoration:none;
+        color:#12416c;
+        font-weight:700;
+        font-size:10.8pt;
+        line-height:1.2;
+      ">
+        <span style="font-size:1.42em; line-height:1;">🤖</span>
+        <span>Click Me for More</span>
+      </a>
+
+      <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        text-decoration:none;
+        flex:0 0 auto;
+      ">
+        <img src="${__qrUrl}" alt="QR" style="
+          width:32px;
+          height:32px;
+          display:block;
+          border-radius:4px;
+          border:none;
+          box-shadow:none;
+        ">
+      </a>
+    </div>
+  `;
+
+  wrap.appendChild(__aiBox);
   __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
