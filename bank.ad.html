@@ -991,43 +991,53 @@ if (orderedSelectedChapters.length >= 2) {
       ${__qbEscapeHtml(String(finalSchoolName).toUpperCase())}
        </div>` : ''}
 
-    ${__singleChapterLabel ? `
-    <div style="
-      width:max-content;
-      margin:0 auto 10px auto;
-      background:#1762a7;
-      color:#ffffff;
-      font-family:'Times New Roman', Times, serif;
-      font-size:0.98em;
-      font-weight:800;
-      letter-spacing:0.04em;
-      text-transform:uppercase;
-      padding:10px 18px;
-      border-radius:10px;
-      border:2px solid #7A2230;
-      line-height:1;
-      box-sizing:border-box;
-    ">
-      ${__qbEscapeHtml(__singleChapterLabel)}
-    </div>` : ''}
-
    <div style="
-      margin:0 auto 10px auto;
-      max-width:540px;
-      border:2.5px solid #1b4f8a;
-      border-radius:18px;
-      background:#ffffff;
-      box-sizing:border-box;
-      box-shadow:0 3px 10px rgba(0,0,0,0.06);
-    ">
-      <div style="
-        margin:8px;
-        border:1.5px solid #7A2230;
-        border-radius:12px;
-        padding:16px 20px 14px 20px;
-        text-align:center;
-        background:#ffffff;
-      ">
+  margin:0 auto 10px auto;
+  max-width:540px;
+  border:2.5px solid #1b4f8a;
+  border-radius:18px;
+  background:#ffffff;
+  box-sizing:border-box;
+  box-shadow:0 3px 10px rgba(0,0,0,0.06);
+  position:relative;
+  overflow:visible;
+">
+  ${__singleChapterLabel ? `
+  <div style="
+    position:absolute;
+    left:50%;
+    top:-16px;
+    transform:translateX(-50%);
+    min-width:170px;
+    text-align:center;
+    background:#1762a7;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    font-size:0.98em;
+    font-weight:800;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    padding:10px 18px;
+    border-radius:10px;
+    border:2px solid #7A2230;
+    white-space:nowrap;
+    line-height:1;
+    z-index:20;
+    box-sizing:border-box;
+  ">
+    ${__qbEscapeHtml(__singleChapterLabel)}
+  </div>` : ''}
+
+  <div style="
+    margin:14px;
+    border:1.5px solid #7A2230;
+    border-radius:12px;
+    padding:34px 20px 16px 20px;
+    text-align:center;
+    background:#ffffff;
+    position:relative;
+    z-index:1;
+  ">
                 <div style="
           font-size:1.34em;
           font-weight:900;
@@ -1087,43 +1097,53 @@ if (orderedSelectedChapters.length >= 2) {
       ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
         </div>
 
-    ${__singleChapterLabel ? `
-    <div style="
-      width:max-content;
-      margin:0 auto 10px auto;
-      background:#1762a7;
-      color:#ffffff;
-      font-family:'Times New Roman', Times, serif;
-      font-size:0.98em;
-      font-weight:800;
-      letter-spacing:0.04em;
-      text-transform:uppercase;
-      padding:10px 18px;
-      border-radius:10px;
-      border:2px solid #7A2230;
-      line-height:1;
-      box-sizing:border-box;
-    ">
-      ${__qbEscapeHtml(__singleChapterLabel)}
-    </div>` : ''}
-
    <div style="
-      margin:0 auto 10px auto;
-      max-width:540px;
-      border:2.5px solid #1b4f8a;
-      border-radius:18px;
-      background:#ffffff;
-      box-sizing:border-box;
-      box-shadow:0 3px 10px rgba(0,0,0,0.06);
-    ">
-      <div style="
-        margin:8px;
-        border:1.5px solid #7A2230;
-        border-radius:12px;
-        padding:16px 20px 14px 20px;
-        text-align:center;
-        background:#ffffff;
-      ">
+  margin:0 auto 10px auto;
+  max-width:540px;
+  border:2.5px solid #1b4f8a;
+  border-radius:18px;
+  background:#ffffff;
+  box-sizing:border-box;
+  box-shadow:0 3px 10px rgba(0,0,0,0.06);
+  position:relative;
+  overflow:visible;
+">
+  ${__singleChapterLabel ? `
+  <div style="
+    position:absolute;
+    left:50%;
+    top:-16px;
+    transform:translateX(-50%);
+    min-width:170px;
+    text-align:center;
+    background:#1762a7;
+    color:#ffffff;
+    font-family:'Times New Roman', Times, serif;
+    font-size:0.98em;
+    font-weight:800;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    padding:10px 18px;
+    border-radius:10px;
+    border:2px solid #7A2230;
+    white-space:nowrap;
+    line-height:1;
+    z-index:20;
+    box-sizing:border-box;
+  ">
+    ${__qbEscapeHtml(__singleChapterLabel)}
+  </div>` : ''}
+
+  <div style="
+    margin:14px;
+    border:1.5px solid #7A2230;
+    border-radius:12px;
+    padding:34px 20px 16px 20px;
+    text-align:center;
+    background:#ffffff;
+    position:relative;
+    z-index:1;
+  ">
                <div style="
           font-size:1.34em;
           font-weight:900;
