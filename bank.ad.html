@@ -824,23 +824,179 @@ const questionsDb = stpatricksApp.firestore();
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      auth.onAuthStateChanged(user => {
-        if (user) {
-          currentUser = user;
-          initializeApp();
-        } else {
-         window.location.href = 'login.html';
-        }
-      });
+  const __aiHash = String(window.location.hash || '');
 
-      document.addEventListener('click', (e) => {
-  // If the click is inside any dropdown options panel, don't close
-  if (e.target.closest('.dropdown-options')) return;
-  document.querySelectorAll('.custom-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (__aiHash.startsWith('#ai=')) {
+    let __payload = '';
+    try {
+      __payload = decodeURIComponent(__aiHash.slice(4));
+    } catch (e) {
+      __payload = __aiHash.slice(4);
+    }
+    __qbRenderAiHelperPage(__payload);
+    return;
+  }
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      initializeApp();
+    } else {
+      window.location.href = 'login.html';
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.dropdown-options')) return;
+    document.querySelectorAll('.custom-dropdown.open').forEach(d => d.classList.remove('open'));
+  });
 });
-    });
 
-   function initializeApp() {
+   function __qbGetAiInstruction() {
+  return 'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.';
+}
+
+function __qbBuildAiPromptFromPayload(payload) {
+  const clean = String(payload || '').replace(/\r/g, '').trim();
+  return __qbGetAiInstruction() + '\n\nQuestion:\n' + clean;
+}
+
+function __qbGetAiHelperUrl(payload) {
+  const base = window.location.origin + window.location.pathname;
+  return base + '#ai=' + encodeURIComponent(String(payload || '').trim());
+}
+
+function __qbRenderAiHelperPage(payload) {
+  const promptText = __qbBuildAiPromptFromPayload(payload);
+
+  document.title = 'AI Question Helper | SciMentra';
+  document.body.innerHTML = `
+    <div style="
+      min-height:100vh;
+      box-sizing:border-box;
+      padding:24px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f4f8fc;
+      font-family:'Segoe UI', Arial, sans-serif;
+    ">
+      <div style="
+        width:100%;
+        max-width:760px;
+        background:#ffffff;
+        border-radius:20px;
+        box-shadow:0 8px 28px rgba(0,27,68,0.12);
+        overflow:hidden;
+      ">
+        <div style="
+          background:linear-gradient(90deg,#1762a7,#0f3d6b);
+          color:#fff;
+          padding:18px 20px;
+          text-align:center;
+        ">
+          <div style="font-size:1.7em;font-weight:800;">SciMentra</div>
+          <div style="font-size:1em;opacity:0.95;">AI Question Helper</div>
+        </div>
+
+        <div style="padding:20px;">
+          <div style="
+            font-size:1.05em;
+            font-weight:700;
+            color:#12416c;
+            margin-bottom:10px;
+          ">Prepared prompt</div>
+
+          <textarea id="qb-ai-helper-text" readonly style="
+            width:100%;
+            min-height:260px;
+            box-sizing:border-box;
+            padding:14px;
+            border:1.4px solid #cfe0f2;
+            border-radius:12px;
+            background:#f9fcff;
+            color:#1f2d3d;
+            font-size:1em;
+            line-height:1.55;
+            resize:vertical;
+            font-family:'Segoe UI', Arial, sans-serif;
+          "></textarea>
+
+          <div style="
+            display:flex;
+            gap:12px;
+            flex-wrap:wrap;
+            margin-top:16px;
+          ">
+            <button id="qb-ai-copy-btn" type="button" style="
+              border:none;
+              border-radius:12px;
+              padding:12px 18px;
+              background:#1762a7;
+              color:#fff;
+              font-weight:800;
+              cursor:pointer;
+            ">Copy Prompt</button>
+
+            <button id="qb-ai-open-btn" type="button" style="
+              border:none;
+              border-radius:12px;
+              padding:12px 18px;
+              background:#0f8b6d;
+              color:#fff;
+              font-weight:800;
+              cursor:pointer;
+            ">Open ChatGPT</button>
+          </div>
+
+          <div id="qb-ai-helper-status" style="
+            margin-top:12px;
+            color:#35506b;
+            font-weight:600;
+            line-height:1.5;
+          ">Copy the prompt, then open ChatGPT and paste it.</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const textEl = document.getElementById('qb-ai-helper-text');
+  const copyBtn = document.getElementById('qb-ai-copy-btn');
+  const openBtn = document.getElementById('qb-ai-open-btn');
+  const statusEl = document.getElementById('qb-ai-helper-status');
+
+  if (textEl) textEl.value = promptText;
+
+  async function doCopyPrompt() {
+    try {
+      await navigator.clipboard.writeText(promptText);
+      if (statusEl) statusEl.textContent = 'Prompt copied. Now open ChatGPT and paste it.';
+      return true;
+    } catch (e) {
+      if (textEl) {
+        textEl.focus();
+        textEl.select();
+      }
+      if (statusEl) statusEl.textContent = 'Auto copy was blocked. The prompt is selected. Copy it manually, then open ChatGPT.';
+      return false;
+    }
+  }
+
+  if (copyBtn) {
+    copyBtn.onclick = async function() {
+      await doCopyPrompt();
+    };
+  }
+
+  if (openBtn) {
+    openBtn.onclick = async function() {
+      await doCopyPrompt();
+      window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer');
+    };
+  }
+}
+
+function initializeApp() {
   setupDropdowns();
   // Do NOT fetch on load; wait until Class + Subject are chosen
   document.getElementById('questions-display-area').innerHTML =
@@ -1850,7 +2006,7 @@ qDiv.appendChild(qTextDiv);
       .trim();
   }
 
-  const __aiQuestionRaw = __plainAiText(
+   const __aiQuestionRaw = __plainAiText(
     (source && (source.question || source.body || source.text)) || ''
   );
 
@@ -1867,14 +2023,11 @@ qDiv.appendChild(qTextDiv);
       }).join('\n')
     : '';
 
-  const __aiPrompt =
-    'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.' +
-    '\n\nQuestion:\n' + __aiQuestionRaw +
-    (__aiOptionsText ? ('\n' + __aiOptionsText) : '');
+  const __aiPayload =
+    __aiQuestionRaw + (__aiOptionsText ? ('\n' + __aiOptionsText) : '');
 
-   const __aiUrl = 'https://chatgpt.com/?prompt=' + encodeURIComponent(__aiPrompt);
-  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=4&data=' + encodeURIComponent(__aiUrl);
-
+  const __aiUrl = __qbGetAiHelperUrl(__aiPayload);
+  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=4&data=' + encodeURIComponent(__aiUrl);
   const __aiBox = document.createElement('a');
   __aiBox.href = __aiUrl;
   __aiBox.target = '_blank';
@@ -1925,8 +2078,8 @@ qDiv.appendChild(qTextDiv);
       border-radius:6px;
     ">
       <img src="${__qrUrl}" alt="QR" style="
-        width:46px;
-        height:46px;
+        width:64px;
+        height:64px;
         display:block;
         border:none;
         box-shadow:none;
