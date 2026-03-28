@@ -3314,7 +3314,7 @@ if (node.classList.contains('worksheet-flow-block')) {
         .trim();
 
       if (!mainTitle) return '';
-      return assimilation ? `${mainTitle} (${assimilation})` : mainTitle;
+      return assimilation ? (mainTitle + ' (' + assimilation + ')') : mainTitle;
     })(testBlock.getAttribute('data-chapter-name') || '') : '';
 
   measureShell.content.appendChild(testBlock);
