@@ -912,6 +912,25 @@ if (selChaptersForHeader.length >= 2) {
   }
 }
 
+let __chapterStartNumber = 1;
+if (orderedSelectedChapters.length >= 1) {
+  const chapterStartInput = await appPrompt('Enter Starting Chapter Number', '1');
+  if (chapterStartInput === null) {
+    pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+    pdfBtn.disabled = false;
+    return;
+  }
+  __chapterStartNumber = Math.max(1, parseInt(chapterStartInput, 10) || 1);
+}
+
+const pageStartInput = await appPrompt('Enter Starting Page Number', '1');
+if (pageStartInput === null) {
+  pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
+  pdfBtn.disabled = false;
+  return;
+}
+const __pageStartNumber = Math.max(1, parseInt(pageStartInput, 10) || 1);
+
 // Chapter line for box
 const chapterTitleForBox =
   (orderedSelectedChapters.length === 1) ? orderedSelectedChapters[0]
@@ -919,6 +938,9 @@ const chapterTitleForBox =
   : 'ALL CHAPTERS';
 
 const __boxChapterInfo = __qbSplitChapterDisplay(chapterTitleForBox);
+const __singleChapterLabel =
+  (orderedSelectedChapters.length === 1) ? `Chapter ${__chapterStartNumber}` : '';
+
 // Use actual selected types to drive layout later
 const selectedQtypes = getMultiSelected('qtype'); // [] means All
 const __typesOrderHdr = ['MCQ (Single)','MCQ (Multiple)','Descriptive'];
@@ -968,6 +990,26 @@ if (orderedSelectedChapters.length >= 2) {
       -webkit-text-stroke:1.2px #163A63;
     ">
       ${__qbEscapeHtml(String(finalSchoolName).toUpperCase())}
+       </div>` : ''}
+
+    ${__singleChapterLabel ? `
+    <div style="
+      width:max-content;
+      margin:0 auto 10px auto;
+      background:#1762a7;
+      color:#ffffff;
+      font-family:'Times New Roman', Times, serif;
+      font-size:0.98em;
+      font-weight:800;
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+      padding:10px 18px;
+      border-radius:10px;
+      border:2px solid #7A2230;
+      line-height:1;
+      box-sizing:border-box;
+    ">
+      ${__qbEscapeHtml(__singleChapterLabel)}
     </div>` : ''}
 
    <div style="
@@ -1044,7 +1086,27 @@ if (orderedSelectedChapters.length >= 2) {
       text-transform:uppercase;
     ">
       ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-    </div>
+        </div>
+
+    ${__singleChapterLabel ? `
+    <div style="
+      width:max-content;
+      margin:0 auto 10px auto;
+      background:#1762a7;
+      color:#ffffff;
+      font-family:'Times New Roman', Times, serif;
+      font-size:0.98em;
+      font-weight:800;
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+      padding:10px 18px;
+      border-radius:10px;
+      border:2px solid #7A2230;
+      line-height:1;
+      box-sizing:border-box;
+    ">
+      ${__qbEscapeHtml(__singleChapterLabel)}
+    </div>` : ''}
 
    <div style="
       margin:0 auto 10px auto;
@@ -1387,6 +1449,10 @@ if (orderedSelectedChapters.length >= 2) {
 }
 
 // helpers
+function __qbGetExportChapterLabel(idx) {
+  return 'Chapter ' + (__chapterStartNumber + idx);
+}
+
 function renderCenteredChapterTitle(text, chapterLabel = '') {
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
@@ -1977,7 +2043,7 @@ if (includeWorksheet) {
   const list = chapterMap.get(ch) || [];
   if (!list.length) return;
 
-  renderCenteredChapterTitle(ch, `Chapter ${chapterIdx + 1}`);
+  renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(chapterIdx));
 
       const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
       const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
@@ -2200,7 +2266,7 @@ if (includeKey) {
   const list = chapterMap.get(ch) || [];
   if (!list.length) return;
 
-  renderCenteredChapterTitle(ch, `Chapter ${chapterIdx + 1}`);
+  renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(chapterIdx));
 
       const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
       const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
@@ -2306,12 +2372,12 @@ await __waitForImages(printable);
           const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((orderedSelectedChapters.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
 
       try {
-        await __qbOpenPrintWindowForPDF({
+                await __qbOpenPrintWindowForPDF({
   title: exportFileName.replace(/\.pdf$/i, ''),
   contentHtml: printable.innerHTML,
-  headerText: `${classVal} / ${subjectVal}`
+  headerText: `${classVal} / ${subjectVal}`,
+  pageStartNumber: __pageStartNumber
 });
-
         __cleanupMount();
         pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
         pdfBtn.disabled = false;
@@ -2466,7 +2532,7 @@ await __waitForImages(printable);
       }, 50);
     }
 
-async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }) {
+async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', pageStartNumber = 1 }) {
   const printWin = window.open('', '_blank');
   if (!printWin) {
     throw new Error('Popup blocked. Please allow popups for preview.');
@@ -2987,9 +3053,10 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }
   <div id="measure-host" class="measure-wrap"></div>
 
   <script>
-    const __CONTENT = ${contentJson};
+   const __CONTENT = ${contentJson};
 const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
 const __HEADER_TEXT = ${JSON.stringify('' + (headerText || ''))};
+const __PAGE_START = ${JSON.stringify(Number(pageStartNumber || 1))};
 
     document.title = __TITLE;
 
@@ -3121,7 +3188,7 @@ footerDesign.appendChild(diamond);
 footerDesign.appendChild(lineRight);
 
 const pageNo = document.createElement('div');
-pageNo.textContent = String(pageIndex + 1).padStart(2, '0');
+pageNo.textContent = String((Number(__PAGE_START) || 1) + pageIndex).padStart(2, '0');
 pageNo.style.width = '28px';
 pageNo.style.height = '28px';
 pageNo.style.borderRadius = '50%';
