@@ -1244,13 +1244,14 @@ function buildQuestionHTML(item, __parent = printable) {
       }
     }
   }
-  const isMCQ = options.length === 4;
+    const isMCQ = options.length === 4;
+  const __qNoWidth = __qbQuestionNumberWidth(qCounter);
 
    const questionHtml = `
    <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:28px;vertical-align:top;padding-right:4px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:#5A2E1B;font-weight:400;">
+                   <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:#5A2E1B; font-weight:400;">
             ${qCounter}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
@@ -1349,7 +1350,9 @@ function buildQuestionHTML(item, __parent = printable) {
 
   if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
 
-  const wrap = document.createElement('div');
+  const __qNoWidth = __qbQuestionNumberWidth('Q' + qNum);
+
+const wrap = document.createElement('div');
 wrap.className = includeKey ? 'no-split' : 'worksheet-flow-block';
 wrap.style.cssText = includeKey
   ? 'page-break-inside:avoid; break-inside:avoid; display:block;'
@@ -1815,7 +1818,7 @@ wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:a
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
 const qNoDiv = document.createElement('div');
-qNoDiv.style.cssText = 'min-width:32px; flex:0 0 32px; font-weight:400; color:#5A2E1B;';
+qNoDiv.style.cssText = `min-width:${__qNoWidth}px; max-width:${__qNoWidth}px; flex:0 0 ${__qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B;`;
 qNoDiv.textContent = 'Q' + qNum + '.';
 
 const qTextDiv = document.createElement('div');
@@ -2726,9 +2729,9 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '' }
       break-inside:auto !important;
     }
 
-    .a4-page .question-number{
-      min-width:28px !important;
-      padding-right:4px !important;
+        .a4-page .question-number{
+      min-width:46px !important;
+      padding-right:8px !important;
       box-sizing:border-box !important;
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
@@ -5489,6 +5492,16 @@ function __qbSplitChapterDisplay(raw) {
     mainTitle: mainTitle || 'UNSPECIFIED',
     assimilationTitle: assimilationTitle || ''
   };
+}
+
+function __qbQuestionNumberWidth(qNum) {
+  const text = String(qNum || '').trim();
+  const len = text.length;
+
+  if (len >= 5) return 60;   // example: Q108.
+  if (len === 4) return 52;  // example: 108.
+  if (len === 3) return 46;  // example: 99.
+  return 36;                 // example: 1. / 25.
 }
 
 function __qbEscapeHtml(str) {
