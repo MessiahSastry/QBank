@@ -1348,9 +1348,7 @@ function buildQuestionHTML(item, __parent = printable) {
       </table>
     </div>`;
 
-  if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
-
-  const __qNoWidth = __qbQuestionNumberWidth('Q' + qNum);
+   if (/\$|\\\(|\\\)/.test(questionLine)) mathElements.push(qCounter - 1);
 
 const wrap = document.createElement('div');
 wrap.className = includeKey ? 'no-split' : 'worksheet-flow-block';
@@ -1809,7 +1807,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
 
-  const subjectText = String((source && source.subject) || '').trim();
+   const subjectText = String((source && source.subject) || '').trim();
+  const __keyQNoWidth = __qbQuestionNumberWidth('Q' + qNum);
 
 const wrap = document.createElement('div');
 wrap.className = 'page-flow-block';
@@ -1818,7 +1817,7 @@ wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:a
 qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
 
 const qNoDiv = document.createElement('div');
-qNoDiv.style.cssText = `min-width:${__qNoWidth}px; max-width:${__qNoWidth}px; flex:0 0 ${__qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B;`;
+qNoDiv.style.cssText = `min-width:${__keyQNoWidth}px; max-width:${__keyQNoWidth}px; flex:0 0 ${__keyQNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B;`;
 qNoDiv.textContent = 'Q' + qNum + '.';
 
 const qTextDiv = document.createElement('div');
