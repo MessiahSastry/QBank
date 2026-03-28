@@ -1808,12 +1808,11 @@ qDiv.appendChild(qTextDiv);
         'margin-top:4px;'
       );
     }
-  } else {
-    __appendKeyHeadingWithFirstLine(
-      '<span style="color:#7A2230;font-weight:700;">Answer:</span>',
+    } else {
+    __appendKeyFlowRow(
+      '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
       '<span style="color:#111111;">' + ansRaw + '</span>',
-      'margin-top:4px; margin-bottom:2px;',
-      ''
+      'margin-top:4px;'
     );
   }
 
