@@ -3281,13 +3281,30 @@ if (node.classList.contains('worksheet-flow-block')) {
   }
 
  const testBlock = nextBlock.cloneNode(true);
-  const blockChapterName = (
+   const blockChapterName = (
     testBlock.nodeType === 1 &&
     testBlock.classList &&
     testBlock.classList.contains('chapter-start-block')
   ) ? (function(raw){
       const src = String(raw || '').split(String.fromCharCode(13)).join('').trim();
       if (!src) return '';
+
+      function stripSubtopics(text) {
+        let t = String(text || '').trim();
+        const upper = t.toUpperCase();
+
+        let idx = upper.indexOf('(SUBTOPICS:');
+        if (idx !== -1) t = t.substring(0, idx).trim();
+
+        idx = t.toUpperCase().indexOf('SUBTOPICS:');
+        if (idx !== -1) t = t.substring(0, idx).trim();
+
+        while (t.endsWith(':') || t.endsWith('-') || t.endsWith('(')) {
+          t = t.slice(0, -1).trim();
+        }
+
+        return t;
+      }
 
       const lines = src
         .split(String.fromCharCode(10))
@@ -3301,15 +3318,18 @@ if (node.classList.contains('worksheet-flow-block')) {
       let assimilation = '';
 
       for (const line of lines) {
-        const upper = line.toUpperCase();
+        const cleanedLine = stripSubtopics(line);
+        const upper = cleanedLine.toUpperCase();
+
+        if (!cleanedLine) continue;
 
         if (!assimilation && upper.indexOf('ASSIMILATION ') === 0) {
-          assimilation = line;
+          assimilation = cleanedLine;
           continue;
         }
 
         if (!mainTitle && upper.indexOf('SUBTOPICS:') !== 0) {
-          mainTitle = line;
+          mainTitle = cleanedLine;
         }
       }
 
