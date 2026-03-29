@@ -1027,26 +1027,16 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
   }
 
   function openSciMentraGenieWithPrompt(prompt) {
-    const encodedPrompt = encodeURIComponent(String(prompt || '').trim());
-    const genieUrl = 'https://chatgpt.com/?q=' + encodedPrompt;
-    window.open(genieUrl, '_blank', 'noopener,noreferrer');
-  }
+  return;
+}
 
   if (genieBtn) {
-    genieBtn.onclick = async function() {
-      if (!promptText) return;
-
-      const copied = await doCopyPrompt();
-
-      if (statusEl) {
-        statusEl.textContent = copied
-          ? 'Opening SciMentra Genie with your prompt...'
-          : 'Opening SciMentra Genie with your prompt...';
-      }
-
-      openSciMentraGenieWithPrompt(promptText);
-    };
-  }
+  genieBtn.onclick = async function() {
+    if (statusEl) {
+      statusEl.textContent = 'Direct ChatGPT opening disabled for PDF flow. Scan QR for reliable use.';
+    }
+  };
+}
 }
 
 function initializeApp() {
