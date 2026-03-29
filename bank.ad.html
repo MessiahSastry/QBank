@@ -3736,7 +3736,12 @@ if (node.classList.contains('worksheet-flow-block')) {
            rebuildPagePicker();
       await waitForImages(pagesHost);
 
-     // removed auto scroll for faster slider adjustment
+     requestAnimationFrame(() => {
+  const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
+  if (targetPage) {
+    targetPage.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
+});
     }
 
     function rebuildPagePicker(){
