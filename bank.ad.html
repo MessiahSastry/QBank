@@ -954,13 +954,19 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
   gap:14px;
   margin-top:16px;
 ">
-  <div style="
-    font-size:4.3em;
-    line-height:1;
+  <img
+  src="genie.png"
+  alt="SciMentra Genie"
+  style="
+    width:120px;
+    max-width:38vw;
+    height:auto;
+    display:block;
     animation:qbGenieFloat 2.2s ease-in-out infinite, qbGenieGlow 2.2s ease-in-out infinite;
     user-select:none;
-  ">🧞</div>
-
+    pointer-events:none;
+  "
+>
   <button id="qb-ai-genie-btn" type="button" style="
     border:none;
     border-radius:16px;
@@ -1999,12 +2005,12 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
 
   const headRight = document.createElement('div');
   headRight.style.cssText = `
-    flex:0 0 58px;
-    width:58px;
-    display:flex;
-    justify-content:flex-start;
-    align-items:flex-start;
-  `;
+  flex:0 0 58px;
+  width:58px;
+  height:58px;
+  display:block;
+  position:relative;
+`;
 
   if (isPointWise) {
     const ansHead = document.createElement('div');
@@ -2034,26 +2040,33 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     headLeft.appendChild(expHead);
   }
 
- headRight.innerHTML = `
+headRight.innerHTML = `
+  <img src="${__qrUrl}" alt="QR" style="
+    width:58px;
+    height:58px;
+    display:block;
+    border:none;
+    box-shadow:none;
+    margin:0;
+    padding:0;
+    border-radius:0;
+    background:transparent;
+  ">
+
   <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
-    display:inline-block;
+    position:absolute;
+    left:0;
+    top:0;
+    width:58px;
+    height:58px;
+    display:block;
+    z-index:5;
+    background:transparent;
     text-decoration:none;
     border:none;
     outline:none;
-  ">
-    <img src="${__qrUrl}" alt="QR" style="
-      width:58px;
-      height:58px;
-      display:block;
-      border:none;
-      box-shadow:none;
-      margin:0;
-      padding:0;
-      border-radius:0;
-      background:transparent;
-      cursor:pointer;
-    ">
-  </a>
+    cursor:pointer;
+  " aria-label="Open AI helper"></a>
 `;
 
   headRow.appendChild(headLeft);
