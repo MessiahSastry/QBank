@@ -3736,12 +3736,7 @@ if (node.classList.contains('worksheet-flow-block')) {
            rebuildPagePicker();
       await waitForImages(pagesHost);
 
-      requestAnimationFrame(() => {
-        const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
-        if (targetPage) {
-          targetPage.scrollIntoView({ behavior: 'auto', block: 'start' });
-        }
-      });
+     // removed auto scroll for faster slider adjustment
     }
 
     function rebuildPagePicker(){
@@ -3802,8 +3797,8 @@ if (node.classList.contains('worksheet-flow-block')) {
       saveCurrentPageSettings();
       clearTimeout(repaginateTimer);
       repaginateTimer = setTimeout(async () => {
-        await paginatePreview();
-     }, 250);
+  await paginatePreview();
+}, 350);
     }
 
     floatingBtn.onclick = function(){
@@ -3827,15 +3822,17 @@ if (node.classList.contains('worksheet-flow-block')) {
   }
 });
 
-    function updateSliderLabelsOnly(){
+  gapSlider.addEventListener('input', () => {
   gapValue.textContent = gapSlider.value + 'px';
-  marginValue.textContent = Number(marginSlider.value).toFixed(1) + 'cm';
-  lineValue.textContent = lineSlider.value;
-}
+});
 
-gapSlider.addEventListener('input', updateSliderLabelsOnly);
-marginSlider.addEventListener('input', updateSliderLabelsOnly);
-lineSlider.addEventListener('input', updateSliderLabelsOnly);
+marginSlider.addEventListener('input', () => {
+  marginValue.textContent = Number(marginSlider.value).toFixed(1) + 'cm';
+});
+
+lineSlider.addEventListener('input', () => {
+  lineValue.textContent = lineSlider.value;
+});
 
 gapSlider.addEventListener('change', queueRepaginate);
 marginSlider.addEventListener('change', queueRepaginate);
