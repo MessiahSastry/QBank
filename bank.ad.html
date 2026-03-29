@@ -847,8 +847,8 @@ const questionsDb = stpatricksApp.firestore();
   });
 });
 
-   function __qbGetAiInstruction() {
-  return 'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.';
+  function __qbGetAiInstruction() {
+  return 'You are helping a school teacher teach this question clearly and effectively in class. Explain the question in a simple, practical, teacher-friendly way. First give the core concept in very easy language. Then give the correct answer and explain clearly why it is correct. If it is an MCQ, briefly explain why the other options are wrong. After that, give a simple classroom teaching method the teacher can use. Also give a quick shortcut, trick, or fast solving method students can use in exams to save time, wherever possible. Include common student mistakes, how to avoid them, and a short blackboard-ready explanation the teacher can directly say or write in class. Keep the explanation clear, accurate, practical, exam-oriented, and easy to use while teaching.';
 }
 
 function __qbAiCleanText(value) {
