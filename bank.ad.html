@@ -873,11 +873,9 @@ function __qbBuildAiPromptFromQuestionData(data) {
   return __qbGetAiInstruction() + '\n\nQuestion:\n' + qText + (optionsText ? '\n' + optionsText : '');
 }
 
-const __QB_PUBLIC_AI_HELPER_BASE = 'https://messiahsastry.github.io/QBank/bank.ad.html';
-
-function __qbGetAiHelperUrl(questionId) {
-  const qid = encodeURIComponent(String(questionId || '').trim());
-  return __QB_PUBLIC_AI_HELPER_BASE + '?aiq=' + qid;
+function __qbGetDirectChatGPTUrlFromQuestionData(data) {
+  const promptText = __qbBuildAiPromptFromQuestionData(data || {});
+  return 'https://chatgpt.com/?q=' + encodeURIComponent(promptText);
 }
 
 async function __qbOpenAiHelperByQuestionId(questionId) {
@@ -1973,7 +1971,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     wrap.appendChild(optDiv);
   }
 
-  const __aiUrl = __qbGetAiHelperUrl(docId);
+  const __aiUrl = __qbGetDirectChatGPTUrlFromQuestionData(source || {});
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
 
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
