@@ -1846,7 +1846,7 @@ function __qbFormatExplanationHTML(text, subject) {
     .filter(Boolean);
 
   return lines
-    .map(line => `<div style="margin:0 0 4px 0; line-height:1.45;">${line}</div>`)
+    .map(line => `<div style="margin:0 0 4px 0; line-height:inherit;">${line}</div>`)
     .join('');
 }
 
@@ -1958,11 +1958,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   qRow.style.cssText = 'display:flex; align-items:flex-start; width:100%; margin-bottom:4px;';
 
   const qNoDiv = document.createElement('div');
-  qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B; line-height:1.45;`;
+  qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B; line-height:inherit;`;
   qNoDiv.textContent = qNoLabel;
 
   const qTextDiv = document.createElement('div');
-  qTextDiv.style.cssText = 'flex:1; min-width:0; color:#5A2E1B; font-weight:400; line-height:1.45; white-space:pre-wrap;';
+  qTextDiv.style.cssText = 'flex:1; min-width:0; color:#5A2E1B; font-weight:400; line-height:inherit; white-space:pre-wrap;';
   qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
 
   qRow.appendChild(qNoDiv);
@@ -2000,7 +2000,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     flex:1 1 auto;
     min-width:0;
     color:#111111;
-    line-height:1.45;
+    line-height:inherit;
   `;
 
  const headRight = document.createElement('div');
@@ -2019,7 +2019,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
 
     if (answerLines.length) {
       const firstAns = document.createElement('div');
-      firstAns.style.cssText = 'margin-top:2px; padding-left:18px; color:#111111; line-height:1.45;';
+      firstAns.style.cssText = 'margin-top:2px; padding-left:18px; color:#111111; line-height:inherit;';
       firstAns.innerHTML = __formatAnswerLineHtml(answerLines[0]);
       headLeft.appendChild(firstAns);
     }
@@ -2065,7 +2065,7 @@ headRight.innerHTML = `
   if (isPointWise && answerLines.length > 1) {
     answerLines.slice(1).forEach(line => {
       const row = document.createElement('div');
-      row.style.cssText = `margin-left:${indentLeft + 18}px; color:#111111; line-height:1.45; margin-top:2px;`;
+      row.style.cssText = `margin-left:${indentLeft + 18}px; color:#111111; line-height:inherit; margin-top:2px;`;
       row.innerHTML = __formatAnswerLineHtml(line);
       wrap.appendChild(row);
     });
@@ -2081,7 +2081,7 @@ headRight.innerHTML = `
 
     expLines.forEach(lineHtml => {
       const row = document.createElement('div');
-      row.style.cssText = `margin-left:${indentLeft + 18}px; color:#111111; line-height:1.45; margin-top:2px;`;
+      row.style.cssText = `margin-left:${indentLeft + 18}px; color:#111111; line-height:inherit; margin-top:2px;`;
       row.innerHTML = lineHtml;
       wrap.appendChild(row);
     });
@@ -3351,19 +3351,29 @@ page.appendChild(footerWrap);
       return { page, inner, content };
     }
 function normalizeBlockSpacing(root, settings){
-  const qBlocks = Array.from(root.querySelectorAll('.question-container'));
+  const qBlocks = Array.from(
+    root.querySelectorAll('.question-container, .page-flow-block')
+  );
 
   qBlocks.forEach(div => {
     div.style.marginBottom = settings.questionGap + 'px';
+    div.style.lineHeight = settings.lineHeight;
   });
 
-  // remove extra bottom gap from the last question on that page
   if (qBlocks.length) {
     qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
   }
 
-  root.querySelectorAll('.question-text, .question-body').forEach(el => {
-    el.style.lineHeight = settings.lineHeight;
+  root.querySelectorAll(`
+    .question-text,
+    .question-body,
+    .page-flow-block,
+    .page-flow-block div,
+    .page-flow-block span
+  `).forEach(el => {
+    if (!el.closest('[data-qr-link]')) {
+      el.style.lineHeight = settings.lineHeight;
+    }
   });
 }
 async function waitForImages(root){
