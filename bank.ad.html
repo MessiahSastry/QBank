@@ -823,17 +823,12 @@ const questionsDb = stpatricksApp.firestore();
       levels: ["Level 1", "Level 2", "Level 3"]
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-  const __aiHash = String(window.location.hash || '');
+    document.addEventListener('DOMContentLoaded', async () => {
+  const __qs = new URLSearchParams(window.location.search);
+  const __aiq = String(__qs.get('aiq') || '').trim();
 
-  if (__aiHash.startsWith('#ai=')) {
-    let __payload = '';
-    try {
-      __payload = decodeURIComponent(__aiHash.slice(4));
-    } catch (e) {
-      __payload = __aiHash.slice(4);
-    }
-    __qbRenderAiHelperPage(__payload);
+  if (__aiq) {
+    await __qbOpenAiHelperByQuestionId(__aiq);
     return;
   }
 
@@ -856,19 +851,34 @@ const questionsDb = stpatricksApp.firestore();
   return 'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.';
 }
 
-function __qbBuildAiPromptFromPayload(payload) {
-  const clean = String(payload || '').replace(/\r/g, '').trim();
-  return __qbGetAiInstruction() + '\n\nQuestion:\n' + clean;
+function __qbAiCleanText(value) {
+  return String(value || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\r/g, '')
+    .trim();
 }
 
-function __qbGetAiHelperUrl(payload) {
+function __qbBuildAiPromptFromQuestionData(data) {
+  const qText = __qbAiCleanText(data.question || data.body || data.text || '');
+
+  const optionsText = Array.isArray(data.options)
+    ? data.options.map((opt, i) => {
+        const cleanOpt = __qbAiCleanText(opt);
+        return /^[A-D][).]\s*/i.test(cleanOpt)
+          ? cleanOpt
+          : (String.fromCharCode(65 + i) + ') ' + cleanOpt);
+      }).join('\n')
+    : '';
+
+  return __qbGetAiInstruction() + '\n\nQuestion:\n' + qText + (optionsText ? '\n' + optionsText : '');
+}
+
+function __qbGetAiHelperUrl(questionId) {
   const base = window.location.origin + window.location.pathname;
-  return base + '#ai=' + encodeURIComponent(String(payload || '').trim());
+  return base + '?aiq=' + encodeURIComponent(String(questionId || '').trim());
 }
 
-function __qbRenderAiHelperPage(payload) {
-  const promptText = __qbBuildAiPromptFromPayload(payload);
-
+async function __qbOpenAiHelperByQuestionId(questionId) {
   document.title = 'AI Question Helper | SciMentra';
   document.body.innerHTML = `
     <div style="
@@ -954,7 +964,7 @@ function __qbRenderAiHelperPage(payload) {
             color:#35506b;
             font-weight:600;
             line-height:1.5;
-          ">Copy the prompt, then open ChatGPT and paste it.</div>
+          ">Loading question...</div>
         </div>
       </div>
     </div>
@@ -965,7 +975,25 @@ function __qbRenderAiHelperPage(payload) {
   const openBtn = document.getElementById('qb-ai-open-btn');
   const statusEl = document.getElementById('qb-ai-helper-status');
 
-  if (textEl) textEl.value = promptText;
+  let promptText = '';
+
+  try {
+    const snap = await questionsDb.collection('questions').doc(String(questionId)).get();
+
+    if (!snap.exists) {
+      if (statusEl) statusEl.textContent = 'Question not found.';
+      if (textEl) textEl.value = '';
+      return;
+    }
+
+    promptText = __qbBuildAiPromptFromQuestionData(snap.data() || {});
+    if (textEl) textEl.value = promptText;
+    if (statusEl) statusEl.textContent = 'Copy the prompt, then open ChatGPT and paste it.';
+  } catch (err) {
+    if (statusEl) statusEl.textContent = 'Failed to load question.';
+    if (textEl) textEl.value = '';
+    return;
+  }
 
   async function doCopyPrompt() {
     try {
@@ -984,12 +1012,14 @@ function __qbRenderAiHelperPage(payload) {
 
   if (copyBtn) {
     copyBtn.onclick = async function() {
+      if (!promptText) return;
       await doCopyPrompt();
     };
   }
 
   if (openBtn) {
     openBtn.onclick = async function() {
+      if (!promptText) return;
       await doCopyPrompt();
       window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer');
     };
@@ -1999,34 +2029,7 @@ qDiv.appendChild(qTextDiv);
     }
   }
 
-   function __plainAiText(htmlOrText) {
-    return String(htmlOrText || '')
-      .replace(/\u00a0/g, ' ')
-      .replace(/\r/g, '')
-      .trim();
-  }
-
-   const __aiQuestionRaw = __plainAiText(
-    (source && (source.question || source.body || source.text)) || ''
-  );
-
-  const __aiRawOptions = Array.isArray(source && source.options)
-    ? source.options
-    : [];
-
-  const __aiOptionsText = __aiRawOptions.length
-    ? __aiRawOptions.map((opt, i) => {
-        const rawOpt = __plainAiText(opt);
-        return /^[A-D][).]\s*/.test(rawOpt)
-          ? rawOpt
-          : (String.fromCharCode(65 + i) + ') ' + rawOpt);
-      }).join('\n')
-    : '';
-
-  const __aiPayload =
-    __aiQuestionRaw + (__aiOptionsText ? ('\n' + __aiOptionsText) : '');
-
-  const __aiUrl = __qbGetAiHelperUrl(__aiPayload);
+     const __aiUrl = __qbGetAiHelperUrl(docId);
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=4&data=' + encodeURIComponent(__aiUrl);
   const __aiBox = document.createElement('a');
   __aiBox.href = __aiUrl;
