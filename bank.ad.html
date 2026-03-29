@@ -2003,14 +2003,13 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     line-height:1.45;
   `;
 
-  const headRight = document.createElement('div');
+ const headRight = document.createElement('div');
   headRight.style.cssText = `
-  flex:0 0 58px;
-  width:58px;
-  height:58px;
-  display:block;
-  position:relative;
-`;
+    flex:0 0 58px;
+    width:58px;
+    height:58px;
+    display:block;
+  `;
 
   if (isPointWise) {
     const ansHead = document.createElement('div');
@@ -2041,32 +2040,23 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   }
 
 headRight.innerHTML = `
-  <img src="${__qrUrl}" alt="QR" style="
+  <div data-qr-link="${__qbEscapeHtml(__aiUrl)}" style="
     width:58px;
     height:58px;
     display:block;
-    border:none;
-    box-shadow:none;
-    margin:0;
-    padding:0;
-    border-radius:0;
-    background:transparent;
   ">
-
-  <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
-    position:absolute;
-    left:0;
-    top:0;
-    width:58px;
-    height:58px;
-    display:block;
-    z-index:5;
-    background:transparent;
-    text-decoration:none;
-    border:none;
-    outline:none;
-    cursor:pointer;
-  " aria-label="Open AI helper"></a>
+    <img src="${__qrUrl}" alt="QR" style="
+      width:58px;
+      height:58px;
+      display:block;
+      border:none;
+      box-shadow:none;
+      margin:0;
+      padding:0;
+      border-radius:0;
+      background:transparent;
+    ">
+  </div>
 `;
 
   headRow.appendChild(headLeft);
@@ -2697,6 +2687,8 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
   <title>${safeTitle}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
 
 <script>
   window.MathJax = {
@@ -3142,7 +3134,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 <body>
   <div id="page-container">
     <div class="toolbar">
-      <button id="preview-print-btn"><i class="fas fa-print"></i> Print / Save PDF</button>
+      <button id="preview-print-btn"><i class="fas fa-file-pdf"></i> Download PDF</button>
 
       <select id="page-select">
         <option value="0">Page 1</option>
@@ -3376,16 +3368,74 @@ function normalizeBlockSpacing(root, settings){
     el.style.lineHeight = settings.lineHeight;
   });
 }
+async function waitForImages(root){
+  const imgs = Array.from(root.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    }))
+  );
+}
 
-    async function waitForImages(root){
-      const imgs = Array.from(root.querySelectorAll('img'));
-      await Promise.all(
-        imgs.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        }))
-      );
+async function exportPagesAsPdf() {
+  const btn = document.getElementById('preview-print-btn');
+  const oldHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing PDF...';
+
+  try {
+    await waitForImages(pagesHost);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pages = Array.from(document.querySelectorAll('.a4-page'));
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+
+      const pageRect = page.getBoundingClientRect();
+      const pageWidthPx = pageRect.width;
+      const pageHeightPx = pageRect.height;
+
+      const imgData = await domtoimage.toPng(page, {
+        bgcolor: '#ffffff'
+      });
+
+      if (i > 0) pdf.addPage();
+
+      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+
+      const qrNodes = Array.from(page.querySelectorAll('[data-qr-link]'));
+
+      qrNodes.forEach(node => {
+        const url = node.getAttribute('data-qr-link');
+        if (!url) return;
+
+        const r = node.getBoundingClientRect();
+
+        const x = ((r.left - pageRect.left) / pageWidthPx) * 210;
+        const y = ((r.top - pageRect.top) / pageHeightPx) * 297;
+        const w = (r.width / pageWidthPx) * 210;
+        const h = (r.height / pageHeightPx) * 297;
+
+        pdf.link(x, y, w, h, { url });
+      });
     }
+
+    pdf.save((__TITLE || 'Question_Bank') + '.pdf');
+  } catch (err) {
+    alert('PDF export failed: ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = oldHtml;
+}
 
    function getSourceBlocks(){
   const blocks = [];
@@ -3741,8 +3791,8 @@ if (node.classList.contains('worksheet-flow-block')) {
       settingsModal.style.display = 'none';
     };
 
-    document.getElementById('preview-print-btn').onclick = function(){
-  window.print();
+   document.getElementById('preview-print-btn').onclick = function(){
+  exportPagesAsPdf();
 };
    pageSelect.addEventListener('change', function(){
   currentPageIndex = Number(this.value || 0);
