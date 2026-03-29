@@ -2040,15 +2040,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   }
 
 headRight.innerHTML = `
-  <a href="${__qbEscapeHtml(__aiUrl)}"
-     target="_blank"
-     rel="noopener noreferrer"
-     style="
-       width:58px;
-       height:58px;
-       display:block;
-       text-decoration:none;
-     ">
+  <div data-qr-link="${__qbEscapeHtml(__aiUrl)}" style="
+    width:58px;
+    height:58px;
+    display:block;
+  ">
     <img src="${__qrUrl}" alt="QR" style="
       width:58px;
       height:58px;
@@ -2060,9 +2056,8 @@ headRight.innerHTML = `
       border-radius:0;
       background:transparent;
     ">
-  </a>
+  </div>
 `;
-
   headRow.appendChild(headLeft);
   headRow.appendChild(headRight);
   wrap.appendChild(headRow);
@@ -3794,8 +3789,8 @@ if (node.classList.contains('worksheet-flow-block')) {
       settingsModal.style.display = 'none';
     };
 
-   document.getElementById('preview-print-btn').onclick = function(){
-  window.print();
+  document.getElementById('preview-print-btn').onclick = function(){
+  exportPagesAsPdf();
 };
    pageSelect.addEventListener('change', function(){
   currentPageIndex = Number(this.value || 0);
