@@ -2034,7 +2034,13 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     headLeft.appendChild(expHead);
   }
 
-  headRight.innerHTML = `
+ headRight.innerHTML = `
+  <a href="${__aiUrl}" target="_blank" rel="noopener noreferrer" style="
+    display:inline-block;
+    text-decoration:none;
+    border:none;
+    outline:none;
+  ">
     <img src="${__qrUrl}" alt="QR" style="
       width:58px;
       height:58px;
@@ -2045,8 +2051,10 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
       padding:0;
       border-radius:0;
       background:transparent;
+      cursor:pointer;
     ">
-  `;
+  </a>
+`;
 
   headRow.appendChild(headLeft);
   headRow.appendChild(headRight);
