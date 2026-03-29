@@ -1995,120 +1995,155 @@ qaBottomRow.appendChild(qaAiCol);
   }
 
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
-  const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+const answerLines = ansRaw.split(/\n+/).filter(line => line.trim());
 
-     wrap.appendChild(qDiv);
-  wrap.appendChild(qaBottomRow);
+wrap.appendChild(qDiv);
 
-  if (options.length) {
-    const optDiv = document.createElement('div');
-    optDiv.style.cssText = 'color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
-    optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
-    qaTextCol.appendChild(optDiv);
+if (options.length) {
+  const optDiv = document.createElement('div');
+  optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
+  optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
+  wrap.appendChild(optDiv);
+}
+
+/* ===== Answer + Explanation heading row with QR immediately beside it ===== */
+qaBottomRow.style.cssText = `
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:8px;
+  margin-left:18px;
+  margin-top:6px;
+  page-break-inside:avoid;
+  break-inside:avoid;
+`;
+
+qaTextCol.style.cssText = `
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-start;
+  flex:0 1 auto;
+  min-width:0;
+`;
+
+qaAiCol.style.cssText = `
+  flex:0 0 82px;
+  width:82px;
+  display:flex;
+  justify-content:flex-start;
+  align-items:flex-start;
+`;
+
+qaTextCol.innerHTML = '';
+qaAiCol.innerHTML = '';
+
+if (isPointWise) {
+  const ansHead = document.createElement('div');
+  ansHead.style.cssText = 'color:#111111; line-height:1.45; margin-top:0;';
+  ansHead.innerHTML = '<span style="color:#7A2230;font-weight:700;">Answer:</span>';
+  qaTextCol.appendChild(ansHead);
+
+  if (answerLines.length) {
+    const firstAns = document.createElement('div');
+    firstAns.style.cssText = 'color:#111111; line-height:1.45; padding-left:18px; margin-top:2px;';
+    firstAns.innerHTML = __formatAnswerLineHtml(answerLines[0]);
+    qaTextCol.appendChild(firstAns);
   }
+} else {
+  const ansHead = document.createElement('div');
+  ansHead.style.cssText = 'color:#111111; line-height:1.45; margin-top:0;';
+  ansHead.innerHTML =
+    '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
+    '<span style="color:#111111;">' + ansRaw + '</span>';
+  qaTextCol.appendChild(ansHead);
+}
 
-  if (isPointWise) {
-    const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
+if (explanationText && String(explanationText).trim()) {
+  const expHead = document.createElement('div');
+  expHead.style.cssText = 'color:#111111; line-height:1.45; margin-top:6px;';
+  expHead.innerHTML = '<span style="color:#7A2230;font-weight:700;">Explanation:</span>';
+  qaTextCol.appendChild(expHead);
+}
 
-    if (ansLines.length) {
-      __appendKeyHeadingWithFirstLine(
-        '<span style="color:#7A2230;font-weight:700;">Answer:</span>',
-        __formatAnswerLineHtml(ansLines[0]),
-        'margin-top:4px; margin-bottom:2px;',
-        'padding-left:18px; margin-top:2px;'
-      );
+const __aiUrl = __qbGetAiHelperUrl(docId);
+const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
 
-      ansLines.slice(1).forEach(line => {
-        __appendKeyFlowRow(__formatAnswerLineHtml(line), 'padding-left:18px; margin-top:2px;');
-      });
-    } else {
-      __appendKeyFlowRow(
-        '<span style="color:#7A2230;font-weight:700;">Answer:</span> <span style="color:#111111;">No answer available.</span>',
-        'margin-top:4px;'
-      );
-    }
-    } else {
-    __appendKeyFlowRow(
-      '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
-      '<span style="color:#111111;">' + ansRaw + '</span>',
-      'margin-top:4px;'
-    );
-  }
+const __aiBox = document.createElement('div');
+__aiBox.style.cssText = `
+  width:82px;
+  page-break-inside:avoid;
+  break-inside:avoid;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  border:1.2px solid #cfdcf0;
+  border-radius:10px;
+  background:#f8fbff;
+  padding:6px 6px 5px 6px;
+  box-sizing:border-box;
+`;
 
-   if (explanationText && String(explanationText).trim()) {
-    const expTemp = document.createElement('div');
-    expTemp.innerHTML = __qbFormatExplanationHTML(explanationText, subjectText);
+__aiBox.innerHTML = `
+  <div style="
+    color:#12416c;
+    font-weight:700;
+    font-size:8.8pt;
+    line-height:1.1;
+    text-align:center;
+  ">Scan QR</div>
 
-    const expLines = Array.from(expTemp.children).length
-      ? Array.from(expTemp.children).map(el => el.innerHTML)
-      : [expTemp.innerHTML].filter(Boolean);
-
-    if (expLines.length) {
-      __appendKeyHeadingWithFirstLine(
-        '<span style="color:#7A2230;font-weight:700;">Explanation:</span>',
-        expLines[0],
-        'margin-top:6px; margin-bottom:2px;',
-        'margin-top:2px;'
-      );
-
-      expLines.slice(1).forEach(lineHtml => {
-        __appendKeyFlowRow(lineHtml, 'margin-top:2px;');
-      });
-    } else {
-      __appendKeyFlowRow(
-        '<span style="color:#7A2230;font-weight:700;">Explanation:</span>',
-        'margin-top:6px;'
-      );
-    }
-  }
-
-                    const __aiUrl = __qbGetAiHelperUrl(docId);
-  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&data=' + encodeURIComponent(__aiUrl);
-  const __aiBox = document.createElement('div');
-  __aiBox.style.cssText = `
-    width:96px;
-    page-break-inside:avoid;
-    break-inside:avoid;
+  <div style="
     display:flex;
-    flex-direction:column;
     align-items:center;
-    gap:6px;
-    border:1.2px solid #cfdcf0;
-    border-radius:10px;
-    background:#f8fbff;
-    padding:6px;
-    box-sizing:border-box;
-  `;
-
-  __aiBox.innerHTML = `
-    <div style="
-      color:#12416c;
-      font-weight:700;
-      font-size:8.6pt;
-      line-height:1.1;
-      text-align:center;
-    ">Scan QR</div>
-
-    <div style="
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#ffffff;
-      padding:2px;
-      border-radius:6px;
+    justify-content:center;
+    background:#ffffff;
+    padding:2px;
+    border-radius:6px;
+  ">
+    <img src="${__qrUrl}" alt="QR" style="
+      width:58px;
+      height:58px;
+      display:block;
+      border:none;
+      box-shadow:none;
     ">
-      <img src="${__qrUrl}" alt="QR" style="
-        width:56px;
-        height:56px;
-        display:block;
-        border:none;
-        box-shadow:none;
-      ">
-    </div>
-  `;
+  </div>
+`;
 
-  qaAiCol.appendChild(__aiBox);
-  __parent.appendChild(wrap);
+qaAiCol.appendChild(__aiBox);
+wrap.appendChild(qaBottomRow);
+
+/* ===== remaining answer lines full width below ===== */
+if (isPointWise && answerLines.length > 1) {
+  answerLines.slice(1).forEach(line => {
+    const row = document.createElement('div');
+    row.style.cssText = 'color:#111111; line-height:1.45; padding-left:18px; margin-top:2px;';
+    row.innerHTML = __formatAnswerLineHtml(line);
+    wrap.appendChild(row);
+  });
+}
+
+/* ===== explanation points full width below ===== */
+if (explanationText && String(explanationText).trim()) {
+  const expTemp = document.createElement('div');
+  expTemp.innerHTML = __qbFormatExplanationHTML(explanationText, subjectText);
+
+  const expLines = Array.from(expTemp.children).length
+    ? Array.from(expTemp.children).map(el => el.innerHTML)
+    : [expTemp.innerHTML].filter(Boolean);
+
+  expLines.forEach(lineHtml => {
+    const row = document.createElement('div');
+    row.style.cssText = 'color:#111111; line-height:1.45; margin-top:2px;';
+    row.innerHTML = lineHtml;
+    wrap.appendChild(row);
+  });
+}
+
+__parent.appendChild(wrap);
 }
 if (includeWorksheet) {
   // === RENDER WORKSHEET ===
