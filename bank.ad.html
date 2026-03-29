@@ -874,8 +874,18 @@ function __qbBuildAiPromptFromQuestionData(data) {
 }
 
 function __qbGetAiHelperUrl(questionId) {
-  const base = window.location.origin + window.location.pathname;
-  return base + '?aiq=' + encodeURIComponent(String(questionId || '').trim());
+  const qid = encodeURIComponent(String(questionId || '').trim());
+
+  try {
+    const href = String(window.location.href || '').split('#')[0];
+    const url = new URL(href);
+    url.searchParams.set('aiq', qid);
+    return url.href;
+  } catch (e) {
+    const path = String(window.location.pathname || '').replace(/\\/g, '/');
+    const normalizedPath = path.startsWith('/') ? path : '/' + path;
+    return 'file://' + normalizedPath + '?aiq=' + qid;
+  }
 }
 
 async function __qbOpenAiHelperByQuestionId(questionId) {
