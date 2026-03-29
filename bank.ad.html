@@ -1014,24 +1014,31 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
   async function doCopyPrompt() {
     try {
       await navigator.clipboard.writeText(promptText);
-      if (statusEl) statusEl.textContent = 'Opening SciMentra Genie...';
       return true;
     } catch (e) {
-      if (textEl) {
-        textEl.focus();
-        textEl.select();
-      }
-      if (statusEl) statusEl.textContent = 'Copy permission was blocked. The prompt is selected. Copy it manually and continue.';
       return false;
     }
   }
 
- if (genieBtn) {
+  function openSciMentraGenieWithPrompt(prompt) {
+    const encodedPrompt = encodeURIComponent(String(prompt || '').trim());
+    const genieUrl = 'https://chatgpt.com/?q=' + encodedPrompt;
+    window.open(genieUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  if (genieBtn) {
     genieBtn.onclick = async function() {
       if (!promptText) return;
-      await doCopyPrompt();
-      if (statusEl) statusEl.textContent = 'Opening SciMentra Genie...';
-      window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer');
+
+      const copied = await doCopyPrompt();
+
+      if (statusEl) {
+        statusEl.textContent = copied
+          ? 'Opening SciMentra Genie with your prompt...'
+          : 'Opening SciMentra Genie with your prompt...';
+      }
+
+      openSciMentraGenieWithPrompt(promptText);
     };
   }
 }
