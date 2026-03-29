@@ -3794,17 +3794,43 @@ if (node.classList.contains('worksheet-flow-block')) {
 
     let repaginateTimer = null;
     function queueRepaginate(){
-      saveCurrentPageSettings();
-      clearTimeout(repaginateTimer);
-      repaginateTimer = setTimeout(async () => {
-  await paginatePreview();
-}, 350);
+  currentPageIndex = getVisiblePageIndex();
+  pageSelect.value = String(currentPageIndex);
+  saveCurrentPageSettings();
+  clearTimeout(repaginateTimer);
+  repaginateTimer = setTimeout(async () => {
+    await paginatePreview();
+  }, 350);
+}
+
+   function getVisiblePageIndex() {
+  const pages = Array.from(document.querySelectorAll('.a4-page'));
+  if (!pages.length) return 0;
+
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  const viewportCenter = window.innerHeight / 2;
+
+  pages.forEach((page, index) => {
+    const rect = page.getBoundingClientRect();
+    const pageCenter = rect.top + rect.height / 2;
+    const distance = Math.abs(pageCenter - viewportCenter);
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
     }
+  });
 
-    floatingBtn.onclick = function(){
-      settingsModal.style.display = 'flex';
-    };
+  return bestIndex;
+}
 
+floatingBtn.onclick = function(){
+  currentPageIndex = getVisiblePageIndex();
+  pageSelect.value = String(currentPageIndex);
+  updateSliderUIFromPage();
+  settingsModal.style.display = 'flex';
+};
     closeSettingsBtn.onclick = function(){
       settingsModal.style.display = 'none';
     };
