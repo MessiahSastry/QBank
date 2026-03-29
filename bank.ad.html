@@ -3495,32 +3495,44 @@ if (node.classList.contains('question-container')) {
     // keep heading + first question together
     // NOT the whole wrapper together
     if (node.classList.contains('keep-with-next')) {
-      const kids = Array.from(node.childNodes).filter(ch => {
-        if (ch.nodeType === 3) return ch.textContent.trim() !== '';
-        return ch.nodeType === 1;
-      });
+  const kids = Array.from(node.childNodes).filter(ch => {
+    if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+    return ch.nodeType === 1;
+  });
 
-      if (kids.length <= 1) {
-        blocks.push(node.cloneNode(true));
-        return;
-      }
+  if (kids.length <= 1) {
+    blocks.push(node.cloneNode(true));
+    return;
+  }
 
-      const pairWrap = document.createElement('div');
-      pairWrap.className = 'keep-with-next-pair';
-      pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+  const secondIsPageFlowBlock =
+    kids[1] &&
+    kids[1].nodeType === 1 &&
+    kids[1].classList &&
+    kids[1].classList.contains('page-flow-block');
 
-      // keep first heading + first question together
-      pairWrap.appendChild(kids[0].cloneNode(true));
-      pairWrap.appendChild(kids[1].cloneNode(true));
-      blocks.push(pairWrap);
-
-      // remaining children can flow normally
-      for (let i = 2; i < kids.length; i++) {
-        blocks.push(kids[i].cloneNode(true));
-      }
-      return;
+  if (secondIsPageFlowBlock) {
+    // for answer/explanation pages, do not force the heading + big block together
+    blocks.push(kids[0].cloneNode(true));
+    for (let i = 1; i < kids.length; i++) {
+      blocks.push(kids[i].cloneNode(true));
     }
+    return;
+  }
 
+  const pairWrap = document.createElement('div');
+  pairWrap.className = 'keep-with-next-pair';
+  pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+
+  pairWrap.appendChild(kids[0].cloneNode(true));
+  pairWrap.appendChild(kids[1].cloneNode(true));
+  blocks.push(pairWrap);
+
+  for (let i = 2; i < kids.length; i++) {
+    blocks.push(kids[i].cloneNode(true));
+  }
+  return;
+}
    if (node.classList.contains('no-split')) {
   blocks.push(node.cloneNode(true));
   return;
