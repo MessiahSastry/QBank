@@ -3408,7 +3408,7 @@ const imgData = await domtoimage.toPng(page, {
   width: pageWidthPx * scale,
   height: pageHeightPx * scale,
   style: {
-    transform: `scale(${scale})`,
+    transform: 'scale(' + scale + ')',
     transformOrigin: 'top left',
     width: pageWidthPx + 'px',
     height: pageHeightPx + 'px'
