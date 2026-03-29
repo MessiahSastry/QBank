@@ -873,9 +873,11 @@ function __qbBuildAiPromptFromQuestionData(data) {
   return __qbGetAiInstruction() + '\n\nQuestion:\n' + qText + (optionsText ? '\n' + optionsText : '');
 }
 
-function __qbGetDirectChatGPTUrlFromQuestionData(data) {
-  const promptText = __qbBuildAiPromptFromQuestionData(data || {});
-  return 'https://chatgpt.com/?q=' + encodeURIComponent(promptText);
+const __QB_PUBLIC_AI_HELPER_BASE = 'https://messiahsastry.github.io/QBank/bank.ad.html';
+
+function __qbGetAiHelperUrl(questionId) {
+  const qid = encodeURIComponent(String(questionId || '').trim());
+  return __QB_PUBLIC_AI_HELPER_BASE + '?aiq=' + qid;
 }
 
 async function __qbOpenAiHelperByQuestionId(questionId) {
@@ -1025,25 +1027,28 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
   }
 
   function openSciMentraGenieWithPrompt(prompt) {
-  return;
-}
+    const encodedPrompt = encodeURIComponent(String(prompt || '').trim());
+    const genieUrl = 'https://chatgpt.com/?q=' + encodedPrompt;
+    window.open(genieUrl, '_blank', 'noopener,noreferrer');
+  }
 
   if (genieBtn) {
-  genieBtn.onclick = async function() {
-    if (!promptText) return;
+    genieBtn.onclick = async function() {
+      if (!promptText) return;
 
-    const copied = await doCopyPrompt();
+      const copied = await doCopyPrompt();
 
-    if (statusEl) {
-      statusEl.textContent = copied
-        ? 'Opening SciMentra Genie with your prompt...'
-        : 'Opening SciMentra Genie with your prompt...';
-    }
+      if (statusEl) {
+        statusEl.textContent = copied
+          ? 'Opening SciMentra Genie with your prompt...'
+          : 'Opening SciMentra Genie with your prompt...';
+      }
 
-    openSciMentraGenieWithPrompt(promptText);
-  };
+      openSciMentraGenieWithPrompt(promptText);
+    };
+  }
 }
-}
+
 function initializeApp() {
   setupDropdowns();
   // Do NOT fetch on load; wait until Class + Subject are chosen
@@ -1971,7 +1976,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     wrap.appendChild(optDiv);
   }
 
-  const __aiUrl = __qbGetDirectChatGPTUrlFromQuestionData(source || {});
+  const __aiUrl = __qbGetAiHelperUrl(docId);
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
 
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
@@ -2684,7 +2689,6 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"><\/script>
-
 <script>
   window.MathJax = {
     tex: { inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]], processEscapes: true },
