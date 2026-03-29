@@ -3397,14 +3397,23 @@ async function exportPagesAsPdf() {
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
 
-      const pageRect = page.getBoundingClientRect();
-      const pageWidthPx = pageRect.width;
-      const pageHeightPx = pageRect.height;
+     const pageRect = page.getBoundingClientRect();
+const pageWidthPx = pageRect.width;
+const pageHeightPx = pageRect.height;
 
-      const imgData = await domtoimage.toPng(page, {
-        bgcolor: '#ffffff'
-      });
+const scale = 3;
 
+const imgData = await domtoimage.toPng(page, {
+  bgcolor: '#ffffff',
+  width: pageWidthPx * scale,
+  height: pageHeightPx * scale,
+  style: {
+    transform: `scale(${scale})`,
+    transformOrigin: 'top left',
+    width: pageWidthPx + 'px',
+    height: pageHeightPx + 'px'
+  }
+});
       if (i > 0) pdf.addPage();
 
       pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
