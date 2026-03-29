@@ -1355,7 +1355,7 @@ function buildQuestionHTML(item, __parent = printable) {
   const __qNoWidth = __qbQuestionNumberWidth(qCounter);
 
    const questionHtml = `
-   <div class="question-container" style="margin-bottom:10px;width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
+   <div class="question-container" style="width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
                    <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:#5A2E1B; font-weight:400;">
@@ -3672,7 +3672,27 @@ if (node.classList.contains('worksheet-flow-block')) {
   const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
+                      if (overflow) {
             measureShell.content.removeChild(testBlock);
+
+            if (
+              nextBlock.nodeType === 1 &&
+              nextBlock.classList &&
+              nextBlock.classList.contains('keep-with-next-pair')
+            ) {
+              const pairKids = Array.from(nextBlock.childNodes).filter(ch => {
+                if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+                return ch.nodeType === 1;
+              });
+
+              if (pairKids.length > 1) {
+                blocks.shift();
+                for (let i = pairKids.length - 1; i >= 0; i--) {
+                  blocks.unshift(pairKids[i].cloneNode(true));
+                }
+                continue;
+              }
+            }
 
             if (!pageHasContent) {
               testBlock.style.breakInside = 'auto';
@@ -3855,6 +3875,13 @@ floatingBtn.onclick = function(){
 
   gapSlider.addEventListener('input', () => {
   gapValue.textContent = gapSlider.value + 'px';
+
+  const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
+  if (targetPage) {
+    const s = ensurePageSettings(currentPageIndex);
+    s.questionGap = Number(gapSlider.value || 10);
+    normalizeBlockSpacing(targetPage, s);
+  }
 });
 
 marginSlider.addEventListener('input', () => {
