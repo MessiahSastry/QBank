@@ -3672,8 +3672,7 @@ if (node.classList.contains('worksheet-flow-block')) {
   const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
 
           if (overflow) {
-                      if (overflow) {
-            measureShell.content.removeChild(testBlock);
+                measureShell.content.removeChild(testBlock);
 
             if (
               nextBlock.nodeType === 1 &&
