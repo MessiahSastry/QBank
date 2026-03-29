@@ -1844,7 +1844,6 @@ function __qbFormatExplanationHTML(text, subject) {
     .join('');
 }
 
-/* REPLACE BLOCK */
 function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const clone = item.cloneNode(true);
   const qTextEl = clone.querySelector('.question-text');
@@ -1915,6 +1914,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
 
+  const subjectText = String((source && source.subject) || '').trim();
   const qNoLabel = 'Q' + qNum + '.';
   const qNoWidth = __qbQuestionNumberWidth(qNoLabel);
   const indentLeft = qNoWidth + 8;
@@ -1923,16 +1923,14 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   wrap.className = 'page-flow-block';
   wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
 
-  function __formatIndentedLineHtml(line) {
-    const raw = String(line || '').trim();
-
-    const numberedMatch = raw.match(/^\s*(\d+[\.\)])\s+(.*)$/);
-    const bulletMatch = raw.match(/^\s*([•\-])\s+(.*)$/);
+  function __formatAnswerLineHtml(line) {
+    const numberedMatch = String(line || '').trim().match(/^\s*(\d+[\.\)])\s+(.*)$/);
+    const bulletMatch = String(line || '').trim().match(/^\s*([-•])\s+(.*)$/);
 
     if (numberedMatch) {
       return `
-        <div style="display:flex;align-items:flex-start;width:100%;">
-          <span style="flex:0 0 24px;max-width:24px;">${numberedMatch[1]}</span>
+        <div style="display:flex;align-items:flex-start;">
+          <span style="flex:0 0 26px;max-width:26px;">${numberedMatch[1]}</span>
           <span style="flex:1;min-width:0;">${numberedMatch[2]}</span>
         </div>
       `;
@@ -1940,14 +1938,14 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
 
     if (bulletMatch) {
       return `
-        <div style="display:flex;align-items:flex-start;width:100%;">
+        <div style="display:flex;align-items:flex-start;">
           <span style="flex:0 0 18px;max-width:18px;">${bulletMatch[1]}</span>
           <span style="flex:1;min-width:0;">${bulletMatch[2]}</span>
         </div>
       `;
     }
 
-    return `<div>${raw}</div>`;
+    return `<div>${String(line || '').trim()}</div>`;
   }
 
   const qRow = document.createElement('div');
@@ -1972,87 +1970,113 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     wrap.appendChild(optDiv);
   }
 
-  const qaRow = document.createElement('div');
-  qaRow.style.cssText = `display:flex; align-items:flex-start; justify-content:flex-start; gap:10px; margin-left:${indentLeft}px; margin-top:2px;`;
-
-  const qaTextCol = document.createElement('div');
-  qaTextCol.style.cssText = 'flex:1 1 auto; min-width:0; color:#111111; line-height:1.45;';
-
-  const qaQrCol = document.createElement('div');
-  qaQrCol.style.cssText = 'flex:0 0 62px; width:62px; display:flex; align-items:flex-start; justify-content:flex-start;';
+  const __aiUrl = __qbGetAiHelperUrl(docId);
+  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
 
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
-  const answerLines = ansRaw.split(/\n+/).map(s => s.trim()).filter(Boolean);
-  const answerIsPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+  const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
+  const answerLines = ansRaw.split(/\n+/).filter(line => line.trim());
 
-  if (answerIsPointWise) {
+  const headRow = document.createElement('div');
+  headRow.style.cssText = `
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:8px;
+    margin-left:${indentLeft}px;
+    margin-top:6px;
+    page-break-inside:avoid;
+    break-inside:avoid;
+  `;
+
+  const headLeft = document.createElement('div');
+  headLeft.style.cssText = `
+    flex:1 1 auto;
+    min-width:0;
+    color:#111111;
+    line-height:1.45;
+  `;
+
+  const headRight = document.createElement('div');
+  headRight.style.cssText = `
+    flex:0 0 58px;
+    width:58px;
+    display:flex;
+    justify-content:flex-start;
+    align-items:flex-start;
+  `;
+
+  if (isPointWise) {
     const ansHead = document.createElement('div');
-    ansHead.style.cssText = 'margin-bottom:2px;';
-    ansHead.innerHTML = `<span style="color:#7A2230;font-weight:700;">Answer:</span>`;
-    qaTextCol.appendChild(ansHead);
+    ansHead.style.cssText = 'margin-top:0;';
+    ansHead.innerHTML = '<span style="color:#7A2230;font-weight:700;">Answer:</span>';
+    headLeft.appendChild(ansHead);
 
-    answerLines.forEach(line => {
-      const row = document.createElement('div');
-      row.style.cssText = 'margin:0 0 2px 18px;';
-      row.innerHTML = __formatIndentedLineHtml(line);
-      qaTextCol.appendChild(row);
-    });
+    if (answerLines.length) {
+      const firstAns = document.createElement('div');
+      firstAns.style.cssText = 'margin-top:2px; padding-left:18px; color:#111111; line-height:1.45;';
+      firstAns.innerHTML = __formatAnswerLineHtml(answerLines[0]);
+      headLeft.appendChild(firstAns);
+    }
   } else {
     const ansLine = document.createElement('div');
-    ansLine.style.cssText = 'margin-bottom:4px;';
-    ansLine.innerHTML = `<span style="color:#7A2230;font-weight:700;">Answer:</span> <span style="color:#111111;">${ansRaw}</span>`;
-    qaTextCol.appendChild(ansLine);
+    ansLine.style.cssText = 'margin-top:0;';
+    ansLine.innerHTML =
+      '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
+      '<span style="color:#111111;">' + ansRaw + '</span>';
+    headLeft.appendChild(ansLine);
   }
 
-  if (explanationText) {
+  if (explanationText && String(explanationText).trim()) {
     const expHead = document.createElement('div');
-    expHead.style.cssText = 'margin-top:2px; margin-bottom:2px;';
-    expHead.innerHTML = `<span style="color:#7A2230;font-weight:700;">Explanation:</span>`;
-    qaTextCol.appendChild(expHead);
+    expHead.style.cssText = 'margin-top:6px;';
+    expHead.innerHTML = '<span style="color:#7A2230;font-weight:700;">Explanation:</span>';
+    headLeft.appendChild(expHead);
+  }
 
-    const expLines = String(explanationText)
-      .replace(/\r/g, '')
-      .split('\n')
-      .map(s => s.trim())
-      .filter(Boolean);
+  headRight.innerHTML = `
+    <img src="${__qrUrl}" alt="QR" style="
+      width:58px;
+      height:58px;
+      display:block;
+      border:none;
+      box-shadow:none;
+      margin:0;
+      padding:0;
+      border-radius:0;
+      background:transparent;
+    ">
+  `;
 
-    expLines.forEach(line => {
+  headRow.appendChild(headLeft);
+  headRow.appendChild(headRight);
+  wrap.appendChild(headRow);
+
+  if (isPointWise && answerLines.length > 1) {
+    answerLines.slice(1).forEach(line => {
       const row = document.createElement('div');
-      row.style.cssText = 'margin:0 0 2px 18px;';
-      row.innerHTML = __formatIndentedLineHtml(line);
-      qaTextCol.appendChild(row);
+      row.style.cssText = `margin-left:${indentLeft + 18}px; color:#111111; line-height:1.45; margin-top:2px;`;
+      row.innerHTML = __formatAnswerLineHtml(line);
+      wrap.appendChild(row);
     });
   }
 
-  if (docId) {
-    const __aiUrl = __qbGetAiHelperUrl(docId);
-    const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
+  if (explanationText && String(explanationText).trim()) {
+    const expTemp = document.createElement('div');
+    expTemp.innerHTML = __qbFormatExplanationHTML(explanationText, subjectText);
 
-    const qrBox = document.createElement('div');
-    qrBox.style.cssText = 'width:58px; display:flex; align-items:flex-start; justify-content:flex-start;';
+    const expLines = Array.from(expTemp.children).length
+      ? Array.from(expTemp.children).map(el => el.innerHTML)
+      : [expTemp.innerHTML].filter(Boolean);
 
-    qrBox.innerHTML = `
-      <img src="${__qrUrl}" alt="QR" style="
-        width:58px;
-        height:58px;
-        display:block;
-        border:none;
-        box-shadow:none;
-        margin:0;
-        padding:0;
-        border-radius:0;
-        background:transparent;
-      ">
-    `;
-
-    qaQrCol.appendChild(qrBox);
-    qaRow.appendChild(qaTextCol);
-    qaRow.appendChild(qaQrCol);
-  } else {
-    qaRow.appendChild(qaTextCol);
+    expLines.forEach(lineHtml => {
+      const row = document.createElement('div');
+      row.style.cssText = `margin-left:${indentLeft + 18}px; color:#111111; line-height:1.45; margin-top:2px;`;
+      row.innerHTML = lineHtml;
+      wrap.appendChild(row);
+    });
   }
 
-  wrap.appendChild(qaRow);
   __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
