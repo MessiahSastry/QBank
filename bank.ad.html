@@ -873,19 +873,11 @@ function __qbBuildAiPromptFromQuestionData(data) {
   return __qbGetAiInstruction() + '\n\nQuestion:\n' + qText + (optionsText ? '\n' + optionsText : '');
 }
 
+const __QB_PUBLIC_AI_HELPER_BASE = 'https://messiahsastry.github.io/QBank/bank.ad.html';
+
 function __qbGetAiHelperUrl(questionId) {
   const qid = encodeURIComponent(String(questionId || '').trim());
-
-  try {
-    const href = String(window.location.href || '').split('#')[0];
-    const url = new URL(href);
-    url.searchParams.set('aiq', qid);
-    return url.href;
-  } catch (e) {
-    const path = String(window.location.pathname || '').replace(/\\/g, '/');
-    const normalizedPath = path.startsWith('/') ? path : '/' + path;
-    return 'file://' + normalizedPath + '?aiq=' + qid;
-  }
+  return __QB_PUBLIC_AI_HELPER_BASE + '?aiq=' + qid;
 }
 
 async function __qbOpenAiHelperByQuestionId(questionId) {
