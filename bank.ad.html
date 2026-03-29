@@ -2691,18 +2691,19 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
   <meta charset="UTF-8">
   <title>${safeTitle}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
 
-  <script>
-    window.MathJax = {
-      tex: { inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]], processEscapes: true },
-      svg: { fontCache: "global" },
-      options: {
-        ignoreHtmlClass: 'no-mjx',
-        processHtmlClass: 'mjx-process'
-      }
-    };
-  <\/script>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]], processEscapes: true },
+    svg: { fontCache: "global" },
+    options: {
+      ignoreHtmlClass: 'no-mjx',
+      processHtmlClass: 'mjx-process'
+    }
+  };
+<\/script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"><\/script>
 
   <style>
@@ -3137,7 +3138,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 <body>
   <div id="page-container">
     <div class="toolbar">
-      <button id="preview-print-btn"><i class="fas fa-print"></i> Print / Save PDF</button>
+      <button id="preview-print-btn"><i class="fas fa-file-pdf"></i> Download PDF</button>
 
       <select id="page-select">
         <option value="0">Page 1</option>
@@ -3736,10 +3737,62 @@ if (node.classList.contains('worksheet-flow-block')) {
       settingsModal.style.display = 'none';
     };
 
-    document.getElementById('preview-print-btn').onclick = function(){
-      window.print();
-    };
+    document.getElementById('preview-print-btn').onclick = async function(){
+  const btn = document.getElementById('preview-print-btn');
+  const pagesHostEl = document.getElementById('pages-host');
+  if (!btn || !pagesHostEl) return;
 
+  const oldHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading PDF...';
+
+  const exportWrap = document.createElement('div');
+  exportWrap.style.background = '#ffffff';
+  exportWrap.style.padding = '0';
+  exportWrap.style.margin = '0';
+  exportWrap.style.width = '210mm';
+
+  const exportPages = Array.from(pagesHostEl.querySelectorAll('.a4-page')).map(page => {
+    const clone = page.cloneNode(true);
+    clone.style.margin = '0';
+    clone.style.borderRadius = '0';
+    clone.style.boxShadow = 'none';
+    clone.style.pageBreakAfter = 'always';
+    clone.style.breakAfter = 'page';
+    return clone;
+  });
+
+  exportPages.forEach(p => exportWrap.appendChild(p));
+  document.body.appendChild(exportWrap);
+
+  try {
+    await html2pdf().set({
+      margin: 0,
+      filename: (__TITLE || 'Question_Bank') + '.pdf',
+      enableLinks: true,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      },
+      pagebreak: {
+        mode: ['css', 'legacy']
+      }
+    }).from(exportWrap).save();
+  } catch (err) {
+    alert('PDF export failed: ' + err.message);
+  } finally {
+    exportWrap.remove();
+    btn.disabled = false;
+    btn.innerHTML = oldHtml;
+  }
+};
    pageSelect.addEventListener('change', function(){
   currentPageIndex = Number(this.value || 0);
   updateSliderUIFromPage();
