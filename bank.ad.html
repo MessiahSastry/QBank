@@ -934,47 +934,61 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
             font-family:'Segoe UI', Arial, sans-serif;
           "></textarea>
 
-          <div style="
-            display:flex;
-            gap:12px;
-            flex-wrap:wrap;
-            margin-top:16px;
-          ">
-            <button id="qb-ai-copy-btn" type="button" style="
-              border:none;
-              border-radius:12px;
-              padding:12px 18px;
-              background:#1762a7;
-              color:#fff;
-              font-weight:800;
-              cursor:pointer;
-            ">Copy Prompt</button>
+         <style>
+  @keyframes qbGenieFloat {
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
+  }
+  @keyframes qbGenieGlow {
+    0%   { filter: drop-shadow(0 4px 10px rgba(23,98,167,0.18)); }
+    50%  { filter: drop-shadow(0 8px 18px rgba(15,139,109,0.28)); }
+    100% { filter: drop-shadow(0 4px 10px rgba(23,98,167,0.18)); }
+  }
+</style>
 
-            <button id="qb-ai-open-btn" type="button" style="
-              border:none;
-              border-radius:12px;
-              padding:12px 18px;
-              background:#0f8b6d;
-              color:#fff;
-              font-weight:800;
-              cursor:pointer;
-            ">Open ChatGPT</button>
-          </div>
+<div style="
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  margin-top:16px;
+">
+  <div style="
+    font-size:4.3em;
+    line-height:1;
+    animation:qbGenieFloat 2.2s ease-in-out infinite, qbGenieGlow 2.2s ease-in-out infinite;
+    user-select:none;
+  ">🧞</div>
 
-          <div id="qb-ai-helper-status" style="
-            margin-top:12px;
-            color:#35506b;
-            font-weight:600;
-            line-height:1.5;
-          ">Loading question...</div>
+  <button id="qb-ai-genie-btn" type="button" style="
+    border:none;
+    border-radius:16px;
+    padding:14px 24px;
+    background:linear-gradient(90deg,#1762a7,#0f8b6d);
+    color:#fff;
+    font-weight:800;
+    font-size:1.02em;
+    letter-spacing:0.02em;
+    cursor:pointer;
+    box-shadow:0 8px 20px rgba(15,61,107,0.18);
+  ">Ask SciMentra Genie</button>
+</div>
+
+<div id="qb-ai-helper-status" style="
+  margin-top:12px;
+  color:#35506b;
+  font-weight:600;
+  line-height:1.5;
+  text-align:center;
+">Loading question...</div>
         </div>
       </div>
     </div>
   `;
 
   const textEl = document.getElementById('qb-ai-helper-text');
-  const copyBtn = document.getElementById('qb-ai-copy-btn');
-  const openBtn = document.getElementById('qb-ai-open-btn');
+  const genieBtn = document.getElementById('qb-ai-genie-btn');
   const statusEl = document.getElementById('qb-ai-helper-status');
 
   let promptText = '';
@@ -990,7 +1004,7 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
 
     promptText = __qbBuildAiPromptFromQuestionData(snap.data() || {});
     if (textEl) textEl.value = promptText;
-    if (statusEl) statusEl.textContent = 'Copy the prompt, then open ChatGPT and paste it.';
+    if (statusEl) statusEl.textContent = 'Tap Ask SciMentra Genie to continue.';
   } catch (err) {
     if (statusEl) statusEl.textContent = 'Failed to load question.';
     if (textEl) textEl.value = '';
@@ -1000,29 +1014,23 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
   async function doCopyPrompt() {
     try {
       await navigator.clipboard.writeText(promptText);
-      if (statusEl) statusEl.textContent = 'Prompt copied. Now open ChatGPT and paste it.';
+      if (statusEl) statusEl.textContent = 'Opening SciMentra Genie...';
       return true;
     } catch (e) {
       if (textEl) {
         textEl.focus();
         textEl.select();
       }
-      if (statusEl) statusEl.textContent = 'Auto copy was blocked. The prompt is selected. Copy it manually, then open ChatGPT.';
+      if (statusEl) statusEl.textContent = 'Copy permission was blocked. The prompt is selected. Copy it manually and continue.';
       return false;
     }
   }
 
-  if (copyBtn) {
-    copyBtn.onclick = async function() {
+ if (genieBtn) {
+    genieBtn.onclick = async function() {
       if (!promptText) return;
       await doCopyPrompt();
-    };
-  }
-
-  if (openBtn) {
-    openBtn.onclick = async function() {
-      if (!promptText) return;
-      await doCopyPrompt();
+      if (statusEl) statusEl.textContent = 'Opening SciMentra Genie...';
       window.open('https://chatgpt.com/', '_blank', 'noopener,noreferrer');
     };
   }
