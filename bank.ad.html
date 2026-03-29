@@ -1924,9 +1924,9 @@ qaBottomRow.style.cssText = `
   display:flex;
   align-items:flex-start;
   justify-content:space-between;
-  gap:16px;
-  margin-left:18px;
-  margin-top:6px;
+  gap:12px;
+  margin-left:${__keyQNoWidth + 8}px;
+  margin-top:4px;
   page-break-inside:avoid;
   break-inside:avoid;
 `;
@@ -1939,8 +1939,8 @@ qaTextCol.style.cssText = `
 
 const qaAiCol = document.createElement('div');
 qaAiCol.style.cssText = `
-  flex:0 0 210px;
-  width:210px;
+  flex:0 0 108px;
+  width:108px;
   display:flex;
   justify-content:flex-end;
   align-items:flex-start;
@@ -1957,8 +1957,8 @@ qaBottomRow.appendChild(qaAiCol);
     return row;
   }
 
-  function __appendKeyFlowRow(html, extraCss = '') {
-    wrap.appendChild(__makeKeyFlowRow(html, extraCss));
+   function __appendKeyFlowRow(html, extraCss = '') {
+    qaTextCol.appendChild(__makeKeyFlowRow(html, extraCss));
   }
 
   function __appendKeyHeadingWithFirstLine(labelHtml, firstLineHtml, labelCss = '', firstLineCss = '') {
@@ -1966,7 +1966,7 @@ qaBottomRow.appendChild(qaAiCol);
     pair.style.cssText = 'page-break-inside:auto; break-inside:auto;';
     pair.appendChild(__makeKeyFlowRow(labelHtml, labelCss));
     pair.appendChild(__makeKeyFlowRow(firstLineHtml, firstLineCss));
-    wrap.appendChild(pair);
+    qaTextCol.appendChild(pair);
   }
 
   function __formatAnswerLineHtml(line) {
@@ -1997,16 +1997,15 @@ qaBottomRow.appendChild(qaAiCol);
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
   const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
 
-   wrap.appendChild(qDiv);
+     wrap.appendChild(qDiv);
+  wrap.appendChild(qaBottomRow);
 
   if (options.length) {
     const optDiv = document.createElement('div');
-    optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
+    optDiv.style.cssText = 'color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
     optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
-    wrap.appendChild(optDiv);
+    qaTextCol.appendChild(optDiv);
   }
-
-  wrap.appendChild(qaBottomRow);
 
   if (isPointWise) {
     const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
@@ -2063,68 +2062,49 @@ qaBottomRow.appendChild(qaAiCol);
     }
   }
 
-          const __aiUrl = __qbGetAiHelperUrl(docId);
-  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=4&data=' + encodeURIComponent(__aiUrl);
+                    const __aiUrl = __qbGetAiHelperUrl(docId);
+  const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&data=' + encodeURIComponent(__aiUrl);
   const __aiBox = document.createElement('div');
   __aiBox.style.cssText = `
-    width:210px;
+    width:96px;
     page-break-inside:avoid;
     break-inside:avoid;
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:8px;
-    border:1.4px solid #cfdcf0;
-    border-radius:12px;
+    gap:6px;
+    border:1.2px solid #cfdcf0;
+    border-radius:10px;
     background:#f8fbff;
-    padding:10px 10px 8px 10px;
+    padding:6px;
     box-sizing:border-box;
   `;
 
   __aiBox.innerHTML = `
     <div style="
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
       color:#12416c;
       font-weight:700;
-      font-size:10.2pt;
-      line-height:1.2;
+      font-size:8.6pt;
+      line-height:1.1;
       text-align:center;
-    ">
-      <span style="font-size:1.35em; line-height:1;">🤖</span>
-      <span>Scan QR / Open Link</span>
-    </div>
+    ">Scan QR</div>
 
     <div style="
       display:flex;
       align-items:center;
       justify-content:center;
       background:#ffffff;
-      padding:3px;
-      border-radius:8px;
+      padding:2px;
+      border-radius:6px;
     ">
       <img src="${__qrUrl}" alt="QR" style="
-        width:78px;
-        height:78px;
+        width:56px;
+        height:56px;
         display:block;
         border:none;
         box-shadow:none;
       ">
     </div>
-
-    <div style="
-      width:100%;
-      font-size:8.1pt;
-      line-height:1.25;
-      color:#0f3d6b;
-      text-align:left;
-      word-break:break-all;
-      overflow-wrap:anywhere;
-      border-top:1px solid #d9e6f5;
-      padding-top:6px;
-    ">${__qbEscapeHtml(__aiUrl)}</div>
   `;
 
   qaAiCol.appendChild(__aiBox);
