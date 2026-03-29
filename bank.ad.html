@@ -1919,10 +1919,40 @@ qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/g
 qDiv.appendChild(qNoDiv);
 qDiv.appendChild(qTextDiv);
 
+const qaBottomRow = document.createElement('div');
+qaBottomRow.style.cssText = `
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-left:18px;
+  margin-top:6px;
+  page-break-inside:avoid;
+  break-inside:avoid;
+`;
+
+const qaTextCol = document.createElement('div');
+qaTextCol.style.cssText = `
+  flex:1 1 auto;
+  min-width:0;
+`;
+
+const qaAiCol = document.createElement('div');
+qaAiCol.style.cssText = `
+  flex:0 0 210px;
+  width:210px;
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
+`;
+
+qaBottomRow.appendChild(qaTextCol);
+qaBottomRow.appendChild(qaAiCol);
+
    function __makeKeyFlowRow(html, extraCss = '') {
     const row = document.createElement('div');
     row.style.cssText =
-      'margin-left:18px; color:#111111; line-height:1.45; page-break-inside:auto; break-inside:auto;' + extraCss;
+      'color:#111111; line-height:1.45; page-break-inside:auto; break-inside:auto;' + extraCss;
     row.innerHTML = html;
     return row;
   }
@@ -1967,7 +1997,7 @@ qDiv.appendChild(qTextDiv);
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
   const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
 
-  wrap.appendChild(qDiv);
+   wrap.appendChild(qDiv);
 
   if (options.length) {
     const optDiv = document.createElement('div');
@@ -1975,6 +2005,8 @@ qDiv.appendChild(qTextDiv);
     optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
     wrap.appendChild(optDiv);
   }
+
+  wrap.appendChild(qaBottomRow);
 
   if (isPointWise) {
     const ansLines = ansRaw.split(/\n+/).filter(line => line.trim());
@@ -2031,68 +2063,71 @@ qDiv.appendChild(qTextDiv);
     }
   }
 
-     const __aiUrl = __qbGetAiHelperUrl(docId);
+          const __aiUrl = __qbGetAiHelperUrl(docId);
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=4&data=' + encodeURIComponent(__aiUrl);
-  const __aiBox = document.createElement('a');
-  __aiBox.href = __aiUrl;
-  __aiBox.target = '_blank';
-  __aiBox.rel = 'noopener noreferrer';
+  const __aiBox = document.createElement('div');
   __aiBox.style.cssText = `
-    margin-left:18px;
-    margin-top:10px;
+    width:210px;
     page-break-inside:avoid;
     break-inside:avoid;
-    display:inline-flex;
+    display:flex;
+    flex-direction:column;
     align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    width:fit-content;
-    min-width:300px;
-    max-width:100%;
+    gap:8px;
     border:1.4px solid #cfdcf0;
     border-radius:12px;
     background:#f8fbff;
-    padding:8px 12px;
+    padding:10px 10px 8px 10px;
     box-sizing:border-box;
-    text-decoration:none;
-    cursor:pointer;
   `;
 
   __aiBox.innerHTML = `
-    <span style="
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      color:#12416c;
-      font-weight:700;
-      font-size:10.8pt;
-      line-height:1.2;
-      text-decoration:none;
-    ">
-      <span style="font-size:1.55em; line-height:1;">🤖</span>
-      <span>Click Me for More</span>
-    </span>
-
-    <span style="
-      display:inline-flex;
+    <div style="
+      display:flex;
       align-items:center;
       justify-content:center;
-      flex:0 0 auto;
+      gap:6px;
+      color:#12416c;
+      font-weight:700;
+      font-size:10.2pt;
+      line-height:1.2;
+      text-align:center;
+    ">
+      <span style="font-size:1.35em; line-height:1;">🤖</span>
+      <span>Scan QR / Open Link</span>
+    </div>
+
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
       background:#ffffff;
-      padding:2px;
-      border-radius:6px;
+      padding:3px;
+      border-radius:8px;
     ">
       <img src="${__qrUrl}" alt="QR" style="
-        width:64px;
-        height:64px;
+        width:78px;
+        height:78px;
         display:block;
         border:none;
         box-shadow:none;
       ">
-    </span>
+    </div>
+
+    <div style="
+      width:100%;
+      font-size:8.1pt;
+      line-height:1.25;
+      color:#0f3d6b;
+      text-align:left;
+      word-break:break-all;
+      overflow-wrap:anywhere;
+      border-top:1px solid #d9e6f5;
+      padding-top:6px;
+    ">${__qbEscapeHtml(__aiUrl)}</div>
   `;
 
-  wrap.appendChild(__aiBox);
+  qaAiCol.appendChild(__aiBox);
   __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
