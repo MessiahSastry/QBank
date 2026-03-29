@@ -1844,12 +1844,14 @@ function __qbFormatExplanationHTML(text, subject) {
     .join('');
 }
 
+/* REPLACE BLOCK */
 function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const clone = item.cloneNode(true);
   const qTextEl = clone.querySelector('.question-text');
 
- let questionLine = '';
+  let questionLine = '';
   let options = [];
+
   if (qTextEl) {
     let html = qTextEl.innerHTML.replace(/<img[^>]*>/gi, '');
     let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
@@ -1889,7 +1891,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   let explanationText = '';
 
   if (source) {
-        answerText =
+    answerText =
       __qbGetWorkbookAnswer(source) ||
       source.correctAnswer ||
       source.correct_option ||
@@ -1909,90 +1911,28 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Ans\s*:\s*/i, '')
     .trim();
 
-    explanationText = String(explanationText || '')
+  explanationText = String(explanationText || '')
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
 
-   const subjectText = String((source && source.subject) || '').trim();
-  const __keyQNoWidth = __qbQuestionNumberWidth('Q' + qNum);
+  const qNoLabel = 'Q' + qNum + '.';
+  const qNoWidth = __qbQuestionNumberWidth(qNoLabel);
+  const indentLeft = qNoWidth + 8;
 
-const wrap = document.createElement('div');
-wrap.className = 'page-flow-block';
-wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
-  const qDiv = document.createElement('div');
-qDiv.style.cssText = 'margin-bottom:6px; line-height:1.6; display:flex; align-items:flex-start; width:100%;';
+  const wrap = document.createElement('div');
+  wrap.className = 'page-flow-block';
+  wrap.style.cssText = 'margin-bottom:12px; page-break-inside:auto; break-inside:auto; color:#000;';
 
-const qNoDiv = document.createElement('div');
-qNoDiv.style.cssText = `min-width:${__keyQNoWidth}px; max-width:${__keyQNoWidth}px; flex:0 0 ${__keyQNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B;`;
-qNoDiv.textContent = 'Q' + qNum + '.';
+  function __formatIndentedLineHtml(line) {
+    const raw = String(line || '').trim();
 
-const qTextDiv = document.createElement('div');
-qTextDiv.style.cssText = 'flex:1; min-width:0; color:#5A2E1B; font-weight:400;';
-qTextDiv.style.whiteSpace = 'pre-wrap';
-qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ');
-
-qDiv.appendChild(qNoDiv);
-qDiv.appendChild(qTextDiv);
-
-const qaBottomRow = document.createElement('div');
-qaBottomRow.style.cssText = `
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  margin-left:${__keyQNoWidth + 8}px;
-  margin-top:4px;
-  page-break-inside:avoid;
-  break-inside:avoid;
-`;
-
-const qaTextCol = document.createElement('div');
-qaTextCol.style.cssText = `
-  flex:1 1 auto;
-  min-width:0;
-`;
-
-const qaAiCol = document.createElement('div');
-qaAiCol.style.cssText = `
-  flex:0 0 78px;
-  width:78px;
-  display:flex;
-  justify-content:flex-start;
-  align-items:flex-start;
-  margin-left:8px;
-`;
-
-qaBottomRow.appendChild(qaTextCol);
-qaBottomRow.appendChild(qaAiCol);
-
-   function __makeKeyFlowRow(html, extraCss = '') {
-    const row = document.createElement('div');
-    row.style.cssText =
-      'color:#111111; line-height:1.45; page-break-inside:auto; break-inside:auto;' + extraCss;
-    row.innerHTML = html;
-    return row;
-  }
-
-   function __appendKeyFlowRow(html, extraCss = '') {
-    qaTextCol.appendChild(__makeKeyFlowRow(html, extraCss));
-  }
-
-  function __appendKeyHeadingWithFirstLine(labelHtml, firstLineHtml, labelCss = '', firstLineCss = '') {
-    const pair = document.createElement('div');
-    pair.style.cssText = 'page-break-inside:auto; break-inside:auto;';
-    pair.appendChild(__makeKeyFlowRow(labelHtml, labelCss));
-    pair.appendChild(__makeKeyFlowRow(firstLineHtml, firstLineCss));
-    qaTextCol.appendChild(pair);
-  }
-
-  function __formatAnswerLineHtml(line) {
-    const numberedMatch = line.match(/^\s*(\d+[\.\)])\s+(.*)$/);
-    const bulletMatch = line.match(/^\s*([-•])\s+(.*)$/);
+    const numberedMatch = raw.match(/^\s*(\d+[\.\)])\s+(.*)$/);
+    const bulletMatch = raw.match(/^\s*([•\-])\s+(.*)$/);
 
     if (numberedMatch) {
       return `
-        <div style="display:flex;align-items:flex-start;">
-          <span style="flex:0 0 26px;max-width:26px;">${numberedMatch[1]}</span>
+        <div style="display:flex;align-items:flex-start;width:100%;">
+          <span style="flex:0 0 24px;max-width:24px;">${numberedMatch[1]}</span>
           <span style="flex:1;min-width:0;">${numberedMatch[2]}</span>
         </div>
       `;
@@ -2000,153 +1940,120 @@ qaBottomRow.appendChild(qaAiCol);
 
     if (bulletMatch) {
       return `
-        <div style="display:flex;align-items:flex-start;">
+        <div style="display:flex;align-items:flex-start;width:100%;">
           <span style="flex:0 0 18px;max-width:18px;">${bulletMatch[1]}</span>
           <span style="flex:1;min-width:0;">${bulletMatch[2]}</span>
         </div>
       `;
     }
 
-    return `<div>${line}</div>`;
+    return `<div>${raw}</div>`;
   }
+
+  const qRow = document.createElement('div');
+  qRow.style.cssText = 'display:flex; align-items:flex-start; width:100%; margin-bottom:4px;';
+
+  const qNoDiv = document.createElement('div');
+  qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B; line-height:1.45;`;
+  qNoDiv.textContent = qNoLabel;
+
+  const qTextDiv = document.createElement('div');
+  qTextDiv.style.cssText = 'flex:1; min-width:0; color:#5A2E1B; font-weight:400; line-height:1.45; white-space:pre-wrap;';
+  qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
+
+  qRow.appendChild(qNoDiv);
+  qRow.appendChild(qTextDiv);
+  wrap.appendChild(qRow);
+
+  if (options.length) {
+    const optDiv = document.createElement('div');
+    optDiv.style.cssText = `margin-left:${indentLeft}px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;`;
+    optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
+    wrap.appendChild(optDiv);
+  }
+
+  const qaRow = document.createElement('div');
+  qaRow.style.cssText = `display:flex; align-items:flex-start; justify-content:flex-start; gap:10px; margin-left:${indentLeft}px; margin-top:2px;`;
+
+  const qaTextCol = document.createElement('div');
+  qaTextCol.style.cssText = 'flex:1 1 auto; min-width:0; color:#111111; line-height:1.45;';
+
+  const qaQrCol = document.createElement('div');
+  qaQrCol.style.cssText = 'flex:0 0 62px; width:62px; display:flex; align-items:flex-start; justify-content:flex-start;';
 
   const ansRaw = (answerText && String(answerText).trim()) ? String(answerText).trim() : 'No answer available.';
-const isPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
-const answerLines = ansRaw.split(/\n+/).filter(line => line.trim());
+  const answerLines = ansRaw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const answerIsPointWise = /\n/.test(ansRaw) || /^\s*(\d+[\.\)]|[-•])\s+/m.test(ansRaw);
 
-wrap.appendChild(qDiv);
+  if (answerIsPointWise) {
+    const ansHead = document.createElement('div');
+    ansHead.style.cssText = 'margin-bottom:2px;';
+    ansHead.innerHTML = `<span style="color:#7A2230;font-weight:700;">Answer:</span>`;
+    qaTextCol.appendChild(ansHead);
 
-if (options.length) {
-  const optDiv = document.createElement('div');
-  optDiv.style.cssText = 'margin-left:32px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;';
-  optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
-  wrap.appendChild(optDiv);
-}
-
-/* ===== Answer + Explanation heading row with QR immediately beside it ===== */
-qaBottomRow.style.cssText = `
-  display:flex;
-  align-items:flex-start;
-  justify-content:flex-start;
-  gap:8px;
-  margin-left:18px;
-  margin-top:6px;
-  page-break-inside:avoid;
-  break-inside:avoid;
-`;
-
-qaTextCol.style.cssText = `
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  justify-content:flex-start;
-  flex:0 1 auto;
-  min-width:0;
-`;
-
-qaAiCol.style.cssText = `
-  flex:0 0 82px;
-  width:82px;
-  display:flex;
-  justify-content:flex-start;
-  align-items:flex-start;
-`;
-
-qaTextCol.innerHTML = '';
-qaAiCol.innerHTML = '';
-
-if (isPointWise) {
-  const ansHead = document.createElement('div');
-  ansHead.style.cssText = 'color:#111111; line-height:1.45; margin-top:0;';
-  ansHead.innerHTML = '<span style="color:#7A2230;font-weight:700;">Answer:</span>';
-  qaTextCol.appendChild(ansHead);
-
-  if (answerLines.length) {
-    const firstAns = document.createElement('div');
-    firstAns.style.cssText = 'color:#111111; line-height:1.45; padding-left:18px; margin-top:2px;';
-    firstAns.innerHTML = __formatAnswerLineHtml(answerLines[0]);
-    qaTextCol.appendChild(firstAns);
+    answerLines.forEach(line => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin:0 0 2px 18px;';
+      row.innerHTML = __formatIndentedLineHtml(line);
+      qaTextCol.appendChild(row);
+    });
+  } else {
+    const ansLine = document.createElement('div');
+    ansLine.style.cssText = 'margin-bottom:4px;';
+    ansLine.innerHTML = `<span style="color:#7A2230;font-weight:700;">Answer:</span> <span style="color:#111111;">${ansRaw}</span>`;
+    qaTextCol.appendChild(ansLine);
   }
-} else {
-  const ansHead = document.createElement('div');
-  ansHead.style.cssText = 'color:#111111; line-height:1.45; margin-top:0;';
-  ansHead.innerHTML =
-    '<span style="color:#7A2230;font-weight:700;">Answer:</span> ' +
-    '<span style="color:#111111;">' + ansRaw + '</span>';
-  qaTextCol.appendChild(ansHead);
-}
 
-if (explanationText && String(explanationText).trim()) {
-  const expHead = document.createElement('div');
-  expHead.style.cssText = 'color:#111111; line-height:1.45; margin-top:6px;';
-  expHead.innerHTML = '<span style="color:#7A2230;font-weight:700;">Explanation:</span>';
-  qaTextCol.appendChild(expHead);
-}
+  if (explanationText) {
+    const expHead = document.createElement('div');
+    expHead.style.cssText = 'margin-top:2px; margin-bottom:2px;';
+    expHead.innerHTML = `<span style="color:#7A2230;font-weight:700;">Explanation:</span>`;
+    qaTextCol.appendChild(expHead);
 
-const __aiUrl = __qbGetAiHelperUrl(docId);
-const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
+    const expLines = String(explanationText)
+      .replace(/\r/g, '')
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean);
 
-const __aiBox = document.createElement('div');
-__aiBox.style.cssText = `
-  width:58px;
-  page-break-inside:avoid;
-  break-inside:avoid;
-  display:flex;
-  align-items:flex-start;
-  justify-content:flex-start;
-  padding:0;
-  margin:0;
-  box-sizing:border-box;
-  background:transparent;
-  border:none;
-  border-radius:0;
-`;
+    expLines.forEach(line => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin:0 0 2px 18px;';
+      row.innerHTML = __formatIndentedLineHtml(line);
+      qaTextCol.appendChild(row);
+    });
+  }
 
-__aiBox.innerHTML = `
-  <img src="${__qrUrl}" alt="QR" style="
-    width:58px;
-    height:58px;
-    display:block;
-    border:none;
-    box-shadow:none;
-    margin:0;
-    padding:0;
-    border-radius:0;
-    background:transparent;
-  ">
-`;
+  if (docId) {
+    const __aiUrl = __qbGetAiHelperUrl(docId);
+    const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
 
-qaAiCol.appendChild(__aiBox);
-wrap.appendChild(qaBottomRow);
+    const qrBox = document.createElement('div');
+    qrBox.style.cssText = 'width:58px; display:flex; align-items:flex-start; justify-content:flex-start;';
 
-/* ===== remaining answer lines full width below ===== */
-if (isPointWise && answerLines.length > 1) {
-  answerLines.slice(1).forEach(line => {
-    const row = document.createElement('div');
-    row.style.cssText = 'color:#111111; line-height:1.45; padding-left:18px; margin-top:2px;';
-    row.innerHTML = __formatAnswerLineHtml(line);
-    wrap.appendChild(row);
-  });
-}
+    qrBox.innerHTML = `
+      <img src="${__qrUrl}" alt="QR" style="
+        width:58px;
+        height:58px;
+        display:block;
+        border:none;
+        box-shadow:none;
+        margin:0;
+        padding:0;
+        border-radius:0;
+        background:transparent;
+      ">
+    `;
 
-/* ===== explanation points full width below ===== */
-if (explanationText && String(explanationText).trim()) {
-  const expTemp = document.createElement('div');
-  expTemp.innerHTML = __qbFormatExplanationHTML(explanationText, subjectText);
+    qaQrCol.appendChild(qrBox);
+    qaRow.appendChild(qaTextCol);
+    qaRow.appendChild(qaQrCol);
+  } else {
+    qaRow.appendChild(qaTextCol);
+  }
 
-  const expLines = Array.from(expTemp.children).length
-    ? Array.from(expTemp.children).map(el => el.innerHTML)
-    : [expTemp.innerHTML].filter(Boolean);
-
-  expLines.forEach(lineHtml => {
-    const row = document.createElement('div');
-    row.style.cssText = 'color:#111111; line-height:1.45; margin-top:2px;';
-    row.innerHTML = lineHtml;
-    wrap.appendChild(row);
-  });
-}
-
-__parent.appendChild(wrap);
+  wrap.appendChild(qaRow);
+  __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
   // === RENDER WORKSHEET ===
