@@ -3803,7 +3803,7 @@ if (node.classList.contains('worksheet-flow-block')) {
       clearTimeout(repaginateTimer);
       repaginateTimer = setTimeout(async () => {
         await paginatePreview();
-      }, 120);
+     }, 250);
     }
 
     floatingBtn.onclick = function(){
@@ -3827,9 +3827,19 @@ if (node.classList.contains('worksheet-flow-block')) {
   }
 });
 
-    gapSlider.addEventListener('input', queueRepaginate);
-    marginSlider.addEventListener('input', queueRepaginate);
-    lineSlider.addEventListener('input', queueRepaginate);
+    function updateSliderLabelsOnly(){
+  gapValue.textContent = gapSlider.value + 'px';
+  marginValue.textContent = Number(marginSlider.value).toFixed(1) + 'cm';
+  lineValue.textContent = lineSlider.value;
+}
+
+gapSlider.addEventListener('input', updateSliderLabelsOnly);
+marginSlider.addEventListener('input', updateSliderLabelsOnly);
+lineSlider.addEventListener('input', updateSliderLabelsOnly);
+
+gapSlider.addEventListener('change', queueRepaginate);
+marginSlider.addEventListener('change', queueRepaginate);
+lineSlider.addEventListener('change', queueRepaginate);
 
     window.addEventListener('DOMContentLoaded', async () => {
       if (window.MathJax?.startup?.promise) {
