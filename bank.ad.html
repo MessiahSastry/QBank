@@ -3795,7 +3795,7 @@ if (node.classList.contains('worksheet-flow-block')) {
     };
 
    document.getElementById('preview-print-btn').onclick = function(){
-  exportPagesAsPdf();
+  window.print();
 };
    pageSelect.addEventListener('change', function(){
   currentPageIndex = Number(this.value || 0);
