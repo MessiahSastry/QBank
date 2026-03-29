@@ -1939,11 +1939,12 @@ qaTextCol.style.cssText = `
 
 const qaAiCol = document.createElement('div');
 qaAiCol.style.cssText = `
-  flex:0 0 108px;
-  width:108px;
+  flex:0 0 78px;
+  width:78px;
   display:flex;
-  justify-content:flex-end;
+  justify-content:flex-start;
   align-items:flex-start;
+  margin-left:8px;
 `;
 
 qaBottomRow.appendChild(qaTextCol);
@@ -2072,45 +2073,32 @@ const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin
 
 const __aiBox = document.createElement('div');
 __aiBox.style.cssText = `
-  width:82px;
+  width:58px;
   page-break-inside:avoid;
   break-inside:avoid;
   display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-  border:1.2px solid #cfdcf0;
-  border-radius:10px;
-  background:#f8fbff;
-  padding:6px 6px 5px 6px;
+  align-items:flex-start;
+  justify-content:flex-start;
+  padding:0;
+  margin:0;
   box-sizing:border-box;
+  background:transparent;
+  border:none;
+  border-radius:0;
 `;
 
 __aiBox.innerHTML = `
-  <div style="
-    color:#12416c;
-    font-weight:700;
-    font-size:8.8pt;
-    line-height:1.1;
-    text-align:center;
-  ">Scan QR</div>
-
-  <div style="
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:#ffffff;
-    padding:2px;
-    border-radius:6px;
+  <img src="${__qrUrl}" alt="QR" style="
+    width:58px;
+    height:58px;
+    display:block;
+    border:none;
+    box-shadow:none;
+    margin:0;
+    padding:0;
+    border-radius:0;
+    background:transparent;
   ">
-    <img src="${__qrUrl}" alt="QR" style="
-      width:58px;
-      height:58px;
-      display:block;
-      border:none;
-      box-shadow:none;
-    ">
-  </div>
 `;
 
 qaAiCol.appendChild(__aiBox);
