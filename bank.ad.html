@@ -3355,7 +3355,7 @@ function normalizeBlockSpacing(root, settings){
     root.querySelectorAll('.question-container, .page-flow-block')
   );
 
-  qBlocks.forEach(div => {
+  qBlocks.forEach(function(div) {
     div.style.marginBottom = settings.questionGap + 'px';
     div.style.lineHeight = settings.lineHeight;
   });
@@ -3364,13 +3364,7 @@ function normalizeBlockSpacing(root, settings){
     qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
   }
 
-  root.querySelectorAll(`
-    .question-text,
-    .question-body,
-    .page-flow-block,
-    .page-flow-block div,
-    .page-flow-block span
-  `).forEach(el => {
+  root.querySelectorAll('.question-text, .question-body, .page-flow-block, .page-flow-block div, .page-flow-block span').forEach(function(el) {
     if (!el.closest('[data-qr-link]')) {
       el.style.lineHeight = settings.lineHeight;
     }
