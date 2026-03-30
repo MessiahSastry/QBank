@@ -866,26 +866,36 @@ function shuffleArray(arr) {
 }
 function shuffleMCQQuestion(questionObj) {
     if (!questionObj.options || !questionObj.options.length) return questionObj;
+
     let { options, answer } = questionObj;
     let correctIndices = [];
-    if (typeof answer === 'string') {
-      const ansMatches = String(answer).toUpperCase().match(/[A-D]/g);
-      if (ansMatches) correctIndices = ansMatches.map(l => "ABCD".indexOf(l));
-    } else if (Array.isArray(answer)) {
-      if (answer.length && typeof answer[0] === 'string') {
-        correctIndices = answer
-          .map(l => "ABCD".indexOf(String(l).toUpperCase()))
-          .filter(i => i >= 0);
-      } else {
-        correctIndices = answer;
-      }
+
+    if (Array.isArray(answer)) {
+        if (answer.length && typeof answer[0] === 'number') {
+            correctIndices = answer.filter(i => Number.isInteger(i) && i >= 0 && i < 4);
+        } else {
+            correctIndices = extractAnswerLetters(answer)
+                .map(l => "ABCD".indexOf(l))
+                .filter(i => i >= 0);
+        }
+    } else {
+        correctIndices = extractAnswerLetters(answer)
+            .map(l => "ABCD".indexOf(l))
+            .filter(i => i >= 0);
     }
+
     const optPairs = options.map((opt, idx) => ({ opt, idx }));
     shuffleArray(optPairs);
+
     const newOptions = optPairs.map(p => p.opt);
-    const newCorrectIndices = optPairs.map((p, newIdx) => (correctIndices.includes(p.idx) ? newIdx : null)).filter(x => x !== null);
-    const ansStr = "Ans: " + newCorrectIndices.map(i => "ABCD"[i] + ")").join(", ");
-    return { ...questionObj, options: newOptions, answer: ansStr };
+    const newCorrectIndices = [];
+
+    optPairs.forEach((p, newIdx) => {
+        if (correctIndices.includes(p.idx)) newCorrectIndices.push(newIdx);
+    });
+
+    const ansLetters = Array.from(new Set(newCorrectIndices.map(i => "ABCD"[i])));
+    return { ...questionObj, options: newOptions, answer: ansLetters.join(',') };
 }
 function splitCounts(total, percents) {
     let result = percents.map(p => Math.floor(total * p / 100));
@@ -1058,7 +1068,7 @@ function allocateSequentiallyAcrossSections(subjectsData, pool, { shuffleQuestio
               answer: outAnswerLetters
             });
             outOptions = shuffled.options || cleanOpts;
-            outAnswerLetters = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []);
+            outAnswerLetters = extractAnswerLetters(shuffled.answer);
           }
 
           const letterAns = (outAnswerLetters || []).join(',');
@@ -1137,12 +1147,46 @@ function normalizeChoice(s) {
   return t;
 }
 function extractAnswerLetters(ans) {
-  if (!ans) return [];
-  if (Array.isArray(ans)) {
-    return ans.map(x => String(x)).map(s => s.toUpperCase()).filter(s => /^[ABCD]$/.test(s));
+  function parseLetters(raw) {
+    let s = String(raw || '').trim().toUpperCase();
+    if (!s) return [];
+
+    const named = s.match(/\b(?:ANS?|ANSWER)\s*[:\-]?\s*(.+)$/);
+    if (named) s = named[1].trim();
+
+    if (!/^(?:[A-D][\)\.]?)(?:\s*,\s*[A-D][\)\.]?)*$/.test(s)) return [];
+
+    const letters = s.match(/[A-D]/g) || [];
+    const out = [];
+    const seen = new Set();
+
+    for (const ch of letters) {
+      if (!seen.has(ch)) {
+        seen.add(ch);
+        out.push(ch);
+      }
+    }
+    return out;
   }
-  const m = String(ans).toUpperCase().match(/[A-D]/g);
-  return m ? m : [];
+
+  if (ans == null) return [];
+
+  if (Array.isArray(ans)) {
+    const out = [];
+    const seen = new Set();
+
+    for (const item of ans) {
+      for (const ch of parseLetters(item)) {
+        if (!seen.has(ch)) {
+          seen.add(ch);
+          out.push(ch);
+        }
+      }
+    }
+    return out;
+  }
+
+  return parseLetters(ans);
 }
 function normalizeMcqType(s) {
   const t = String(s || '').trim().toLowerCase();
@@ -1163,15 +1207,16 @@ function inferMcqType(d) {
     norm === 'Descriptive'
   ) return norm;
 
-  const letters = String(
+  const answerValue =
     d?.parsedAnswer ||
     d?.answer ||
     d?.parsedAns ||
     d?.correctAnswer ||
     d?.correct_option ||
     d?.correctOption ||
-    ''
-  ).toUpperCase().match(/[A-D]/g) || [];
+    '';
+
+  const letters = extractAnswerLetters(answerValue);
 
   if (letters.length > 1) return 'MCQ (Multiple)';
   if (Array.isArray(d?.options) && d.options.length === 4) return 'MCQ (Single)';
@@ -2081,9 +2126,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                     answer: answerLetters || rawAnswer
                 });
 
-                const letterAns = Array.from(
-                    new Set(String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || [])
-                ).join(',');
+               const letterAns = extractAnswerLetters(shuffled.answer).join(',');
 
                 return {
                     number: 0,
