@@ -832,10 +832,24 @@ function buildAnswerKeyDoc(examData) {
       subject: subjectBlock.subject || '',
       sections: (subjectBlock.sections || []).map(section => ({
         label: section.label || section.name || 'Section',
+        name: section.name || '',
+        type: section.type || '',
+        instructions: section.instructions || '',
+        numQuestions: section.numQuestions || 0,
+        attemptAny: section.attemptAny || 0,
+        numPairs: section.numPairs || 0,
+        marksPerQuestion: section.marksPerQuestion || 0,
         questions: (section.questions || []).map((q, idx) => ({
           number: q.number || (idx + 1),
+          question: q.question || q.text || '',
+          text: q.text || '',
+          html: q.html || q.renderedHTML || q.finalHTML || q.formattedHTML || '',
+          options: Array.isArray(q.options) ? q.options : [],
+          image: q.image || '',
           answer: q.answer || '',
-          explanation: q.explanation || ''
+          explanation: q.explanation || '',
+          questionType: q.questionType || q.type || '',
+          marks: q.marks || section.marksPerQuestion || ''
         }))
       }))
     }))
@@ -922,6 +936,170 @@ if (rawMsg.includes('admin login required')) {
     qrBox.innerHTML = `<div style="font-size:11px;color:#b00;text-align:center;">${msg}</div>`;
   }
 }
+function cleanAnswerKeyBlock(str) {
+  return String(str || '')
+    .replace(/\r/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<div[^>]*>/gi, '\n')
+    .replace(/<\/div>/gi, '')
+    .replace(/<li[^>]*>/gi, '\n')
+    .replace(/<\/li>/gi, '')
+    .replace(/<ol[^>]*>|<ul[^>]*>|<\/ol>|<\/ul>/gi, '')
+    .trim();
+}
+
+function getAnswerKeySectionInstruction(section) {
+  if (section.instructions) return section.instructions;
+
+  if (section.type === 'all') {
+    return `Answer all ${section.numQuestions || 0} questions`;
+  }
+  if (section.type === 'any') {
+    return `Answer any ${section.attemptAny || section.numQuestions || 0} questions`;
+  }
+  if (section.type === 'internal') {
+    return `Answer all ${section.numPairs || 0} pairs`;
+  }
+  return '';
+}
+
+function getAnswerKeySectionMarks(section) {
+  if (section.type === 'all') {
+    return `${section.numQuestions || 0} x ${section.marksPerQuestion || 0} = ${(section.numQuestions || 0) * (section.marksPerQuestion || 0)} Marks`;
+  }
+  if (section.type === 'any') {
+    const n = section.attemptAny || section.numQuestions || 0;
+    return `${n} x ${section.marksPerQuestion || 0} = ${n * (section.marksPerQuestion || 0)} Marks`;
+  }
+  if (section.type === 'internal') {
+    return `${section.numPairs || 0} x ${section.marksPerQuestion || 0} = ${(section.numPairs || 0) * (section.marksPerQuestion || 0)} Marks`;
+  }
+  return '';
+}
+
+function formatAnswerKeyQuestionHtml(q) {
+  let raw = q.html || q.question || q.text || '';
+
+  if (/\bpair-a\b/.test(raw) && /\bpair-b\b/.test(raw)) {
+    return forceOrAB(raw);
+  }
+
+  raw = removeMetaLines(removeMetaTags(removeMetaPrefix(String(raw))))
+    .replace(/<img[^>]*>/gi, '')
+    .trim();
+
+  if (Array.isArray(q.options) && q.options.length) {
+    raw = raw.replace(/\s*A\).*/gis, '').trim();
+  }
+
+  raw = raw
+    .replace(/<\/p>/gi, '<br>')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<div[^>]*>/gi, '<br>')
+    .replace(/<\/div>/gi, '')
+    .replace(/\n/g, '<br>');
+
+  return autoLatexAll(raw);
+}
+
+function getAnswerKeyOptionLines(q) {
+  if (!Array.isArray(q.options) || !q.options.length) return [];
+  return q.options.map((opt, idx) => {
+    const clean = stripLeadingLabel(String(opt || '').trim());
+    return `${String.fromCharCode(65 + idx)}) ${autoLatexAll(clean)}`;
+  });
+}
+
+function formatAnswerKeyAnswerHtml(answer) {
+  const ans = String(answer || '').trim();
+  return ans ? autoLatexAll(ans) : '';
+}
+
+function formatAnswerKeyExplanationHtml(explanation, answerValue) {
+  const text = cleanAnswerKeyBlock(explanation);
+  if (!text) return '';
+
+  const lines = text
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(line => line
+      .replace(/^Explanation\s*[:.-]?\s*/i, '')
+      .replace(/^Step\s*\d+\s*[:.-]\s*/i, '')
+      .trim()
+    )
+    .filter(Boolean)
+    .filter(line => {
+      if (!answerValue) return true;
+      return !/^(?:final\s*)?answer\s*[:.-]/i.test(line);
+    });
+
+  if (!lines.length) return '';
+
+  return lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('');
+}
+
+function buildAnswerKeyQuestionHtml(q) {
+  const qNo = String(q.number || '').replace(/\.$/, '');
+  const questionHTML = formatAnswerKeyQuestionHtml(q);
+  const optionLines = getAnswerKeyOptionLines(q);
+  const optionsData = encodeURIComponent(JSON.stringify(optionLines));
+  const answerHTML = formatAnswerKeyAnswerHtml(q.answer);
+  const explanationHTML = formatAnswerKeyExplanationHtml(q.explanation, q.answer);
+  const imageHTML = q.image
+    ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image"></div>`
+    : '';
+
+  return `
+    <div class="question-container" style="margin-bottom:16px;">
+      <div class="question-number">${qNo ? qNo + '.' : ''}</div>
+      <div class="question-body">
+        <div class="question-text" style="font-size:1.15em;">${questionHTML}</div>
+        ${imageHTML}
+        ${optionLines.length ? `<div class="options-block" data-options="${optionsData}"></div>` : ''}
+        ${answerHTML ? `<div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Answer: <span style="color:#111111;font-weight:700;">${answerHTML}</span></div>` : ''}
+        ${explanationHTML ? `<div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Explanation:</div><div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">${explanationHTML}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function buildAnswerKeySectionHtml(section) {
+  const heading = escapeHtml(section.label || section.name || 'Section');
+  const instruction = escapeHtml(getAnswerKeySectionInstruction(section));
+  const marksText = escapeHtml(getAnswerKeySectionMarks(section));
+
+  let html = `
+    <div class="section-block" style="margin-bottom:6px;">
+      <div style="text-align:center;font-weight:bold;font-size:1.17em;margin-bottom:2px;color:#7A2230;">
+        ${heading}
+      </div>
+      ${
+        (instruction || marksText)
+          ? `
+          <div style="
+            background:#fff;color:#111;border-radius:18px;border:2px solid #111;
+            font-weight:bold;font-size:1.12em;padding:5px 26px 5px 18px;margin-bottom:10px;
+            display:flex;align-items:center;justify-content:space-between;">
+            <span style="flex:1;text-align:left;">${instruction}</span>
+            <span style="flex:0 0 auto;text-align:right;margin-left:30px;">${marksText}</span>
+          </div>
+          `
+          : ''
+      }
+    </div>
+  `;
+
+  (section.questions || []).forEach(q => {
+    html += buildAnswerKeyQuestionHtml(q);
+  });
+
+  return html;
+}
+
 async function renderAnswerKeyPageFromUrl() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('mode') !== 'answerkey') return false;
@@ -943,38 +1121,71 @@ async function renderAnswerKeyPageFromUrl() {
     }
 
     const data = snap.data() || {};
-    let html = `
-      <div style="max-width:900px;margin:20px auto;background:#fff;padding:24px;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,0.08);font-family:'Times New Roman', Times, serif;">
-        <div style="text-align:center;font-size:2em;font-weight:bold;color:#7A2230;">${escapeHtml(data.schoolName || 'SciMentra')}</div>
-        <div style="text-align:center;font-size:1.1em;font-weight:700;color:#163A63;margin-top:4px;">${escapeHtml(data.examName || '')} - Answer Key</div>
-        <div style="text-align:center;color:#444;margin-top:6px;">${escapeHtml(data.className || '')}${data.date ? ' | ' + escapeHtml(data.date) : ''}</div>
-    `;
+    const subjects = data.subjects || [];
+    const topSubject = subjects.length === 1
+      ? (subjects[0]?.subject || '')
+      : (subjects.length > 1 ? 'MULTI SUBJECT' : '');
 
-    (data.subjects || []).forEach(subjectBlock => {
-      if ((data.subjects || []).length > 1) {
-        html += `<div style="margin-top:22px;text-align:center;font-size:1.18em;font-weight:700;color:#7A2230;">${escapeHtml(subjectBlock.subject || '')}</div>`;
+    let contentHTML = '';
+    subjects.forEach(subjectBlock => {
+      if (subjects.length > 1) {
+        contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${escapeHtml(subjectBlock.subject || '')}</div>`;
       }
-
       (subjectBlock.sections || []).forEach(section => {
-        html += `<div style="margin-top:16px;font-size:1.05em;font-weight:700;color:#163A63;">${escapeHtml(section.label || 'Section')}</div>`;
-
-        (section.questions || []).forEach(q => {
-          html += `
-            <div style="border:1px solid #d8e4f0;border-radius:10px;padding:10px 12px;margin-top:10px;">
-              <div style="font-weight:700;color:#163A63;">${escapeHtml(q.number)}. Answer:</div>
-              <div style="margin-top:4px;line-height:1.5;">${q.answer || ''}</div>
-              ${q.explanation ? `<div style="margin-top:8px;"><span style="font-weight:700;color:#163A63;">Explanation:</span><div style="margin-top:4px;line-height:1.5;">${q.explanation}</div></div>` : ''}
-            </div>
-          `;
-        });
+        contentHTML += buildAnswerKeySectionHtml(section);
       });
     });
 
-    html += `</div>`;
-    document.body.innerHTML = html;
+    document.body.innerHTML = `
+      <div id="page-container">
+        <div id="print-preview" class="print-preview">
+          <div class="a4-page">
+            <div class="heading-row">
+              <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
+              <div class="school-headings">
+                <div class="school-title school-title-themed">${escapeHtml(data.schoolName || 'SciMentra')}</div>
+                <div class="subtitle">IIT & NEET FOUNDATION</div>
+                <div class="exam-title">${escapeHtml(data.examName || '')}</div>
+              </div>
+              <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
+            </div>
+
+            <div class="details-rect">
+              <div class="rect-row">
+                <span class="rect-label">Class: ${escapeHtml(data.className || '')}</span>
+                <span class="rect-subject">
+                  <div>${escapeHtml(String(topSubject || '').toUpperCase())}</div>
+                  <div style="font-size:0.64em;margin-top:3px;color:#7A2230;">ANSWER KEY</div>
+                </span>
+                <span class="rect-label">Date: ${escapeHtml(formatDate(data.date) || '')}</span>
+              </div>
+              <div class="rect-row">
+                <span class="rect-label">Time: ${escapeHtml(data.paperType ? formatPaperTypeLine(data.paperType) : '')}</span>
+                <span style="flex:1;text-align:center;font-size:1.18em;font-weight:600;color:#163A63;">
+                  ${escapeHtml(data.examName || '')}
+                </span>
+                <span class="rect-label">Max Marks: ${escapeHtml(String(data.maxMarks || ''))}</span>
+              </div>
+            </div>
+
+            ${contentHTML}
+            <div class="print-footer-spacer"></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.querySelectorAll('.options-block[data-options]').forEach(node => {
+      try {
+        const arr = JSON.parse(decodeURIComponent(node.getAttribute('data-options') || '[]'));
+        node.innerHTML = renderOptionsLayout(arr, node);
+      } catch (err) {
+        console.error('Answer key options render failed:', err);
+      }
+    });
 
     if (window.MathJax?.typesetPromise) {
-      MathJax.typesetPromise([document.body]).catch(()=>{});
+      MathJax.typesetPromise([document.body]).catch(() => {});
     }
   } catch (e) {
     console.error('Answer key open failed:', e);
