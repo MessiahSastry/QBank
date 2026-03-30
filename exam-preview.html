@@ -133,43 +133,64 @@
   }
 }
 
-    .heading-row {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-    .school-logo {
-      height: 88px;
-      width: auto;
-      margin: 0 16px 0 16px;
-    }
-    .school-headings {
-      flex: 1;
-      text-align: center;
-      min-width: 0;
-    }
+   .heading-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 110px;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0 120px;
+  box-sizing: border-box;
+}
+
+.school-logo {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 88px;
+  width: auto;
+  margin: 0;
+}
+
+.heading-row .school-logo:first-child {
+  left: 0;
+}
+
+.heading-row .school-logo:last-child {
+  right: 0;
+}
+
+.school-headings {
+  width: 100%;
+  text-align: center;
+  min-width: 0;
+}
+
 .title-qr-wrap{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:16px;
-  margin-top:6px;
+  display:block;
+  margin-top:0;
 }
+
 .title-text-wrap{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
+  display:block;
+  text-align:center;
 }
+
 .qr-side-box{
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   min-width:92px;
 }
+
 #answer-key-qr{
   width:78px;
   height:78px;
@@ -182,6 +203,7 @@
   align-items:center;
   justify-content:center;
 }
+
 .qr-caption{
   margin-top:4px;
   font-size:0.7em;
@@ -190,17 +212,36 @@
   text-align:center;
   line-height:1.15;
 }
+
 @media (max-width: 800px){
-  .title-qr-wrap{ gap:10px; }
-  #answer-key-qr{ width:64px; height:64px; }
-  .qr-caption{ font-size:0.62em; }
+  .heading-row{
+    min-height:96px;
+    padding:0 84px;
+  }
+  .school-logo{
+    height:62px;
+  }
+  .qr-side-box{
+    min-width:72px;
+    right:0;
+  }
+  #answer-key-qr{
+    width:64px;
+    height:64px;
+  }
+  .qr-caption{
+    font-size:0.62em;
+  }
 }
+
 @media print{
   #answer-key-qr{
     border:1px solid #000 !important;
     background:#fff !important;
   }
-  .qr-caption{ color:#000 !important; }
+  .qr-caption{
+    color:#000 !important;
+  }
 }
     .school-title {
       font-size: 2.1em;
@@ -822,9 +863,10 @@ async function ensurePreviewSignedIn() {
 function buildAnswerKeyDoc(examData) {
   return {
     schoolName: examData.schoolName || 'SciMentra',
-    examName: examData.examName || '',
+        examName: examData.examName || '',
     className: examData.class || '',
     date: examData.date || '',
+    time: examData.time || '',
     paperType: examData.paperType || '',
     maxMarks: examData.maxMarks || '',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1014,10 +1056,13 @@ function getAnswerKeyOptionLines(q) {
 }
 
 function formatAnswerKeyAnswerHtml(answer) {
-  const ans = String(answer || '').trim();
+  const ans = String(answer || '')
+    .trim()
+    .replace(/^(?:final\s*)?answer\s*[:.-]\s*/i, '')
+    .trim();
+
   return ans ? autoLatexAll(ans) : '';
 }
-
 function formatAnswerKeyExplanationHtml(explanation, answerValue) {
   const text = cleanAnswerKeyBlock(explanation);
   if (!text) return '';
@@ -1032,16 +1077,12 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue) {
       .trim()
     )
     .filter(Boolean)
-    .filter(line => {
-      if (!answerValue) return true;
-      return !/^(?:final\s*)?answer\s*[:.-]/i.test(line);
-    });
+    .filter(line => !/^(?:final\s*)?answer\s*[:.-]/i.test(line));
 
   if (!lines.length) return '';
 
   return lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('');
 }
-
 function buildAnswerKeyQuestionHtml(q) {
   const qNo = String(q.number || '').replace(/\.$/, '');
   const questionHTML = formatAnswerKeyQuestionHtml(q);
@@ -1150,19 +1191,16 @@ async function renderAnswerKeyPageFromUrl() {
               <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
             </div>
 
-            <div class="details-rect">
+                       <div class="details-rect">
               <div class="rect-row">
                 <span class="rect-label">Class: ${escapeHtml(data.className || '')}</span>
-                <span class="rect-subject">
-                  <div>${escapeHtml(String(topSubject || '').toUpperCase())}</div>
-                  <div style="font-size:0.64em;margin-top:3px;color:#7A2230;">ANSWER KEY</div>
-                </span>
+                <span class="rect-subject">${escapeHtml(String(topSubject || '').toUpperCase())}</span>
                 <span class="rect-label">Date: ${escapeHtml(formatDate(data.date) || '')}</span>
               </div>
               <div class="rect-row">
-                <span class="rect-label">Time: ${escapeHtml(data.paperType ? formatPaperTypeLine(data.paperType) : '')}</span>
-                <span style="flex:1;text-align:center;font-size:1.18em;font-weight:600;color:#163A63;">
-                  ${escapeHtml(data.examName || '')}
+                <span class="rect-label">Time: ${escapeHtml(data.time ? formatExamTime(data.time) : '')}</span>
+                <span style="flex:1;text-align:center;font-size:1.18em;font-weight:700;color:#7A2230;">
+                  ANSWER KEY
                 </span>
                 <span class="rect-label">Max Marks: ${escapeHtml(String(data.maxMarks || ''))}</span>
               </div>
@@ -1386,31 +1424,27 @@ function renderPrintPreview() {
   const page = document.createElement('div');
   page.className = 'a4-page';
 
-   page.innerHTML = `
+    page.innerHTML = `
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
         <div class="school-title school-title-themed">${exam.schoolName || 'SciMentra'}</div>
-        <div class="title-qr-wrap">
-          <div class="title-text-wrap">
-            <div class="subtitle">IIT & NEET FOUNDATION</div>
-            <div class="exam-title">${exam.examName || ''}</div>
-          </div>
-          ${
-            exam.includeQrInPrint
-              ? `
-                <div class="qr-side-box">
-                  <a id="answer-key-qr-link" href="javascript:void(0)" style="text-decoration:none;">
-                    <div id="answer-key-qr" data-qr-link=""></div>
-                  </a>
-                  <div class="qr-caption">Scan / Click for<br>Answer Key</div>
-                </div>
-              `
-              : ''
-          }
-        </div>
+        <div class="subtitle">IIT & NEET FOUNDATION</div>
+        <div class="exam-title">${exam.examName || ''}</div>
       </div>
       <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
+      ${
+        exam.includeQrInPrint
+          ? `
+            <div class="qr-side-box">
+              <a id="answer-key-qr-link" href="javascript:void(0)" style="text-decoration:none;">
+                <div id="answer-key-qr" data-qr-link=""></div>
+              </a>
+              <div class="qr-caption">Scan / Click for<br>Answer Key</div>
+            </div>
+          `
+          : ''
+      }
     </div>
     <div class="details-rect">
      <div class="rect-row">
