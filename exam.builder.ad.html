@@ -1989,25 +1989,40 @@ function getQuestionAnswerFromDoc(data) {
     for (const val of candidates) {
         if (val == null) continue;
 
-        const letters = String(val).toUpperCase().match(/[A-D]/g) || [];
-        const cleaned = [];
-        const seen = new Set();
+        if (Array.isArray(val)) {
+            const arr = val.map(v => String(v || '').trim()).filter(Boolean);
+            if (!arr.length) continue;
 
-        for (const ch of letters) {
-            if (!seen.has(ch)) {
-                seen.add(ch);
-                cleaned.push(ch);
+            const lettersOnly = arr
+                .map(v => v.toUpperCase())
+                .filter(v => /^[A-D]$/.test(v));
+
+            if (lettersOnly.length === arr.length) {
+                return Array.from(new Set(lettersOnly)).join(',');
             }
+
+            return arr.join(', ');
         }
 
-        if (cleaned.length) {
-            return cleaned.join(',');
+        const raw = String(val).trim();
+        if (!raw) continue;
+
+        const mcqMatch = raw.toUpperCase().match(/\b(?:ANS?|ANSWER)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)\b/);
+        if (mcqMatch) {
+            const cleaned = Array.from(new Set(mcqMatch[1].match(/[A-D]/g) || []));
+            if (cleaned.length) return cleaned.join(',');
         }
+
+        if (/^[A-D](\s*,\s*[A-D])*$/.test(raw.toUpperCase())) {
+            const cleaned = Array.from(new Set(raw.toUpperCase().match(/[A-D]/g) || []));
+            if (cleaned.length) return cleaned.join(',');
+        }
+
+        return raw;
     }
 
     return '';
 }
-
 function getQuestionExplanationFromDoc(data) {
     return data.explanation || data.solution || data.explain || '';
 }
@@ -2048,7 +2063,8 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         String(o || '').replace(/^[A-D][).:\-]\s*/i, '').trim()
     );
 
-    const answerLetters = String(norm.answer || '')
+    const rawAnswer = String(norm.answer || '').trim();
+    const answerLetters = rawAnswer
         .toUpperCase()
         .split(',')
         .map(x => x.trim())
@@ -2062,17 +2078,19 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                     ...norm,
                     question: stem,
                     options: clean,
-                    answer: norm.answer
+                    answer: answerLetters || rawAnswer
                 });
 
-                const letterAns = (String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || []).join(',');
+                const letterAns = Array.from(
+                    new Set(String(shuffled.answer || '').toUpperCase().match(/[A-D]/g) || [])
+                ).join(',');
 
                 return {
                     number: 0,
                     text: shuffled.question || stem,
                     marks: Number(marksPerQuestion || norm.marks || 0),
                     options: shuffled.options || clean,
-                    answer: letterAns,
+                    answer: letterAns || answerLetters || rawAnswer || '',
                     explanation: norm.explanation || '',
                     image: norm.image || ''
                 };
@@ -2083,7 +2101,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                 text: stem,
                 marks: Number(marksPerQuestion || norm.marks || 0),
                 options: clean,
-                answer: answerLetters,
+                answer: answerLetters || rawAnswer || '',
                 explanation: norm.explanation || '',
                 image: norm.image || ''
             };
@@ -2094,7 +2112,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
             text: stem,
             marks: Number(marksPerQuestion || norm.marks || 0),
             options: [],
-            answer: answerLetters,
+            answer: answerLetters || rawAnswer || '',
             explanation: norm.explanation || '',
             image: norm.image || ''
         };
@@ -2106,7 +2124,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
             text: stem,
             marks: Number(marksPerQuestion || norm.marks || 0),
             options: [],
-            answer: norm.answer || '',
+            answer: rawAnswer || '',
             explanation: norm.explanation || '',
             image: norm.image || ''
         };
@@ -2117,7 +2135,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         text: stem,
         marks: Number(marksPerQuestion || norm.marks || 0),
         options: [],
-        answer: '',
+        answer: rawAnswer || '',
         explanation: norm.explanation || '',
         image: norm.image || ''
     };
@@ -3062,14 +3080,17 @@ const qB = await fetchQuestions({
                                     const qAText = getQuestionTextFromDoc(qA[0]);
                                     const qBText = getQuestionTextFromDoc(qB[0]);
 
-                                    questions.push({
-                                        number: p + 1,
-                                        text: `(A) ${qAText}<br><div style="text-align:center;"><b>(OR)</b></div>(B) ${qBText}`,
-                                        marks: sec.marksPerQuestion,
-                                        options: [],
-                                        answer: "",
-                                        image: qA[0].image || qB[0].image || null
-                                    });
+                                   const qAAnswer = getQuestionAnswerFromDoc(qA[0]);
+const qBAnswer = getQuestionAnswerFromDoc(qB[0]);
+
+questions.push({
+    number: p + 1,
+    text: `(A) ${qAText}<br><div style="text-align:center;"><b>(OR)</b></div>(B) ${qBText}`,
+    marks: sec.marksPerQuestion,
+    options: [],
+    answer: `(A) ${qAAnswer || ''}<br><div style="text-align:center;"><b>(OR)</b></div>(B) ${qBAnswer || ''}`,
+    image: qA[0].image || qB[0].image || null
+});
                                 }
 
                                 if (missingPairs > 0 || questions.length < sec.numPairs) {
