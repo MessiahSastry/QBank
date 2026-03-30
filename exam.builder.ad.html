@@ -2735,36 +2735,29 @@ return { ...sl, assigned: pick };
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
     (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 100)
 ) {
-                                  const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
-    selectedClass,
-    selectedBoard,
-    subject: subjData.subject,
-    chapters: subjData.chapters,
-    marksPerQuestion: sec.marksPerQuestion,
-    mcqType: sec.mcqType,
-    requestedCount: selectionMode === 'Manual Select' ? Math.max(requestedCount * 4, requestedCount + 10) : requestedCount,
-    difficultyValue:
-difficultyDistribution.L1 === 100 ? "Level 1" :
-difficultyDistribution.L2 === 100 ? "Level 2" :
-difficultyDistribution.L3 === 100 ? "Level 3" :
-"Custom",
-    subjectSeenKeys,
-    globalMixBudget: null,
-    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-});
-
-if (balanceErrors?.length) {
-    sectionErrors = sectionErrors.concat(balanceErrors);
-}
-
-let pool = Array.isArray(rawItems) ? rawItems.slice() : [];
-
-pool = pool.filter(q => {
-    const k = makeStemKey({ text: getQuestionTextFromDoc(q), marks: mPerQ });
-    return !(k && subjectSeenKeys.has(k));
-});
+                              const singleLevelName =
+    difficultyDistribution.L1 === 100 ? "Level 1" :
+    difficultyDistribution.L2 === 100 ? "Level 2" :
+    "Level 3";
 
 if (selectionMode === 'Manual Select') {
+    const manualPoolRaw = await fetchQuestionsWithMarksFallback({
+        selectedClass,
+        selectedBoard,
+        selectedSubject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: mPerQ,
+        mcqType: sec.mcqType,
+        count: Math.max(requestedCount * 5, requestedCount + 15),
+        forceDifficulty: singleLevelName,
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    });
+
+    let pool = uniqueByIdOrText(manualPoolRaw).filter(q => {
+        const k = makeStemKey({ text: getQuestionTextFromDoc(q), marks: mPerQ });
+        return !(k && subjectSeenKeys.has(k));
+    });
+
     if (pool.length < requestedCount) {
         sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${pool.length} question(s) available for manual selection.`);
     } else {
@@ -2790,6 +2783,31 @@ if (selectionMode === 'Manual Select') {
         });
     }
 } else {
+    const { items: rawItems, errors: balanceErrors } = await fetchBalancedAcrossChapters({
+        selectedClass,
+        selectedBoard,
+        subject: subjData.subject,
+        chapters: subjData.chapters,
+        marksPerQuestion: sec.marksPerQuestion,
+        mcqType: sec.mcqType,
+        requestedCount: requestedCount,
+        difficultyValue: singleLevelName,
+        subjectSeenKeys,
+        globalMixBudget: null,
+        allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
+    });
+
+    if (balanceErrors?.length) {
+        sectionErrors = sectionErrors.concat(balanceErrors);
+    }
+
+    let pool = Array.isArray(rawItems) ? rawItems.slice() : [];
+
+    pool = pool.filter(q => {
+        const k = makeStemKey({ text: getQuestionTextFromDoc(q), marks: mPerQ });
+        return !(k && subjectSeenKeys.has(k));
+    });
+
     const limitedPool = pool.slice(0, requestedCount);
     const mapped = limitedPool.map(q => mapBankQuestionToBuilderQuestion(q, sec.mcqType, mPerQ));
 
