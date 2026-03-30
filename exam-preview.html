@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=900, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+ <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -617,7 +618,7 @@ mjx-container svg {
     <div id="page-container">
     <div id="print-preview" class="print-preview"></div>
   <div class="toolbar">
-     <button onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+     <button id="print-action-btn"><i class="fas fa-print"></i> Print</button>
   </div>
 </div>
  <script>
@@ -1237,6 +1238,98 @@ const schoolLogo1 = 'schoollogo1.png';
 const schoolLogo2 = 'schoollogo2.png';
 let exam = JSON.parse(sessionStorage.getItem('finalExamData') || '{}');
 let useTableLayout = false;
+
+function persistPreviewExam() {
+  sessionStorage.setItem('finalExamData', JSON.stringify(exam));
+}
+
+function normalizeSchoolNames(input) {
+  if (Array.isArray(input)) {
+    return input.map(name => String(name || '').trim()).filter(Boolean);
+  }
+  return String(input || '')
+    .split('\n')
+    .map(name => name.trim())
+    .filter(Boolean);
+}
+
+function getSchoolNames() {
+  const names = normalizeSchoolNames(exam.schoolNames);
+  if (names.length) return names;
+
+  const single = String(exam.schoolName || 'SciMentra').trim();
+  return [single || 'SciMentra'];
+}
+
+function ensureSchoolState() {
+  exam.schoolNames = getSchoolNames();
+
+  let idx = parseInt(exam.currentSchoolIndex, 10);
+  if (isNaN(idx)) idx = 0;
+
+  idx = Math.max(0, Math.min(idx, exam.schoolNames.length - 1));
+  exam.currentSchoolIndex = idx;
+  exam.schoolName = exam.schoolNames[idx];
+
+  persistPreviewExam();
+}
+
+function getCurrentSchoolName() {
+  ensureSchoolState();
+  return exam.schoolName || 'SciMentra';
+}
+
+function updateSchoolPreviewStatus() {
+  const info = document.getElementById('school-preview-status');
+  if (!info) return;
+
+  ensureSchoolState();
+  info.textContent = `Previewing ${exam.currentSchoolIndex + 1} of ${exam.schoolNames.length}: ${exam.schoolName}`;
+}
+
+function syncSchoolNamesFromTextarea(resetToFirst = false) {
+  const box = document.getElementById('school-names-list');
+  if (!box) return;
+
+  const names = normalizeSchoolNames(box.value);
+  exam.schoolNames = names.length
+    ? names
+    : [String(exam.schoolName || 'SciMentra').trim() || 'SciMentra'];
+
+  if (resetToFirst) {
+    exam.currentSchoolIndex = 0;
+  } else {
+    let idx = parseInt(exam.currentSchoolIndex, 10);
+    if (isNaN(idx)) idx = 0;
+    exam.currentSchoolIndex = Math.max(0, Math.min(idx, exam.schoolNames.length - 1));
+  }
+
+  exam.schoolName = exam.schoolNames[exam.currentSchoolIndex];
+  persistPreviewExam();
+  updateSchoolPreviewStatus();
+}
+
+function changeSchoolPreview(step) {
+  syncSchoolNamesFromTextarea(false);
+
+  exam.currentSchoolIndex =
+    (exam.currentSchoolIndex + step + exam.schoolNames.length) % exam.schoolNames.length;
+
+  exam.schoolName = exam.schoolNames[exam.currentSchoolIndex];
+  persistPreviewExam();
+
+  renderPrintPreview();
+  updateGap();
+  updateMargin();
+  updateSchoolPreviewStatus();
+}
+
+function sanitizeFileName(name) {
+  return String(name || 'School')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+    .replace(/\s+/g, '_')
+    .trim() || 'School';
+}
 function formatExamTime(mins) {
   mins = parseInt(mins);
   if (isNaN(mins) || mins <= 0) return '';
@@ -1428,7 +1521,7 @@ function renderPrintPreview() {
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
-        <div class="school-title school-title-themed">${exam.schoolName || 'SciMentra'}</div>
+        <div class="school-title school-title-themed">${escapeHtml(getCurrentSchoolName())}</div>
         <div class="subtitle">IIT & NEET FOUNDATION</div>
         <div class="exam-title">${exam.examName || ''}</div>
       </div>
@@ -1869,6 +1962,147 @@ function insertManualOrBoxes(root=document){
   renderPrintPreview();
 })();
    
+async function waitForPreviewReady() {
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  if (exam.includeQrInPrint) {
+    await new Promise(resolve => setTimeout(resolve, 700));
+  }
+
+  if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+    try {
+      await MathJax.typesetPromise([document.getElementById('print-preview')]);
+    } catch (e) {}
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 150));
+}
+
+async function exportCurrentPreviewPdfBlob() {
+  const pageEl = document.querySelector('.a4-page');
+  if (!pageEl) throw new Error('Preview page not found');
+
+  const canvas = await html2canvas(pageEl, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    scrollX: 0,
+    scrollY: -window.scrollY,
+    windowWidth: pageEl.scrollWidth,
+    windowHeight: pageEl.scrollHeight
+  });
+
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+
+  const pdfWidth = 210;
+  const pdfHeight = 297;
+  const imgWidth = pdfWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+  heightLeft -= pdfHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+    heightLeft -= pdfHeight;
+  }
+
+  return pdf.output('blob');
+}
+
+function downloadPreviewBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function handlePrintAction() {
+  syncSchoolNamesFromTextarea(false);
+  ensureSchoolState();
+
+  const names = getSchoolNames();
+  const btn = document.getElementById('print-action-btn');
+
+  if (names.length <= 1) {
+    renderPrintPreview();
+    updateGap();
+    updateMargin();
+    await waitForPreviewReady();
+    window.print();
+    return;
+  }
+
+  if (!window.JSZip) {
+    alert('JSZip not loaded.');
+    return;
+  }
+
+  const oldHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing ZIP...';
+  }
+
+  const originalIndex = exam.currentSchoolIndex;
+  const originalName = exam.schoolName;
+  const zip = new JSZip();
+
+  try {
+    for (let i = 0; i < names.length; i++) {
+      exam.currentSchoolIndex = i;
+      exam.schoolName = names[i];
+      persistPreviewExam();
+
+      renderPrintPreview();
+      updateGap();
+      updateMargin();
+      updateSchoolPreviewStatus();
+
+      await waitForPreviewReady();
+      const pdfBlob = await exportCurrentPreviewPdfBlob();
+
+      zip.file(`${sanitizeFileName(names[i])}.pdf`, pdfBlob);
+
+      if (btn) {
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${i + 1}/${names.length}`;
+      }
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const examPart = sanitizeFileName(exam.examName || 'Exam_Papers');
+    downloadPreviewBlob(zipBlob, `${examPart}_All_Schools.zip`);
+  } catch (err) {
+    console.error('Batch ZIP failed:', err);
+    alert('ZIP generation failed. Check console once.');
+  } finally {
+    exam.currentSchoolIndex = originalIndex;
+    exam.schoolName = originalName;
+    persistPreviewExam();
+
+    renderPrintPreview();
+    updateGap();
+    updateMargin();
+    updateSchoolPreviewStatus();
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldHtml || '<i class="fas fa-print"></i> Print';
+    }
+  }
+}
+
 // This function OUTSIDE of the above
 async function renderMathJaxToImages(containerSelector) {
   const container = document.querySelector(containerSelector);
@@ -1954,13 +2188,65 @@ async function renderMathJaxToImages(containerSelector) {
       </div>
     </div>
     <div style="margin-bottom:22px;">
-      <label style="font-weight:600;color:#185496;font-size:1em;">Page margin (cm)</label>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input id="margin-slider" type="range" min="0.5" max="2.5" value="1.5" step="0.1" style="width: 100%;">
-        <span id="margin-slider-value">1.5cm</span>
-      </div>
-    </div>
-        <button id="close-settings-popup" style="
+  <label style="font-weight:600;color:#185496;font-size:1em;">Page margin (cm)</label>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <input id="margin-slider" type="range" min="0.5" max="2.5" value="1.5" step="0.1" style="width: 100%;">
+    <span id="margin-slider-value">1.5cm</span>
+  </div>
+</div>
+
+<div style="margin-bottom:18px;width:100%;">
+  <label style="font-weight:600;color:#185496;font-size:1em;">School names (one per line)</label>
+  <textarea id="school-names-list" style="
+    width:100%;
+    min-height:130px;
+    margin-top:8px;
+    box-sizing:border-box;
+    border:1.5px solid #bcd6ef;
+    border-radius:10px;
+    padding:10px 12px;
+    font-family:'Segoe UI', Arial, sans-serif;
+    font-size:0.98em;
+    resize:vertical;
+    outline:none;
+  " placeholder="Holy Family School&#10;St. Patrick's School&#10;St. Ignatius International School"></textarea>
+
+  <div id="school-preview-status" style="margin-top:8px;color:#12416c;font-weight:600;font-size:0.96em;"></div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+    <button id="apply-school-list-btn" type="button" style="
+      border:none;
+      background:#1762a7;
+      color:#fff;
+      border-radius:8px;
+      padding:8px 14px;
+      font-weight:700;
+      cursor:pointer;
+    ">Apply List</button>
+
+    <button id="prev-school-btn" type="button" style="
+      border:none;
+      background:#0f3d6b;
+      color:#fff;
+      border-radius:8px;
+      padding:8px 14px;
+      font-weight:700;
+      cursor:pointer;
+    ">Previous</button>
+
+    <button id="next-school-btn" type="button" style="
+      border:none;
+      background:#0f3d6b;
+      color:#fff;
+      border-radius:8px;
+      padding:8px 14px;
+      font-weight:700;
+      cursor:pointer;
+    ">Next</button>
+  </div>
+</div>
+
+<button id="close-settings-popup" style="
       position:absolute;top:10px;right:18px;background:none;border:none;color:#185496;font-size:1.5em;cursor:pointer;
     " title="Close">×</button>
   </div>
@@ -2005,8 +2291,34 @@ marginSlider.addEventListener('input', updateMargin);
 
 // Set initial values after DOM loaded
 window.addEventListener('DOMContentLoaded', () => {
+  ensureSchoolState();
   updateGap();
   updateMargin();
+
+  const schoolBox = document.getElementById('school-names-list');
+  if (schoolBox) {
+    schoolBox.value = getSchoolNames().join('\n');
+  }
+
+  document.getElementById('apply-school-list-btn')?.addEventListener('click', () => {
+    syncSchoolNamesFromTextarea(true);
+    renderPrintPreview();
+    updateGap();
+    updateMargin();
+    updateSchoolPreviewStatus();
+  });
+
+  document.getElementById('prev-school-btn')?.addEventListener('click', () => {
+    changeSchoolPreview(-1);
+  });
+
+  document.getElementById('next-school-btn')?.addEventListener('click', () => {
+    changeSchoolPreview(1);
+  });
+
+  document.getElementById('print-action-btn')?.addEventListener('click', handlePrintAction);
+
+  updateSchoolPreviewStatus();
 });
 </script>
  <style id="ab-pair-style">
