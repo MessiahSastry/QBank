@@ -192,8 +192,12 @@
     <i class="fas fa-random"></i> Randomize Numbers (Copy Prompt → Open ChatGPT)
   </button>
 
-  <button class="save-btn" id="apply-json-btn" style="background:#1762a7;">
+   <button class="save-btn" id="apply-json-btn" style="background:#1762a7;">
     <i class="fas fa-paste"></i> Paste JSON from ChatGPT
+  </button>
+
+  <button class="save-btn" id="shuffle-options-btn" style="background:#13ad59;">
+    <i class="fas fa-random"></i> Shuffle MCQ Options
   </button>
 
   <button class="save-btn" id="save-review-btn">
@@ -389,6 +393,43 @@ input.onkeydown = (e) => {
 window.alert = function(message) {
   sciMentraAlert(message);
 };
+
+function sciMentraConfirm(message) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('scimentra-dialog-overlay');
+    const msg = document.getElementById('scimentra-dialog-message');
+    const input = document.getElementById('scimentra-dialog-input');
+    const okBtn = document.getElementById('scimentra-dialog-ok');
+    const cancelBtn = document.getElementById('scimentra-dialog-cancel');
+
+    msg.textContent = message || '';
+    input.style.display = 'none';
+    cancelBtn.style.display = 'inline-block';
+    overlay.style.display = 'flex';
+
+    const oldOk = okBtn.textContent;
+    const oldCancel = cancelBtn.textContent;
+
+    okBtn.textContent = 'Yes';
+    cancelBtn.textContent = 'No';
+
+    function cleanup(value) {
+      overlay.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+      okBtn.textContent = oldOk;
+      cancelBtn.textContent = oldCancel;
+      resolve(value);
+    }
+
+    okBtn.onclick = () => cleanup(true);
+    cancelBtn.onclick = () => cleanup(false);
+    input.onkeydown = (e) => {
+      if (e.key === 'Escape') cleanup(false);
+    };
+  });
+}
 
 function renderExam() {
 
@@ -808,7 +849,7 @@ area.querySelectorAll('[contenteditable]').forEach(el => {
   });
 });
 }
-function saveEdits() {
+function saveEdits(showAlert = true) {
   const paper = getExamPaper();
   if (!paper) return;
   // Section names
@@ -927,10 +968,87 @@ if (optNodes && optNodes.length === 4) {
     });
   });
   setExamPaper(paper);
-  alert('Changes saved!');
+    if (showAlert) alert('Changes saved!');
 }
 
-document.getElementById('save-review-btn').onclick = saveEdits;
+function getUniqueAnswerLetters(answer) {
+  const seen = new Set();
+  return (String(answer || '').toUpperCase().match(/[A-D]/g) || [])
+    .filter(ch => !seen.has(ch) && (seen.add(ch), true));
+}
+
+function shuffledIndexMap(size) {
+  const arr = Array.from({ length: size }, (_, i) => i);
+  if (size <= 1) return arr;
+
+  let attempts = 0;
+  do {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    attempts++;
+  } while (attempts < 6 && arr.every((v, i) => v === i));
+
+  return arr;
+}
+
+async function shuffleMcqOptionsInExamPaper() {
+  const ok = await sciMentraConfirm('Do you want to Shuffle Options?');
+  if (!ok) return;
+
+  saveEdits(false);
+
+  const paper = getExamPaper();
+  if (!paper) {
+    alert('No exam paper found!');
+    return;
+  }
+
+  let changed = 0;
+
+  (paper.subjects || []).forEach(subjectBlock => {
+    (subjectBlock.sections || []).forEach(section => {
+      (section.questions || []).forEach(q => {
+        if (!Array.isArray(q.options) || q.options.length !== 4) return;
+
+        const originalOptions = q.options.map(opt => String(opt ?? ''));
+        const map = shuffledIndexMap(originalOptions.length);
+        const shuffledOptions = map.map(oldIdx => originalOptions[oldIdx]);
+
+        const correctOldIndexes = getUniqueAnswerLetters(q.answer)
+          .map(letter => letter.charCodeAt(0) - 65)
+          .filter(idx => idx >= 0 && idx < originalOptions.length);
+
+        if (correctOldIndexes.length) {
+          const newLetters = [];
+          map.forEach((oldIdx, newIdx) => {
+            if (correctOldIndexes.includes(oldIdx)) {
+              newLetters.push(String.fromCharCode(65 + newIdx));
+            }
+          });
+          q.answer = newLetters.join(',');
+        }
+
+        q.options = shuffledOptions;
+        changed++;
+      });
+    });
+  });
+
+  setExamPaper(paper);
+  renderExam();
+
+  if (changed === 0) {
+    alert('No 4-option MCQ questions found to shuffle.');
+    return;
+  }
+
+  alert(`Shuffled options for ${changed} MCQ question${changed === 1 ? '' : 's'}.`);
+}
+
+document.getElementById('shuffle-options-btn').onclick = shuffleMcqOptionsInExamPaper;
+document.getElementById('save-review-btn').onclick = () => saveEdits(true);
 window.onload = renderExam;
 document.getElementById('preview-btn').onclick = async function() {
   saveEdits();
