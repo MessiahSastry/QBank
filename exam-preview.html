@@ -863,7 +863,20 @@ async function ensurePreviewSignedIn() {
 }
 function buildAnswerKeyDoc(examData) {
   return {
-    schoolName: examData.schoolName || 'SciMentra',
+    schoolName:
+  (Array.isArray(examData.schoolNames) && examData.schoolNames.length)
+    ? (
+        examData.schoolNames[
+          Math.max(
+            0,
+            Math.min(
+              parseInt(examData.currentSchoolIndex, 10) || 0,
+              examData.schoolNames.length - 1
+            )
+          )
+        ] || examData.schoolName || 'SciMentra'
+      )
+    : (examData.schoolName || 'SciMentra'),
         examName: examData.examName || '',
     className: examData.class || '',
     date: examData.date || '',
@@ -915,11 +928,31 @@ async function ensureAnswerKeyPaperId(examData) {
     throw new Error('Anonymous sign-in failed');
   }
 
-  const docRef = examData.answerKeyPaperId
-    ? previewDb.collection('publicAnswerKeys').doc(examData.answerKeyPaperId)
+  const schoolNames = Array.isArray(examData.schoolNames) && examData.schoolNames.length
+    ? examData.schoolNames
+    : [examData.schoolName || 'SciMentra'];
+
+  let idx = parseInt(examData.currentSchoolIndex, 10);
+  if (isNaN(idx)) idx = 0;
+  idx = Math.max(0, Math.min(idx, schoolNames.length - 1));
+
+  const currentSchoolName = schoolNames[idx] || examData.schoolName || 'SciMentra';
+  const schoolKey = sanitizeFileName(currentSchoolName);
+
+  if (!examData.answerKeyPaperIds || typeof examData.answerKeyPaperIds !== 'object') {
+    examData.answerKeyPaperIds = {};
+  }
+
+  const existingId = examData.answerKeyPaperIds[schoolKey];
+  const docRef = existingId
+    ? previewDb.collection('publicAnswerKeys').doc(existingId)
     : previewDb.collection('publicAnswerKeys').doc();
 
+  examData.currentSchoolIndex = idx;
+  examData.schoolName = currentSchoolName;
+  examData.answerKeyPaperIds[schoolKey] = docRef.id;
   examData.answerKeyPaperId = docRef.id;
+
   sessionStorage.setItem('finalExamData', JSON.stringify(examData));
 
   await docRef.set({
@@ -929,7 +962,6 @@ async function ensureAnswerKeyPaperId(examData) {
 
   return docRef.id;
 }
-
 async function renderAnswerKeyQR(examData) {
   const qrBox = document.getElementById('answer-key-qr');
   const qrLink = document.getElementById('answer-key-qr-link');
