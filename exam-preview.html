@@ -767,7 +767,9 @@ const previewAuth =
 
 const previewDb = previewFirebaseApp.firestore();
 
-function waitForPreviewAuth(timeoutMs = 8000) {
+let __previewAnonAuthPromise = null;
+
+function waitForPreviewUserOnce(timeoutMs = 1500) {
   return new Promise(resolve => {
     if (!previewAuth) {
       resolve(null);
@@ -783,24 +785,52 @@ function waitForPreviewAuth(timeoutMs = 8000) {
     const timer = setTimeout(() => {
       if (done) return;
       done = true;
-      try { unsub(); } catch(e) {}
+      try { unsub(); } catch (e) {}
       resolve(null);
     }, timeoutMs);
 
     const unsub = previewAuth.onAuthStateChanged(user => {
       if (done) return;
-      done = true;
-      clearTimeout(timer);
-      try { unsub(); } catch(e) {}
-      resolve(user || null);
+      if (user) {
+        done = true;
+        clearTimeout(timer);
+        try { unsub(); } catch (e) {}
+        resolve(user);
+      }
     }, () => {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      try { unsub(); } catch(e) {}
+      try { unsub(); } catch (e) {}
       resolve(null);
     });
   });
+}
+
+async function ensurePreviewSignedIn() {
+  if (!previewAuth) {
+    throw new Error('Firebase Auth script not loaded');
+  }
+
+  if (previewAuth.currentUser) {
+    return previewAuth.currentUser;
+  }
+
+  if (!__previewAnonAuthPromise) {
+    __previewAnonAuthPromise = (async () => {
+      const existing = await waitForPreviewUserOnce(1500);
+      if (existing) return existing;
+
+      const cred = await previewAuth.signInAnonymously();
+      return cred.user || previewAuth.currentUser || null;
+    })();
+  }
+
+  try {
+    return await __previewAnonAuthPromise;
+  } finally {
+    __previewAnonAuthPromise = null;
+  }
 }
 function buildAnswerKeyDoc(examData) {
   return {
@@ -835,14 +865,10 @@ function buildPublicAnswerKeyUrl(paperId) {
 }
 
 async function ensureAnswerKeyPaperId(examData) {
-  if (!previewAuth) {
-    throw new Error('Firebase Auth script not loaded');
-  }
-
-  const user = previewAuth.currentUser || await waitForPreviewAuth();
+  const user = await ensurePreviewSignedIn();
 
   if (!user) {
-    throw new Error('User not signed in');
+    throw new Error('Anonymous sign-in failed');
   }
 
   const docRef = examData.answerKeyPaperId
@@ -882,26 +908,31 @@ async function renderAnswerKeyQR(examData) {
       height: 68,
       correctLevel: QRCode.CorrectLevel.M
     });
-    } catch (e) {
+       } catch (e) {
     console.error('QR generation failed:', e);
 
     const rawMsg = String((e && (e.message || e.code)) || '').toLowerCase();
     let msg = 'QR Error';
 
-    if (rawMsg.includes('signed in')) {
-      msg = 'Login First';
+    if (rawMsg.includes('operation-not-allowed')) {
+      msg = 'Enable Anonymous Auth';
+    } else if (rawMsg.includes('unauthorized-domain')) {
+      msg = 'Add Domain';
     } else if (rawMsg.includes('permission-denied')) {
+      msg = 'Rules Blocked';
+    } else if (rawMsg.includes('missing or insufficient permissions')) {
       msg = 'Rules Blocked';
     } else if (rawMsg.includes('auth script not loaded')) {
       msg = 'Auth Missing';
-    } else if (rawMsg.includes('missing or insufficient permissions')) {
-      msg = 'Rules Blocked';
+    } else if (rawMsg.includes('anonymous sign-in failed')) {
+      msg = 'Auth Failed';
+    } else if (rawMsg.includes('network')) {
+      msg = 'Network Error';
     }
 
     qrBox.innerHTML = `<div style="font-size:11px;color:#b00;text-align:center;">${msg}</div>`;
   }
 }
-
 async function renderAnswerKeyPageFromUrl() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('mode') !== 'answerkey') return false;
@@ -1594,6 +1625,13 @@ function insertManualOrBoxes(root=document){
 // Call it here
 (async function initPreviewPage() {
   if (await renderAnswerKeyPageFromUrl()) return;
+
+  if (exam.includeQrInPrint && previewAuth && !previewAuth.currentUser) {
+    ensurePreviewSignedIn().catch(err => {
+      console.warn('Preview auth warmup failed:', err);
+    });
+  }
+
   renderPrintPreview();
 })();
    
