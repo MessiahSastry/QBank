@@ -8,6 +8,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
   <script>
    window.MathJax = {
     tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]], processEscapes: true },
@@ -146,6 +148,58 @@
       text-align: center;
       min-width: 0;
     }
+.title-qr-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  margin-top:6px;
+}
+.title-text-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.qr-side-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-width:92px;
+}
+#answer-key-qr{
+  width:78px;
+  height:78px;
+  background:#fff;
+  border:1.4px solid #cfe0f2;
+  border-radius:8px;
+  padding:4px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.qr-caption{
+  margin-top:4px;
+  font-size:0.7em;
+  color:#163A63;
+  font-weight:700;
+  text-align:center;
+  line-height:1.15;
+}
+@media (max-width: 800px){
+  .title-qr-wrap{ gap:10px; }
+  #answer-key-qr{ width:64px; height:64px; }
+  .qr-caption{ font-size:0.62em; }
+}
+@media print{
+  #answer-key-qr{
+    border:1px solid #000 !important;
+    background:#fff !important;
+  }
+  .qr-caption{ color:#000 !important; }
+}
     .school-title {
       font-size: 2.1em;
       font-weight: bold;
@@ -682,6 +736,126 @@ function removeMetaPrefix(str) {
     )
     .join('\n');
 }
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildCompactAnswerKeyData(examData) {
+  return {
+    sn: examData.schoolName || 'SciMentra',
+    en: examData.examName || '',
+    cl: examData.class || '',
+    dt: examData.date || '',
+    sb: (examData.subjects || []).map(subjectBlock => ({
+      n: subjectBlock.subject || '',
+      sc: (subjectBlock.sections || []).map(section => ({
+        l: section.label || section.name || 'Section',
+        q: (section.questions || []).map(q => {
+          const item = {
+            n: q.number || '',
+            a: q.answer || ''
+          };
+          if (q.explanation) item.e = q.explanation;
+          return item;
+        })
+      }))
+    }))
+  };
+}
+
+function createAnswerKeyUrl(examData) {
+  const compact = buildCompactAnswerKeyData(examData);
+  const payload = LZString.compressToEncodedURIComponent(JSON.stringify(compact));
+
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('mode', 'answerkey');
+  url.searchParams.set('payload', payload);
+  return url.toString();
+}
+
+function renderAnswerKeyQR(examData) {
+  const qrBox = document.getElementById('answer-key-qr');
+  const qrLink = document.getElementById('answer-key-qr-link');
+  if (!qrBox || !qrLink || !window.QRCode) return;
+
+  const answerKeyUrl = createAnswerKeyUrl(examData);
+
+  qrBox.innerHTML = '';
+  qrLink.href = answerKeyUrl;
+  qrLink.target = '_blank';
+  qrLink.setAttribute('data-qr-link', answerKeyUrl);
+
+   new QRCode(qrBox, {
+    text: answerKeyUrl,
+    width: 68,
+    height: 68,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+function renderAnswerKeyPageFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('mode') !== 'answerkey') return false;
+
+  const payload = params.get('payload') || '';
+  if (!payload) {
+    document.body.innerHTML = '<div style="padding:24px;font-family:Times New Roman,serif;">No answer key data found.</div>';
+    return true;
+  }
+
+  let data = null;
+  try {
+    const raw = LZString.decompressFromEncodedURIComponent(payload);
+    data = JSON.parse(raw || '{}');
+  } catch (e) {
+    document.body.innerHTML = '<div style="padding:24px;font-family:Times New Roman,serif;">Unable to open answer key.</div>';
+    return true;
+  }
+
+  let html = `
+    <div style="max-width:900px;margin:20px auto;background:#fff;padding:24px;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,0.08);font-family:'Times New Roman', Times, serif;">
+      <div style="text-align:center;font-size:2em;font-weight:bold;color:#7A2230;">${escapeHtml(data.sn || 'SciMentra')}</div>
+      <div style="text-align:center;font-size:1.1em;font-weight:700;color:#163A63;margin-top:4px;">${escapeHtml(data.en || '')} - Answer Key</div>
+      <div style="text-align:center;color:#444;margin-top:6px;">${escapeHtml(data.cl || '')}${data.dt ? ' | ' + escapeHtml(data.dt) : ''}</div>
+  `;
+
+  (data.sb || []).forEach(subjectBlock => {
+    if ((data.sb || []).length > 1) {
+      html += `<div style="margin-top:22px;text-align:center;font-size:1.18em;font-weight:700;color:#7A2230;">${escapeHtml(subjectBlock.n || '')}</div>`;
+    }
+
+    (subjectBlock.sc || []).forEach(section => {
+      html += `<div style="margin-top:16px;font-size:1.05em;font-weight:700;color:#163A63;">${escapeHtml(section.l || 'Section')}</div>`;
+
+      (section.q || []).forEach(q => {
+        html += `
+          <div style="border:1px solid #d8e4f0;border-radius:10px;padding:10px 12px;margin-top:10px;">
+            <div style="font-weight:700;color:#163A63;">${escapeHtml(q.n)}. Answer:</div>
+            <div style="margin-top:4px;line-height:1.5;">${q.a || ''}</div>
+            ${q.e ? `<div style="margin-top:8px;"><span style="font-weight:700;color:#163A63;">Explanation:</span><div style="margin-top:4px;line-height:1.5;">${q.e}</div></div>` : ''}
+          </div>
+        `;
+      });
+    });
+  });
+
+  html += `</div>`;
+  document.body.innerHTML = html;
+
+  if (window.MathJax?.typesetPromise) {
+    MathJax.typesetPromise([document.body]).catch(()=>{});
+  }
+
+  return true;
+}
+
 const schoolLogo1 = 'schoollogo1.png';
 const schoolLogo2 = 'schoollogo2.png';
 let exam = JSON.parse(sessionStorage.getItem('finalExamData') || '{}');
@@ -873,13 +1047,29 @@ function renderPrintPreview() {
   const page = document.createElement('div');
   page.className = 'a4-page';
 
-  page.innerHTML = `
+   page.innerHTML = `
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
         <div class="school-title school-title-themed">${exam.schoolName || 'SciMentra'}</div>
-        <div class="subtitle">IIT & NEET FOUNDATION</div>
-               <div class="exam-title">${exam.examName || ''}</div>
+        <div class="title-qr-wrap">
+          <div class="title-text-wrap">
+            <div class="subtitle">IIT & NEET FOUNDATION</div>
+            <div class="exam-title">${exam.examName || ''}</div>
+          </div>
+          ${
+            exam.includeQrInPrint
+              ? `
+                <div class="qr-side-box">
+                  <a id="answer-key-qr-link" href="javascript:void(0)" style="text-decoration:none;">
+                    <div id="answer-key-qr" data-qr-link=""></div>
+                  </a>
+                  <div class="qr-caption">Scan for<br>Answer Key</div>
+                </div>
+              `
+              : ''
+          }
+        </div>
       </div>
       <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
     </div>
@@ -1165,7 +1355,13 @@ if (section.questions && section.questions.length > 0) {
 
    page.innerHTML += contentHTML;
   page.innerHTML += `<div class="print-footer-spacer"></div>`;
-  container.appendChild(page);
+    container.appendChild(page);
+
+  if (exam.includeQrInPrint) {
+    setTimeout(() => {
+      renderAnswerKeyQR(exam);
+    }, 50);
+  }
 
   // NOTE: Internal-choice A/B auto-splitting is disabled in preview for now.
   // setTimeout(()=>{ insertManualOrBoxes(page); },0);
@@ -1288,8 +1484,10 @@ function insertManualOrBoxes(root=document){
 }
 
 // Call it here
-renderPrintPreview();
-
+(function initPreviewPage() {
+  if (renderAnswerKeyPageFromUrl()) return;
+  renderPrintPreview();
+})();
    
 // This function OUTSIDE of the above
 async function renderMathJaxToImages(containerSelector) {
