@@ -395,42 +395,8 @@ window.alert = function(message) {
 };
 
 function sciMentraConfirm(message) {
-  return new Promise(resolve => {
-    const overlay = document.getElementById('scimentra-dialog-overlay');
-    const msg = document.getElementById('scimentra-dialog-message');
-    const input = document.getElementById('scimentra-dialog-input');
-    const okBtn = document.getElementById('scimentra-dialog-ok');
-    const cancelBtn = document.getElementById('scimentra-dialog-cancel');
-
-    msg.textContent = message || '';
-    input.style.display = 'none';
-    cancelBtn.style.display = 'inline-block';
-    overlay.style.display = 'flex';
-
-    const oldOk = okBtn.textContent;
-    const oldCancel = cancelBtn.textContent;
-
-    okBtn.textContent = 'Yes';
-    cancelBtn.textContent = 'No';
-
-    function cleanup(value) {
-      overlay.style.display = 'none';
-      okBtn.onclick = null;
-      cancelBtn.onclick = null;
-      input.onkeydown = null;
-      okBtn.textContent = oldOk;
-      cancelBtn.textContent = oldCancel;
-      resolve(value);
-    }
-
-    okBtn.onclick = () => cleanup(true);
-    cancelBtn.onclick = () => cleanup(false);
-    input.onkeydown = (e) => {
-      if (e.key === 'Escape') cleanup(false);
-    };
-  });
+  return Promise.resolve(window.confirm(message || 'Do you want to continue?'));
 }
-
 function renderExam() {
 
     const paper = getExamPaper();
@@ -1051,20 +1017,19 @@ const shuffleBtn = document.getElementById('shuffle-options-btn');
 const saveBtn = document.getElementById('save-review-btn');
 
 if (shuffleBtn) {
-  shuffleBtn.addEventListener('click', async function (e) {
+  shuffleBtn.onclick = async function (e) {
     e.preventDefault();
     e.stopPropagation();
-    console.log('shuffle clicked');
     await shuffleMcqOptionsInExamPaper();
-  });
+  };
 }
 
 if (saveBtn) {
-  saveBtn.addEventListener('click', function (e) {
+  saveBtn.onclick = function (e) {
     e.preventDefault();
     e.stopPropagation();
     saveEdits(true);
-  });
+  };
 }
 
 window.addEventListener('load', function () {
