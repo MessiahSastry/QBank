@@ -10,6 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
    window.MathJax = {
@@ -759,8 +760,48 @@ const previewFirebaseApp =
   (window.firebase && firebase.apps.find(app => app.name === 'examPreviewApp')) ||
   firebase.initializeApp(stpatricksConfig, 'examPreviewApp');
 
+const previewAuth =
+  (window.firebase && typeof firebase.auth === 'function')
+    ? previewFirebaseApp.auth()
+    : null;
+
 const previewDb = previewFirebaseApp.firestore();
 
+function waitForPreviewAuth(timeoutMs = 8000) {
+  return new Promise(resolve => {
+    if (!previewAuth) {
+      resolve(null);
+      return;
+    }
+
+    if (previewAuth.currentUser) {
+      resolve(previewAuth.currentUser);
+      return;
+    }
+
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      try { unsub(); } catch(e) {}
+      resolve(null);
+    }, timeoutMs);
+
+    const unsub = previewAuth.onAuthStateChanged(user => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { unsub(); } catch(e) {}
+      resolve(user || null);
+    }, () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { unsub(); } catch(e) {}
+      resolve(null);
+    });
+  });
+}
 function buildAnswerKeyDoc(examData) {
   return {
     schoolName: examData.schoolName || 'SciMentra',
@@ -794,6 +835,16 @@ function buildPublicAnswerKeyUrl(paperId) {
 }
 
 async function ensureAnswerKeyPaperId(examData) {
+  if (!previewAuth) {
+    throw new Error('Firebase Auth script not loaded');
+  }
+
+  const user = previewAuth.currentUser || await waitForPreviewAuth();
+
+  if (!user) {
+    throw new Error('User not signed in');
+  }
+
   const docRef = examData.answerKeyPaperId
     ? previewDb.collection('publicAnswerKeys').doc(examData.answerKeyPaperId)
     : previewDb.collection('publicAnswerKeys').doc();
@@ -801,7 +852,11 @@ async function ensureAnswerKeyPaperId(examData) {
   examData.answerKeyPaperId = docRef.id;
   sessionStorage.setItem('finalExamData', JSON.stringify(examData));
 
-  await docRef.set(buildAnswerKeyDoc(examData), { merge: true });
+  await docRef.set({
+    ...buildAnswerKeyDoc(examData),
+    ownerUid: user.uid
+  }, { merge: true });
+
   return docRef.id;
 }
 
@@ -827,9 +882,23 @@ async function renderAnswerKeyQR(examData) {
       height: 68,
       correctLevel: QRCode.CorrectLevel.M
     });
-  } catch (e) {
+    } catch (e) {
     console.error('QR generation failed:', e);
-    qrBox.innerHTML = '<div style="font-size:11px;color:#b00;text-align:center;">QR Error</div>';
+
+    const rawMsg = String((e && (e.message || e.code)) || '').toLowerCase();
+    let msg = 'QR Error';
+
+    if (rawMsg.includes('signed in')) {
+      msg = 'Login First';
+    } else if (rawMsg.includes('permission-denied')) {
+      msg = 'Rules Blocked';
+    } else if (rawMsg.includes('auth script not loaded')) {
+      msg = 'Auth Missing';
+    } else if (rawMsg.includes('missing or insufficient permissions')) {
+      msg = 'Rules Blocked';
+    }
+
+    qrBox.innerHTML = `<div style="font-size:11px;color:#b00;text-align:center;">${msg}</div>`;
   }
 }
 
@@ -1396,10 +1465,10 @@ if (section.questions && section.questions.length > 0) {
   page.innerHTML += `<div class="print-footer-spacer"></div>`;
     container.appendChild(page);
 
-   if (exam.includeQrInPrint) {
+     if (exam.includeQrInPrint) {
     setTimeout(() => {
       renderAnswerKeyQR(exam);
-    }, 120);
+    }, 300);
   }
 
   // NOTE: Internal-choice A/B auto-splitting is disabled in preview for now.
