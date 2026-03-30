@@ -1048,9 +1048,27 @@ document.getElementById('preview-btn').onclick = async function() {
     return;
   }
 
-  const schoolName = await sciMentraPrompt('Enter School Name', paper.schoolName || 'SciMentra');
-  if (schoolName === null) return;
-  paper.schoolName = (schoolName || '').trim() || 'SciMentra';
+  const schoolNamesRaw = await sciMentraPrompt(
+  'Enter School Names (one per line)',
+  Array.isArray(paper.schoolNames) && paper.schoolNames.length
+    ? paper.schoolNames.join('\n')
+    : (paper.schoolName || 'SciMentra')
+);
+if (schoolNamesRaw === null) return;
+
+const schoolNames = String(schoolNamesRaw || '')
+  .split('\n')
+  .map(name => name.trim())
+  .filter(Boolean);
+
+if (!schoolNames.length) {
+  alert('Please enter at least one school name.');
+  return;
+}
+
+paper.schoolNames = schoolNames;
+paper.currentSchoolIndex = 0;
+paper.schoolName = schoolNames[0]; // for preview page compatibility
 
   const qrChoice = await sciMentraPrompt(
     'Print QR code? Type yes or no',
