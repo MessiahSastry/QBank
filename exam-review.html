@@ -196,7 +196,7 @@
     <i class="fas fa-paste"></i> Paste JSON from ChatGPT
   </button>
 
-  <button class="save-btn" id="shuffle-options-btn" style="background:#13ad59;">
+  <button type="button" class="save-btn" id="shuffle-options-btn" style="background:#13ad59;">
     <i class="fas fa-random"></i> Shuffle MCQ Options
   </button>
 
@@ -1047,9 +1047,28 @@ async function shuffleMcqOptionsInExamPaper() {
   alert(`Shuffled options for ${changed} MCQ question${changed === 1 ? '' : 's'}.`);
 }
 
-document.getElementById('shuffle-options-btn').onclick = shuffleMcqOptionsInExamPaper;
-document.getElementById('save-review-btn').onclick = () => saveEdits(true);
-window.onload = renderExam;
+window.onload = function () {
+  renderExam();
+
+  const shuffleBtn = document.getElementById('shuffle-options-btn');
+  const saveBtn = document.getElementById('save-review-btn');
+
+  if (shuffleBtn) {
+    shuffleBtn.addEventListener('click', async function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      await shuffleMcqOptionsInExamPaper();
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      saveEdits(true);
+    });
+  }
+};
 document.getElementById('preview-btn').onclick = async function() {
   saveEdits();
   const paper = getExamPaper();
