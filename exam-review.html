@@ -943,8 +943,16 @@ document.getElementById('preview-btn').onclick = async function() {
 
   const schoolName = await sciMentraPrompt('Enter School Name', paper.schoolName || 'SciMentra');
   if (schoolName === null) return;
-
   paper.schoolName = (schoolName || '').trim() || 'SciMentra';
+
+  const qrChoice = await sciMentraPrompt(
+    'Print QR code? Type yes or no',
+    paper.includeQrInPrint ? 'yes' : 'no'
+  );
+  if (qrChoice === null) return;
+
+  const qrValue = String(qrChoice || '').trim().toLowerCase();
+  paper.includeQrInPrint = ['yes', 'y', '1', 'true', 'print qr', 'print'].includes(qrValue);
 
   sessionStorage.setItem('examPaper', JSON.stringify(paper));
   sessionStorage.setItem('finalExamData', JSON.stringify(paper));
