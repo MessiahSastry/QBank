@@ -295,17 +295,14 @@ function parsePastedQuestions(rawText) {
     });
 
     // Extract answer letters if present anywhere
-    let ans = '';
-    const am = block.match(/Ans?\s*:\s*([A-D](?:\s*,\s*[A-D])*)/i);
-    if (am) {
-      const seen = new Set();
-      ans = am[1]
-        .toUpperCase()
-        .split(',')
-        .map(s => s.trim())
-        .filter(L => /^[A-D]$/.test(L) && !seen.has(L) && (seen.add(L), true))
-        .join(seen.size > 1 ? ',' : '');
-    }
+   let ans = '';
+const am = block.match(/\b(?:ANS?|ANSWER)\s*[:\-]?\s*(.+)$/im);
+if (am) {
+  const seen = new Set();
+  ans = (am[1].toUpperCase().match(/[A-D]/g) || [])
+    .filter(L => !seen.has(L) && (seen.add(L), true))
+    .join(',');
+}
 
     // Stem: remove leading "Qx:" or "1)." etc and strip option/answer lines
     let stem = block
@@ -506,7 +503,7 @@ if (paper.instructions) {
     <div class="q-body">
       ${bodyHtml}
 
-      ${ (q.options && q.options.length === 4)
+     ${ (q.options && q.options.length === 4)
         ? `
           <div class="mcq-block" style="display:flex;flex-direction:column;gap:6px;margin-left:8px;flex:1 1 100%;">
             ${['A','B','C','D'].map((L, i) => `
@@ -519,16 +516,22 @@ if (paper.instructions) {
             `).join('')}
             <div class="mcq-ans-row" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
               <span class="marks-label" style="min-width:62px;">Answer</span>
-              <span class="answer-box no-mjx" contenteditable="plaintext-only" tabindex="0" style="border:1px solid #bcd6ef;border-radius:6px;padding:3px 8px;min-width:80px;">
+              <span class="answer-box no-mjx" data-answer-type="mcq" contenteditable="plaintext-only" tabindex="0" style="border:1px solid #bcd6ef;border-radius:6px;padding:3px 8px;min-width:80px;">
                 ${(q.answer || '').toString()}
               </span>
               <span class="marks-label" style="opacity:.8;">(use letters like A or A,C)</span>
             </div>
           </div>
         `
-        : ''
+        : `
+          <div class="desc-ans-row" style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
+            <span class="marks-label" style="min-width:62px;">Answer</span>
+            <div class="answer-box rich-answer" data-answer-type="text" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
+              ${(q.answer || '').toString()}
+            </div>
+          </div>
+        `
       }
-
       <span class="marks-box no-mjx" contenteditable="plaintext-only" tabindex="0">${q.marks || section.marksPerQuestion || ''}</span>
       <span class="marks-label">Marks</span>
 
@@ -863,12 +866,24 @@ if (optNodes && optNodes.length === 4) {
     if (ansNode) {
       const answerType = ansNode.dataset.answerType || 'mcq';
 
-      if (answerType === 'mcq') {
-        let raw = (ansNode.innerText || '').toUpperCase().replace(/[^A-D,]/g,'').replace(/\s+/g,'');
-        const seen = new Set();
-        const letters = raw.split(',').filter(x => /^[A-D]$/.test(x) && !seen.has(x) && (seen.add(x), true));
-        paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer = letters.join(letters.length > 1 ? ',' : '');
-      } else {
+     if (answerType === 'mcq') {
+  let raw = String(ansNode.innerText || '').trim().toUpperCase();
+
+  const named = raw.match(/\b(?:ANS?|ANSWER)\s*[:\-]?\s*(.+)$/);
+  if (named) raw = named[1].trim();
+
+  const seen = new Set();
+  const letters = [];
+
+  (raw.match(/[A-D]/g) || []).forEach(ch => {
+    if (!seen.has(ch)) {
+      seen.add(ch);
+      letters.push(ch);
+    }
+  });
+
+  paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer = letters.join(',');
+} else {
         paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer =
           ((ansNode.dataset && ansNode.dataset.raw) ? ansNode.dataset.raw : (ansNode.innerHTML || ansNode.innerText || '')).trim();
       }
@@ -1219,9 +1234,12 @@ if (isMCQ) {
     if (orig?.answer) qObj.answer = orig.answer;
   }
 } else {
-  // Descriptive path: ensure it’s stored as descriptive (no options/answer)
+  // Descriptive path: keep existing answer unless AI gives a new one
   delete qObj.options;
-  delete qObj.answer;
+
+  if (typeof out.answer === 'string' && out.answer.trim()) {
+    qObj.answer = out.answer.trim();
+  }
 }
 
 // Guard: if stem was emptied by accident, restore original
