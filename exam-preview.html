@@ -1,3 +1,4 @@
+i give you code review it and wait for my corrections . dont answer me untill i ask.
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,8 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -205,12 +205,6 @@
   justify-content:center;
 }
 
-#answer-key-qr-link{
-  display:inline-block;
-  width:78px;
-  height:78px;
-}
-
 .qr-caption{
   margin-top:4px;
   font-size:0.7em;
@@ -233,10 +227,6 @@
     right:0;
   }
   #answer-key-qr{
-    width:64px;
-    height:64px;
-  }
-  #answer-key-qr-link{
     width:64px;
     height:64px;
   }
@@ -628,10 +618,8 @@ mjx-container svg {
     <div id="page-container">
     <div id="print-preview" class="print-preview"></div>
   <div class="toolbar">
-  <button id="download-preview-pdf-btn" onclick="exportPreviewPdf()">
-    <i class="fas fa-file-pdf"></i> Download PDF
-  </button>
-</div>
+     <button onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+  </div>
 </div>
  <script>
   function formatSubQuestions(text) {
@@ -956,14 +944,11 @@ qrLink.removeAttribute('data-qr-link');
     const answerKeyUrl = buildPublicAnswerKeyUrl(paperId);
 
     qrBox.innerHTML = '';
-   qrLink.href = answerKeyUrl;
-qrLink.target = '_blank';
-qrLink.setAttribute('data-qr-link', answerKeyUrl);
-qrLink.style.display = 'inline-block';
-qrLink.style.width = '78px';
-qrLink.style.height = '78px';
+    qrLink.href = answerKeyUrl;
+    qrLink.target = '_blank';
+    qrLink.setAttribute('data-qr-link', answerKeyUrl);
 
-new QRCode(qrBox, {
+    new QRCode(qrBox, {
       text: answerKeyUrl,
       width: 68,
       height: 68,
@@ -1437,290 +1422,10 @@ function formatPreviewOption(opt) {
 function renderPrintPreview() {
   const container = document.getElementById('print-preview');
   container.innerHTML = '';
+  const page = document.createElement('div');
+  page.className = 'a4-page';
 
-  function buildPreviewPageShell(pageNum) {
-    const page = document.createElement('div');
-    page.className = 'a4-page';
-    page.style.position = 'relative';
-    page.style.width = '210mm';
-    page.style.height = '297mm';
-    page.style.minHeight = '297mm';
-    page.style.maxHeight = '297mm';
-    page.style.overflow = 'hidden';
-    page.style.background = '#fff';
-    page.style.margin = '0 auto 18px auto';
-    page.style.boxSizing = 'border-box';
-
-    const inner = document.createElement('div');
-    inner.className = 'a4-page-inner';
-    inner.style.width = '100%';
-    inner.style.height = '100%';
-    inner.style.boxSizing = 'border-box';
-    inner.style.padding = '2.1cm 1.5cm 1.9cm 1.5cm';
-    inner.style.display = 'flex';
-    inner.style.flexDirection = 'column';
-
-    const content = document.createElement('div');
-    content.className = 'a4-page-content';
-    content.style.flex = '1 1 auto';
-    content.style.minHeight = '0';
-    content.style.overflow = 'hidden';
-    content.style.width = '100%';
-    content.style.boxSizing = 'border-box';
-
-    inner.appendChild(content);
-    page.appendChild(inner);
-
-    const footerWrap = document.createElement('div');
-    footerWrap.style.position = 'absolute';
-    footerWrap.style.bottom = '8mm';
-    footerWrap.style.width = '52mm';
-    footerWrap.style.display = 'flex';
-    footerWrap.style.flexDirection = 'column';
-    footerWrap.style.alignItems = 'center';
-    footerWrap.style.justifyContent = 'flex-end';
-    footerWrap.style.gap = '5px';
-    footerWrap.style.zIndex = '5';
-
-    if (pageNum % 2 === 1) {
-      footerWrap.style.right = '12mm';
-    } else {
-      footerWrap.style.left = '12mm';
-    }
-
-    const footerDesign = document.createElement('div');
-    footerDesign.style.width = '100%';
-    footerDesign.style.display = 'flex';
-    footerDesign.style.alignItems = 'center';
-    footerDesign.style.justifyContent = 'center';
-    footerDesign.style.gap = '8px';
-
-    const lineLeft = document.createElement('div');
-    lineLeft.style.flex = '1';
-    lineLeft.style.height = '2px';
-    lineLeft.style.background = 'linear-gradient(90deg, transparent, #1762a7)';
-
-    const diamond = document.createElement('div');
-    diamond.style.width = '10px';
-    diamond.style.height = '10px';
-    diamond.style.background = '#1762a7';
-    diamond.style.transform = 'rotate(45deg)';
-    diamond.style.borderRadius = '2px';
-    diamond.style.flexShrink = '0';
-
-    const lineRight = document.createElement('div');
-    lineRight.style.flex = '1';
-    lineRight.style.height = '2px';
-    lineRight.style.background = 'linear-gradient(90deg, #1762a7, transparent)';
-
-    footerDesign.appendChild(lineLeft);
-    footerDesign.appendChild(diamond);
-    footerDesign.appendChild(lineRight);
-
-    const pageNo = document.createElement('div');
-    pageNo.textContent = String(pageNum).padStart(2, '0');
-    pageNo.style.width = '28px';
-    pageNo.style.height = '28px';
-    pageNo.style.borderRadius = '50%';
-    pageNo.style.background = '#1762a7';
-    pageNo.style.color = '#ffffff';
-    pageNo.style.display = 'flex';
-    pageNo.style.alignItems = 'center';
-    pageNo.style.justifyContent = 'center';
-    pageNo.style.fontSize = '11pt';
-    pageNo.style.fontWeight = '700';
-    pageNo.style.lineHeight = '1';
-    pageNo.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-    pageNo.style.fontFamily = "'Times New Roman', Times, serif";
-
-    footerWrap.appendChild(footerDesign);
-    footerWrap.appendChild(pageNo);
-    page.appendChild(footerWrap);
-
-    return { page, content };
-  }
-
-  function groupPreviewBlocks(sourceRoot) {
-    const rawNodes = Array.from(sourceRoot.children).filter(node => {
-      return !node.matches('.heading-row, .details-rect');
-    });
-
-    const blocks = [];
-
-    for (let i = 0; i < rawNodes.length; i++) {
-      const node = rawNodes[i];
-
-      if (node.classList && node.classList.contains('section-block')) {
-        const wrap = document.createElement('div');
-        wrap.className = 'keep-with-next-preview';
-        wrap.style.display = 'block';
-        wrap.style.pageBreakInside = 'avoid';
-        wrap.style.breakInside = 'avoid';
-
-        wrap.appendChild(node.cloneNode(true));
-
-        if (
-          rawNodes[i + 1] &&
-          rawNodes[i + 1].classList &&
-          rawNodes[i + 1].classList.contains('question-container')
-        ) {
-          wrap.appendChild(rawNodes[i + 1].cloneNode(true));
-          i++;
-        }
-
-        blocks.push(wrap);
-      } else {
-        blocks.push(node.cloneNode(true));
-      }
-    }
-
-    return blocks;
-  }
-
-  function paginatePreviewHtml(fullHtml) {
-    const source = document.createElement('div');
-    source.style.position = 'fixed';
-    source.style.left = '-99999px';
-    source.style.top = '0';
-    source.style.width = '210mm';
-    source.style.visibility = 'hidden';
-    source.style.pointerEvents = 'none';
-    source.style.boxSizing = 'border-box';
-    source.innerHTML = fullHtml;
-    document.body.appendChild(source);
-
-    const firstHeader = source.querySelector('.heading-row');
-    const firstDetails = source.querySelector('.details-rect');
-    const blocks = groupPreviewBlocks(source);
-
-    container.innerHTML = '';
-
-    let pageNum = 1;
-    let shell = buildPreviewPageShell(pageNum);
-    container.appendChild(shell.page);
-
-    if (firstHeader) shell.content.appendChild(firstHeader.cloneNode(true));
-    if (firstDetails) shell.content.appendChild(firstDetails.cloneNode(true));
-
-    for (let i = 0; i < blocks.length; i++) {
-      const testBlock = blocks[i].cloneNode(true);
-      shell.content.appendChild(testBlock);
-
-      const overflow = shell.content.scrollHeight > shell.content.clientHeight + 1;
-
-      if (overflow) {
-        shell.content.removeChild(testBlock);
-
-        pageNum++;
-        shell = buildPreviewPageShell(pageNum);
-        container.appendChild(shell.page);
-
-        shell.content.appendChild(testBlock);
-
-        const stillOverflow = shell.content.scrollHeight > shell.content.clientHeight + 1;
-        if (stillOverflow) {
-          // keep it anyway if single block is too tall
-        }
-      }
-    }
-
-    source.remove();
-  }
-
-  function buildQuestionsForSection(section, qNumRef) {
-    if (!(section.questions && section.questions.length > 0)) return '';
-
-    return section.questions.map(q => {
-      const currentQNum = q.number || (qNumRef.value++);
-      let questionContentHTML = '';
-      let optionLines = [];
-      const hasShuffledOptions = Array.isArray(q.options) && q.options.length === 4;
-
-      if (hasShuffledOptions) {
-        const raw = (q.question || q.text || '');
-        questionContentHTML = raw.replace(/\s*A\).*/g, '').trim();
-        optionLines = q.options.map((opt, idx) => {
-          const cleanOpt = stripLeadingLabel(opt);
-          return String.fromCharCode(65 + idx) + ') ' + cleanOpt;
-        });
-      } else {
-        const pre = (q.html || q.renderedHTML || q.finalHTML || q.formattedHTML || q.question || q.text || '');
-
-        if (/\bpair-a\b/.test(pre) && /\bpair-b\b/.test(pre)) {
-          questionContentHTML = pre;
-        } else {
-          let html = pre
-            .replace(/<img[^>]*>/gi, '')
-            .replace(/<\/p>/gi, '<br>')
-            .replace(/<div[^>]*>/gi, '<br>')
-            .replace(/<\/div>/gi, '')
-            .replace(/<li[^>]*>/gi, '<br>')
-            .replace(/<\/li>/gi, '')
-            .replace(/<ol[^>]*>|<ul[^>]*>|<\/ol>|<\/ul>/gi, '');
-
-          let parts = html.split(/<br\s*\/?>|\r?\n|\r/gi)
-            .map(s => s.replace(/ /g, ' ').trim())
-            .filter(Boolean);
-
-          if (parts.length > 0) {
-            questionContentHTML = autoLatexAll(removeMetaPrefix((parts[0] || '')));
-
-            for (let i = 1; i < parts.length; i++) {
-              let line = autoLatexAll(parts[i]);
-              let inlineOpts = line.match(/((?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*.*?)(?=\s+(?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*|$)/gi);
-
-              if (inlineOpts && inlineOpts.length >= 2) {
-                optionLines.push(...inlineOpts.map(opt => autoLatexAll(opt.trim())));
-              } else {
-                const singleOpt = line.match(/^\s*(?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s+.+$/i);
-                if (singleOpt) {
-                  optionLines.push(autoLatexAll((singleOpt[0] || '').trim()));
-                } else if (line && !/^\s*(?:^|\s|\()(?:(?:[A-D])|(?:\(?i{1,3}\)?|iv))\s*[\)\.\:\-–—]\s+/.test(line)) {
-                  questionContentHTML += '<br>' + line;
-                }
-              }
-            }
-
-            if (optionLines.length === 4) {
-              optionLines = optionLines
-                .map(s => stripLeadingLabel(s).replace(/\s+/g, ' ').trim())
-                .map((opt, i) => String.fromCharCode(65 + i) + ') ' + opt);
-            }
-          }
-        }
-      }
-
-      const optionsHTML = renderOptionsLayout(optionLines);
-      const imageHTML = q.image
-        ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>`
-        : '';
-
-      const finalQuestionHTML = (() => {
-        let h = questionContentHTML || '';
-        h = h
-          .replace(/<\/p>/gi, '<br>')
-          .replace(/<p[^>]*>/gi, '')
-          .replace(/<div[^>]*>/gi, '<br>')
-          .replace(/<\/div>/gi, '');
-        return h;
-      })();
-
-      return `
-        <div class="question-container">
-          <div class="question-number">${currentQNum}.</div>
-          <div class="question-body">
-            <div class="question-text" style="font-size:1.15em;" ${section.type === 'internal' ? 'data-internal-choice="1"' : ''}>
-              ${finalQuestionHTML}
-            </div>
-            ${imageHTML}
-            <div class="options-block" data-options="${encodeURIComponent(JSON.stringify(optionLines))}">${optionsHTML}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  const headerHTML = `
+    page.innerHTML = `
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
@@ -1742,15 +1447,14 @@ function renderPrintPreview() {
           : ''
       }
     </div>
-
     <div class="details-rect">
-      <div class="rect-row">
+     <div class="rect-row">
         <span class="rect-label">Class: ${exam.class || ''}</span>
         <span class="rect-subject">${
-          (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
-            ? (exam.subjects[0].subject || '').toUpperCase()
-            : (exam.subject || '').toUpperCase()
-        }</span>
+  (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
+    ? (exam.subjects[0].subject || '').toUpperCase()
+    : (exam.subject || '').toUpperCase()
+}</span>
         <span class="rect-label">Date: ${formatDate(exam.date) || ''}</span>
       </div>
       <div class="rect-row">
@@ -1763,17 +1467,16 @@ function renderPrintPreview() {
     </div>
   `;
 
+  let qNum = 1;       // global continuous numbering
   let contentHTML = '';
-  const qNumRef = { value: 1 };
-
   if (exam.subjects && exam.subjects.length > 1) {
     for (const subjectBlock of exam.subjects) {
       contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${subjectBlock.subject || ''}</div>`;
-
+      /* qNum is global; no per-section reset */
       for (const section of (subjectBlock.sections || [])) {
         contentHTML += `
-          <div class="section-block" style="margin-bottom:6px;">
-            <div style="text-align:center;font-weight:bold;font-size:1.17em;margin-bottom:2px;color:#7A2230;">
+          <div class="section-block" style="margin-bottom: 6px;">
+            <div style="text-align:center; font-weight:bold; font-size:1.17em; margin-bottom:2px; color:#7A2230;">
               ${section.label || section.name || ''}
             </div>
             <div style="
@@ -1781,20 +1484,20 @@ function renderPrintPreview() {
               font-weight:bold;font-size:1.12em;padding:5px 26px 5px 18px;margin-bottom:10px;
               display:flex;align-items:center;justify-content:space-between;">
               <span style="flex:1;text-align:left;">
-                ${
-                  (() => {
-                    let instr =
-                      section.type === 'all' ? `Answer all ${section.numQuestions} questions` :
-                      section.type === 'any' ? `Answer any ${section.attemptAny || section.numQuestions} questions` :
-                      section.type === 'internal' ? `Answer all ${section.numPairs} pairs` : '';
-                    return section.instructions || instr;
-                  })()
-                }
-              </span>
+  ${
+    (() => {
+      let instr =
+        section.type === 'all'      ? `Answer all ${section.numQuestions} questions` :
+        section.type === 'any'      ? `Answer any ${section.attemptAny || section.numQuestions} questions` :
+        section.type === 'internal' ? `Answer all ${section.numPairs} pairs` : '';
+      return section.instructions || instr;
+    })()
+  }
+</span>
               <span style="flex:0 0 auto;text-align:right;margin-left:30px;">
                 ${
-                  section.type === 'all' ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
-                  section.type === 'any' ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
+                  section.type === 'all'      ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
+                  section.type === 'any'      ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
                   section.type === 'internal' ? `${section.numPairs} x ${section.marksPerQuestion} = ${section.numPairs * section.marksPerQuestion} Marks` : ''
                 }
               </span>
@@ -1802,15 +1505,104 @@ function renderPrintPreview() {
           </div>
         `;
 
-        contentHTML += buildQuestionsForSection(section, qNumRef);
+      if (section.questions && section.questions.length > 0) {
+  const questionsHTML = section.questions.map(q => {
+    const currentQNum = q.number || (qNum++);
+    let questionContentHTML = '';
+    let optionLines = [];
+    const hasShuffledOptions = Array.isArray(q.options) && q.options.length === 4;
+    let isAlreadyFormatted = false; // <-- 1. FLAG
+
+    if (hasShuffledOptions) {
+      const raw = (q.question || q.text || '');
+      questionContentHTML = raw.replace(/\s*A\).*/g, '').trim();
+      optionLines = q.options.map((opt, idx) => {
+        const cleanOpt = stripLeadingLabel(opt);
+        return String.fromCharCode(65 + idx) + ') ' + cleanOpt;
+      });
+    } else {
+      const pre = (q.html || q.renderedHTML || q.finalHTML || q.formattedHTML || q.question || q.text || '');
+      // If review already produced pair markup, trust it as-is
+           if (/\bpair-a\b/.test(pre) && /\bpair-b\b/.test(pre)) {
+        questionContentHTML = pre;
+        isAlreadyFormatted = true; // <-- 2. SET THE FLAG
+      } else {
+        let html = pre
+          .replace(/<img[^>]*>/gi, '')
+          .replace(/<\/p>/gi, '<br>')
+          .replace(/<div[^>]*>/gi, '<br>')
+          .replace(/<\/div>/gi, '')
+          .replace(/<li[^>]*>/gi, '<br>')
+          .replace(/<\/li>/gi, '')
+          .replace(/<ol[^>]*>|<ul[^>]*>|<\/ol>|<\/ul>/gi, '');
+
+        let parts = html.split(/<br\s*\/?>|\r?\n|\r/gi)
+          .map(s => s.replace(/ /g, ' ').trim())
+          .filter(Boolean);
+
+                 if (parts.length > 0) {
+          questionContentHTML = autoLatexAll(removeMetaPrefix((parts[0] || '')));
+          for (let i = 1; i < parts.length; i++) {
+            let line = autoLatexAll(parts[i]);
+            let inlineOpts = line.match(/((?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*.*?)(?=\s+(?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*|$)/gi);
+            if (inlineOpts && inlineOpts.length >= 2) {
+              optionLines.push(...inlineOpts.map(opt => autoLatexAll(opt.trim())));
+            } else {
+              const singleOpt = line.match(/^\s*(?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s+.+$/i);
+              if (singleOpt) {
+                optionLines.push(autoLatexAll((singleOpt[0] || '').trim()));
+              } else if (line && !/^\s*(?:^|\s|\()(?:(?:[A-D])|(?:\(?i{1,3}\)?|iv))\s*[\)\.\:\-–—]\s+/.test(line)) {
+                questionContentHTML += '<br>' + line;
+              }
+            }
+          }
+          if (optionLines.length === 4) {
+            optionLines = optionLines
+              .map(s => stripLeadingLabel(s).replace(/\s+/g, ' ').trim())
+              .map((opt, i) => String.fromCharCode(65 + i) + ') ' + opt);
+          }
+        } // ← closes if(parts.length>0)
+      }   // ← closes else { ... } for hasShuffledOptions
+    }
+
+    const optionsHTML = renderOptionsLayout(optionLines);
+    const imageHTML = q.image ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>` : '';
+
+    // <-- 3. FINAL HTML (avoid double-formatting)
+       const finalQuestionHTML = (() => {
+      let h = questionContentHTML || '';
+      // Normalise basic block tags only; DO NOT touch (A)/(B)/(OR)
+      h = h
+        .replace(/<\/p>/gi, '<br>')
+        .replace(/<p[^>]*>/gi, '')
+        .replace(/<div[^>]*>/gi, '<br>')
+        .replace(/<\/div>/gi, '');
+      return h;
+    })();
+    return `
+      <div class="question-container">
+        <div class="question-number">${currentQNum}.</div>
+        <div class="question-body">
+          <div class="question-text" style="font-size:1.15em;" ${section.type==='internal' ? 'data-internal-choice="1"' : ''}>
+            ${finalQuestionHTML}
+          </div>
+          ${imageHTML}
+          <div class="options-block" data-options="${encodeURIComponent(JSON.stringify(optionLines))}">${optionsHTML}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  contentHTML += questionsHTML;
+      }
       }
     }
   } else if (exam.subjects && exam.subjects.length === 1) {
     for (const subjectBlock of exam.subjects) {
+      /* qNum is global; no per-section reset */
       for (const section of (subjectBlock.sections || [])) {
         contentHTML += `
-          <div class="section-block" style="margin-bottom:6px;">
-            <div style="text-align:center;font-weight:bold;font-size:1.17em;margin-bottom:2px;color:#7A2230;">
+          <div class="section-block" style="margin-bottom: 6px;">
+            <div style="text-align:center; font-weight:bold; font-size:1.17em; margin-bottom:2px; color:#7A2230;">
               ${section.label || section.name || ''}
             </div>
             <div style="
@@ -1818,20 +1610,20 @@ function renderPrintPreview() {
               font-weight:bold;font-size:1.12em;padding:5px 26px 5px 18px;margin-bottom:10px;
               display:flex;align-items:center;justify-content:space-between;">
               <span style="flex:1;text-align:left;">
-                ${
-                  (() => {
-                    let instr =
-                      section.type === 'all' ? `Answer all ${section.numQuestions} questions` :
-                      section.type === 'any' ? `Answer any ${section.attemptAny || section.numQuestions} questions` :
-                      section.type === 'internal' ? `Answer all ${section.numPairs} pairs` : '';
-                    return section.instructions || instr;
-                  })()
-                }
-              </span>
+              ${
+                (() => {
+                  let instr =
+                    section.type === 'all'      ? `Answer all ${section.numQuestions} questions` :
+                    section.type === 'any'      ? `Answer any ${section.attemptAny || section.numQuestions} questions` :
+                    section.type === 'internal' ? `Answer all ${section.numPairs} pairs` : '';
+                  return section.instructions || instr;
+                })()
+              }
+            </span>
               <span style="flex:0 0 auto;text-align:right;margin-left:30px;color:#111111;">
                 ${
-                  section.type === 'all' ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
-                  section.type === 'any' ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
+                  section.type === 'all'      ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
+                  section.type === 'any'      ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
                   section.type === 'internal' ? `${section.numPairs} x ${section.marksPerQuestion} = ${section.numPairs * section.marksPerQuestion} Marks` : ''
                 }
               </span>
@@ -1839,22 +1631,119 @@ function renderPrintPreview() {
           </div>
         `;
 
-        contentHTML += buildQuestionsForSection(section, qNumRef);
+       // ------- Single-subject branch -------
+if (section.questions && section.questions.length > 0) {
+  const questionsHTML = section.questions.map(q => {
+    const currentQNum = q.number || (qNum++);
+    let questionContentHTML = '';
+    let optionLines = [];
+    const hasShuffledOptions = Array.isArray(q.options) && q.options.length === 4;
+    let isAlreadyFormatted = false; // <-- 1. FLAG
+
+    if (hasShuffledOptions) {
+      const raw = (q.question || q.text || '');
+      questionContentHTML = raw.replace(/\s*A\).*/g, '').trim();
+      optionLines = q.options.map((opt, idx) => {
+        const cleanOpt = stripLeadingLabel(opt);
+        return String.fromCharCode(65 + idx) + ') ' + cleanOpt;
+      });
+    } else {
+      // UPGRADED LOGIC
+      const pre = (q.html || q.renderedHTML || q.finalHTML || q.formattedHTML || q.question || q.text || '');
+      // If review already produced pair markup, trust it as-is
+           if (/\bpair-a\b/.test(pre) && /\bpair-b\b/.test(pre)) {
+        questionContentHTML = pre;
+        isAlreadyFormatted = true; // <-- 2. SET THE FLAG
+      } else {
+        let html = pre
+          .replace(/<img[^>]*>/gi, '')
+          .replace(/<\/p>/gi, '<br>')
+          .replace(/<div[^>]*>/gi, '<br>')
+          .replace(/<\/div>/gi, '')
+          .replace(/<li[^>]*>/gi, '<br>')
+          .replace(/<\/li>/gi, '')
+          .replace(/<ol[^>]*>|<ul[^>]*>|<\/ol>|<\/ul>/gi, '');
+
+        let parts = html.split(/<br\s*\/?>|\r?\n|\r/gi)
+          .map(s => s.replace(/ /g, ' ').trim())
+          .filter(Boolean);
+
+                if (parts.length > 0) {
+          questionContentHTML = autoLatexAll(removeMetaPrefix((parts[0] || '')));
+          for (let i = 1; i < parts.length; i++) {
+            let line = autoLatexAll(parts[i]);
+            let inlineOpts = line.match(/((?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*.*?)(?=\s+(?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s*|$)/gi);
+            if (inlineOpts && inlineOpts.length >= 2) {
+              optionLines.push(...inlineOpts.map(opt => autoLatexAll(opt.trim())));
+            } else {
+              const singleOpt = line.match(/^\s*(?:^|\s|\()(?:(?:[A-D])|(?:iv|vi|ix|v?i{1,3}))\s*[)\.: -]\s+.+$/i);
+              if (singleOpt) {
+                optionLines.push(autoLatexAll((singleOpt[0] || '').trim()));
+              } else if (line && !/^\s*(?:^|\s|\()(?:(?:[A-D])|(?:\(?i{1,3}\)?|iv))\s*[\)\.\:\-–—]\s+/.test(line)) {
+                questionContentHTML += '<br>' + line;
+              }
+            }
+          }
+          if (optionLines.length === 4) {
+            optionLines = optionLines
+              .map(s => stripLeadingLabel(s).replace(/\s+/g, ' ').trim())
+              .map((opt, i) => String.fromCharCode(65 + i) + ') ' + opt);
+          }
+        } // ← closes if(parts.length>0)
+      }   // ← closes else { ... } for hasShuffledOptions
+    }
+
+    const optionsHTML = renderOptionsLayout(optionLines);
+    const imageHTML = q.image ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>` : '';
+
+    // <-- 3. FINAL HTML (avoid double-formatting)
+       const finalQuestionHTML = (() => {
+      let h = questionContentHTML || '';
+      h = h
+        .replace(/<\/p>/gi, '<br>')
+        .replace(/<p[^>]*>/gi, '')
+        .replace(/<div[^>]*>/gi, '<br>')
+        .replace(/<\/div>/gi, '');
+      return h;
+    })();
+    // --- END ---
+
+    return `
+      <div class="question-container">
+        <div class="question-number">${currentQNum}.</div>
+        <div class="question-body">
+          <div class="question-text" style="font-size:1.15em;" ${section.type==='internal' ? 'data-internal-choice="1"' : ''}>
+            ${finalQuestionHTML}
+          </div>
+          ${imageHTML}
+          <div class="options-block" data-options="${encodeURIComponent(JSON.stringify(optionLines))}">${optionsHTML}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  contentHTML += questionsHTML;
+      }
       }
     }
   }
 
-  paginatePreviewHtml(headerHTML + contentHTML);
+   page.innerHTML += contentHTML;
+  page.innerHTML += `<div class="print-footer-spacer"></div>`;
+    container.appendChild(page);
 
-  if (exam.includeQrInPrint) {
+     if (exam.includeQrInPrint) {
     setTimeout(() => {
       renderAnswerKeyQR(exam);
     }, 300);
   }
 
+  // NOTE: Internal-choice A/B auto-splitting is disabled in preview for now.
+  // setTimeout(()=>{ insertManualOrBoxes(page); },0);
+
   container.classList.add('mjx-process');
 
-  function doTypeset() {
+   function doTypeset() {
+    // Build options HTML BEFORE MathJax
     document.querySelectorAll('.options-block[data-options]').forEach(node => {
       try {
         const raw = node.getAttribute('data-options') || '[]';
@@ -1867,53 +1756,57 @@ function renderPrintPreview() {
       }
     });
 
-    const target = document.getElementById('print-preview');
+    // Typeset MathJax (FORCE normal weight: strip bold tags + bold styles, then clear & re-typeset)
+const target = document.getElementById('print-preview');
 
-    if (target) {
-      target.querySelectorAll('b,strong').forEach(el => {
-        const span = document.createElement('span');
-        span.innerHTML = el.innerHTML;
-        el.replaceWith(span);
-      });
+if (target) {
+  // 1) remove <b>/<strong>
+  target.querySelectorAll('b,strong').forEach(el => {
+    const span = document.createElement('span');
+    span.innerHTML = el.innerHTML;
+    el.replaceWith(span);
+  });
 
-      target.querySelectorAll('[style*="font-weight"]').forEach(el => {
-        try { el.style.fontWeight = 'normal'; } catch (e) {}
-      });
+  // 2) remove inline bold styles (very common in saved HTML)
+  target.querySelectorAll('[style*="font-weight"]').forEach(el => {
+    try { el.style.fontWeight = 'normal'; } catch(e) {}
+  });
 
-      target.style.fontWeight = 'normal';
+  // 3) force container normal weight (so MathJax reads normal at typeset time)
+  target.style.fontWeight = 'normal';
 
-      if (window.MathJax && typeof window.MathJax.typesetClear === 'function') {
-        window.MathJax.typesetClear([target]);
-      }
-    }
+  // 4) IMPORTANT: remove old MathJax output so it regenerates (otherwise bold SVG stays)
+ 
+  if (window.MathJax && typeof window.MathJax.typesetClear === 'function') {
+    window.MathJax.typesetClear([target]);
+  }
+}
 
-    if (window.MathJax && typeof window.MathJax.typesetPromise === 'function' && target) {
-      return window.MathJax.typesetPromise([target])
-        .catch(err => console.error('MathJax typeset failed:', err))
-        .then(() => {
-          if (target) {
-            target.querySelectorAll('mjx-container svg [font-weight]').forEach(n => {
-              try { n.setAttribute('font-weight', '400'); } catch (e) {}
-            });
-            target.querySelectorAll('mjx-container svg [style*="font-weight"]').forEach(n => {
-              try { n.style.fontWeight = '400'; } catch (e) {}
-            });
-            target.querySelectorAll('mjx-container svg text, mjx-container svg tspan').forEach(n => {
-              try {
-                n.style.fontWeight = '400';
-                n.setAttribute('font-weight', '400');
-              } catch (e) {}
-            });
-          }
-          dedupePairText(document);
-        });
-    }
-
-    return Promise.resolve().then(() => {
-      dedupePairText(document);
+if (window.MathJax && typeof window.MathJax.typesetPromise === 'function' && target) {
+  return window.MathJax.typesetPromise([target])
+    .catch(err => console.error('MathJax typeset failed:', err))
+    .then(() => {
+  // ✅ kill bold inside MathJax SVG (Chrome print preview issue)
+  if (target) {
+    target.querySelectorAll('mjx-container svg [font-weight]').forEach(n => {
+      try { n.setAttribute('font-weight', '400'); } catch(e) {}
+    });
+    target.querySelectorAll('mjx-container svg [style*="font-weight"]').forEach(n => {
+      try { n.style.fontWeight = '400'; } catch(e) {}
+    });
+    target.querySelectorAll('mjx-container svg text, mjx-container svg tspan').forEach(n => {
+      try { n.style.fontWeight = '400'; n.setAttribute('font-weight','400'); } catch(e) {}
     });
   }
+  dedupePairText(document);
+});
 
+}
+    // No-MathJax fallback
+    return Promise.resolve().then(() => {
+  dedupePairText(document);
+});
+  }
   if (window.MathJax?.startup?.promise) {
     window.MathJax.startup.promise.then(doTypeset);
   } else if (window.MathJax?.typesetPromise) {
@@ -1976,103 +1869,7 @@ function insertManualOrBoxes(root=document){
 
   renderPrintPreview();
 })();
-
-async function waitForPreviewImages(root) {
-  const imgs = Array.from((root || document).querySelectorAll('img'));
-  await Promise.all(
-    imgs.map(img =>
-      img.complete
-        ? Promise.resolve()
-        : new Promise(resolve => {
-            img.onload = resolve;
-            img.onerror = resolve;
-          })
-    )
-  );
-}
-
-async function exportPreviewPdf() {
-  const btn = document.getElementById('download-preview-pdf-btn');
-  const oldHtml = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing PDF...';
-  }
-
-  try {
-    const previewRoot = document.getElementById('print-preview');
-    if (!previewRoot) throw new Error('Preview not found');
-
-    await waitForPreviewImages(previewRoot);
-
-    if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-      await window.MathJax.typesetPromise([previewRoot]).catch(() => {});
-    }
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const pages = Array.from(document.querySelectorAll('.a4-page'));
-    if (!pages.length) throw new Error('No pages found');
-
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const pageRect = page.getBoundingClientRect();
-      const pageWidthPx = pageRect.width;
-      const pageHeightPx = pageRect.height;
-      const scale = 3;
-
-      const imgData = await domtoimage.toPng(page, {
-        bgcolor: '#ffffff',
-        width: pageWidthPx * scale,
-        height: pageHeightPx * scale,
-        style: {
-          transform: 'scale(' + scale + ')',
-          transformOrigin: 'top left',
-          width: pageWidthPx + 'px',
-          height: pageHeightPx + 'px'
-        }
-      });
-
-      if (i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
-
-      const qrNodes = Array.from(page.querySelectorAll('[data-qr-link]'));
-      qrNodes.forEach(node => {
-        const url = node.getAttribute('data-qr-link');
-        if (!url) return;
-
-        const r = node.getBoundingClientRect();
-
-        const x = ((r.left - pageRect.left) / pageWidthPx) * 210;
-        const y = ((r.top - pageRect.top) / pageHeightPx) * 297;
-        const w = (r.width / pageWidthPx) * 210;
-        const h = (r.height / pageHeightPx) * 297;
-
-        pdf.link(x, y, w, h, { url });
-      });
-    }
-
-    const safeName = String(exam.examName || 'Exam_Preview')
-      .replace(/[\\/:*?"<>|]+/g, '_')
-      .trim();
-
-    pdf.save((safeName || 'Exam_Preview') + '.pdf');
-  } catch (err) {
-    console.error('Preview PDF export failed:', err);
-    alert('PDF export failed: ' + err.message);
-  }
-
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = oldHtml;
-  }
-}
-
+   
 // This function OUTSIDE of the above
 async function renderMathJaxToImages(containerSelector) {
   const container = document.querySelector(containerSelector);
@@ -2227,24 +2024,3 @@ window.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
