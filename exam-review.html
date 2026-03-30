@@ -503,7 +503,7 @@ if (paper.instructions) {
     <div class="q-body">
       ${bodyHtml}
 
-     ${ (q.options && q.options.length === 4)
+    ${ (q.options && q.options.length === 4)
         ? `
           <div class="mcq-block" style="display:flex;flex-direction:column;gap:6px;margin-left:8px;flex:1 1 100%;">
             ${['A','B','C','D'].map((L, i) => `
@@ -521,6 +521,12 @@ if (paper.instructions) {
               </span>
               <span class="marks-label" style="opacity:.8;">(use letters like A or A,C)</span>
             </div>
+            <div class="desc-exp-row" style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
+              <span class="marks-label" style="min-width:62px;">Explanation</span>
+              <div class="explanation-box rich-explanation" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
+                ${(q.explanation || '').toString()}
+              </div>
+            </div>
           </div>
         `
         : `
@@ -528,6 +534,12 @@ if (paper.instructions) {
             <span class="marks-label" style="min-width:62px;">Answer</span>
             <div class="answer-box rich-answer" data-answer-type="text" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
               ${(q.answer || '').toString()}
+            </div>
+          </div>
+          <div class="desc-exp-row" style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
+            <span class="marks-label" style="min-width:62px;">Explanation</span>
+            <div class="explanation-box rich-explanation" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
+              ${(q.explanation || '').toString()}
             </div>
           </div>
         `
@@ -601,7 +613,7 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
   }
   if (!window.__attachMathEditors) {
     window.__attachMathEditors = function (root) {
-      const targets = root.querySelectorAll('.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer');
+      const targets = root.querySelectorAll('.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer, .explanation-box.rich-explanation');
       targets.forEach(el => {
         window.__makePreview(el);
         el.addEventListener('click', () => {
@@ -887,6 +899,12 @@ if (optNodes && optNodes.length === 4) {
         paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer =
           ((ansNode.dataset && ansNode.dataset.raw) ? ansNode.dataset.raw : (ansNode.innerHTML || ansNode.innerText || '')).trim();
       }
+    }
+
+        const expNode = qr.querySelector('.explanation-box');
+    if (expNode) {
+      paper.subjects[subjIdx].sections[secIdx].questions[qIdx].explanation =
+        ((expNode.dataset && expNode.dataset.raw) ? expNode.dataset.raw : (expNode.innerHTML || expNode.innerText || '')).trim();
     }
 
     // Sync image (if present)
