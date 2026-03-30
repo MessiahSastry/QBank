@@ -7,7 +7,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.0.1/docx.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -204,6 +205,12 @@
   justify-content:center;
 }
 
+#answer-key-qr-link{
+  display:inline-block;
+  width:78px;
+  height:78px;
+}
+
 .qr-caption{
   margin-top:4px;
   font-size:0.7em;
@@ -226,6 +233,10 @@
     right:0;
   }
   #answer-key-qr{
+    width:64px;
+    height:64px;
+  }
+  #answer-key-qr-link{
     width:64px;
     height:64px;
   }
@@ -617,8 +628,10 @@ mjx-container svg {
     <div id="page-container">
     <div id="print-preview" class="print-preview"></div>
   <div class="toolbar">
-     <button onclick="window.print()"><i class="fas fa-print"></i> Print</button>
-  </div>
+  <button id="download-preview-pdf-btn" onclick="exportPreviewPdf()">
+    <i class="fas fa-file-pdf"></i> Download PDF
+  </button>
+</div>
 </div>
  <script>
   function formatSubQuestions(text) {
@@ -943,11 +956,14 @@ qrLink.removeAttribute('data-qr-link');
     const answerKeyUrl = buildPublicAnswerKeyUrl(paperId);
 
     qrBox.innerHTML = '';
-    qrLink.href = answerKeyUrl;
-    qrLink.target = '_blank';
-    qrLink.setAttribute('data-qr-link', answerKeyUrl);
+   qrLink.href = answerKeyUrl;
+qrLink.target = '_blank';
+qrLink.setAttribute('data-qr-link', answerKeyUrl);
+qrLink.style.display = 'inline-block';
+qrLink.style.width = '78px';
+qrLink.style.height = '78px';
 
-    new QRCode(qrBox, {
+new QRCode(qrBox, {
       text: answerKeyUrl,
       width: 68,
       height: 68,
@@ -1868,7 +1884,103 @@ function insertManualOrBoxes(root=document){
 
   renderPrintPreview();
 })();
-   
+
+async function waitForPreviewImages(root) {
+  const imgs = Array.from((root || document).querySelectorAll('img'));
+  await Promise.all(
+    imgs.map(img =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          })
+    )
+  );
+}
+
+async function exportPreviewPdf() {
+  const btn = document.getElementById('download-preview-pdf-btn');
+  const oldHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing PDF...';
+  }
+
+  try {
+    const previewRoot = document.getElementById('print-preview');
+    if (!previewRoot) throw new Error('Preview not found');
+
+    await waitForPreviewImages(previewRoot);
+
+    if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+      await window.MathJax.typesetPromise([previewRoot]).catch(() => {});
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pages = Array.from(document.querySelectorAll('.a4-page'));
+    if (!pages.length) throw new Error('No pages found');
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const pageRect = page.getBoundingClientRect();
+      const pageWidthPx = pageRect.width;
+      const pageHeightPx = pageRect.height;
+      const scale = 3;
+
+      const imgData = await domtoimage.toPng(page, {
+        bgcolor: '#ffffff',
+        width: pageWidthPx * scale,
+        height: pageHeightPx * scale,
+        style: {
+          transform: 'scale(' + scale + ')',
+          transformOrigin: 'top left',
+          width: pageWidthPx + 'px',
+          height: pageHeightPx + 'px'
+        }
+      });
+
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
+
+      const qrNodes = Array.from(page.querySelectorAll('[data-qr-link]'));
+      qrNodes.forEach(node => {
+        const url = node.getAttribute('data-qr-link');
+        if (!url) return;
+
+        const r = node.getBoundingClientRect();
+
+        const x = ((r.left - pageRect.left) / pageWidthPx) * 210;
+        const y = ((r.top - pageRect.top) / pageHeightPx) * 297;
+        const w = (r.width / pageWidthPx) * 210;
+        const h = (r.height / pageHeightPx) * 297;
+
+        pdf.link(x, y, w, h, { url });
+      });
+    }
+
+    const safeName = String(exam.examName || 'Exam_Preview')
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .trim();
+
+    pdf.save((safeName || 'Exam_Preview') + '.pdf');
+  } catch (err) {
+    console.error('Preview PDF export failed:', err);
+    alert('PDF export failed: ' + err.message);
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = oldHtml;
+  }
+}
+
 // This function OUTSIDE of the above
 async function renderMathJaxToImages(containerSelector) {
   const container = document.querySelector(containerSelector);
