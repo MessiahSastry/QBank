@@ -438,12 +438,14 @@ function renderExam() {
 let html = '';
 
 let qCounter = 0;
-(paper.subjects || []).forEach((subjectBlock, subjIdx) => {
-      if (paper.instructions) {
+
+if (paper.instructions) {
   html += `<div class="paper-global-instructions" style="color:#12416c;font-size:1.1em; font-weight:600; background:#f7fafd; padding:10px 18px; border-radius:9px; margin-bottom:22px; text-align:center;">
     ${paper.instructions}
   </div>`;
 }
+
+(paper.subjects || []).forEach((subjectBlock, subjIdx) => {
       html += `<h3 style="color:#0f3d6b; margin:22px 0 8px 0;">Subject: ${subjectBlock.subject}</h3>`;
             (subjectBlock.sections || []).forEach((section, sIdx) => {
 
@@ -480,15 +482,15 @@ let qCounter = 0;
             : ""
     }
   </div>
-    <div style="font-weight:600; color:#1762a7; font-size:1.08em; text-align:right; min-width:120px;">
+   <div style="font-weight:600; color:#1762a7; font-size:1.08em; text-align:right; min-width:120px;">
     <span contenteditable="plaintext-only" tabindex="0" class="num-questions no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin-right:2px;">
-      ${section.numQuestions}
+      ${section.type === "internal" ? (section.numPairs || 0) : (section.numQuestions || 0)}
     </span>
     x
     <span contenteditable="plaintext-only" tabindex="0" class="marks-per-question no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin:0 2px;">
       ${section.marksPerQuestion}
     </span>
-    = ${(section.numQuestions * section.marksPerQuestion)} Marks
+    = ${((section.type === "internal" ? (section.numPairs || 0) : (section.numQuestions || 0)) * (section.marksPerQuestion || 0))} Marks
   </div>
 </div>
 `;
@@ -596,7 +598,7 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
   }
   if (!window.__attachMathEditors) {
     window.__attachMathEditors = function (root) {
-      const targets = root.querySelectorAll('.question-text, .sub-text, .mcq-opt');
+      const targets = root.querySelectorAll('.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer');
       targets.forEach(el => {
         window.__makePreview(el);
         el.addEventListener('click', () => {
@@ -800,10 +802,16 @@ function saveEdits() {
     paper.subjects[subjIdx].sections[secIdx].label = sec.textContent.replace(/<[^>]+>/g,'').replace(/Edited$/,'').trim();
   });
   // Number of Questions and Marks Per Question (editable)
-  document.querySelectorAll('.num-questions').forEach(span => {
+    document.querySelectorAll('.num-questions').forEach(span => {
     const subjIdx = +span.dataset.subject, secIdx = +span.dataset.section;
     let val = parseInt(span.textContent.trim());
-    if (!isNaN(val) && val > 0) paper.subjects[subjIdx].sections[secIdx].numQuestions = val;
+    if (!isNaN(val) && val > 0) {
+      if (paper.subjects[subjIdx].sections[secIdx].type === 'internal') {
+        paper.subjects[subjIdx].sections[secIdx].numPairs = val;
+      } else {
+        paper.subjects[subjIdx].sections[secIdx].numQuestions = val;
+      }
+    }
   });
   document.querySelectorAll('.marks-per-question').forEach(span => {
     const subjIdx = +span.dataset.subject, secIdx = +span.dataset.section;
@@ -850,22 +858,30 @@ if (optNodes && optNodes.length === 4) {
 
 
     // Answer key (letters like A or A,C)
+       // Answer save
     const ansNode = qr.querySelector('.answer-box');
     if (ansNode) {
-      let raw = (ansNode.innerText || '').toUpperCase().replace(/[^A-D,]/g,'').replace(/\s+/g,'');
-      // Normalize duplicates & order: A,B,C,D unique, keep original order
-      const seen = new Set();
-      const letters = raw.split(',').filter(x => /^[A-D]$/.test(x) && !seen.has(x) && (seen.add(x), true));
-      paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer = letters.join(letters.length > 1 ? ',' : '');
-           // Sync image (if present)
-      const wrap = qr.querySelector('.q-imgwrap');
-      if (wrap){
-        const img = wrap.querySelector('.q-imgbox img');
-        if (img && img.src){
-          paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image = img.src; // data URL persists
-        } else {
-          delete paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image;
-        }
+      const answerType = ansNode.dataset.answerType || 'mcq';
+
+      if (answerType === 'mcq') {
+        let raw = (ansNode.innerText || '').toUpperCase().replace(/[^A-D,]/g,'').replace(/\s+/g,'');
+        const seen = new Set();
+        const letters = raw.split(',').filter(x => /^[A-D]$/.test(x) && !seen.has(x) && (seen.add(x), true));
+        paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer = letters.join(letters.length > 1 ? ',' : '');
+      } else {
+        paper.subjects[subjIdx].sections[secIdx].questions[qIdx].answer =
+          ((ansNode.dataset && ansNode.dataset.raw) ? ansNode.dataset.raw : (ansNode.innerHTML || ansNode.innerText || '')).trim();
+      }
+    }
+
+    // Sync image (if present)
+    const wrap = qr.querySelector('.q-imgwrap');
+    if (wrap){
+      const img = wrap.querySelector('.q-imgbox img');
+      if (img && img.src){
+        paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image = img.src;
+      } else {
+        delete paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image;
       }
     }
   });
