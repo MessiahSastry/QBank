@@ -395,6 +395,8 @@ window.alert = function(message) {
 };
 
 function sciMentraConfirm(message) {
+  console.log('sciMentraConfirm called with message:', message);
+
   return new Promise(resolve => {
     const overlay = document.getElementById('scimentra-dialog-overlay');
     const msg = document.getElementById('scimentra-dialog-message');
@@ -402,10 +404,27 @@ function sciMentraConfirm(message) {
     const okBtn = document.getElementById('scimentra-dialog-ok');
     const cancelBtn = document.getElementById('scimentra-dialog-cancel');
 
+    console.log('Dialog elements check:', {
+      overlay,
+      msg,
+      input,
+      okBtn,
+      cancelBtn
+    });
+
+    if (!overlay || !msg || !input || !okBtn || !cancelBtn) {
+      console.error('SciMentra dialog elements not found.');
+      resolve(false);
+      return;
+    }
+
     msg.textContent = message || '';
     input.style.display = 'none';
     cancelBtn.style.display = 'inline-block';
     overlay.style.display = 'flex';
+
+    console.log('Overlay display after open:', overlay.style.display);
+    console.log('Overlay computed display:', window.getComputedStyle(overlay).display);
 
     const oldOk = okBtn.textContent;
     const oldCancel = cancelBtn.textContent;
@@ -414,6 +433,7 @@ function sciMentraConfirm(message) {
     cancelBtn.textContent = 'No';
 
     function cleanup(value) {
+      console.log('sciMentraConfirm cleanup called. value =', value);
       overlay.style.display = 'none';
       okBtn.onclick = null;
       cancelBtn.onclick = null;
@@ -423,10 +443,18 @@ function sciMentraConfirm(message) {
       resolve(value);
     }
 
-    okBtn.onclick = () => cleanup(true);
-    cancelBtn.onclick = () => cleanup(false);
+    okBtn.onclick = () => {
+      console.log('Confirm YES clicked');
+      cleanup(true);
+    };
+
+    cancelBtn.onclick = () => {
+      console.log('Confirm NO clicked');
+      cleanup(false);
+    };
 
     input.onkeydown = (e) => {
+      console.log('Confirm keydown:', e.key);
       if (e.key === 'Escape') cleanup(false);
       if (e.key === 'Enter') cleanup(true);
     };
@@ -995,12 +1023,21 @@ function shuffledIndexMap(size) {
 }
 
 async function shuffleMcqOptionsInExamPaper() {
+  console.log('shuffleMcqOptionsInExamPaper started');
+
   const ok = await sciMentraConfirm('Do you want to Shuffle Options?');
-  if (!ok) return;
+  console.log('Confirm result:', ok);
+
+  if (!ok) {
+    console.log('User cancelled shuffle');
+    return;
+  }
 
   saveEdits(false);
+  console.log('saveEdits(false) done');
 
   const paper = getExamPaper();
+  console.log('Paper loaded:', paper);
   if (!paper) {
     alert('No exam paper found!');
     return;
@@ -1052,11 +1089,22 @@ const shuffleBtn = document.getElementById('shuffle-options-btn');
 const saveBtn = document.getElementById('save-review-btn');
 
 if (shuffleBtn) {
+  console.log('shuffleBtn found:', shuffleBtn);
+
   shuffleBtn.onclick = async function (e) {
+    console.log('Shuffle button clicked');
     e.preventDefault();
     e.stopPropagation();
-    await shuffleMcqOptionsInExamPaper();
+
+    try {
+      await shuffleMcqOptionsInExamPaper();
+      console.log('shuffleMcqOptionsInExamPaper finished');
+    } catch (err) {
+      console.error('Shuffle button error:', err);
+    }
   };
+} else {
+  console.error('shuffleBtn NOT found');
 }
 
 if (saveBtn) {
@@ -1459,6 +1507,15 @@ if (!qObj.text || !qObj.text.trim()) {
   }
   btn.innerHTML = `<i class="fas fa-random"></i> Copy Batch ${nextIdx + 1}/${totalBatches} Prompt (again)`;
 };
+ window.addEventListener('error', function(e) {
+  console.error('Global JS Error:', e.message, 'at', e.filename, 'line', e.lineno);
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('Unhandled Promise Rejection:', e.reason);
+});
+
+console.log('Review page script loaded successfully');
 </script>
  <div id="scimentra-dialog-overlay" style="
   display:none;
