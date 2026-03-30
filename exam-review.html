@@ -395,7 +395,42 @@ window.alert = function(message) {
 };
 
 function sciMentraConfirm(message) {
-  return Promise.resolve(window.confirm(message || 'Do you want to continue?'));
+  return new Promise(resolve => {
+    const overlay = document.getElementById('scimentra-dialog-overlay');
+    const msg = document.getElementById('scimentra-dialog-message');
+    const input = document.getElementById('scimentra-dialog-input');
+    const okBtn = document.getElementById('scimentra-dialog-ok');
+    const cancelBtn = document.getElementById('scimentra-dialog-cancel');
+
+    msg.textContent = message || '';
+    input.style.display = 'none';
+    cancelBtn.style.display = 'inline-block';
+    overlay.style.display = 'flex';
+
+    const oldOk = okBtn.textContent;
+    const oldCancel = cancelBtn.textContent;
+
+    okBtn.textContent = 'Yes';
+    cancelBtn.textContent = 'No';
+
+    function cleanup(value) {
+      overlay.style.display = 'none';
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      input.onkeydown = null;
+      okBtn.textContent = oldOk;
+      cancelBtn.textContent = oldCancel;
+      resolve(value);
+    }
+
+    okBtn.onclick = () => cleanup(true);
+    cancelBtn.onclick = () => cleanup(false);
+
+    input.onkeydown = (e) => {
+      if (e.key === 'Escape') cleanup(false);
+      if (e.key === 'Enter') cleanup(true);
+    };
+  });
 }
 function renderExam() {
 
