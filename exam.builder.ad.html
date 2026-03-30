@@ -2020,7 +2020,6 @@ function buildSectionInstructions(sec) {
 function getQuestionTextFromDoc(data) {
     return data.question || data.body || data.text || '';
 }
-
 function getQuestionAnswerFromDoc(data) {
     const candidates = [
         data.parsedAnswer,
@@ -2034,36 +2033,19 @@ function getQuestionAnswerFromDoc(data) {
     for (const val of candidates) {
         if (val == null) continue;
 
+        const letters = extractAnswerLetters(val);
+        if (letters.length) {
+            return letters.join(',');
+        }
+
         if (Array.isArray(val)) {
             const arr = val.map(v => String(v || '').trim()).filter(Boolean);
-            if (!arr.length) continue;
-
-            const lettersOnly = arr
-                .map(v => v.toUpperCase())
-                .filter(v => /^[A-D]$/.test(v));
-
-            if (lettersOnly.length === arr.length) {
-                return Array.from(new Set(lettersOnly)).join(',');
-            }
-
-            return arr.join(', ');
+            if (arr.length) return arr.join(', ');
+            continue;
         }
 
         const raw = String(val).trim();
-        if (!raw) continue;
-
-        const mcqMatch = raw.toUpperCase().match(/\b(?:ANS?|ANSWER)\s*[:\-]?\s*([A-D](?:\s*,\s*[A-D])*)\b/);
-        if (mcqMatch) {
-            const cleaned = Array.from(new Set(mcqMatch[1].match(/[A-D]/g) || []));
-            if (cleaned.length) return cleaned.join(',');
-        }
-
-        if (/^[A-D](\s*,\s*[A-D])*$/.test(raw.toUpperCase())) {
-            const cleaned = Array.from(new Set(raw.toUpperCase().match(/[A-D]/g) || []));
-            if (cleaned.length) return cleaned.join(',');
-        }
-
-        return raw;
+        if (raw) return raw;
     }
 
     return '';
