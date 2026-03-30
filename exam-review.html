@@ -952,7 +952,7 @@ document.getElementById('preview-btn').onclick = async function() {
   if (qrChoice === null) return;
 
   const qrValue = String(qrChoice || '').trim().toLowerCase();
-  paper.includeQrInPrint = ['yes', 'y', '1', 'true', 'print qr', 'print'].includes(qrValue);
+  paper.includeQrInPrint = ['yes', 'y', 'true', '1'].includes(qrValue);
 
   sessionStorage.setItem('examPaper', JSON.stringify(paper));
   sessionStorage.setItem('finalExamData', JSON.stringify(paper));
