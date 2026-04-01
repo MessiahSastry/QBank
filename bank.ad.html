@@ -1318,36 +1318,48 @@ function buildQuestionHTML(item, __parent = printable) {
       </div>`;
   }
 
-  // UNIVERSAL QUESTION TEXT + OPTIONS EXTRACTION (unchanged)
-  const textDiv = clone.querySelector('.question-text');
+    const docId = item.getAttribute('data-id');
+  const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
+
   let questionLine = '';
   let options = [];
-  if (textDiv) {
-    let html = textDiv.innerHTML.replace(/<img[^>]*>/gi, '');
-    let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
-      .map(s => s.replace(/&nbsp;/g, ' ').trim())
-      .filter(Boolean);
 
-    parts = parts.filter(line => line && !/^<br\s*\/?>$/i.test(line));
+  // ✅ FIRST use clean source data, not already-rendered DOM
+  if (source) {
+    questionLine = String(source.question || source.body || source.text || '').trim();
+    options = __qbNormalizeOptions(__qbGetWorkbookOptions(source));
+  }
 
-    if (parts.length > 0) {
-      questionLine = parts[0];
-      let optionLines = [];
-      for (let i = 1; i < parts.length; i++) {
-        let line = parts[i];
-        let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
-        if (inlineOpts && inlineOpts.length >= 2) {
-          optionLines.push(...inlineOpts.map(opt => opt.trim()));
-        } else if (line) {
-          optionLines.push(line);
+  // ✅ fallback only if source data is missing
+  if (!questionLine) {
+    const textDiv = clone.querySelector('.question-text');
+    if (textDiv) {
+      let html = textDiv.innerHTML.replace(/<img[^>]*>/gi, '');
+      let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
+        .map(s => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+
+      parts = parts.filter(line => line && !/^<br\s*\/?>$/i.test(line));
+
+      if (parts.length > 0) {
+        questionLine = parts[0];
+        let optionLines = [];
+
+        for (let i = 1; i < parts.length; i++) {
+          let line = parts[i];
+          let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
+          if (inlineOpts && inlineOpts.length >= 2) {
+            optionLines.push(...inlineOpts.map(opt => opt.trim()));
+          } else if (line) {
+            optionLines.push(line);
+          }
         }
-      }
-      if (optionLines.length === 4) {
-        options = optionLines.map((opt, i) =>
-          /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
-        );
-      } else {
-        options = optionLines;
+
+        options = optionLines.length === 4
+          ? optionLines.map((opt, i) =>
+              /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
+            )
+          : optionLines;
       }
     }
   }
@@ -1687,30 +1699,16 @@ const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
   if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-  const rawOptions = optionLines.map(opt => String(opt || '').trim()).filter(Boolean);
+  const rawOptions = optionLines
+    .map(opt => String(opt || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
   const optionHtmlLines = rawOptions.map(opt => __qbFormatOptionForPrint(opt));
 
   if (rawOptions.length !== 4) {
     return optionHtmlLines
-      .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
+      .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
       .join('');
-  }
-
-  function normalizeForLength(opt) {
-    return String(opt || '')
-      .replace(/^([A-D])[\)\.\-]\s*/, '')
-      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1/$2')
-      .replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)')
-      .replace(/\\times/g, '×')
-      .replace(/\\div/g, '÷')
-      .replace(/\\cdot/g, '·')
-      .replace(/\\left|\\right/g, '')
-      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
-      .replace(/\$/g, '')
-      .replace(/\\[a-zA-Z]+/g, '')
-      .replace(/[{}]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
   }
 
   const pageEl =
@@ -1727,31 +1725,69 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
 
   const availableWidth = Math.max(260, Math.min(hostWidth || pageWidth, pageWidth));
 
-  let SHORT_LIMIT = 14;
-  let MEDIUM_LIMIT = 30;
-
-  if (availableWidth <= 460) {
-    SHORT_LIMIT = 8;
-    MEDIUM_LIMIT = 18;
-  } else if (availableWidth <= 560) {
-    SHORT_LIMIT = 11;
-    MEDIUM_LIMIT = 24;
+  function normalizeForMeasure(opt) {
+    return String(opt || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/^([A-D])[\)\.\-]\s*/, '$1) ')
+      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1/$2')
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\left|\\right/g, '')
+      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
+      .replace(/\$/g, '')
+      .replace(/\\[a-zA-Z]+/g, '')
+      .replace(/[{}]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
-  const visualLengths = rawOptions.map(opt => normalizeForLength(opt).length);
+  function measureText(text) {
+    const d = document.createElement('div');
+    d.style.cssText = `
+      visibility:hidden;
+      position:absolute;
+      left:-99999px;
+      top:0;
+      white-space:nowrap;
+      padding:0;
+      margin:0;
+      border:none;
+      font-family:'Times New Roman', Times, serif;
+      font-size:12pt;
+    `;
+    d.textContent = text;
+    document.body.appendChild(d);
+    const w = d.getBoundingClientRect().width;
+    d.remove();
+    return w;
+  }
 
-  const allShort = visualLengths.every(len => len <= SHORT_LIMIT);
-  if (allShort) {
+  const measuredLines = rawOptions.map(normalizeForMeasure);
+
+  // 1) Try all 4 in one row
+  const fourGap = 28;
+  const fourWidth = measuredLines.reduce((sum, text, idx) => {
+    return sum + measureText(text) + (idx < measuredLines.length - 1 ? fourGap : 0);
+  }, 0);
+
+  if (fourWidth <= (availableWidth - 8)) {
     return `
-      <div style="display:flex;flex-wrap:nowrap;gap:28px;margin-bottom:3px;width:100%;margin-left:2px;">
+      <div style="display:flex;flex-wrap:nowrap;gap:${fourGap}px;margin-bottom:3px;width:100%;margin-left:2px;">
         ${optionHtmlLines.map(opt => `<span style="display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
       </div>`;
   }
 
-  const allMedium = visualLengths.every(len => len <= MEDIUM_LIMIT);
-  if (allMedium) {
+  // 2) Try 2 × 2
+  const colGap = 24;
+  const halfWidth = Math.max(150, (availableWidth - colGap) / 2);
+  const fitsTwoByTwo = measuredLines.every(text => measureText(text) <= (halfWidth - 4));
+
+  if (fitsTwoByTwo) {
     return `
-      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
+      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
         <span style="display:block;width:100%;">${optionHtmlLines[0]}</span>
         <span style="display:block;width:100%;">${optionHtmlLines[1]}</span>
         <span style="display:block;width:100%;">${optionHtmlLines[2]}</span>
@@ -1759,8 +1795,9 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
       </div>`;
   }
 
+  // 3) Otherwise one per line
   return optionHtmlLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
+    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
     .join('');
 }
 function __qbIsMathSubject(subject) {
@@ -1801,47 +1838,52 @@ function __qbFormatExplanationHTML(text, subject) {
 }
 
 function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
-  const clone = item.cloneNode(true);
-  const qTextEl = clone.querySelector('.question-text');
+   const clone = item.cloneNode(true);
+  const docId = item.getAttribute('data-id');
+  const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
   let questionLine = '';
   let options = [];
 
-  if (qTextEl) {
-    let html = qTextEl.innerHTML.replace(/<img[^>]*>/gi, '');
-    let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
-      .map(s => s.replace(/&nbsp;/g, ' ').trim())
-      .filter(Boolean);
+  // ✅ FIRST use clean source data
+  if (source) {
+    questionLine = String(source.question || source.body || source.text || '').trim();
+    options = __qbNormalizeOptions(__qbGetWorkbookOptions(source));
+  }
 
-    parts = parts.filter(line => line && !/^<br\s*\/?>$/i.test(line));
+  // ✅ fallback only if source data is missing
+  if (!questionLine) {
+    const qTextEl = clone.querySelector('.question-text');
+    if (qTextEl) {
+      let html = qTextEl.innerHTML.replace(/<img[^>]*>/gi, '');
+      let parts = html.split(/<br\s*\/?>|<\/div>|<div[^>]*>/gi)
+        .map(s => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
 
-    if (parts.length > 0) {
-      questionLine = parts[0];
+      parts = parts.filter(line => line && !/^<br\s*\/?>$/i.test(line));
 
-      let optionLines = [];
-      for (let i = 1; i < parts.length; i++) {
-        let line = parts[i];
-        let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
-        if (inlineOpts && inlineOpts.length >= 2) {
-          optionLines.push(...inlineOpts.map(opt => opt.trim()));
-        } else if (line) {
-          optionLines.push(line);
+      if (parts.length > 0) {
+        questionLine = parts[0];
+
+        let optionLines = [];
+        for (let i = 1; i < parts.length; i++) {
+          let line = parts[i];
+          let inlineOpts = line.match(/([A-D][).][^A-D]*)/g);
+          if (inlineOpts && inlineOpts.length >= 2) {
+            optionLines.push(...inlineOpts.map(opt => opt.trim()));
+          } else if (line) {
+            optionLines.push(line);
+          }
         }
-      }
 
-      if (optionLines.length === 4) {
-        options = optionLines.map((opt, i) =>
-          /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
-        );
-      } else {
-        options = optionLines;
+        options = optionLines.length === 4
+          ? optionLines.map((opt, i) =>
+              /^[A-D][).]/.test(opt) ? opt : String.fromCharCode(65 + i) + ") " + opt
+            )
+          : optionLines;
       }
     }
   }
-
-  const docId = item.getAttribute('data-id');
-  const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
-
   let answerText = '';
   let explanationText = '';
 
