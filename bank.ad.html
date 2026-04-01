@@ -1383,67 +1383,13 @@ function buildQuestionHTML(item, __parent = printable) {
                         let optionLines = optionLinesRaw.map((text, i) => {
               return String.fromCharCode(65 + i) + ") " + text;
             });
-            const optionHtmlLines = optionLines.map(opt => __qbFormatOptionForPrint(opt));
-
-              // ✅ 4-in-one-line → else 2+2 → else one-by-one (PDF-stable)
-       const pwRaw = printable.getBoundingClientRect().width || 820;
-      const pw = Math.min(pwRaw, 680); // conservative A4 content width
-        
-        function measureRowHTML(html) {
-          const d = document.createElement('div');
-          d.style.cssText = `
-            visibility:hidden; position:absolute; left:-99999px; top:0;
-            white-space:nowrap; padding:0; margin:0; border:none;
-            font-family:'Times New Roman', Times, serif; font-size:12pt;
-          `;
-          d.innerHTML = html;
-          document.body.appendChild(d);
-          const w = d.getBoundingClientRect().width;
-          d.remove();
-          return w;
-        }
-        
-        // 1) Try all 4 in one line
-        const fourRowHTML = optionLines.map(opt =>
-          `<span style="display:inline-block;margin-right:32px;min-width:70px;">${opt.trim()}</span>`
-        ).join('');
-        
-        const maxFour = Math.max(420, pw - 120);
-        const fitsFour = measureRowHTML(fourRowHTML) <= maxFour;
-        
-        if (fitsFour) {
-          return `
-            <div style="display:flex;flex-wrap:nowrap;gap:32px;margin-bottom:3px;width:100%;">
-                            ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;">${opt}</span>`).join('')}
-            </div>`;
-        }
-        
-        // 2) Else try 2+2 ONLY if each option fits comfortably in half width (rendered width check)
-        const colGap = 24; // must match column-gap below
-        const halfWidth = Math.max(240, (pw - colGap) / 2);
-        
-        // measure each option as it would appear in a column
-        const optWidths = optionLines.map(opt => measureRowHTML(
-          `<span style="display:inline-block;font-family:'Times New Roman', Times, serif;font-size:12pt;">${opt.trim()}</span>`
-        ));
-        
-        const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
-        
-        if (!anyTooWideForTwoCols) {
-             return `
-        <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;">
-                    <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
-          <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
-        </div>`;
-
-        }
-        
-        // 3) Else one-by-one (4 lines)
-              return optionHtmlLines
-          .map(opt => `<div style="margin-bottom:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
-          .join('');
+           return __renderKeyOptionsLayout(
+  optionLines,
+  Math.max(
+    260,
+    Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
+  )
+);
             })()
             : (options.length > 0
                 ? options.map(opt => `<div style="margin-bottom:2px;">${opt.trim().replace(/\n/g, '<br>')}</div>`).join('')
@@ -1738,22 +1684,31 @@ const includesAnyMCQ = (selectedQtypes.length === 0) || selectedQtypes.includes(
 
 const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 
-function __renderKeyOptionsLayout(optionLines, hostNode) {
+function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
   if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-  if (optionLines.length !== 4) {
-    return optionLines.map(opt =>
-      `<div style="margin-bottom:2px;margin-left:2px;">${String(opt).trim().replace(/\n/g,'<br>')}</div>`
-    ).join('');
+  const rawOptions = optionLines.map(opt => String(opt || '').trim()).filter(Boolean);
+  const optionHtmlLines = rawOptions.map(opt => __qbFormatOptionForPrint(opt));
+
+  if (rawOptions.length !== 4) {
+    return optionHtmlLines
+      .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
+      .join('');
   }
 
   const pageEl =
-    (hostNode && hostNode.closest && hostNode.closest('.a4-page')) ||
+    (hostNodeOrWidth && typeof hostNodeOrWidth !== 'number' && hostNodeOrWidth.closest && hostNodeOrWidth.closest('.a4-page')) ||
     printable ||
     document.body;
 
-  const pwRaw = (pageEl && pageEl.getBoundingClientRect().width) || 820;
-  const pw = Math.min(pwRaw, 820);
+  const pageWidth = Math.min((pageEl && pageEl.getBoundingClientRect().width) || 820, 820);
+
+  const hostWidth =
+    (typeof hostNodeOrWidth === 'number')
+      ? Number(hostNodeOrWidth || 0)
+      : ((hostNodeOrWidth && hostNodeOrWidth.getBoundingClientRect && hostNodeOrWidth.getBoundingClientRect().width) || 0);
+
+  const pw = Math.max(260, Math.min(hostWidth || pageWidth, pageWidth));
 
   function measureRowHTML(html) {
     const d = document.createElement('div');
@@ -1769,47 +1724,52 @@ function __renderKeyOptionsLayout(optionLines, hostNode) {
     return w;
   }
 
-  const fourRowHTML = optionLines.map(opt =>
-    `<span style="display:inline-block;margin-right:32px;min-width:70px;">${String(opt).trim()}</span>`
+  const plainOptions = rawOptions.map(opt =>
+    opt.replace(/^([A-D])[\)\.\-]\s*/, '$1) ').trim()
+  );
+
+  const fourRowHTML = plainOptions.map(opt =>
+    `<span style="display:inline-block;margin-right:26px;min-width:70px;">${__qbEscapeHtml(opt)}</span>`
   ).join('');
 
-    const optionHtmlLines = optionLines.map(opt => __qbFormatOptionForPrint(opt));
-  const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
+  const hasLatex = plainOptions.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
 
-  const isShortLatexSet = hasLatex && optionLines.every(opt => {
+  const isShortLatexSet = hasLatex && plainOptions.every(opt => {
     const s = String(opt)
-      .replace(/^([A-D])\)\s*/,'')
-      .replace(/\\\(|\\\)|\\\[|\\\]/g,'')
-      .replace(/\$/g,'')
-      .replace(/\\[a-zA-Z]+/g,'x')
-      .replace(/[{}]/g,'')
+      .replace(/^([A-D])\)\s*/, '')
+      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
+      .replace(/\$/g, '')
+      .replace(/\\[a-zA-Z]+/g, 'x')
+      .replace(/[{}]/g, '')
       .trim();
     return s.length <= 10;
   });
 
-  const maxFour = Math.max(420, pw - 20);
-  const fitsFour = ((!hasLatex || isShortLatexSet) && (measureRowHTML(fourRowHTML) <= maxFour));
+  const fitsFour =
+    (!hasLatex || isShortLatexSet) &&
+    (measureRowHTML(fourRowHTML) <= Math.max(320, pw - 12));
 
   if (fitsFour) {
     return `
       <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
-                ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
+        ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
       </div>`;
   }
 
   const colGap = 24;
-  const halfWidth = Math.max(240, (pw - colGap) / 2);
+  const halfWidth = Math.max(150, (pw - colGap) / 2);
 
-  const optWidths = optionLines.map(opt => measureRowHTML(
-    `<span style="display:inline-block;font-family:'Times New Roman', Times, serif;font-size:12pt;">${String(opt).trim()}</span>`
-  ));
-
-  const anyTooWideForTwoCols = optWidths.some(w => w > halfWidth);
+  const anyTooWideForTwoCols = plainOptions.some(opt => {
+    const optWidth = measureRowHTML(
+      `<span style="display:inline-block;font-family:'Times New Roman', Times, serif;font-size:12pt;">${__qbEscapeHtml(String(opt).trim())}</span>`
+    );
+    return optWidth > halfWidth;
+  });
 
   if (!anyTooWideForTwoCols) {
     return `
       <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-               <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
+        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
         <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
         <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
         <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
@@ -1977,12 +1937,20 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   qRow.appendChild(qTextDiv);
   wrap.appendChild(qRow);
 
-  if (options.length) {
-    const optDiv = document.createElement('div');
-    optDiv.style.cssText = `margin-left:${indentLeft}px; color:#000; margin-top:2px; margin-bottom:6px; line-height:1.22;`;
-    optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
-    wrap.appendChild(optDiv);
-  }
+ if (options.length) {
+  const optDiv = document.createElement('div');
+  optDiv.style.cssText = `
+    margin-left:${indentLeft}px;
+    width:calc(100% - ${indentLeft}px);
+    box-sizing:border-box;
+    color:#000;
+    margin-top:2px;
+    margin-bottom:6px;
+    line-height:1.22;
+  `;
+  wrap.appendChild(optDiv);
+  optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
+}
 
   const __aiUrl = __qbGetAiHelperUrl(docId);
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
