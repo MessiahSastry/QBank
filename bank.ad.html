@@ -3255,108 +3255,33 @@ const __PAGE_START = ${JSON.stringify(Number(pageStartNumber || 1))};
       lineValue.textContent = s.lineHeight;
     }
 
-    function buildPageShell(pageIndex, settings){
-      const page = document.createElement('div');
-      page.className = 'a4-page';
-      page.setAttribute('data-page-index', String(pageIndex));
-
-      const inner = document.createElement('div');
-      inner.className = 'a4-page-inner';
-
-   inner.style.paddingTop = settings.marginTop + 'cm';
-inner.style.paddingRight = settings.marginSide + 'cm';
-inner.style.paddingBottom = settings.marginBottom + 'cm';
-inner.style.paddingLeft = settings.marginSide + 'cm';
-inner.style.lineHeight = settings.lineHeight;
-inner.style.fontSize = '12pt';
-inner.style.height = '297mm';
-
-     const content = document.createElement('div');
-content.className = 'a4-page-content';
-
-const runningHeader = document.createElement('div');
-runningHeader.className = 'a4-running-header ' + ((pageIndex % 2 === 0) ? 'odd' : 'even');
-runningHeader.textContent = '';
-inner.appendChild(runningHeader);
+    const headerEl = finalShell.page.querySelector('.a4-running-header');
+const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
 
 const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
 const isOddPrintedPage = actualPageNumber % 2 === 1;
 
-const runningHeader = document.createElement('div');
-runningHeader.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
-runningHeader.textContent = '';
-inner.appendChild(runningHeader);
+if (headerEl) {
+  headerEl.classList.remove('hide');
 
-const footerWrap = document.createElement('div');
-footerWrap.style.position = 'absolute';
-footerWrap.style.bottom = '8mm';
-footerWrap.style.width = '52mm';
-footerWrap.style.display = 'flex';
-footerWrap.style.flexDirection = 'column';
-footerWrap.style.alignItems = 'center';
-footerWrap.style.justifyContent = 'flex-end';
-footerWrap.style.gap = '5px';
-footerWrap.style.zIndex = '5';
-
-if (isOddPrintedPage) {
-  footerWrap.style.right = '12mm';   // odd printed page → right side
-} else {
-  footerWrap.style.left = '12mm';    // even printed page → left side
-}
-const footerDesign = document.createElement('div');
-footerDesign.style.width = '100%';
-footerDesign.style.display = 'flex';
-footerDesign.style.alignItems = 'center';
-footerDesign.style.justifyContent = 'center';
-footerDesign.style.gap = '8px';
-
-const lineLeft = document.createElement('div');
-lineLeft.style.flex = '1';
-lineLeft.style.height = '2px';
-lineLeft.style.background = 'linear-gradient(90deg, transparent, #1762a7)';
-
-const diamond = document.createElement('div');
-diamond.style.width = '10px';
-diamond.style.height = '10px';
-diamond.style.background = '#1762a7';
-diamond.style.transform = 'rotate(45deg)';
-diamond.style.borderRadius = '2px';
-diamond.style.flexShrink = '0';
-
-const lineRight = document.createElement('div');
-lineRight.style.flex = '1';
-lineRight.style.height = '2px';
-lineRight.style.background = 'linear-gradient(90deg, #1762a7, transparent)';
-
-footerDesign.appendChild(lineLeft);
-footerDesign.appendChild(diamond);
-footerDesign.appendChild(lineRight);
-
-const pageNo = document.createElement('div');
-pageNo.textContent = String((Number(__PAGE_START) || 1) + pageIndex).padStart(2, '0');
-pageNo.style.width = '28px';
-pageNo.style.height = '28px';
-pageNo.style.borderRadius = '50%';
-pageNo.style.background = '#1762a7';
-pageNo.style.color = '#ffffff';
-pageNo.style.display = 'flex';
-pageNo.style.alignItems = 'center';
-pageNo.style.justifyContent = 'center';
-pageNo.style.fontSize = '11pt';
-pageNo.style.fontWeight = '700';
-pageNo.style.lineHeight = '1';
-pageNo.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-pageNo.style.fontFamily = "'Times New Roman', Times, serif";
-
-footerWrap.appendChild(footerDesign);
-footerWrap.appendChild(pageNo);
-
-inner.appendChild(content);
-page.appendChild(inner);
-page.appendChild(footerWrap);
-
-      return { page, inner, content };
+  if (isChapterTitlePage) {
+    headerEl.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
+    headerEl.classList.add('hide');
+    headerEl.textContent = '';
+  } else if (isOddPrintedPage) {
+    headerEl.className = 'a4-running-header odd';
+    headerEl.textContent = __HEADER_TEXT || '';
+    if (!(__HEADER_TEXT || '').trim()) {
+      headerEl.classList.add('hide');
     }
+  } else {
+    headerEl.className = 'a4-running-header even';
+    headerEl.textContent = pageChapterName || '';
+    if (!(pageChapterName || '').trim()) {
+      headerEl.classList.add('hide');
+    }
+  }
+}
 function normalizeBlockSpacing(root, settings){
   const qBlocks = Array.from(
     root.querySelectorAll('.worksheet-flow-block, .page-flow-block, .question-gap-block')
@@ -3835,26 +3760,24 @@ if (node.classList.contains('worksheet-flow-block')) {
         normalizeBlockSpacing(finalShell.page, settings);
 
         const headerEl = finalShell.page.querySelector('.a4-running-header');
-        const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
+const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
 
-       const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
+const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
 const isOddPrintedPage = actualPageNumber % 2 === 1;
 
 if (headerEl) {
+  headerEl.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
   headerEl.classList.remove('hide');
 
   if (isChapterTitlePage) {
-    headerEl.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
     headerEl.classList.add('hide');
     headerEl.textContent = '';
   } else if (isOddPrintedPage) {
-    headerEl.className = 'a4-running-header odd';
     headerEl.textContent = __HEADER_TEXT || '';
     if (!(__HEADER_TEXT || '').trim()) {
       headerEl.classList.add('hide');
     }
   } else {
-    headerEl.className = 'a4-running-header even';
     headerEl.textContent = pageChapterName || '';
     if (!(pageChapterName || '').trim()) {
       headerEl.classList.add('hide');
