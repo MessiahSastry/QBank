@@ -3229,9 +3229,61 @@ const __PAGE_START = ${JSON.stringify(Number(pageStartNumber || 1))};
     let pageSettings = [];
     let currentPageIndex = 0;
 
-    sourceRoot.innerHTML = __CONTENT;
+   sourceRoot.innerHTML = __CONTENT;
 
-    function ensurePageSettings(index){
+function buildPageShell(pageIndex, settings){
+  const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
+  const isOddPrintedPage = actualPageNumber % 2 === 1;
+
+  const page = document.createElement('div');
+  page.className = 'a4-page';
+  page.setAttribute('data-page-index', String(pageIndex));
+
+  const inner = document.createElement('div');
+  inner.className = 'a4-page-inner';
+
+  const header = document.createElement('div');
+  header.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
+  header.textContent = '';
+
+  const content = document.createElement('div');
+  content.className = 'a4-page-content mjx-process';
+  content.style.paddingTop = (settings.marginTop || 2.1) + 'cm';
+  content.style.paddingRight = (settings.marginSide || 1.5) + 'cm';
+  content.style.paddingBottom = (settings.marginBottom || 1.9) + 'cm';
+  content.style.paddingLeft = (settings.marginSide || 1.5) + 'cm';
+  content.style.lineHeight = (settings.lineHeight || 1.6);
+  content.style.boxSizing = 'border-box';
+
+  const pageNumber = document.createElement('div');
+  pageNumber.className = 'a4-page-number ' + (isOddPrintedPage ? 'right-ribbon' : 'left-ribbon');
+  pageNumber.textContent = String(actualPageNumber);
+  pageNumber.style.position = 'absolute';
+  pageNumber.style.bottom = '10mm';
+  pageNumber.style[isOddPrintedPage ? 'right' : 'left'] = '0';
+  pageNumber.style.minWidth = '16mm';
+  pageNumber.style.height = '8mm';
+  pageNumber.style.padding = '0 10px';
+  pageNumber.style.alignItems = 'center';
+  pageNumber.style.justifyContent = 'center';
+  pageNumber.style.background = '#1762a7';
+  pageNumber.style.color = '#ffffff';
+  pageNumber.style.fontWeight = '700';
+  pageNumber.style.fontSize = '10pt';
+  pageNumber.style.lineHeight = '1';
+  pageNumber.style.borderRadius = isOddPrintedPage ? '10px 0 0 10px' : '0 10px 10px 0';
+  pageNumber.style.webkitPrintColorAdjust = 'exact';
+  pageNumber.style.printColorAdjust = 'exact';
+
+  inner.appendChild(header);
+  inner.appendChild(content);
+  page.appendChild(inner);
+  page.appendChild(pageNumber);
+
+  return { page, inner, header, content, pageNumber };
+}
+
+function ensurePageSettings(index){
       if (!pageSettings[index]) {
         pageSettings[index] = { ...defaultSettings };
       }
