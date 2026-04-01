@@ -3255,34 +3255,7 @@ const __PAGE_START = ${JSON.stringify(Number(pageStartNumber || 1))};
       lineValue.textContent = s.lineHeight;
     }
 
-    const headerEl = finalShell.page.querySelector('.a4-running-header');
-const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
-
-const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
-const isOddPrintedPage = actualPageNumber % 2 === 1;
-
-if (headerEl) {
-  headerEl.classList.remove('hide');
-
-  if (isChapterTitlePage) {
-    headerEl.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
-    headerEl.classList.add('hide');
-    headerEl.textContent = '';
-  } else if (isOddPrintedPage) {
-    headerEl.className = 'a4-running-header odd';
-    headerEl.textContent = __HEADER_TEXT || '';
-    if (!(__HEADER_TEXT || '').trim()) {
-      headerEl.classList.add('hide');
-    }
-  } else {
-    headerEl.className = 'a4-running-header even';
-    headerEl.textContent = pageChapterName || '';
-    if (!(pageChapterName || '').trim()) {
-      headerEl.classList.add('hide');
-    }
-  }
-}
-function normalizeBlockSpacing(root, settings){
+    function normalizeBlockSpacing(root, settings){
   const qBlocks = Array.from(
     root.querySelectorAll('.worksheet-flow-block, .page-flow-block, .question-gap-block')
   );
