@@ -1687,84 +1687,76 @@ const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
   if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-  const rawOptions = optionLines.map(opt => String(opt || '').trim()).filter(Boolean);
-  const optionHtmlLines = rawOptions.map(opt => __qbFormatOptionForPrint(opt));
+  const rawLines = optionLines.map(opt => String(opt || '').trim()).filter(Boolean);
+  const optionHtmlLines = rawLines.map(opt => __qbFormatOptionForPrint(opt));
 
-  if (rawOptions.length !== 4) {
+  if (rawLines.length !== 4) {
     return optionHtmlLines
       .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
       .join('');
   }
 
-  const pageEl =
-    (hostNodeOrWidth && typeof hostNodeOrWidth !== 'number' && hostNodeOrWidth.closest && hostNodeOrWidth.closest('.a4-page')) ||
-    printable ||
-    document.body;
+  function normalizeForMeasure(opt) {
+    return String(opt || '')
+      .replace(/^([A-D])[\)\.\-]\s*/, '$1) ')
+      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1/$2')
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)')
+      .replace(/\\times/g, '×')
+      .replace(/\\div/g, '÷')
+      .replace(/\\cdot/g, '·')
+      .replace(/\\left|\\right/g, '')
+      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
+      .replace(/\$/g, '')
+      .replace(/\\[a-zA-Z]+/g, '')
+      .replace(/[{}]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
-  const pageWidth = Math.min((pageEl && pageEl.getBoundingClientRect().width) || 820, 820);
-
-  const hostWidth =
-    (typeof hostNodeOrWidth === 'number')
-      ? Number(hostNodeOrWidth || 0)
-      : ((hostNodeOrWidth && hostNodeOrWidth.getBoundingClientRect && hostNodeOrWidth.getBoundingClientRect().width) || 0);
-
-  const pw = Math.max(260, Math.min(hostWidth || pageWidth, pageWidth));
-
-  function measureRowHTML(html) {
+  function measureText(text) {
     const d = document.createElement('div');
     d.style.cssText = `
       visibility:hidden; position:absolute; left:-99999px; top:0;
       white-space:nowrap; padding:0; margin:0; border:none;
       font-family:'Times New Roman', Times, serif; font-size:12pt;
     `;
-    d.innerHTML = html;
+    d.innerHTML = `<span>${__qbEscapeHtml(text)}</span>`;
     document.body.appendChild(d);
     const w = d.getBoundingClientRect().width;
     d.remove();
     return w;
   }
 
-  const plainOptions = rawOptions.map(opt =>
-    opt.replace(/^([A-D])[\)\.\-]\s*/, '$1) ').trim()
+  const measuredLines = rawLines.map(normalizeForMeasure);
+
+  const pageWidth = Math.min(
+    ((printable && printable.getBoundingClientRect && printable.getBoundingClientRect().width) || 820),
+    820
   );
 
-  const fourRowHTML = plainOptions.map(opt =>
-    `<span style="display:inline-block;margin-right:26px;min-width:70px;">${__qbEscapeHtml(opt)}</span>`
-  ).join('');
+  const hostWidth =
+    (typeof hostNodeOrWidth === 'number')
+      ? Number(hostNodeOrWidth || 0)
+      : ((hostNodeOrWidth && hostNodeOrWidth.getBoundingClientRect && hostNodeOrWidth.getBoundingClientRect().width) || 0);
 
-  const hasLatex = plainOptions.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
+  const availableWidth = Math.max(260, Math.min(hostWidth || pageWidth, pageWidth));
 
-  const isShortLatexSet = hasLatex && plainOptions.every(opt => {
-    const s = String(opt)
-      .replace(/^([A-D])\)\s*/, '')
-      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
-      .replace(/\$/g, '')
-      .replace(/\\[a-zA-Z]+/g, 'x')
-      .replace(/[{}]/g, '')
-      .trim();
-    return s.length <= 10;
-  });
+  const fourGap = 26;
+  const fourWidth = measuredLines.reduce((sum, text, idx) => {
+    return sum + measureText(text) + (idx < measuredLines.length - 1 ? fourGap : 0);
+  }, 0);
 
-  const fitsFour =
-    (!hasLatex || isShortLatexSet) &&
-    (measureRowHTML(fourRowHTML) <= Math.max(320, pw - 12));
-
-  if (fitsFour) {
+  if (fourWidth <= (availableWidth - 8)) {
     return `
-      <div style="display:flex;flex-wrap:nowrap;gap:26px;margin-bottom:3px;width:100%;margin-left:2px;">
+      <div style="display:flex;flex-wrap:nowrap;gap:${fourGap}px;margin-bottom:3px;width:100%;margin-left:2px;">
         ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
       </div>`;
   }
 
   const colGap = 24;
-  const halfWidth = Math.max(150, (pw - colGap) / 2);
+  const halfWidth = Math.max(150, (availableWidth - colGap) / 2);
 
-  const anyTooWideForTwoCols = plainOptions.some(opt => {
-    const optWidth = measureRowHTML(
-      `<span style="display:inline-block;font-family:'Times New Roman', Times, serif;font-size:12pt;">${__qbEscapeHtml(String(opt).trim())}</span>`
-    );
-    return optWidth > halfWidth;
-  });
+  const anyTooWideForTwoCols = measuredLines.some(text => measureText(text) > (halfWidth - 4));
 
   if (!anyTooWideForTwoCols) {
     return `
@@ -1780,7 +1772,6 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
     .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
     .join('');
 }
-
 function __qbIsMathSubject(subject) {
   const s = String(subject || '').toLowerCase().trim();
   return (
