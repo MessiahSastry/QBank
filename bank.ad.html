@@ -1711,19 +1711,15 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
       .join('');
   }
 
-  const pageEl =
-    (hostNodeOrWidth && typeof hostNodeOrWidth !== 'number' && hostNodeOrWidth.closest && hostNodeOrWidth.closest('.a4-page')) ||
-    printable ||
-    document.body;
-
-  const pageWidth = Math.min((pageEl && pageEl.getBoundingClientRect().width) || 820, 820);
-
   const hostWidth =
     (typeof hostNodeOrWidth === 'number')
       ? Number(hostNodeOrWidth || 0)
       : ((hostNodeOrWidth && hostNodeOrWidth.getBoundingClientRect && hostNodeOrWidth.getBoundingClientRect().width) || 0);
 
-  const availableWidth = Math.max(260, Math.min(hostWidth || pageWidth, pageWidth));
+  // Very important:
+  // key must be more conservative than worksheet,
+  // otherwise 4-inline options get clipped on the right.
+  const safeWidth = Math.max(250, Math.min(hostWidth || 620, 620));
 
   function normalizeForMeasure(opt) {
     return String(opt || '')
@@ -1757,6 +1753,8 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
       border:none;
       font-family:'Times New Roman', Times, serif;
       font-size:12pt;
+      font-weight:400;
+      line-height:1.15;
     `;
     d.textContent = text;
     document.body.appendChild(d);
@@ -1765,39 +1763,61 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
     return w;
   }
 
-  const measuredLines = rawOptions.map(normalizeForMeasure);
+  const measured = rawOptions.map(opt => Math.ceil(measureText(normalizeForMeasure(opt))));
 
-  // 1) Try all 4 in one row
-  const fourGap = 28;
-  const fourWidth = measuredLines.reduce((sum, text, idx) => {
-    return sum + measureText(text) + (idx < measuredLines.length - 1 ? fourGap : 0);
-  }, 0);
+  // ---------- Rule 1: single row only for genuinely short options ----------
+  const singleGap = 24;
+  const singleAvailable = safeWidth - 16;
+  const singleMaxPerOption = (singleAvailable - (singleGap * 3)) / 4;
+  const singleTotal = measured.reduce((sum, w, idx) => sum + w + (idx < 3 ? singleGap : 0), 0);
 
-  if (fourWidth <= (availableWidth - 8)) {
+  const canUseSingleRow =
+    measured.every(w => w <= 120) &&
+    measured.every(w => w <= (singleMaxPerOption - 6)) &&
+    singleTotal <= (singleAvailable - 10);
+
+  if (canUseSingleRow) {
     return `
-      <div style="display:flex;flex-wrap:nowrap;gap:${fourGap}px;margin-bottom:3px;width:100%;margin-left:2px;">
+      <div style="
+        display:flex;
+        flex-wrap:nowrap;
+        gap:${singleGap}px;
+        margin-bottom:3px;
+        width:100%;
+        margin-left:2px;
+      ">
         ${optionHtmlLines.map(opt => `<span style="display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
       </div>`;
   }
 
-  // 2) Try 2 × 2
-  const colGap = 24;
-  const halfWidth = Math.max(150, (availableWidth - colGap) / 2);
-  const fitsTwoByTwo = measuredLines.every(text => measureText(text) <= (halfWidth - 4));
+  // ---------- Rule 2: otherwise try 2 x 2 ----------
+  const twoColGap = 22;
+  const colWidth = Math.floor((safeWidth - twoColGap - 8) / 2);
 
-  if (fitsTwoByTwo) {
+  const canUseTwoByTwo =
+    measured.every(w => w <= (colWidth - 14));
+
+  if (canUseTwoByTwo) {
     return `
-      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-        <span style="display:block;width:100%;">${optionHtmlLines[0]}</span>
-        <span style="display:block;width:100%;">${optionHtmlLines[1]}</span>
-        <span style="display:block;width:100%;">${optionHtmlLines[2]}</span>
-        <span style="display:block;width:100%;">${optionHtmlLines[3]}</span>
+      <div class="opt-grid-2x2" style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        column-gap:${twoColGap}px;
+        row-gap:4px;
+        margin-bottom:2px;
+        width:100%;
+        margin-left:2px;
+      ">
+        <span style="display:block;width:100%;white-space:nowrap;">${optionHtmlLines[0]}</span>
+        <span style="display:block;width:100%;white-space:nowrap;">${optionHtmlLines[1]}</span>
+        <span style="display:block;width:100%;white-space:nowrap;">${optionHtmlLines[2]}</span>
+        <span style="display:block;width:100%;white-space:nowrap;">${optionHtmlLines[3]}</span>
       </div>`;
   }
 
-  // 3) Otherwise one per line
+  // ---------- Rule 3: long options = one below another ----------
   return optionHtmlLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
+    .map(opt => `<div style="margin-bottom:3px;margin-left:2px;">${opt.replace(/\n/g, '<br>')}</div>`)
     .join('');
 }
 function __qbIsMathSubject(subject) {
@@ -1966,6 +1986,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   optDiv.style.cssText = `
     margin-left:${indentLeft}px;
     width:calc(100% - ${indentLeft}px);
+    max-width:620px;
     box-sizing:border-box;
     color:#000;
     margin-top:2px;
@@ -1973,9 +1994,14 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     line-height:1.22;
   `;
   wrap.appendChild(optDiv);
-  optDiv.innerHTML = __renderKeyOptionsLayout(options, optDiv);
-}
 
+  const safeOptWidth = Math.max(
+    250,
+    Math.min((optDiv.getBoundingClientRect().width || 620), 620)
+  );
+
+  optDiv.innerHTML = __renderKeyOptionsLayout(options, safeOptWidth);
+}
   const __aiUrl = __qbGetAiHelperUrl(docId);
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
 
