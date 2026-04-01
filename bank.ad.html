@@ -3512,13 +3512,46 @@ if (node.classList.contains('question-container')) {
     kids[1].classList.contains('page-flow-block');
 
   if (secondIsPageFlowBlock) {
-    // for answer/explanation pages, do not force the heading + big block together
-    blocks.push(kids[0].cloneNode(true));
-    for (let i = 1; i < kids.length; i++) {
-      blocks.push(kids[i].cloneNode(true));
-    }
-    return;
+  // For key pages, keep the heading,
+  // but split the Q/A content into flowing pieces instead of one big block.
+  blocks.push(kids[0].cloneNode(true));
+
+  const flowChildren = Array.from(kids[1].childNodes).filter(ch => {
+    if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+    return ch.nodeType === 1;
+  });
+
+  if (flowChildren.length) {
+    flowChildren.forEach(ch => blocks.push(ch.cloneNode(true)));
+  } else {
+    blocks.push(kids[1].cloneNode(true));
   }
+
+  for (let i = 2; i < kids.length; i++) {
+    const child = kids[i];
+
+    if (
+      child.nodeType === 1 &&
+      child.classList &&
+      child.classList.contains('page-flow-block')
+    ) {
+      const inner = Array.from(child.childNodes).filter(ch => {
+        if (ch.nodeType === 3) return ch.textContent.trim() !== '';
+        return ch.nodeType === 1;
+      });
+
+      if (inner.length) {
+        inner.forEach(ch => blocks.push(ch.cloneNode(true)));
+      } else {
+        blocks.push(child.cloneNode(true));
+      }
+    } else {
+      blocks.push(child.cloneNode(true));
+    }
+  }
+
+  return;
+}
 
   const pairWrap = document.createElement('div');
   pairWrap.className = 'keep-with-next-pair';
