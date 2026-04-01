@@ -3494,7 +3494,7 @@ if (node.classList.contains('question-container')) {
     // keep-with-next should mean:
     // keep heading + first question together
     // NOT the whole wrapper together
-    if (node.classList.contains('keep-with-next')) {
+   if (node.classList.contains('keep-with-next')) {
   const kids = Array.from(node.childNodes).filter(ch => {
     if (ch.nodeType === 3) return ch.textContent.trim() !== '';
     return ch.nodeType === 1;
@@ -3505,58 +3505,91 @@ if (node.classList.contains('question-container')) {
     return;
   }
 
-  const secondIsPageFlowBlock =
-    kids[1] &&
-    kids[1].nodeType === 1 &&
-    kids[1].classList &&
-    kids[1].classList.contains('page-flow-block');
-
-  if (secondIsPageFlowBlock) {
-  // For key pages, keep the heading,
-  // but split the Q/A content into flowing pieces instead of one big block.
-  blocks.push(kids[0].cloneNode(true));
-
-  const flowChildren = Array.from(kids[1].childNodes).filter(ch => {
+  const getMeaningfulChildren = (el) => Array.from(el.childNodes).filter(ch => {
     if (ch.nodeType === 3) return ch.textContent.trim() !== '';
     return ch.nodeType === 1;
   });
 
-  if (flowChildren.length) {
-    flowChildren.forEach(ch => blocks.push(ch.cloneNode(true)));
-  } else {
-    blocks.push(kids[1].cloneNode(true));
-  }
+  const firstContentIndex = kids.findIndex(ch =>
+    ch.nodeType === 1 &&
+    ch.classList &&
+    (
+      ch.classList.contains('page-flow-block') ||
+      ch.classList.contains('question-container')
+    )
+  );
 
-  for (let i = 2; i < kids.length; i++) {
-    const child = kids[i];
+  if (firstContentIndex !== -1) {
+    const leading = kids.slice(0, firstContentIndex);
+    const firstContent = kids[firstContentIndex];
 
     if (
-      child.nodeType === 1 &&
-      child.classList &&
-      child.classList.contains('page-flow-block')
+      firstContent.nodeType === 1 &&
+      firstContent.classList &&
+      firstContent.classList.contains('page-flow-block')
     ) {
-      const inner = Array.from(child.childNodes).filter(ch => {
-        if (ch.nodeType === 3) return ch.textContent.trim() !== '';
-        return ch.nodeType === 1;
-      });
+      const flowChildren = getMeaningfulChildren(firstContent);
 
-      if (inner.length) {
-        inner.forEach(ch => blocks.push(ch.cloneNode(true)));
+      if (leading.length) {
+        const pairWrap = document.createElement('div');
+        pairWrap.className = 'keep-with-next-pair';
+        pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+
+        leading.forEach(ch => pairWrap.appendChild(ch.cloneNode(true)));
+
+        if (flowChildren.length) {
+          pairWrap.appendChild(flowChildren[0].cloneNode(true));
+          blocks.push(pairWrap);
+
+          for (let i = 1; i < flowChildren.length; i++) {
+            blocks.push(flowChildren[i].cloneNode(true));
+          }
+        } else {
+          pairWrap.appendChild(firstContent.cloneNode(true));
+          blocks.push(pairWrap);
+        }
+      } else {
+        if (flowChildren.length) {
+          flowChildren.forEach(ch => blocks.push(ch.cloneNode(true)));
+        } else {
+          blocks.push(firstContent.cloneNode(true));
+        }
+      }
+    } else {
+      const pairWrap = document.createElement('div');
+      pairWrap.className = 'keep-with-next-pair';
+      pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+
+      leading.forEach(ch => pairWrap.appendChild(ch.cloneNode(true)));
+      pairWrap.appendChild(firstContent.cloneNode(true));
+      blocks.push(pairWrap);
+    }
+
+    for (let i = firstContentIndex + 1; i < kids.length; i++) {
+      const child = kids[i];
+
+      if (
+        child.nodeType === 1 &&
+        child.classList &&
+        child.classList.contains('page-flow-block')
+      ) {
+        const inner = getMeaningfulChildren(child);
+        if (inner.length) {
+          inner.forEach(ch => blocks.push(ch.cloneNode(true)));
+        } else {
+          blocks.push(child.cloneNode(true));
+        }
       } else {
         blocks.push(child.cloneNode(true));
       }
-    } else {
-      blocks.push(child.cloneNode(true));
     }
-  }
 
-  return;
-}
+    return;
+  }
 
   const pairWrap = document.createElement('div');
   pairWrap.className = 'keep-with-next-pair';
   pairWrap.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-
   pairWrap.appendChild(kids[0].cloneNode(true));
   pairWrap.appendChild(kids[1].cloneNode(true));
   blocks.push(pairWrap);
