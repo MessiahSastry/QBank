@@ -3279,6 +3279,14 @@ runningHeader.className = 'a4-running-header ' + ((pageIndex % 2 === 0) ? 'odd' 
 runningHeader.textContent = '';
 inner.appendChild(runningHeader);
 
+const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
+const isOddPrintedPage = actualPageNumber % 2 === 1;
+
+const runningHeader = document.createElement('div');
+runningHeader.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
+runningHeader.textContent = '';
+inner.appendChild(runningHeader);
+
 const footerWrap = document.createElement('div');
 footerWrap.style.position = 'absolute';
 footerWrap.style.bottom = '8mm';
@@ -3290,12 +3298,11 @@ footerWrap.style.justifyContent = 'flex-end';
 footerWrap.style.gap = '5px';
 footerWrap.style.zIndex = '5';
 
-if (pageIndex % 2 === 0) {
-  footerWrap.style.right = '12mm';   // odd page → right side
+if (isOddPrintedPage) {
+  footerWrap.style.right = '12mm';   // odd printed page → right side
 } else {
-  footerWrap.style.left = '12mm';    // even page → left side
+  footerWrap.style.left = '12mm';    // even printed page → left side
 }
-
 const footerDesign = document.createElement('div');
 footerDesign.style.width = '100%';
 footerDesign.style.display = 'flex';
@@ -3830,23 +3837,30 @@ if (node.classList.contains('worksheet-flow-block')) {
         const headerEl = finalShell.page.querySelector('.a4-running-header');
         const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
 
-        if (headerEl) {
-          if (isChapterTitlePage) {
-            headerEl.classList.add('hide');
-            headerEl.textContent = '';
-          } else if (pageIndex % 2 === 0) {
-            headerEl.textContent = __HEADER_TEXT || '';
-            if (!(__HEADER_TEXT || '').trim()) {
-              headerEl.classList.add('hide');
-            }
-          } else {
-            headerEl.textContent = pageChapterName || '';
-            if (!(pageChapterName || '').trim()) {
-              headerEl.classList.add('hide');
-            }
-          }
-        }
+       const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
+const isOddPrintedPage = actualPageNumber % 2 === 1;
 
+if (headerEl) {
+  headerEl.classList.remove('hide');
+
+  if (isChapterTitlePage) {
+    headerEl.className = 'a4-running-header ' + (isOddPrintedPage ? 'odd' : 'even');
+    headerEl.classList.add('hide');
+    headerEl.textContent = '';
+  } else if (isOddPrintedPage) {
+    headerEl.className = 'a4-running-header odd';
+    headerEl.textContent = __HEADER_TEXT || '';
+    if (!(__HEADER_TEXT || '').trim()) {
+      headerEl.classList.add('hide');
+    }
+  } else {
+    headerEl.className = 'a4-running-header even';
+    headerEl.textContent = pageChapterName || '';
+    if (!(pageChapterName || '').trim()) {
+      headerEl.classList.add('hide');
+    }
+  }
+}
         pagesHost.appendChild(finalShell.page);
 
         measureShell.page.remove();
