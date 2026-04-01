@@ -1687,18 +1687,18 @@ const multipleChaptersSelected = selChaptersForHeader.length >= 2;
 function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
   if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-  const rawLines = optionLines.map(opt => String(opt || '').trim()).filter(Boolean);
-  const optionHtmlLines = rawLines.map(opt => __qbFormatOptionForPrint(opt));
+  const rawOptions = optionLines.map(opt => String(opt || '').trim()).filter(Boolean);
+  const optionHtmlLines = rawOptions.map(opt => __qbFormatOptionForPrint(opt));
 
-  if (rawLines.length !== 4) {
+  if (rawOptions.length !== 4) {
     return optionHtmlLines
       .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${opt.replace(/\n/g,'<br>')}</div>`)
       .join('');
   }
 
-  function normalizeForMeasure(opt) {
+  function normalizeForLength(opt) {
     return String(opt || '')
-      .replace(/^([A-D])[\)\.\-]\s*/, '$1) ')
+      .replace(/^([A-D])[\)\.\-]\s*/, '')
       .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1/$2')
       .replace(/\\sqrt\s*\{([^{}]*)\}/g, '√($1)')
       .replace(/\\times/g, '×')
@@ -1713,26 +1713,12 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
       .trim();
   }
 
-  function measureText(text) {
-    const d = document.createElement('div');
-    d.style.cssText = `
-      visibility:hidden; position:absolute; left:-99999px; top:0;
-      white-space:nowrap; padding:0; margin:0; border:none;
-      font-family:'Times New Roman', Times, serif; font-size:12pt;
-    `;
-    d.innerHTML = `<span>${__qbEscapeHtml(text)}</span>`;
-    document.body.appendChild(d);
-    const w = d.getBoundingClientRect().width;
-    d.remove();
-    return w;
-  }
+  const pageEl =
+    (hostNodeOrWidth && typeof hostNodeOrWidth !== 'number' && hostNodeOrWidth.closest && hostNodeOrWidth.closest('.a4-page')) ||
+    printable ||
+    document.body;
 
-  const measuredLines = rawLines.map(normalizeForMeasure);
-
-  const pageWidth = Math.min(
-    ((printable && printable.getBoundingClientRect && printable.getBoundingClientRect().width) || 820),
-    820
-  );
+  const pageWidth = Math.min((pageEl && pageEl.getBoundingClientRect().width) || 820, 820);
 
   const hostWidth =
     (typeof hostNodeOrWidth === 'number')
@@ -1741,30 +1727,35 @@ function __renderKeyOptionsLayout(optionLines, hostNodeOrWidth) {
 
   const availableWidth = Math.max(260, Math.min(hostWidth || pageWidth, pageWidth));
 
-  const fourGap = 26;
-  const fourWidth = measuredLines.reduce((sum, text, idx) => {
-    return sum + measureText(text) + (idx < measuredLines.length - 1 ? fourGap : 0);
-  }, 0);
+  let SHORT_LIMIT = 14;
+  let MEDIUM_LIMIT = 30;
 
-  if (fourWidth <= (availableWidth - 8)) {
+  if (availableWidth <= 460) {
+    SHORT_LIMIT = 8;
+    MEDIUM_LIMIT = 18;
+  } else if (availableWidth <= 560) {
+    SHORT_LIMIT = 11;
+    MEDIUM_LIMIT = 24;
+  }
+
+  const visualLengths = rawOptions.map(opt => normalizeForLength(opt).length);
+
+  const allShort = visualLengths.every(len => len <= SHORT_LIMIT);
+  if (allShort) {
     return `
-      <div style="display:flex;flex-wrap:nowrap;gap:${fourGap}px;margin-bottom:3px;width:100%;margin-left:2px;">
-        ${optionHtmlLines.map(opt => `<span style="min-width:70px;display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
+      <div style="display:flex;flex-wrap:nowrap;gap:28px;margin-bottom:3px;width:100%;margin-left:2px;">
+        ${optionHtmlLines.map(opt => `<span style="display:inline-block;white-space:nowrap;">${opt}</span>`).join('')}
       </div>`;
   }
 
-  const colGap = 24;
-  const halfWidth = Math.max(150, (availableWidth - colGap) / 2);
-
-  const anyTooWideForTwoCols = measuredLines.some(text => measureText(text) > (halfWidth - 4));
-
-  if (!anyTooWideForTwoCols) {
+  const allMedium = visualLengths.every(len => len <= MEDIUM_LIMIT);
+  if (allMedium) {
     return `
-      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[0]}</span>
-        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[1]}</span>
-        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[2]}</span>
-        <span style="min-width:70px;display:block;width:100%;">${optionHtmlLines[3]}</span>
+      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:24px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
+        <span style="display:block;width:100%;">${optionHtmlLines[0]}</span>
+        <span style="display:block;width:100%;">${optionHtmlLines[1]}</span>
+        <span style="display:block;width:100%;">${optionHtmlLines[2]}</span>
+        <span style="display:block;width:100%;">${optionHtmlLines[3]}</span>
       </div>`;
   }
 
@@ -2455,17 +2446,8 @@ if (includeKey) {
       await new Promise(res => setTimeout(res, 150));
     }
     // ✅ Perfect fallback: if any 2x2 option grid wraps, convert that question to one-by-one
-   printable.querySelectorAll('.opt-grid-2x2').forEach(grid => {
-  const spans = Array.from(grid.querySelectorAll('span'));
-
-  // ✅ TRUE wrap detection: content wider than the cell
-  const wrapped = spans.some(s => (s.scrollWidth - s.clientWidth) > 2);
-
-  if (wrapped) {
-    const opts = spans.map(s => s.innerHTML);
-    grid.outerHTML = opts.map(o => `<div style="margin-bottom:2px;">${o}</div>`).join('');
-  }
-});
+   // option layout is already finalized by __renderKeyOptionsLayout()
+// do not auto-convert 2x2 grids here
 // wait for all images inside the printable node before pagination
 async function __waitForImages(root){
   const imgs = Array.from(root.querySelectorAll('img'));
