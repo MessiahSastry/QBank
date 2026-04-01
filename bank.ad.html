@@ -1589,14 +1589,18 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
 
         ${__chapterInfo.assimilationTitle ? `
         <div style="
-          font-size:1.02em;
+          display:inline-block;
+          font-size:0.82em;
           font-weight:800;
           letter-spacing:0.05em;
           text-align:center;
           text-transform:uppercase;
-          margin-bottom:6px;
-          line-height:1.1;
-          color:#7A2230;
+          margin:0 auto 8px auto;
+          line-height:1.05;
+          color:#ffffff;
+          background:#000000;
+          padding:4px 12px;
+          border-radius:6px;
           font-family:'Times New Roman', Times, serif;
         ">
           ${__qbEscapeHtml(String(__chapterInfo.assimilationTitle).toUpperCase())}
@@ -5983,23 +5987,31 @@ function __qbSplitChapterDisplay(raw) {
     .filter(line => !/^[•*-]\s*/.test(line));
 
   let assimilationTitle = '';
-  const assimLine = lines.find(line => /^Assimilation\s*\d+\b/i.test(line));
-  if (assimLine) {
-    assimilationTitle = assimLine.match(/^Assimilation\s*\d+\b/i)?.[0] || assimLine;
-  }
+  let mainTitle = '';
 
-  let mainTitle =
-    lines.find(line =>
-      !/^Assimilation\s*\d+\b/i.test(line) &&
-      !/^SUBTOPICS?\s*:/i.test(line)
-    ) || '';
+  const inlineAssimMatch = cleaned.match(/^(.*?)[\s:–-]+(Assimilation\s*\d+\b.*)$/i);
+
+  if (inlineAssimMatch) {
+    mainTitle = inlineAssimMatch[1].trim();
+    assimilationTitle = inlineAssimMatch[2].trim();
+  } else {
+    const assimLine = lines.find(line => /^Assimilation\s*\d+\b/i.test(line));
+    if (assimLine) {
+      assimilationTitle = assimLine.match(/^Assimilation\s*\d+\b/i)?.[0] || assimLine;
+    }
+
+    mainTitle =
+      lines.find(line =>
+        !/^Assimilation\s*\d+\b/i.test(line) &&
+        !/^SUBTOPICS?\s*:/i.test(line)
+      ) || '';
+  }
 
   mainTitle = mainTitle
     .replace(/\(\s*SUBTOPICS?\s*:[\s\S]*$/i, '')
     .replace(/\bSUBTOPICS?\s*:[\s\S]*$/i, '')
     .replace(/\s*[:\-]\s*$/, '')
     .trim();
-
   return {
     mainTitle: mainTitle || 'UNSPECIFIED',
     assimilationTitle: assimilationTitle || ''
