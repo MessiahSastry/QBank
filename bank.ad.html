@@ -3352,7 +3352,7 @@ page.appendChild(footerWrap);
     }
 function normalizeBlockSpacing(root, settings){
   const qBlocks = Array.from(
-    root.querySelectorAll('.question-container, .page-flow-block')
+    root.querySelectorAll('.worksheet-flow-block, .page-flow-block, .question-gap-block')
   );
 
   qBlocks.forEach(function(div) {
@@ -3364,7 +3364,9 @@ function normalizeBlockSpacing(root, settings){
     qBlocks[qBlocks.length - 1].style.marginBottom = '0px';
   }
 
-  root.querySelectorAll('.question-text, .question-body, .page-flow-block, .page-flow-block div, .page-flow-block span').forEach(function(el) {
+  root.querySelectorAll(
+    '.question-text, .question-body, .page-flow-block, .page-flow-block div, .page-flow-block span, .worksheet-flow-block, .worksheet-flow-block div, .worksheet-flow-block span, .question-gap-block, .question-gap-block div, .question-gap-block span'
+  ).forEach(function(el) {
     if (!el.closest('[data-qr-link]')) {
       el.style.lineHeight = settings.lineHeight;
     }
@@ -3475,12 +3477,18 @@ if (node.classList.contains('page-flow-block')) {
   });
 
   if (kids.length <= 1) {
-    blocks.push(node.cloneNode(true));
+    const cloned = node.cloneNode(true);
+    if (cloned.nodeType === 1) cloned.classList.add('question-gap-block');
+    blocks.push(cloned);
     return;
   }
 
-  kids.forEach(ch => {
-    blocks.push(ch.cloneNode(true));
+  kids.forEach((ch, idx) => {
+    const cloned = ch.cloneNode(true);
+    if (idx === kids.length - 1 && cloned.nodeType === 1) {
+      cloned.classList.add('question-gap-block');
+    }
+    blocks.push(cloned);
   });
   return;
 }
@@ -3537,23 +3545,44 @@ if (node.classList.contains('question-container')) {
 
         leading.forEach(ch => pairWrap.appendChild(ch.cloneNode(true)));
 
-        if (flowChildren.length) {
-          pairWrap.appendChild(flowChildren[0].cloneNode(true));
-          blocks.push(pairWrap);
+       if (flowChildren.length) {
+  pairWrap.appendChild(flowChildren[0].cloneNode(true));
 
-          for (let i = 1; i < flowChildren.length; i++) {
-            blocks.push(flowChildren[i].cloneNode(true));
-          }
-        } else {
-          pairWrap.appendChild(firstContent.cloneNode(true));
-          blocks.push(pairWrap);
-        }
+  if (flowChildren.length === 1) {
+    pairWrap.classList.add('question-gap-block');
+    blocks.push(pairWrap);
+  } else {
+    blocks.push(pairWrap);
+
+    for (let i = 1; i < flowChildren.length; i++) {
+      const cloned = flowChildren[i].cloneNode(true);
+      if (i === flowChildren.length - 1 && cloned.nodeType === 1) {
+        cloned.classList.add('question-gap-block');
+      }
+      blocks.push(cloned);
+    }
+  }
+} else {
+  pairWrap.classList.add('question-gap-block');
+  pairWrap.appendChild(firstContent.cloneNode(true));
+  blocks.push(pairWrap);
+}
       } else {
         if (flowChildren.length) {
-          flowChildren.forEach(ch => blocks.push(ch.cloneNode(true)));
-        } else {
-          blocks.push(firstContent.cloneNode(true));
-        }
+  flowChildren.forEach((ch, idx) => {
+    const cloned = ch.cloneNode(true);
+    if (idx === flowChildren.length - 1 && cloned.nodeType === 1) {
+      cloned.classList.add('question-gap-block');
+    }
+    blocks.push(cloned);
+  });
+} else {
+  const cloned = firstContent.cloneNode(true);
+  if (cloned.nodeType === 1) {
+    cloned.classList.add('question-gap-block');
+  }
+  blocks.push(cloned);
+}
       }
     } else {
       const pairWrap = document.createElement('div');
@@ -3574,11 +3603,21 @@ if (node.classList.contains('question-container')) {
         child.classList.contains('page-flow-block')
       ) {
         const inner = getMeaningfulChildren(child);
-        if (inner.length) {
-          inner.forEach(ch => blocks.push(ch.cloneNode(true)));
-        } else {
-          blocks.push(child.cloneNode(true));
-        }
+       if (inner.length) {
+  inner.forEach((ch, idx) => {
+    const cloned = ch.cloneNode(true);
+    if (idx === inner.length - 1 && cloned.nodeType === 1) {
+      cloned.classList.add('question-gap-block');
+    }
+    blocks.push(cloned);
+  });
+} else {
+  const cloned = child.cloneNode(true);
+  if (cloned.nodeType === 1) {
+    cloned.classList.add('question-gap-block');
+  }
+  blocks.push(cloned);
+}
       } else {
         blocks.push(child.cloneNode(true));
       }
