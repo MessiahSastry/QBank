@@ -3923,12 +3923,11 @@ if (node.classList.contains('worksheet-flow-block')) {
 
     let repaginateTimer = null;
     function queueRepaginate(){
-  currentPageIndex = getVisiblePageIndex();
-  pageSelect.value = String(currentPageIndex);
   saveCurrentPageSettings();
   clearTimeout(repaginateTimer);
   repaginateTimer = setTimeout(async () => {
     await paginatePreview();
+    pageSelect.value = String(currentPageIndex);
   }, 350);
 }
 
@@ -3955,7 +3954,6 @@ if (node.classList.contains('worksheet-flow-block')) {
 }
 
 floatingBtn.onclick = function(){
-  currentPageIndex = getVisiblePageIndex();
   pageSelect.value = String(currentPageIndex);
   updateSliderUIFromPage();
   settingsModal.style.display = 'flex';
