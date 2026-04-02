@@ -703,7 +703,147 @@ const auth = firebase.auth();
     let currentPage = 'form';
     let lastSessionParams = null;
 
-       const aiGeneratorConfig = {
+       function __qbNormalizeTypeForSection(rawType = '') {
+  const t = String(rawType || '').trim();
+
+  if (t === 'Text Book (MCQ Single)' || t === 'Text (Single)') return 'MCQ (Single)';
+  if (t === 'Text Book (MCQ Multiple)' || t === 'Text (Multiple)') return 'MCQ (Multiple)';
+  return t;
+}
+
+function __qbGetSectionKeyForSave({ rawType = '', marks = 0, level = '' } = {}) {
+  const type = __qbNormalizeTypeForSection(rawType);
+  const levelText = String(level || 'Level 1').trim() || 'Level 1';
+  const levelKey = levelText.replace(/\s+/g, '_').toUpperCase();
+
+  if (type === 'MCQ (Single)') return `MCQ_SINGLE_${levelKey}`;
+  if (type === 'MCQ (Multiple)') return `MCQ_MULTIPLE_${levelKey}`;
+  if (type === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
+  if (type === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
+  if (type === 'Comprehensive') return `COMPREHENSIVE_${levelKey}`;
+
+  return `DESCRIPTIVE_${Number(marks || 0)}_${levelKey}`;
+}
+
+function __qbBuildSeedFromQuestion(qData = {}, sessionQuestionType = '') {
+  const meta = parseMetaLine(qData.parsedMeta || '');
+
+  const rawType =
+    (qData.parsedMeta && /\[Comprehensive\]/i.test(qData.parsedMeta)) ? 'Comprehensive'
+    : (qData.type || qData.mcqType || sessionQuestionType || 'Descriptive');
+
+  const levelText = String(
+    qData.difficulty ||
+    qData.level ||
+    meta.difficulty ||
+    'Level 1'
+  ).trim() || 'Level 1';
+
+  const marksValue = Number(
+    qData.marks ||
+    meta.marks ||
+    0
+  );
+
+  const seed = {
+    class: String(qData.class || '').trim(),
+    board: String(qData.board || '').trim(),
+    subject: String(qData.subject || '').trim(),
+    chapter: String(qData.chapter || '').trim(),
+    rawType,
+    marks: marksValue,
+    level: levelText
+  };
+
+  seed.sectionKey = __qbGetSectionKeyForSave(seed);
+  return seed;
+}
+
+function __qbSeedGroupKey(seed = {}) {
+  return [
+    String(seed.class || '').trim(),
+    String(seed.board || '').trim(),
+    String(seed.subject || '').trim(),
+    String(seed.chapter || '').trim(),
+    String(seed.sectionKey || '').trim()
+  ].join('|||');
+}
+
+async function __qbGetMaxQuestionNumberForSeed(seed = {}) {
+  if (!seed.class || !seed.board || !seed.subject || !seed.chapter || !seed.sectionKey) return 0;
+
+  const snap = await db.collection('questions')
+    .where('class', '==', seed.class)
+    .where('board', '==', seed.board)
+    .where('subject', '==', seed.subject)
+    .where('chapter', '==', seed.chapter)
+    .where('sectionKey', '==', seed.sectionKey)
+    .get();
+
+  let maxNo = 0;
+  snap.forEach(doc => {
+    const n = Number((doc.data() || {}).questionNumber || 0);
+    if (n > maxNo) maxNo = n;
+  });
+
+  return maxNo;
+}
+
+function __qbSortDocsForSave(a, b) {
+  const da = a.data ? a.data() : a;
+  const dbb = b.data ? b.data() : b;
+
+  const qa = Number(da.questionNumber || 999999);
+  const qb = Number(dbb.questionNumber || 999999);
+  if (qa !== qb) return qa - qb;
+
+  const ta = da.timestamp && typeof da.timestamp.toMillis === 'function' ? da.timestamp.toMillis() : 0;
+  const tb = dbb.timestamp && typeof dbb.timestamp.toMillis === 'function' ? dbb.timestamp.toMillis() : 0;
+  if (ta !== tb) return ta - tb;
+
+  const sa = String(da.question || da.body || da.text || da.metaLine || '').trim();
+  const sb = String(dbb.question || dbb.body || dbb.text || dbb.metaLine || '').trim();
+  return sa.localeCompare(sb);
+}
+
+async function __qbRenumberSectionQuestionsFromSeed(seed = {}) {
+  if (!seed.class || !seed.board || !seed.subject || !seed.chapter || !seed.sectionKey) return;
+
+  const snap = await db.collection('questions')
+    .where('class', '==', seed.class)
+    .where('board', '==', seed.board)
+    .where('subject', '==', seed.subject)
+    .where('chapter', '==', seed.chapter)
+    .where('sectionKey', '==', seed.sectionKey)
+    .get();
+
+  if (snap.empty) return;
+
+  const docs = snap.docs.slice().sort(__qbSortDocsForSave);
+
+  let batch = db.batch();
+  let ops = 0;
+
+  for (let i = 0; i < docs.length; i++) {
+    batch.update(docs[i].ref, {
+      sectionKey: seed.sectionKey,
+      questionNumber: i + 1
+    });
+
+    ops++;
+    if (ops >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+
+  if (ops > 0) {
+    await batch.commit();
+  }
+}
+
+const aiGeneratorConfig = {
       classes: [
         "3rd Class", "4th Class", "5th Class", "6th Class",
         "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"
@@ -2517,11 +2657,8 @@ async function saveSessionQuestions(sessionParams) {
       skippedCount = 0;
 
   try {
-    const startNumber = await getNextQuestionNumber(
-      sessionParams.class,
-      sessionParams.subject,
-      sessionParams.chapter
-    );
+    const groupNextNumbers = new Map();
+    const affectedSeeds = new Map();
 
   for (let i = 0; i < currentSessionQuestions.length; i++) {
     console.log("SAVE LOOP START", i, currentSessionQuestions[i]);
@@ -2556,8 +2693,10 @@ async function saveSessionQuestions(sessionParams) {
 
     console.log("CHECKING DUPLICATES FOR", i, qData.subject, qData.chapter);
 
-    const snapshot = await db
+   const snapshot = await db
       .collection("questions")
+      .where("class", "==", qData.class)
+      .where("board", "==", qData.board)
       .where("subject", "==", qData.subject)
       .where("chapter", "==", qData.chapter)
       .get();
@@ -2593,8 +2732,19 @@ async function saveSessionQuestions(sessionParams) {
       continue;
     }
 
-    const meta = parseMetaLine(qData.parsedMeta);
-    const currentQuestionNumber = startNumber + savedCount; // Increment based on successfully saved count
+   const meta = parseMetaLine(qData.parsedMeta);
+    const seed = __qbBuildSeedFromQuestion(qData, sessionParams.questionType);
+    const seedKey = __qbSeedGroupKey(seed);
+
+    if (!groupNextNumbers.has(seedKey)) {
+      const maxNo = await __qbGetMaxQuestionNumberForSeed(seed);
+      groupNextNumbers.set(seedKey, maxNo + 1);
+      affectedSeeds.set(seedKey, seed);
+    }
+
+    const currentQuestionNumber = groupNextNumbers.get(seedKey);
+    groupNextNumbers.set(seedKey, currentQuestionNumber + 1);
+
     const __wrap = __fixLatex;
 
     if (qData.parsedMeta && qData.parsedMeta.includes("[Comprehensive]")) {
@@ -2608,12 +2758,15 @@ async function saveSessionQuestions(sessionParams) {
 
     console.log("ADDING COMPREHENSIVE QUESTION", i);
 
-      await Promise.race([
+     await Promise.race([
                 db.collection("questions").add({
           type: "Comprehensive",
           text: wrappedFull,
           metaLine: qData.parsedMeta,
-          marks: 2,
+          marks: meta.marks || 2,
+          difficulty: meta.difficulty || null,
+          level: meta.level || null,
+          sectionKey: seed.sectionKey,
           passage: wrappedPassage,
           mcqs: wrappedMcqs,
           explanation: __wrap(qData.explanation || ''),
@@ -2638,12 +2791,13 @@ async function saveSessionQuestions(sessionParams) {
       const wrappedBody      = __wrap(qData.parsedBody || '');
       const wrappedFullText  = __wrap(qData.fullText || '');
 
-           let toSave = {
+          let toSave = {
         metaLine: qData.parsedMeta,
         difficulty: meta.difficulty,
         level: meta.level,
         marks: meta.marks,
         questionNumber: currentQuestionNumber,
+        sectionKey: seed.sectionKey,
         class: qData.class,
         board: qData.board,
         subject: qData.subject,
@@ -2652,7 +2806,8 @@ async function saveSessionQuestions(sessionParams) {
         createdBy: currentUserProfile.uid,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
-          if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
+         if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
+        toSave.type = sessionParams.questionType;
         toSave.question = wrappedQuestion;
         toSave.options  = wrappedOptions;
         toSave.answer   = qData.parsedAnswer;
@@ -2679,6 +2834,10 @@ async function saveSessionQuestions(sessionParams) {
 
     savedCount++;
   }
+
+      for (const seed of affectedSeeds.values()) {
+        await __qbRenumberSectionQuestionsFromSeed(seed);
+      }
 
       alert(`${savedCount} question(s) saved. ${skippedCount} duplicate(s) skipped.`);
   } catch (err) {
