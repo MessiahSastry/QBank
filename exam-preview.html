@@ -324,7 +324,7 @@
       line-height: 1.25;
       margin-bottom: 6px;
       color:#163A63;
-      font-weight:700;
+      font-weight:400;
 }
        .footer-row {
         display: flex;
@@ -555,6 +555,7 @@ mjx-container svg {
 /* Make sure any inline tags don’t shrink B */
 .question-text, .question-text *{
   font-size: inherit !important;
+  font-weight: 400 !important;
 }
 
 /* Make all option lines inside question text equal gap */
@@ -1096,9 +1097,11 @@ function formatAnswerKeyAnswerHtml(answer) {
 
   return ans ? autoLatexAll(ans) : '';
 }
-function formatAnswerKeyExplanationHtml(explanation, answerValue) {
+function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = '') {
   const text = cleanAnswerKeyBlock(explanation);
   if (!text) return '';
+
+  const isMathSubject = /\b(math|maths|mathematics)\b/i.test(String(subjectName || ''));
 
   const lines = text
     .split('\n')
@@ -1106,7 +1109,7 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue) {
     .filter(Boolean)
     .map(line => line
       .replace(/^Explanation\s*[:.-]?\s*/i, '')
-      .replace(/^Step\s*\d+\s*[:.-]\s*/i, '')
+      .replace(/^Step\s*\d+\s*[:.-]?\s*/i, '')
       .trim()
     )
     .filter(Boolean)
@@ -1114,15 +1117,32 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue) {
 
   if (!lines.length) return '';
 
-  return lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('');
+  // Math: keep existing line-by-line style, but without "Step 1", "Step 2", etc.
+  if (isMathSubject) {
+    return lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('');
+  }
+
+  // Other subjects: if explanation has numbered points like 1. 2. 3., print point-wise
+  const merged = lines.join(' ').replace(/\s+/g, ' ').trim();
+  const pointMatches = merged.match(/(?:^|\s)(\d+[\.\)]\s*.*?)(?=\s+\d+[\.\)]\s*|$)/g);
+
+  if (pointMatches && pointMatches.length >= 2) {
+    return pointMatches
+      .map(p => p.trim())
+      .map(point => `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`)
+      .join('');
+  }
+
+  // Fallback: preserve existing line breaks
+  return lines.map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`).join('');
 }
-function buildAnswerKeyQuestionHtml(q) {
+function buildAnswerKeyQuestionHtml(q, subjectName = '') {
   const qNo = String(q.number || '').replace(/\.$/, '');
   const questionHTML = formatAnswerKeyQuestionHtml(q);
   const optionLines = getAnswerKeyOptionLines(q);
   const optionsData = encodeURIComponent(JSON.stringify(optionLines));
   const answerHTML = formatAnswerKeyAnswerHtml(q.answer);
-  const explanationHTML = formatAnswerKeyExplanationHtml(q.explanation, q.answer);
+  const explanationHTML = formatAnswerKeyExplanationHtml(q.explanation, q.answer, subjectName);
   const imageHTML = q.image
     ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image"></div>`
     : '';
@@ -1141,7 +1161,7 @@ function buildAnswerKeyQuestionHtml(q) {
   `;
 }
 
-function buildAnswerKeySectionHtml(section) {
+function buildAnswerKeySectionHtml(section, subjectName = '') {
   const heading = escapeHtml(section.label || section.name || 'Section');
   const instruction = escapeHtml(getAnswerKeySectionInstruction(section));
   const marksText = escapeHtml(getAnswerKeySectionMarks(section));
@@ -1167,8 +1187,8 @@ function buildAnswerKeySectionHtml(section) {
     </div>
   `;
 
-  (section.questions || []).forEach(q => {
-    html += buildAnswerKeyQuestionHtml(q);
+    (section.questions || []).forEach(q => {
+    html += buildAnswerKeyQuestionHtml(q, subjectName);
   });
 
   return html;
@@ -1206,7 +1226,7 @@ async function renderAnswerKeyPageFromUrl() {
         contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${escapeHtml(subjectBlock.subject || '')}</div>`;
       }
       (subjectBlock.sections || []).forEach(section => {
-        contentHTML += buildAnswerKeySectionHtml(section);
+               contentHTML += buildAnswerKeySectionHtml(section, subjectBlock.subject || '');
       });
     });
 
