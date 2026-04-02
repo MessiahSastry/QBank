@@ -1364,14 +1364,15 @@ function buildQuestionHTML(item, __parent = printable) {
     }
   }
     const isMCQ = options.length === 4;
-  const __qNoWidth = __qbQuestionNumberWidth(qCounter);
+  const __displayQNo = Number(source && source.questionNumber) > 0 ? Number(source.questionNumber) : qCounter;
+const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
 
    const questionHtml = `
    <div class="question-container" style="width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
                    <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:#5A2E1B; font-weight:400;">
-            ${qCounter}.
+            ${__displayQNo}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
                     <div class="question-text" style="line-height:1.35;font-size:12pt;color:#5A2E1B;font-weight:400;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
@@ -1629,8 +1630,8 @@ function renderTypeHeading(text, __parent = printable) {
 function renderLeftHeading(text, __parent = printable) {
   const t = String(text || '').trim();
 
-  const isLevel = /^Level\s*[1-3]$/i.test(t);
-  const isMCQHeading = /^MCQ\s*\(Single\)$|^MCQ\s*\(Multiple\)$/i.test(t);
+ const isLevel = /^Level\s*[1-3]$/i.test(t);
+const isSectionHeading = /^MCQ\s*\(Single\)$|^MCQ\s*\(Multiple\)$|^Fill in the Blanks$/i.test(t);
 
   const h = document.createElement('div');
 
@@ -1654,7 +1655,7 @@ function renderLeftHeading(text, __parent = printable) {
     display:block;
   `;
   h.textContent = t.toUpperCase();
-} else if (isMCQHeading) {
+} else if (isSectionHeading) {
   h.style.cssText = `
     font-size:1.12em;
     font-weight:900;
@@ -1933,7 +1934,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .trim();
 
   const subjectText = String((source && source.subject) || '').trim();
-  const qNoLabel = 'Q' + qNum + '.';
+  const __displayQNo = Number(source && source.questionNumber) > 0 ? Number(source.questionNumber) : qNum;
+  const qNoLabel = 'Q' + __displayQNo + '.';
   const qNoWidth = __qbQuestionNumberWidth(qNoLabel);
   const indentLeft = qNoWidth + 8;
 
@@ -2124,20 +2126,21 @@ if (includeWorksheet) {
       renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
     }
 
-    const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+   const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
     const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+    const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
     const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-    function __renderMCQByLevel(listScope, typeLabel) {
-      const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-      if (!mcq.length) return;
+    function __renderTypeByLevel(listScope, typeLabel) {
+      const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+      if (!itemsOfType.length) return;
 
       renderLeftHeading(typeLabel);
       const buckets = levelsOrder.map(lvl => ({
         name: lvl,
-        items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
       }));
-      const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+      const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
       if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
 
       buckets.forEach(b => {
@@ -2153,8 +2156,9 @@ if (includeWorksheet) {
       });
     }
 
-    if (wantSingle) __renderMCQByLevel(list, 'MCQ (Single)');
-    if (wantMulti) __renderMCQByLevel(list, 'MCQ (Multiple)');
+    if (wantSingle) __renderTypeByLevel(list, 'MCQ (Single)');
+    if (wantMulti) __renderTypeByLevel(list, 'MCQ (Multiple)');
+    if (wantFill) __renderTypeByLevel(list, 'Fill in the Blanks');
 
          if (wantDesc) {
         const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
@@ -2204,20 +2208,21 @@ if (includeWorksheet) {
 
   renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
 
-      const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
       const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+      const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
       const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-      function __renderMCQByLevelFor(listScope, typeLabel) {
-        const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-        if (!mcq.length) return;
+      function __renderTypeByLevelFor(listScope, typeLabel) {
+        const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+        if (!itemsOfType.length) return;
 
         renderLeftHeading(typeLabel);
         const buckets = levelsOrder.map(lvl => ({
           name: lvl,
-          items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+          items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
         }));
-        const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+        const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
         if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
 
         buckets.forEach(b => {
@@ -2233,9 +2238,9 @@ if (includeWorksheet) {
         });
       }
 
-      if (wantSingle) __renderMCQByLevelFor(list, 'MCQ (Single)');
-      if (wantMulti) __renderMCQByLevelFor(list, 'MCQ (Multiple)');
-
+      if (wantSingle) __renderTypeByLevelFor(list, 'MCQ (Single)');
+      if (wantMulti) __renderTypeByLevelFor(list, 'MCQ (Multiple)');
+      if (wantFill) __renderTypeByLevelFor(list, 'Fill in the Blanks');
          if (wantDesc) {
       const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
 
@@ -2349,21 +2354,22 @@ if (includeKey) {
       renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
     }
 
-    const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+   const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
     const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+    const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
     const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-    function __renderKeyMCQByLevel(listScope, typeLabel) {
-      const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-      if (!mcq.length) return;
+    function __renderKeyTypeByLevel(listScope, typeLabel) {
+      const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+      if (!itemsOfType.length) return;
 
       renderLeftHeading(typeLabel);
 
       const buckets = levelsOrder.map(lvl => ({
         name: lvl,
-        items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+        items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
       }));
-      const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+      const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
       if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
 
       buckets.forEach(b => {
@@ -2380,8 +2386,9 @@ if (includeKey) {
       });
     }
 
-    if (wantSingle) __renderKeyMCQByLevel(list, 'MCQ (Single)');
-    if (wantMulti)  __renderKeyMCQByLevel(list, 'MCQ (Multiple)');
+    if (wantSingle) __renderKeyTypeByLevel(list, 'MCQ (Single)');
+    if (wantMulti)  __renderKeyTypeByLevel(list, 'MCQ (Multiple)');
+    if (wantFill)   __renderKeyTypeByLevel(list, 'Fill in the Blanks');
 
     if (wantDesc) {
       const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
@@ -2431,21 +2438,22 @@ if (includeKey) {
 
   renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
 
-      const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
       const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+      const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
       const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-      function __renderKeyMCQByLevelFor(listScope, typeLabel) {
-        const mcq = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-        if (!mcq.length) return;
+      function __renderKeyTypeByLevelFor(listScope, typeLabel) {
+        const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
+        if (!itemsOfType.length) return;
 
         renderLeftHeading(typeLabel);
 
         const buckets = levelsOrder.map(lvl => ({
           name: lvl,
-          items: mcq.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+          items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
         }));
-        const unspecified = mcq.filter(n => !(n.getAttribute('data-level') || '').trim());
+        const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
         if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
 
         buckets.forEach(b => {
@@ -2462,8 +2470,9 @@ if (includeKey) {
         });
       }
 
-      if (wantSingle) __renderKeyMCQByLevelFor(list, 'MCQ (Single)');
-      if (wantMulti)  __renderKeyMCQByLevelFor(list, 'MCQ (Multiple)');
+      if (wantSingle) __renderKeyTypeByLevelFor(list, 'MCQ (Single)');
+      if (wantMulti)  __renderKeyTypeByLevelFor(list, 'MCQ (Multiple)');
+      if (wantFill)   __renderKeyTypeByLevelFor(list, 'Fill in the Blanks');
 
       if (wantDesc) {
         const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
@@ -4334,34 +4343,59 @@ if (selChapters.length === 1) {
   query = query.where('chapter', '==', selChapters[0]);
 }
 
-query = query.orderBy("questionNumber");
-
-        const snapshot = await query.get();
+const snapshot = await query.get();
 window.__pdfQuestionDataMap = {};
-        if (snapshot.empty) {
-          displayArea.innerHTML = '<p class="no-questions-message">No questions found matching your criteria.</p>';
-          return;
-        }
 
-        let questionsHTML = '';
-        let questionCount = 0;
+if (snapshot.empty) {
+  displayArea.innerHTML = '<p class="no-questions-message">No questions found matching your criteria.</p>';
+  return;
+}
 
-        snapshot.forEach(doc => {
+const docs = snapshot.docs.slice().sort((a, b) => {
+  const da = a.data() || {};
+  const db = b.data() || {};
+
+  const ca = String(da.chapter || '').trim();
+  const cb = String(db.chapter || '').trim();
+  if (ca !== cb) return ca.localeCompare(cb);
+
+  const sa = String(da.sectionKey || __qbGetSectionKey(da));
+  const sb = String(db.sectionKey || __qbGetSectionKey(db));
+  if (sa !== sb) return sa.localeCompare(sb);
+
+  return __qbSortDocsForNumbering(da, db);
+});
+
+let questionsHTML = '';
+let questionCount = 0;
+
+docs.forEach(doc => {
           const data = doc.data();
-window.__pdfQuestionDataMap[doc.id] = data;
-          if (Array.isArray(data.options)) {
-            console.log("Options for", doc.id, data.options);
-          }
-          // --- normalize mcqType & detect textbook flag (used later) ---
-const __rt  = data.mcqType
-  ? String(data.mcqType)
-  : (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive');
+if (Array.isArray(data.options)) {
+  console.log("Options for", doc.id, data.options);
+}
 
-const __rtl = __rt.toLowerCase();
+// --- normalize type & detect textbook flag (used later) ---
+const __rawType = String(
+  data.mcqType ||
+  data.type ||
+  (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
+).trim();
+
+const __rtl = __rawType.toLowerCase();
 const __normType =
-  __rtl.includes('multiple') ? 'MCQ (Multiple)'
-  : __rtl.includes('single') ? 'MCQ (Single)'
-  : __rt;
+  __rtl === 'mcq (multiple)' ? 'MCQ (Multiple)' :
+  __rtl === 'mcq (single)' ? 'MCQ (Single)' :
+  __rtl === 'fill in the blanks' ? 'Fill in the Blanks' :
+  __rtl === 'assertion and reason (mcq single)' ? 'Assertion and Reason (MCQ Single)' :
+  'Descriptive';
+
+window.__pdfQuestionDataMap[doc.id] = {
+  ...data,
+  type: data.type || __normType,
+  sectionKey: data.sectionKey || __qbGetSectionKey({ ...data, type: data.type || __normType }),
+  questionNumber: data.questionNumber || null
+};
 
 const __isTextbook =
   __rtl.includes('text') || __rtl.includes('book') ||
@@ -4413,7 +4447,8 @@ if (selQtypes.length > 0) {
           const __displayOptions = __qbGetWorkbookOptions(data);
 
           questionCount++;
-          questionsHTML += `
+const __savedQNo = Number(data.questionNumber || 0) > 0 ? Number(data.questionNumber) : questionCount;
+questionsHTML += `
            <div class="question-item"
      data-id="${doc.id}"
      data-level="${data.difficulty || data.level || ''}"
@@ -4426,7 +4461,7 @@ if (selQtypes.length > 0) {
               </div>
 
               <div class="question-meta">
-                Q${questionCount}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
+                Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
               </div>
               <div class="question-text">
                                ${
@@ -4750,11 +4785,17 @@ function autoLatexAll(str) {
           };
 
           menu.querySelector('.menu-delete-btn').onclick = async () => {
-            menu.remove();
-            if (!(await appConfirm("Are you sure you want to delete this question?"))) return;
-            await questionsDb.collection('questions').doc(docId).delete();
-            fetchAndDisplayQuestions();
-          };
+  menu.remove();
+  if (!(await appConfirm("Are you sure you want to delete this question?"))) return;
+
+  const __docSnap = await questionsDb.collection('questions').doc(docId).get();
+  const __oldData = __docSnap.data() || {};
+
+  await questionsDb.collection('questions').doc(docId).delete();
+  await __qbRenumberSectionQuestions(__oldData);
+
+  fetchAndDisplayQuestions();
+};
         };
       });
 
@@ -4915,23 +4956,39 @@ function autoLatexAll(str) {
         const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
         if (!qText) { alert("Question text is required."); return; }
 
-                    const updateObj = {
+                   const __oldSub = String((data && data.subject) || '').trim();
+let __newSub = __oldSub;
+
+if (__oldSub === 'Math 1' || __oldSub === 'Math 2') __newSub = 'Math';
+if (__oldSub === 'Math 1 IIT' || __oldSub === 'Math 2 IIT') __newSub = 'Math IIT';
+
+const __oldSeed = __qbBuildNumberSeed(data, {
+  subject: __oldSub
+});
+
+const __newMarksValue = marksRaw === '' ? '' : Number(marksRaw);
+const __newSeed = __qbBuildNumberSeed(data, {
+  board: boardVal || '',
+  subject: __newSub || __oldSub || '',
+  chapter: chapterVal || '',
+  mcqType: qType,
+  type: qType,
+  marks: __newMarksValue,
+  difficulty: levelVal || '',
+  level: levelVal || ''
+});
+
+const updateObj = {
   question: qText,
   difficulty: levelVal || firebase.firestore.FieldValue.delete(),
   board: boardVal || firebase.firestore.FieldValue.delete(),
   chapter: chapterVal || firebase.firestore.FieldValue.delete(),
   explanation: explanationText || firebase.firestore.FieldValue.delete(),
+  sectionKey: __qbGetSectionKey(__newSeed),
   workbookShuffledOptions: firebase.firestore.FieldValue.delete(),
   workbookShuffledAnswer: firebase.firestore.FieldValue.delete(),
   workbookShuffleSavedAt: firebase.firestore.FieldValue.delete(),
 };
-
-// Normalize old subjects to new ones (Math / Math IIT)
-const __oldSub = String((data && data.subject) || '').trim();
-let __newSub = __oldSub;
-
-if (__oldSub === 'Math 1' || __oldSub === 'Math 2') __newSub = 'Math';
-if (__oldSub === 'Math 1 IIT' || __oldSub === 'Math 2 IIT') __newSub = 'Math IIT';
 
 if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
@@ -4951,34 +5008,57 @@ if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
           updateObj.questionNumber = qn;
         }
 
-        if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
-          updateObj.mcqType = firebase.firestore.FieldValue.delete();
-          updateObj.options = firebase.firestore.FieldValue.delete();
-          updateObj.body = qText;
-          updateObj.text = qText;
-          updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
-        } else {
-          const optA = popup.querySelector('#edit-q-optA').value.trim();
-          const optB = popup.querySelector('#edit-q-optB').value.trim();
-          const optC = popup.querySelector('#edit-q-optC').value.trim();
-          const optD = popup.querySelector('#edit-q-optD').value.trim();
-          const ans = popup.querySelector('#edit-q-answer').value.trim();
-          if (!optA || !optB || !optC || !optD || !ans) {
-            alert("For MCQ, all four options and the answer are required.");
-            return;
-          }
-          updateObj.mcqType = qType;
-          updateObj.options = [optA, optB, optC, optD];
-          updateObj.parsedAnswer = ans;
-        }
+       if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
+  updateObj.type = qType;
+  updateObj.mcqType = firebase.firestore.FieldValue.delete();
+  updateObj.options = firebase.firestore.FieldValue.delete();
+  updateObj.body = qText;
+  updateObj.text = qText;
+  updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
+} else {
+  const optA = popup.querySelector('#edit-q-optA').value.trim();
+  const optB = popup.querySelector('#edit-q-optB').value.trim();
+  const optC = popup.querySelector('#edit-q-optC').value.trim();
+  const optD = popup.querySelector('#edit-q-optD').value.trim();
+  const ans = popup.querySelector('#edit-q-answer').value.trim();
+  if (!optA || !optB || !optC || !optD || !ans) {
+    alert("For MCQ, all four options and the answer are required.");
+    return;
+  }
+  updateObj.type = qType;
+  updateObj.mcqType = qType;
+  updateObj.options = [optA, optB, optC, optD];
+  updateObj.parsedAnswer = ans;
+}
 
-        try {
-          await questionsDb.collection('questions').doc(docId).update(updateObj);
-          popup.remove();
-          fetchAndDisplayQuestions();
-        } catch (err) {
-          alert("Failed to save: " + err.message);
-        }
+       try {
+  await questionsDb.collection('questions').doc(docId).update(updateObj);
+
+  const __oldSectionKey = __qbGetSectionKey(__oldSeed);
+  const __newSectionKey = __qbGetSectionKey(__newSeed);
+  const __oldBoard = String(__oldSeed.board || '');
+  const __newBoard = String(__newSeed.board || '');
+  const __oldSubject2 = String(__oldSeed.subject || '');
+  const __newSubject2 = String(__newSeed.subject || '');
+  const __oldChapter = String(__oldSeed.chapter || '');
+  const __newChapter = String(__newSeed.chapter || '');
+
+  await __qbRenumberSectionQuestions(__oldSeed);
+
+  if (
+    __oldSectionKey !== __newSectionKey ||
+    __oldBoard !== __newBoard ||
+    __oldSubject2 !== __newSubject2 ||
+    __oldChapter !== __newChapter
+  ) {
+    await __qbRenumberSectionQuestions(__newSeed);
+  }
+
+  popup.remove();
+  fetchAndDisplayQuestions();
+} catch (err) {
+  alert("Failed to save: " + err.message);
+}
       };
     }
 
@@ -5668,6 +5748,206 @@ if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Sectio
       statusEl.textContent = 'Failed to save student: ' + err.message;
     }
   };
+}
+
+function __qbGetSectionKey(data = {}) {
+  const rawType = String(
+    data.mcqType ||
+    data.type ||
+    (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
+  ).trim();
+
+  const level = String(data.difficulty || data.level || '').trim() || 'Level 1';
+  const levelKey = level.replace(/\s+/g, '_').toUpperCase();
+
+  if (rawType === 'MCQ (Single)') return `MCQ_SINGLE_${levelKey}`;
+  if (rawType === 'MCQ (Multiple)') return `MCQ_MULTIPLE_${levelKey}`;
+  if (rawType === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
+  if (rawType === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
+
+  const marks = Number(data.marks || 0);
+  return `DESCRIPTIVE_${marks}_${levelKey}`;
+}
+
+function __qbSortDocsForNumbering(a, b) {
+  const da = a.data ? a.data() : a;
+  const db = b.data ? b.data() : b;
+
+  const qa = Number(da.questionNumber || 999999);
+  const qb = Number(db.questionNumber || 999999);
+  if (qa !== qb) return qa - qb;
+
+  const ca = da.createdAt && typeof da.createdAt.toMillis === 'function' ? da.createdAt.toMillis() : 0;
+  const cb = db.createdAt && typeof db.createdAt.toMillis === 'function' ? db.createdAt.toMillis() : 0;
+  if (ca !== cb) return ca - cb;
+
+  const ta = String(da.question || da.body || da.text || '').trim();
+  const tb = String(db.question || db.body || db.text || '').trim();
+  return ta.localeCompare(tb);
+}
+
+function __qbBuildNumberSeed(data = {}, overrides = {}) {
+  return {
+    class: overrides.class ?? data.class ?? '',
+    board: overrides.board ?? data.board ?? '',
+    subject: overrides.subject ?? data.subject ?? '',
+    chapter: overrides.chapter ?? data.chapter ?? '',
+    mcqType: overrides.mcqType ?? data.mcqType ?? data.type ?? '',
+    type: overrides.type ?? data.type ?? '',
+    marks: overrides.marks ?? data.marks ?? '',
+    difficulty: overrides.difficulty ?? data.difficulty ?? data.level ?? '',
+    level: overrides.level ?? data.level ?? ''
+  };
+}
+
+async function __qbRenumberSectionQuestions(seedData = {}) {
+  const classVal = String(seedData.class || '').trim();
+  const boardVal = String(seedData.board || '').trim();
+  const subjectVal = String(seedData.subject || '').trim();
+  const chapterVal = String(seedData.chapter || '').trim();
+  const sectionKey = __qbGetSectionKey(seedData);
+
+  if (!classVal || !boardVal || !subjectVal || !sectionKey) return;
+
+  let query = questionsDb.collection('questions')
+    .where('class', '==', classVal)
+    .where('board', '==', boardVal)
+    .where('subject', '==', subjectVal)
+    .where('sectionKey', '==', sectionKey);
+
+  const snap = await query.get();
+  if (snap.empty) return;
+
+  const docs = snap.docs
+    .filter(doc => String((doc.data() || {}).chapter || '').trim() === chapterVal)
+    .slice()
+    .sort(__qbSortDocsForNumbering);
+
+  if (!docs.length) return;
+
+  const batch = questionsDb.batch();
+
+  docs.forEach((doc, idx) => {
+    batch.update(doc.ref, {
+      sectionKey: sectionKey,
+      questionNumber: idx + 1
+    });
+
+    if (window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[doc.id]) {
+      window.__pdfQuestionDataMap[doc.id] = {
+        ...window.__pdfQuestionDataMap[doc.id],
+        sectionKey: sectionKey,
+        questionNumber: idx + 1
+      };
+    }
+  });
+
+  await batch.commit();
+}
+
+async function __qbBackfillAllQuestionNumbers() {
+  if (!currentUser) {
+    alert('User not ready. Please refresh and login again.');
+    return;
+  }
+
+  const ok = await appConfirm(
+    'This will permanently renumber all saved questions in Firestore by:\n\n' +
+    'Class + Board + Subject + Chapter + Section + Level\n\n' +
+    'Do you want to continue?'
+  );
+  if (!ok) return;
+
+  try {
+    alert('Loading all questions for backfill...');
+
+    const snap = await questionsDb.collection('questions').get();
+
+    if (snap.empty) {
+      alert('No questions found.');
+      return;
+    }
+
+    const groups = new Map();
+
+    snap.docs.forEach(doc => {
+      const data = doc.data() || {};
+
+      const classVal = String(data.class || '').trim();
+      const boardVal = String(data.board || '').trim();
+      const subjectVal = String(data.subject || '').trim();
+      const chapterVal = String(data.chapter || '').trim();
+      const sectionKey = __qbGetSectionKey(data);
+
+      const groupKey = `${classVal}|||${boardVal}|||${subjectVal}|||${chapterVal}|||${sectionKey}`;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          classVal,
+          boardVal,
+          subjectVal,
+          chapterVal,
+          sectionKey,
+          docs: []
+        });
+      }
+
+      groups.get(groupKey).docs.push(doc);
+    });
+
+    let batch = questionsDb.batch();
+    let opCount = 0;
+    let updatedCount = 0;
+    let groupCount = 0;
+
+    for (const [, group] of groups) {
+      const docs = group.docs.slice().sort(__qbSortDocsForNumbering);
+
+      for (let i = 0; i < docs.length; i++) {
+        const doc = docs[i];
+        const qNo = i + 1;
+
+        batch.update(doc.ref, {
+          sectionKey: group.sectionKey,
+          questionNumber: qNo
+        });
+
+        opCount++;
+        updatedCount++;
+
+        if (window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[doc.id]) {
+          window.__pdfQuestionDataMap[doc.id] = {
+            ...window.__pdfQuestionDataMap[doc.id],
+            sectionKey: group.sectionKey,
+            questionNumber: qNo
+          };
+        }
+
+        if (opCount >= 400) {
+          await batch.commit();
+          batch = questionsDb.batch();
+          opCount = 0;
+        }
+      }
+
+      groupCount++;
+    }
+
+    if (opCount > 0) {
+      await batch.commit();
+    }
+
+    alert(
+      'Backfill completed successfully.\n\n' +
+      'Groups updated: ' + groupCount + '\n' +
+      'Questions updated: ' + updatedCount
+    );
+
+    await fetchAndDisplayQuestions();
+  } catch (err) {
+    console.error('BACKFILL FAILED', err);
+    alert('Backfill failed: ' + err.message);
+  }
 }
 
 function __qbParseAnswerLetters(answer) {
