@@ -1107,43 +1107,40 @@ function formatAnswerKeyAnswerHtml(answer, subjectName = '') {
 
   if (!lines.length) return '';
 
-  // Math -> line by line, but no "Step 1", "Step 2"
-  if (isMathSubject) {
-    return lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('');
-  }
-
-  // Other subjects -> detect numbered points inside one paragraph
   const merged = lines.join(' ').replace(/\s+/g, ' ').trim();
-
   const numberedPoints = merged.match(/\d+[\.\)]\s*[\s\S]*?(?=(?:\s+\d+[\.\)]\s*)|$)/g);
 
+  // Point-wise answers -> below "Answer:"
   if (numberedPoints && numberedPoints.length >= 2) {
-  return numberedPoints
-    .map(p => p.trim())
-    .map(point => {
-      const m = point.match(/^(\d+[\.\)])\s*(.*)$/);
-      if (!m) {
-        return `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`;
-      }
-      return `
-        <div style="display:flex; align-items:flex-start; margin-bottom:4px;">
-          <span style="display:inline-block; min-width:22px; font-weight:400;">${escapeHtml(m[1])}</span>
-          <span style="display:block; flex:1;">${escapeHtml(m[2])}</span>
-        </div>
-      `;
-    })
-    .join('');
-}
-
-  // If already line by line, keep line by line
-  if (lines.length >= 2) {
-    return lines
-      .map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`)
-      .join('');
+    return `
+      <div class="answer-point-list">
+        ${numberedPoints.map(p => p.trim()).map(point => {
+          const m = point.match(/^(\d+[\.\)])\s*(.*)$/);
+          if (!m) {
+            return `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`;
+          }
+          return `
+            <div style="display:flex; align-items:flex-start; margin-bottom:4px;">
+              <span style="display:inline-block; min-width:22px; font-weight:400;">${escapeHtml(m[1])}</span>
+              <span style="display:block; flex:1;">${escapeHtml(m[2])}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
   }
 
-  // Single normal answer
-  return `<div>${escapeHtml(lines[0])}</div>`;
+  // Math stepwise answers -> below "Answer:"
+  if (isMathSubject && lines.length >= 2) {
+    return `
+      <div class="answer-block-lines">
+        ${lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('')}
+      </div>
+    `;
+  }
+
+  // All other normal answers -> same line as "Answer:"
+  return autoLatexAll(lines.join(' '));
 }
 function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = '') {
   const text = cleanAnswerKeyBlock(explanation);
@@ -1212,10 +1209,18 @@ function buildAnswerKeyQuestionHtml(q, subjectName = '') {
         <div class="question-text" style="font-size:1.15em;">${questionHTML}</div>
         ${imageHTML}
         ${optionLines.length ? `<div class="options-block" data-options="${optionsData}"></div>` : ''}
-        ${answerHTML ? `
-  <div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Answer:</div>
-  <div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">${answerHTML}</div>
-` : ''}
+        ${answerHTML ? (
+  answerHTML.includes('class="answer-point-list"') || answerHTML.includes('class="answer-block-lines"')
+    ? `
+      <div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Answer:</div>
+      <div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">${answerHTML}</div>
+    `
+    : `
+      <div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">
+        Answer: <span style="color:#111111;font-weight:400;">${answerHTML}</span>
+      </div>
+    `
+) : ''}
         ${explanationHTML ? `<div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Explanation:</div><div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">${explanationHTML}</div>` : ''}
       </div>
     </div>
