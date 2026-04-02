@@ -1118,11 +1118,22 @@ function formatAnswerKeyAnswerHtml(answer, subjectName = '') {
   const numberedPoints = merged.match(/\d+[\.\)]\s*[\s\S]*?(?=(?:\s+\d+[\.\)]\s*)|$)/g);
 
   if (numberedPoints && numberedPoints.length >= 2) {
-    return numberedPoints
-      .map(p => p.trim())
-      .map(point => `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`)
-      .join('');
-  }
+  return numberedPoints
+    .map(p => p.trim())
+    .map(point => {
+      const m = point.match(/^(\d+[\.\)])\s*(.*)$/);
+      if (!m) {
+        return `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`;
+      }
+      return `
+        <div style="display:flex; align-items:flex-start; margin-bottom:4px;">
+          <span style="display:inline-block; min-width:22px; font-weight:400;">${escapeHtml(m[1])}</span>
+          <span style="display:block; flex:1;">${escapeHtml(m[2])}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
 
   // If already line by line, keep line by line
   if (lines.length >= 2) {
@@ -1163,13 +1174,23 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = 
   const merged = lines.join(' ').replace(/\s+/g, ' ').trim();
   const pointMatches = merged.match(/(?:^|\s)(\d+[\.\)]\s*.*?)(?=\s+\d+[\.\)]\s*|$)/g);
 
-  if (pointMatches && pointMatches.length >= 2) {
-    return pointMatches
-      .map(p => p.trim())
-      .map(point => `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`)
-      .join('');
-  }
-
+ if (pointMatches && pointMatches.length >= 2) {
+  return pointMatches
+    .map(p => p.trim())
+    .map(point => {
+      const m = point.match(/^(\d+[\.\)])\s*(.*)$/);
+      if (!m) {
+        return `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`;
+      }
+      return `
+        <div style="display:flex; align-items:flex-start; margin-bottom:4px;">
+          <span style="display:inline-block; min-width:22px; font-weight:400;">${escapeHtml(m[1])}</span>
+          <span style="display:block; flex:1;">${escapeHtml(m[2])}</span>
+        </div>
+      `;
+    })
+    .join('');
+}
   // Fallback: preserve existing line breaks
   return lines.map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`).join('');
 }
