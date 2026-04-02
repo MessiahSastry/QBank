@@ -1089,13 +1089,50 @@ function getAnswerKeyOptionLines(q) {
   });
 }
 
-function formatAnswerKeyAnswerHtml(answer) {
-  const ans = String(answer || '')
-    .trim()
-    .replace(/^(?:final\s*)?answer\s*[:.-]\s*/i, '')
+function formatAnswerKeyAnswerHtml(answer, subjectName = '') {
+  const text = cleanAnswerKeyBlock(answer)
+    .replace(/^(?:final\s*)?answer\s*[:.-]?\s*/i, '')
     .trim();
 
-  return ans ? autoLatexAll(ans) : '';
+  if (!text) return '';
+
+  const isMathSubject = /\b(math|maths|mathematics)\b/i.test(String(subjectName || ''));
+
+  const lines = text
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(line => line.replace(/^Step\s*\d+\s*[:.-]?\s*/i, '').trim())
+    .filter(Boolean);
+
+  if (!lines.length) return '';
+
+  // Math -> line by line, but no "Step 1", "Step 2"
+  if (isMathSubject) {
+    return lines.map(line => `<div style="margin-bottom:2px;">${autoLatexAll(line)}</div>`).join('');
+  }
+
+  // Other subjects -> detect numbered points inside one paragraph
+  const merged = lines.join(' ').replace(/\s+/g, ' ').trim();
+
+  const numberedPoints = merged.match(/\d+[\.\)]\s*[\s\S]*?(?=(?:\s+\d+[\.\)]\s*)|$)/g);
+
+  if (numberedPoints && numberedPoints.length >= 2) {
+    return numberedPoints
+      .map(p => p.trim())
+      .map(point => `<div style="margin-bottom:4px;">${escapeHtml(point)}</div>`)
+      .join('');
+  }
+
+  // If already line by line, keep line by line
+  if (lines.length >= 2) {
+    return lines
+      .map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`)
+      .join('');
+  }
+
+  // Single normal answer
+  return `<div>${escapeHtml(lines[0])}</div>`;
 }
 function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = '') {
   const text = cleanAnswerKeyBlock(explanation);
@@ -1141,7 +1178,7 @@ function buildAnswerKeyQuestionHtml(q, subjectName = '') {
   const questionHTML = formatAnswerKeyQuestionHtml(q);
   const optionLines = getAnswerKeyOptionLines(q);
   const optionsData = encodeURIComponent(JSON.stringify(optionLines));
-  const answerHTML = formatAnswerKeyAnswerHtml(q.answer);
+  const answerHTML = formatAnswerKeyAnswerHtml(q.answer, subjectName);
   const explanationHTML = formatAnswerKeyExplanationHtml(q.explanation, q.answer, subjectName);
   const imageHTML = q.image
     ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image"></div>`
@@ -1154,7 +1191,10 @@ function buildAnswerKeyQuestionHtml(q, subjectName = '') {
         <div class="question-text" style="font-size:1.15em;">${questionHTML}</div>
         ${imageHTML}
         ${optionLines.length ? `<div class="options-block" data-options="${optionsData}"></div>` : ''}
-        ${answerHTML ? `<div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Answer: <span style="color:#111111;font-weight:700;">${answerHTML}</span></div>` : ''}
+        ${answerHTML ? `
+  <div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Answer:</div>
+  <div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">${answerHTML}</div>
+` : ''}
         ${explanationHTML ? `<div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">Explanation:</div><div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">${explanationHTML}</div>` : ''}
       </div>
     </div>
