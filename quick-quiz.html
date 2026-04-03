@@ -130,7 +130,8 @@
       box-sizing:border-box;
     }
 
-    .setup-form-container button[type="submit"]{
+       .setup-form-container button[type="submit"],
+    .setup-form-container button[type="button"]{
       background:linear-gradient(90deg,#1762a7,#0f3d6b);
       color:#fff;
       font-weight:bold;
@@ -1103,17 +1104,15 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
-              function openGeminiWithPrompt(prompt) {
+                function openGeminiWithPrompt(prompt) {
       const geminiUrl = 'https://gemini.google.com/app';
 
-      toast('Opening Gemini...');
+      try {
+        localStorage.setItem('quickQuizPrompt', prompt);
+      } catch (e) {}
 
-      const a = document.createElement('a');
-      a.href = geminiUrl;
-      a.target = '_self';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      toast('Opening Gemini...');
+      window.location.href = geminiUrl;
     }
     document.addEventListener('click', function(event) {
       document.querySelectorAll('.custom-dropdown.open').forEach(dropdown => {
