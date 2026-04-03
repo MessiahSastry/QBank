@@ -690,7 +690,7 @@
         updateChapterDropdown(selectedClass, finalSubject);
       });
 
-      setupCustomDropdown('chapter-dropdown', 'chapter-value');
+     
       setupCustomDropdown('qtype-dropdown', 'qtype-value');
     }
 
@@ -1106,19 +1106,29 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
-        function openGeminiWithPrompt(prompt) {
-      navigator.clipboard.writeText(prompt)
-        .then(() => {
-          toast('Prompt copied. Opening Gemini...');
-        })
-        .catch(() => {
-          toast('Opening Gemini...');
-        });
-
+            function openGeminiWithPrompt(prompt) {
       const geminiUrl = 'https://gemini.google.com/app';
-      window.location.href = geminiUrl;
-    }
 
+      function goToGemini() {
+        window.location.assign(geminiUrl);
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(prompt)
+          .then(() => {
+            toast('Prompt copied. Opening Gemini...');
+          })
+          .catch(() => {
+            toast('Opening Gemini...');
+          })
+          .finally(() => {
+            setTimeout(goToGemini, 150);
+          });
+      } else {
+        toast('Opening Gemini...');
+        setTimeout(goToGemini, 150);
+      }
+    }
     document.addEventListener('click', function(event) {
       document.querySelectorAll('.custom-dropdown.open').forEach(dropdown => {
         if (!dropdown.contains(event.target)) {
