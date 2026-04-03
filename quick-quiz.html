@@ -1105,15 +1105,15 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
     }
 
                 function openGeminiWithPrompt(prompt) {
-      const geminiUrl = 'https://gemini.google.com/app';
+  const geminiUrl = 'https://gemini.google.com/';
 
-      try {
-        localStorage.setItem('quickQuizPrompt', prompt);
-      } catch (e) {}
+  try {
+    sessionStorage.setItem('quickQuizPrompt', prompt);
+  } catch (e) {}
 
-      toast('Opening Gemini...');
-      window.location.href = geminiUrl;
-    }
+  toast('Opening Gemini...');
+  window.open(geminiUrl, '_blank', 'noopener,noreferrer');
+}
     document.addEventListener('click', function(event) {
       document.querySelectorAll('.custom-dropdown.open').forEach(dropdown => {
         if (!dropdown.contains(event.target)) {
