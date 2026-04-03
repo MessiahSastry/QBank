@@ -1104,22 +1104,12 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
-               async function openGeminiWithPrompt(prompt) {
+              function openGeminiWithPrompt(prompt) {
   const geminiUrl = 'https://gemini.google.com/';
 
   try {
-    if (navigator.share) {
-      await navigator.share({
-        title: 'Quick Quiz Prompt',
-        text: prompt
-      });
-      return;
-    }
-  } catch (e) {}
-
-  try {
-    await navigator.clipboard.writeText(prompt);
-    toast('Prompt copied. Paste in Gemini.');
+    navigator.clipboard.writeText(prompt);
+    toast('Prompt copied. Opening Gemini...');
   } catch (e) {
     toast('Opening Gemini...');
   }
