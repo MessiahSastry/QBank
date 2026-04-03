@@ -546,9 +546,15 @@
             </div>
           </div>
 
-            <div class="form-group">
+          <div class="form-group">
             <label>Chapter Name:</label>
-            <input type="text" id="chapter-value" placeholder="Type Chapter Name">
+            <div id="chapter-dropdown" class="custom-dropdown">
+              <input type="hidden" id="chapter-value" value="">
+              <div class="selected-option">Select Chapter</div>
+              <div class="dropdown-options">
+                <div data-value="">No chapters available</div>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -866,7 +872,7 @@
       );
     }
 
-    function buildGeminiQuizPrompt(params) {
+       function buildGeminiQuizPrompt(params) {
       const cls = params.class || '';
       const board = params.board || '';
       const subj = params.subject || '';
@@ -890,22 +896,22 @@
 
       const requestLine =
         isJeeMains
-          ? `Request: Generate ${total} JEE Main style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+          ? `Create a JEE Main style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
           : isJeeAdvance
-            ? `Request: Generate ${total} JEE Advanced style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+            ? `Create a JEE Advanced style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
             : isNeet
-              ? `Request: Generate ${total} NEET style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+              ? `Create a NEET style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
               : isOlympiad
-                ? `Request: Generate ${total} Olympiad style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+                ? `Create an Olympiad style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
                 : isFoundation
-                  ? `Request: Generate ${total} IIT & NEET Foundation style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+                  ? `Create an IIT & NEET Foundation style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
                   : isCbse
-                    ? `Request: Generate ${total} CBSE style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+                    ? `Create a CBSE style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
                     : isIcse
-                      ? `Request: Generate ${total} ICSE style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+                      ? `Create an ICSE style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
                       : isApState
-                        ? `Request: Generate ${total} AP State Board (SCERT) style quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
-                        : `Request: Generate ${total} quiz questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`;
+                        ? `Create an AP State Board (SCERT) style interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`
+                        : `Create an interactive quiz with ${total} questions. Distribution: L1:${params.l1}, L2:${params.l2}, L3:${params.l3}`;
 
       const header = `
 Class: ${cls}
@@ -926,8 +932,8 @@ Use these Level definitions STRICTLY (Foundation/IIT-NEET mode):
   • 'Tricky' Foundation practice style; higher challenge than L1; not full Olympiad.
 - Level 3: Challenging & Olympiad/NTSE/IIT Foundation Advanced
   • Multi-step logical reasoning, combining ≥2 concepts, non-standard twists/novel approaches.
-  • Do NOT output direct single-step/formula/memory questions.
-  • Inspired by Olympiad/NTSE/IIT-Foundation papers but adapted to this class & syllabus (change numbers/contexts).
+  • Do NOT create direct single-step/formula/memory questions for Level 3.
+  • Inspired by Olympiad/NTSE/IIT-Foundation papers but adapted to this class & syllabus.
   • Keep within the class syllabus; no higher-class methods required.
 `.trim();
 
@@ -936,7 +942,6 @@ Important
 *All questions should be directly from CBSE text book*
 *All questions should cover entire chapter concepts*
 *Don’t forget to give strictly-from-textbook items (using NCERT exact data/numbering).*
-For help use CBSE/NCERT related sources.
 
 Use these Level definitions STRICTLY (CBSE mode):
 - Level 1: Knowledge/Recall (direct textbook/comprehension)
@@ -1037,45 +1042,30 @@ STRICT ACCURACY (applies to all):
 • Do not reduce the difficulty standard of Level 2 or Level 3.
 `.trim();
 
-      const quizRules = `
-QUIZ OUTPUT RULES:
-• Output EXACTLY ${total} questions.
-• Follow the level count exactly:
+      const interactiveQuizRules = `
+INTERACTIVE QUIZ RULES:
+• Create an INTERACTIVE QUIZ experience, not a written question paper.
+• Do NOT format the output as Q1, Q2, A), B), C), D), or Answer Key.
+• Do NOT generate it like a worksheet, exam paper, or plain question list.
+• Make it behave like Gemini's interactive quiz mode:
+  - one question at a time
+  - clickable options
+  - next question flow
+  - score/progress based quiz experience
+• Follow the question count exactly:
   - Level 1 questions: ${params.l1}
   - Level 2 questions: ${params.l2}
   - Level 3 questions: ${params.l3}
-• Cover the selected chapter properly.
-• Do not add introduction, conclusion, notes, or commentary.
-• Output only the quiz and the answer key.
+• Total questions must be exactly ${total}.
+• Cover only the selected chapter.
+• Keep the quiz classroom-ready and engaging.
 `.trim();
 
-      const mcqSingleFormat = `
-Generate EXACTLY ${total} questions in this exact format:
-
-Q1: Level <1/2/3>, 1 Mark [MCQ (Single)]
-<Question text>
-A) <Option A>
-B) <Option B>
-C) <Option C>
-D) <Option D>
-
-Q2: Level <1/2/3>, 1 Mark [MCQ (Single)]
-<Question text>
-A) <Option A>
-B) <Option B>
-C) <Option C>
-D) <Option D>
-
-After all questions, give:
-Answer Key:
-1. A
-2. C
-
-Rules:
+      const mcqSingleRules = `
+Question Type Rules: MCQ (Single)
 • Each question must have only one correct answer.
-• Randomize the correct answer positions across A, B, C, D.
-• Do not repeat the same answer pattern too much.
-• Keep the questions classroom-ready and exam-style.
+• Randomize the correct answer positions naturally.
+• Questions must match the selected board standard and level standard exactly.
 ${isJeeMains ? '• Questions must match JEE Main standard: objective, concept-based, application-oriented, and exam-relevant.' : ''}
 ${isJeeAdvance ? '• Questions must match JEE Advanced standard: deeper, multi-concept, analytical, tricky, and non-routine.' : ''}
 ${isNeet ? '• Questions must match NEET standard: objective, syllabus-accurate, and exam-relevant.' : ''}
@@ -1083,78 +1073,29 @@ ${isOlympiad ? '• Questions must match Olympiad standard: reasoning-heavy, con
 ${isFoundation ? '• Questions must match IIT & NEET Foundation standard: concept-based and progressively challenging, but suitable for the selected class.' : ''}
 `.trim();
 
-      const mcqMultipleFormat = `
-Generate EXACTLY ${total} questions in this exact format:
-
-Q1: Level <1/2/3>, 1 Mark [MCQ (Multiple)]
-<Question text>
-A) <Option A>
-B) <Option B>
-C) <Option C>
-D) <Option D>
-
-Q2: Level <1/2/3>, 1 Mark [MCQ (Multiple)]
-<Question text>
-A) <Option A>
-B) <Option B>
-C) <Option C>
-D) <Option D>
-
-After all questions, give:
-Answer Key:
-1. A, C
-2. B, C, D
-
-Rules:
+      const mcqMultipleRules = `
+Question Type Rules: MCQ (Multiple)
 • Some questions must have more than one correct answer.
-• Spread correct letters across A–D and avoid repeated patterns.
-• If total > 10, apply this distribution to EACH block of 10:
-  - Exactly 2 questions with 1 correct option
-  - Exactly 3 questions with 2 correct options
-  - Exactly 3 questions with 3 correct options
-  - Exactly 2 questions with 4 correct options
-• Before finishing, self-check that each 10-question block satisfies the distribution.
-• Keep the questions classroom-ready and exam-style.
+• The difficulty and concept standard must match the selected board and level.
+• Spread correct options naturally and avoid repeated patterns.
+• If helpful, present them as multi-select interactive questions.
 ${isJeeAdvance ? '• Questions must strongly reflect JEE Advanced multiple-correct style: analytical, tricky, multi-concept, and non-routine.' : ''}
 ${isOlympiad ? '• Multiple-correct questions should emphasize reasoning, careful concept checking, and tricky distinctions.' : ''}
 ${isFoundation ? '• Multiple-correct questions should be suitable for IIT & NEET Foundation level of the selected class.' : ''}
 `.trim();
 
-      const assertionReasonFormat = `
-Generate EXACTLY ${total} questions in this exact format:
-
-Q1: Level <1/2/3>, 1 Mark [Assertion and Reason (MCQ Single)]
-Assertion (A): <statement>
-Reason (R): <statement>
-A) Both A and R are true, and R is the correct explanation of A.
-B) Both A and R are true, but R is not the correct explanation of A.
-C) A is true, but R is false.
-D) A is false, but R is true.
-
-Q2: Level <1/2/3>, 1 Mark [Assertion and Reason (MCQ Single)]
-Assertion (A): <statement>
-Reason (R): <statement>
-A) Both A and R are true, and R is the correct explanation of A.
-B) Both A and R are true, but R is not the correct explanation of A.
-C) A is true, but R is false.
-D) A is false, but R is true.
-
-After all questions, give:
-Answer Key:
-1. A
-2. C
-
-Rules:
+      const assertionReasonRules = `
+Question Type Rules: Assertion and Reason
 • Every question must contain both Assertion and Reason.
-• Use the option set exactly as given.
 • Each question must have only one correct answer.
 • Keep the statements meaningful, concept-based, and board-standard.
 • Avoid trivial or vague assertion-reason pairs.
+• Present them as interactive quiz questions, not as written exam formatting.
 `.trim();
 
-      let formatBlock = mcqSingleFormat;
-      if (rawType === 'MCQ (Multiple)') formatBlock = mcqMultipleFormat;
-      if (rawType === 'Assertion and Reason') formatBlock = assertionReasonFormat;
+      let typeRules = mcqSingleRules;
+      if (rawType === 'MCQ (Multiple)') typeRules = mcqMultipleRules;
+      if (rawType === 'Assertion and Reason') typeRules = assertionReasonRules;
 
       return `
 ${header}
@@ -1163,9 +1104,12 @@ ${levelBlock}
 
 ${strictAccuracy}
 
-${quizRules}
+${interactiveQuizRules}
 
-${formatBlock}
+${typeRules}
+
+Final instruction:
+Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
