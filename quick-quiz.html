@@ -1104,14 +1104,26 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
-                function openGeminiWithPrompt(prompt) {
+               async function openGeminiWithPrompt(prompt) {
   const geminiUrl = 'https://gemini.google.com/';
 
   try {
-    sessionStorage.setItem('quickQuizPrompt', prompt);
+    if (navigator.share) {
+      await navigator.share({
+        title: 'Quick Quiz Prompt',
+        text: prompt
+      });
+      return;
+    }
   } catch (e) {}
 
-  toast('Opening Gemini...');
+  try {
+    await navigator.clipboard.writeText(prompt);
+    toast('Prompt copied. Paste in Gemini.');
+  } catch (e) {
+    toast('Opening Gemini...');
+  }
+
   window.open(geminiUrl, '_blank', 'noopener,noreferrer');
 }
     document.addEventListener('click', function(event) {
