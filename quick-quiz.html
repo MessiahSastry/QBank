@@ -585,7 +585,7 @@
             </div>
           </div>
 
-          <button type="submit">Generate Quiz</button>
+                    <button type="button" id="generate-quiz-btn">Generate Quiz</button>
 
           <div class="helper-note">
             </div>
@@ -621,9 +621,7 @@
         if (el) el.addEventListener('input', syncTotal);
       });
 
-      document.getElementById('quick-quiz-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
+            document.getElementById('generate-quiz-btn').addEventListener('click', function () {
         const l1 = parseInt(document.getElementById('lvl1')?.value || '0', 10) || 0;
         const l2 = parseInt(document.getElementById('lvl2')?.value || '0', 10) || 0;
         const l3 = parseInt(document.getElementById('lvl3')?.value || '0', 10) || 0;
@@ -660,10 +658,9 @@
         }
 
         const prompt = buildGeminiQuizPrompt(params);
-        await openGeminiWithPrompt(prompt);
+        openGeminiWithPrompt(prompt);
       });
-    }
-
+   }
     function setupCustomDropdowns() {
       setupCustomDropdown('class-dropdown', 'class-value', (selectedClass) => {
         const selectedSubject = document.getElementById('subject-value')?.value || '';
@@ -1106,28 +1103,17 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
-            function openGeminiWithPrompt(prompt) {
+              function openGeminiWithPrompt(prompt) {
       const geminiUrl = 'https://gemini.google.com/app';
 
-      function goToGemini() {
-        window.location.assign(geminiUrl);
-      }
+      toast('Opening Gemini...');
 
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(prompt)
-          .then(() => {
-            toast('Prompt copied. Opening Gemini...');
-          })
-          .catch(() => {
-            toast('Opening Gemini...');
-          })
-          .finally(() => {
-            setTimeout(goToGemini, 150);
-          });
-      } else {
-        toast('Opening Gemini...');
-        setTimeout(goToGemini, 150);
-      }
+      const a = document.createElement('a');
+      a.href = geminiUrl;
+      a.target = '_self';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
     }
     document.addEventListener('click', function(event) {
       document.querySelectorAll('.custom-dropdown.open').forEach(dropdown => {
