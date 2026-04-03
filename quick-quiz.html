@@ -588,8 +588,7 @@
           <button type="submit">Generate Quiz</button>
 
           <div class="helper-note">
-            Prompt will be copied automatically and Gemini will open in a new tab.
-          </div>
+            </div>
         </form>
       `;
 
@@ -1107,16 +1106,17 @@ Create this as an interactive quiz inside Gemini, not as a typed question paper.
 `.trim();
     }
 
-    async function openGeminiWithPrompt(prompt) {
-      try {
-        await navigator.clipboard.writeText(prompt);
-        toast('Prompt copied. Opening Gemini...');
-      } catch (e) {
-        toast('Opening Gemini...');
-      }
+        function openGeminiWithPrompt(prompt) {
+      navigator.clipboard.writeText(prompt)
+        .then(() => {
+          toast('Prompt copied. Opening Gemini...');
+        })
+        .catch(() => {
+          toast('Opening Gemini...');
+        });
 
       const geminiUrl = 'https://gemini.google.com/app';
-      window.open(geminiUrl, '_blank', 'noopener');
+      window.location.href = geminiUrl;
     }
 
     document.addEventListener('click', function(event) {
