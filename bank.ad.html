@@ -3887,7 +3887,12 @@ if (node.classList.contains('worksheet-flow-block')) {
       await waitForImages(pagesHost);
 
      requestAnimationFrame(() => {
-  const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
+  const safeIndex = Math.min(
+    currentPageIndex,
+    Math.max(0, document.querySelectorAll('.a4-page').length - 1)
+  );
+
+  const targetPage = document.querySelector('.a4-page[data-page-index="' + safeIndex + '"]');
   if (targetPage) {
     const top = targetPage.getBoundingClientRect().top + window.pageYOffset - 88;
     window.scrollTo({ top, behavior: 'auto' });
@@ -3950,12 +3955,18 @@ if (node.classList.contains('worksheet-flow-block')) {
 
     let repaginateTimer = null;
     function queueRepaginate(){
-  currentPageIndex = getVisiblePageIndex();
+  const lockedIndex = Number(pageSelect.value || currentPageIndex || 0);
+
+  currentPageIndex = lockedIndex;
   saveCurrentPageSettings();
 
   clearTimeout(repaginateTimer);
   repaginateTimer = setTimeout(async () => {
     await paginatePreview();
+    currentPageIndex = Math.min(
+      lockedIndex,
+      Math.max(0, document.querySelectorAll('.a4-page').length - 1)
+    );
     pageSelect.value = String(currentPageIndex);
   }, 350);
 }
@@ -3983,7 +3994,7 @@ if (node.classList.contains('worksheet-flow-block')) {
 }
 
 floatingBtn.onclick = function(){
-  currentPageIndex = getVisiblePageIndex();
+  currentPageIndex = Number(pageSelect.value || getVisiblePageIndex() || 0);
   pageSelect.value = String(currentPageIndex);
   updateSliderUIFromPage();
   settingsModal.style.display = 'flex';
