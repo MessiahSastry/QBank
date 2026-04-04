@@ -3901,22 +3901,22 @@ if (node.classList.contains('worksheet-flow-block')) {
     }
 
     function rebuildPagePicker(){
-      const pageCount = pagesHost.querySelectorAll('.a4-page').length || 1;
-      pageSelect.innerHTML = '';
+  const pageCount = pagesHost.querySelectorAll('.a4-page').length || 1;
+  const lockedIndex = currentPageIndex;
 
-      for (let i = 0; i < pageCount; i++) {
-        const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = 'Page ' + (i + 1);
-        pageSelect.appendChild(opt);
-      }
+  pageSelect.innerHTML = '';
 
-      if (currentPageIndex >= pageCount) currentPageIndex = pageCount - 1;
-      if (currentPageIndex < 0) currentPageIndex = 0;
+  for (let i = 0; i < pageCount; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = 'Page ' + (i + 1);
+    pageSelect.appendChild(opt);
+  }
 
-      pageSelect.value = String(currentPageIndex);
-      updateSliderUIFromPage();
-    }
+  currentPageIndex = Math.min(Math.max(lockedIndex, 0), pageCount - 1);
+  pageSelect.value = String(currentPageIndex);
+  updateSliderUIFromPage();
+}
 
     async function renderAndPaginate(){
       if (window.MathJax && typeof window.MathJax.typesetClear === 'function') {
@@ -3954,10 +3954,9 @@ if (node.classList.contains('worksheet-flow-block')) {
     }
 
     let repaginateTimer = null;
-    function queueRepaginate(){
-  const lockedIndex = Number(pageSelect.value || currentPageIndex || 0);
+   function queueRepaginate(){
+  const lockedIndex = currentPageIndex;
 
-  currentPageIndex = lockedIndex;
   saveCurrentPageSettings();
 
   clearTimeout(repaginateTimer);
@@ -4006,8 +4005,9 @@ floatingBtn.onclick = function(){
   document.getElementById('preview-print-btn').onclick = function(){
   exportPagesAsPdf();
 };
-   pageSelect.addEventListener('change', function(){
+  pageSelect.addEventListener('change', function(){
   currentPageIndex = Number(this.value || 0);
+  pageSelect.value = String(currentPageIndex);
   updateSliderUIFromPage();
 
   const targetPage = document.querySelector('.a4-page[data-page-index="' + currentPageIndex + '"]');
