@@ -332,11 +332,17 @@
     "General Organic Chemistry - I: Assimilation 3 (Subtopics: Optical isomerism, Elements Of Symentrty, Enantiomers, Diastreomers, Classification Of Optical Active Compounds, Golden Rule, Number Of Optical Isomers, D,L system, Erythro And Threo Configuration, Resolution)"
   ],
   "Biology NEET": [
-    "Origin & Evolution",
-    "How Do Organisms Reproduce",
-    "Control & Coordination",
-    "Life Process - Nutrition (Part 1)",
-    "Life Process - Nutrition (Part 2)",
+    "Origin & Evolution (Evolution)",
+    "Origin & Evolution (Speciation)",
+    "How Do Organisms Reproduce (In Plants)",
+    "How Do Organisms Reproduce (In Animals)",
+    "Control & Coordination (Nervous System)",
+    "Control & Coordination (Endo Crime System)",
+    "Life Process 1 - Nutrition in Plants",
+    "Life Process 1 - Nutrition in Human",
+    "Life Process 1 - Respiration",
+    "Life Process 2 - Circulatory System",
+    "Life Process 2 - Excretion",
     "Genetics",
     "Our Environment",
     "Management of Natural Resources"
