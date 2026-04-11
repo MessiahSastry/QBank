@@ -736,7 +736,7 @@ const auth = firebase.auth();
         "3rd Class", "4th Class", "5th Class", "6th Class",
         "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"
       ],
-      boards: [
+           boards: [
         "CBSE",
         "ICSE",
         "Olympiad",
@@ -744,6 +744,7 @@ const auth = firebase.auth();
         "JEE Mains",
         "JEE Advance",
         "NEET",
+        "EAPCET / EAMCET",
         "AP State Board (SCERT)",
         "Other"
       ],
@@ -801,7 +802,13 @@ const auth = firebase.auth();
     "Chemistry",
     "Mathematics"
   ],
-  "NEET": [
+   "NEET": [
+    "Physics",
+    "Chemistry",
+    "Biology"
+  ],
+  "EAPCET / EAMCET": [
+    "Mathematics",
     "Physics",
     "Chemistry",
     "Biology"
@@ -2264,13 +2271,86 @@ const isOlympiad = selectedBoard === 'olympiad';
 const isJeeMains = selectedBoard === 'jee mains';
 const isJeeAdvance = selectedBoard === 'jee advance';
 const isNeet = selectedBoard === 'neet';
+const isEapcet = selectedBoard === 'eapcet / eamcet';
 const isApState = selectedBoard === 'ap state board (scert)';
 const isOtherBoard = selectedBoard === 'other';
 
 const isTextbookBoard = isCBSE || isICSE || isApState;
-const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet;
+const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet || isEapcet;
 
-      if (isTextbookBoard) {
+           if (isEapcet) {
+        if (sessionParams.questionType === "Descriptive") {
+          fullPromptForAI = `
+${baseInfo}
+You must generate questions in EAPCET / EAMCET style for the selected class, subject, and chapter.
+Use entrance-exam style appropriate for Mathematics, Physics, Chemistry, and Biology.
+Questions should be syllabus-based, concept-oriented, fast-solving in nature, and aligned to EAPCET / EAMCET practice level.
+
+Assign a Level for each question:
+- Level 1: Direct concept / formula / fact-based EAPCET questions
+- Level 2: Standard application / calculation / concept-combination EAPCET questions
+- Level 3: Slightly tricky multi-concept EAPCET questions with careful reasoning
+
+**STRICT ACCURACY INSTRUCTIONS (apply to all Levels):**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all questions for correctness and logic.
+- Check all calculations, facts, and reasoning in the question. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question if an error or ambiguity is found. Only output after confirming everything is correct.
+
+Format strictly:
+
+${isMathSubject ? `Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+<question text>
+Answer:
+<Final answer>
+Explanation:
+<Step-by-step solution>` : `Q<num>: Level <1/2/3>, <Marks> [Descriptive]
+<question text>
+Answer:
+<Final answer>`}
+Rules for Answer:
+- If the subject is Mathematics/Math, Explanation is required.
+- For Mathematics/Math, write the Explanation.
+- Write the math solution exactly like a teacher solving on the board: left-aligned, one step per line, with "=" steps arranged in order, and final answer clearly at the end.
+- Non-math-related: Do NOT write any Explanation section. Write ONLY the Answer.
+- Non-math-related should give a point-wise.
+- For 3 or more than 3 mark questions, write the Answer in a point-wise numbered format:
+  1. ...
+  2. ...
+  3. ...
+- For lower-mark descriptive questions, write a short direct answer as needed.
+`;
+        } else {
+          fullPromptForAI = `
+${baseInfo}
+You must generate questions in EAPCET / EAMCET style for the selected class, subject, and chapter.
+Use entrance-exam style appropriate for Mathematics, Physics, Chemistry, and Biology.
+Questions should be syllabus-based, concept-oriented, objective-exam focused, and aligned to EAPCET / EAMCET level.
+
+Assign a Level for each question:
+- Level 1: Direct concept / formula / fact-based EAPCET questions
+- Level 2: Standard application / calculation / concept-combination EAPCET questions
+- Level 3: Slightly tricky multi-concept EAPCET questions with careful reasoning
+
+**STRICT ACCURACY INSTRUCTIONS:**
+- Before finalizing any question, carefully check that the question is clear, accurate, and unambiguous.
+- Double-check all questions for correctness and logic.
+- Check all calculations, facts, and reasoning in the question. Revise if any part is unclear, misleading, or wrong.
+- Do not output any question if an error or ambiguity is found. Only output after confirming everything is correct.
+
+Format strictly:
+Q<num>: Level <1/2/3>, <Marks> [${sessionParams.questionType}]
+<question text>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: ...
+Explanation: < Give Step-by-step explanation>
+Don't mention the option in the explanation, but give the correct answer.
+`;
+        }
+      } else if (isTextbookBoard) {
         if (sessionParams.questionType === "Descriptive") {
                    // CBSE DESCRIPTIVE prompt (NO options, NO "Ans:")
 fullPromptForAI = `
@@ -2836,31 +2916,34 @@ const isOlympiad = selectedBoard === 'olympiad';
 const isJeeMains = selectedBoard === 'jee mains';
 const isJeeAdvance = selectedBoard === 'jee advance';
 const isNeet = selectedBoard === 'neet';
+const isEapcet = selectedBoard === 'eapcet / eamcet';
 const isApState = selectedBoard === 'ap state board (scert)';
 const isOtherBoard = selectedBoard === 'other';
 
 const isTextbookBoard = isCbse || isIcse || isApState;
-const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet;
+const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet || isEapcet;
 
   // ---- COMMON headings ----
- const requestLine =
+const requestLine =
   isJeeMains
     ? `Request: Generate ${count} JEE Main style questions. ${plan ? `Distribution: ${plan}` : ''}`
     : isJeeAdvance
       ? `Request: Generate ${count} JEE Advanced style questions. ${plan ? `Distribution: ${plan}` : ''}`
       : isNeet
         ? `Request: Generate ${count} NEET style questions. ${plan ? `Distribution: ${plan}` : ''}`
-        : isOlympiad
-          ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
-          : isFoundation
-            ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
-            : isCbse
-              ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
-              : isIcse
-                ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                : isApState
-                  ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                  : `Request: ${plan || (count + ' questions')}`;
+        : isEapcet
+          ? `Request: Generate ${count} EAPCET / EAMCET style questions. ${plan ? `Distribution: ${plan}` : ''}`
+          : isOlympiad
+            ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
+            : isFoundation
+              ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
+              : isCbse
+                ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                : isIcse
+                  ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                  : isApState
+                    ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                    : `Request: ${plan || (count + ' questions')}`;
 
 const header = `
 Class: ${cls}
@@ -2971,7 +3054,18 @@ const neetLevels = `
 - Level 3: Higher-difficulty NEET-style concept integration
 `;
 
-  const levelBlock =
+const eapcetLevels = `
+  Important
+  *Questions should follow EAPCET / EAMCET exam style for the selected subject.*
+  *Questions should be objective, syllabus-based, concept-accurate, fast-solving, and exam-relevant.*
+  *For Mathematics, Physics, Chemistry, and Biology, questions should reflect intermediate entrance-exam style rather than textbook-direct wording.*
+
+  Use these Level definitions STRICTLY (EAPCET / EAMCET mode):
+- Level 1: Direct concept / formula / fact-based questions
+- Level 2: Standard application / calculation / concept-combination questions
+- Level 3: Slightly tricky multi-concept EAPCET / EAMCET style questions
+`;
+   const levelBlock =
   isCbse ? cbseLevels :
   isIcse ? icseLevels :
   isApState ? apStateLevels :
@@ -2980,6 +3074,7 @@ const neetLevels = `
   isJeeMains ? jeeMainsLevels :
   isJeeAdvance ? jeeAdvanceLevels :
   isNeet ? neetLevels :
+  isEapcet ? eapcetLevels :
   foundationLevels;
 
   // ---- STRICT ACCURACY ----
@@ -3028,6 +3123,7 @@ ${numberingNote}
 ${isJeeMains ? '• Questions must match JEE Main standard: objective, concept-based, application-oriented, and exam-relevant. Avoid school-textbook direct questions unless they are properly converted into JEE Main style.' : ''}
 ${isJeeAdvance ? '• Questions must match JEE Advanced standard: deeper, multi-concept, analytical, tricky, and non-routine. Avoid simple direct formula questions.' : ''}
 ${isNeet ? '• Questions must match NEET standard: objective, syllabus-accurate, fast-solving, and exam-relevant. Biology should stay close to NCERT style wherever appropriate.' : ''}
+${isEapcet ? '• Questions must match EAPCET / EAMCET standard: objective, fast-solving, syllabus-based, concept-oriented, and entrance-exam relevant for Mathematics, Physics, Chemistry, and Biology.' : ''}
 ${isOlympiad ? '• Questions must match Olympiad standard: reasoning-heavy, concept-rich, and tricky. Avoid purely memory-based direct questions.' : ''}
 ${isFoundation ? '• Questions must match IIT & NEET Foundation standard: concept-based and progressively challenging, but still suitable for the selected class.' : ''}
 ${strictAccuracy}
@@ -3133,6 +3229,7 @@ ${numberingNote}
 ${isCbse ? '• Questions must follow CBSE style: knowledge, application, and HOTS based on textbook concepts.' : ''}
 ${isIcse ? '• Questions must follow ICSE style: concept-rich, precise, and slightly detailed in wording.' : ''}
 ${isApState ? '• Questions must follow AP State Board (SCERT) style and textbook terminology.' : ''}
+${isEapcet ? '• Questions must follow EAPCET / EAMCET style: entrance-exam oriented, concept-based, application-focused, and suitable for Mathematics, Physics, Chemistry, and Biology.' : ''}
 ${isOlympiad ? '• Questions must follow Olympiad style: reasoning-based, tricky, and higher-order thinking oriented.' : ''}
 ${isFoundation ? '• Questions must follow IIT & NEET Foundation style: concept-based and progressively challenging for the selected class.' : ''}
 ${isJeeMains ? '• Questions must reflect JEE Main level only where descriptive practice is intentionally needed; keep them concept-based and application-oriented.' : ''}
