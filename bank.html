@@ -539,17 +539,18 @@ const auth = firebase.auth();
 
     const filterConfig = {
       classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"],
-      boards: [
-        "CBSE",
-        "ICSE",
-        "Olympiad",
-        "IIT & NEET Foundation",
-        "JEE Mains",
-        "JEE Advance",
-        "NEET",
-        "AP State Board (SCERT)",
-        "Other"
-      ],
+     boards: [
+  "CBSE",
+  "ICSE",
+  "Olympiad",
+  "IIT & NEET Foundation",
+  "JEE Mains",
+  "JEE Advance",
+  "NEET",
+  "EAPCET / EAMCET",
+  "AP State Board (SCERT)",
+  "Other"
+],
       boardSubjectMappings: {
         "CBSE": [
           "English",
@@ -604,23 +605,29 @@ const auth = firebase.auth();
     "Chemistry (Advance)",
     "Mathematics (Advance)"
   ],
-  "NEET": [
+   "NEET": [
     "Physics (NEET)",
     "Chemistry (NEET)",
     "Biology (NEET)"
   ],
-        "AP State Board (SCERT)": [
-          "Telugu",
-          "Hindi",
-          "English",
-          "Mathematics",
-          "Physical Science",
-          "Biological Science",
-          "Social Studies",
-          "General Science",
-          "Computer / ICT",
-          "Other"
-        ],
+  "EAPCET / EAMCET": [
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology"
+  ],
+  "AP State Board (SCERT)": [
+    "Telugu",
+    "Hindi",
+    "English",
+    "Mathematics",
+    "Physical Science",
+    "Biological Science",
+    "Social Studies",
+    "General Science",
+    "Computer / ICT",
+    "Other"
+  ],
         "Other": [
           "Other"
         ]
