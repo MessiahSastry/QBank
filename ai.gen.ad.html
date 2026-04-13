@@ -542,6 +542,9 @@ html, body {
   height: auto;
 }
 
+body.chat-lock .review-container {
+  height: 100%;
+}
 /* Chat layout: input at bottom, messages scroll */
 .ai-chat-container {
   display: flex;
@@ -549,6 +552,7 @@ html, body {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .chat-messages-area {
@@ -561,6 +565,7 @@ html, body {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
+  height: 0;
 }
 /* keep the input visually stuck to the bottom edge */
 #chat-input-bar {
@@ -570,8 +575,47 @@ html, body {
 }
 /* lock page scroll when chat is open */
 body.chat-lock {
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+}
+
+body.chat-lock .page-wrapper {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body.chat-lock main {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body.chat-lock #ai-container.review-container {
+  height: 100%;
+  min-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  border-radius: 0;
+  max-width: 800px;
+  overflow: hidden;
+}
+
+body.chat-lock .ai-chat-container {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.chat-lock .chat-messages-area {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  height: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Full-width bottom CTA replacing input bar */
