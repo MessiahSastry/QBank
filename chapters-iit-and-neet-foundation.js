@@ -69,9 +69,13 @@
         "Nutrition in Animals",
         "Weather, Climate & Adaptation",
         "Soil",
-        "Respiration in Organisms",
-        "Transportation in Animals and Plants",
-        "Reproduction in Plants",
+        "Respiration in Plants",
+        "Respiration in Animals",
+        "Transportation in Animals",
+        "Transportation in Plants",
+        "Excretory System in Plants",
+        "Excretory System in Animals",
+        "Reproduction in Plants",      
         "Forest-Our Lifeline"
       ]
     },
