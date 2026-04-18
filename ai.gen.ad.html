@@ -1024,19 +1024,27 @@ questionTypes: [
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-     auth.onAuthStateChanged(user => {
-  if (user) {
-    currentUserProfile = { uid: user.uid, email: user.email, displayName: user.displayName };
-    const state = history.state || {};
-    if (state.page === 'chat') {
-      loadAiChatInterface(state.sessionParams);
-    } else {
-      loadAiQuestionGeneratorForm();
-    }
+    auth.onAuthStateChanged(user => {
+  currentUserProfile = user
+    ? { uid: user.uid, email: user.email, displayName: user.displayName }
+    : null;
+
+  const state = history.state || {};
+  if (state.page === 'chat') {
+    loadAiChatInterface(state.sessionParams);
   } else {
-    alert('Please log in first.');
-    window.location.href = './index.html';
+    loadAiQuestionGeneratorForm();
   }
+
+  setTimeout(() => {
+    if (!currentUserProfile) {
+      const saveBtn = document.getElementById('ai-save-all-btn');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = 'Login Required';
+      }
+    }
+  }, 0);
 });
 
       window.addEventListener('popstate', (event) => {
