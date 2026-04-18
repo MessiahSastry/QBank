@@ -1024,7 +1024,7 @@ questionTypes: [
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-    auth.onAuthStateChanged(user => {
+   auth.onAuthStateChanged(user => {
   currentUserProfile = user
     ? { uid: user.uid, email: user.email, displayName: user.displayName }
     : null;
@@ -1035,16 +1035,6 @@ questionTypes: [
   } else {
     loadAiQuestionGeneratorForm();
   }
-
-  setTimeout(() => {
-    if (!currentUserProfile) {
-      const saveBtn = document.getElementById('ai-save-all-btn');
-      if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = 'Login Required';
-      }
-    }
-  }, 0);
 });
 
       window.addEventListener('popstate', (event) => {
