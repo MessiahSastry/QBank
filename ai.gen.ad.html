@@ -1024,19 +1024,21 @@ questionTypes: [
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      auth.onAuthStateChanged(user => {
-        if (user) {
-          currentUserProfile = { uid: user.uid, email: user.email, displayName: user.displayName };
-          const state = history.state || {};
-          if (state.page === 'chat') {
-            loadAiChatInterface(state.sessionParams);
-          } else {
-            loadAiQuestionGeneratorForm();
-          }
-        } else {
-          window.location.href = './index.html';
-        }
-      });
+     auth.onAuthStateChanged(user => {
+  if (user) {
+    alert('AI GEN AD sees user: ' + (user.email || user.uid));
+    currentUserProfile = { uid: user.uid, email: user.email, displayName: user.displayName };
+    const state = history.state || {};
+    if (state.page === 'chat') {
+      loadAiChatInterface(state.sessionParams);
+    } else {
+      loadAiQuestionGeneratorForm();
+    }
+  } else {
+    alert('AI GEN AD sees NO user');
+    loadAiQuestionGeneratorForm();
+  }
+});
 
       window.addEventListener('popstate', (event) => {
         const state = event.state || {};
