@@ -226,14 +226,14 @@
           <label>Subject:</label>
           <div id="subject-dropdown" class="custom-dropdown"></div>
         </div>
-          <div class="form-group">
-            <label>Question Type:</label>
-            <div id="qtype-dropdown" class="custom-dropdown"></div>
-          </div>
-          <div class="form-group">
-            <label>Chapter:</label>
-            <div id="chapter-dropdown" class="custom-dropdown"></div>
-          </div>
+         <div class="form-group">
+          <label>Chapter:</label>
+          <div id="chapter-dropdown" class="custom-dropdown"></div>
+        </div>
+        <div class="form-group">
+          <label>Question Type:</label>
+          <div id="qtype-dropdown" class="custom-dropdown"></div>
+        </div>
           <div class="form-group">
             <label>Level:</label>
             <div id="level-dropdown" class="custom-dropdown"></div>
@@ -4233,111 +4233,130 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     if (callback) callback(value);
   });
 }
-    function onClassChange() {
-      const boardDropdown = document.getElementById('board-dropdown');
-      const boardInput = document.getElementById('board-value');
-      const boardSelected = boardDropdown.querySelector('.selected-option');
+   function onClassChange() {
+  const boardDropdown = document.getElementById('board-dropdown');
+  const boardInput = document.getElementById('board-value');
+  const boardSelected = boardDropdown.querySelector('.selected-option');
 
-      const subjectDropdown = document.getElementById('subject-dropdown');
-      subjectDropdown.innerHTML = createDropdownHTML('subject', [], 'Select Subject');
-      addDropdownListener('subject-dropdown', onSubjectChange);
+  const subjectDropdown = document.getElementById('subject-dropdown');
+  subjectDropdown.innerHTML = createDropdownHTML('subject', [], 'Select Subject');
+  addDropdownListener('subject-dropdown', onSubjectChange);
 
-      const subjectInput = document.getElementById('subject-value');
-      const subjectSelected = subjectDropdown.querySelector('.selected-option');
+  const subjectInput = document.getElementById('subject-value');
+  const subjectSelected = subjectDropdown.querySelector('.selected-option');
 
-      boardInput.value = '';
-      boardSelected.textContent = 'Select Board';
+  boardInput.value = '';
+  boardSelected.textContent = 'Select Board';
 
-      subjectInput.value = '';
-      subjectSelected.textContent = 'Select Subject';
+  subjectInput.value = '';
+  subjectSelected.textContent = 'Select Subject';
 
-      updateChapterDropdown();
-      fetchAndDisplayQuestions();
-    }
+  const chapterDropdown = document.getElementById('chapter-dropdown');
+  chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', [], 'Select Chapter');
+  addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
 
-   function onBoardChange() {
-      const boardName = document.getElementById('board-value').value;
-      const subjects = boardName && boardName !== 'All' ? filterConfig.boardSubjectMappings[boardName] || [] : [];
+  document.getElementById('questions-display-area').innerHTML =
+    '<p class="no-questions-message">Select Class, Board, Subject and Chapter to view questions.</p>';
+}
+  function onBoardChange() {
+  const boardName = document.getElementById('board-value').value;
+  const subjects = boardName && boardName !== 'All'
+    ? filterConfig.boardSubjectMappings[boardName] || []
+    : [];
 
-      const subjectDropdown = document.getElementById('subject-dropdown');
-      subjectDropdown.innerHTML = createDropdownHTML('subject', subjects, 'Select Subject');
-      addDropdownListener('subject-dropdown', onSubjectChange);
+  const subjectDropdown = document.getElementById('subject-dropdown');
+  subjectDropdown.innerHTML = createDropdownHTML('subject', subjects, 'Select Subject');
+  addDropdownListener('subject-dropdown', onSubjectChange);
 
-      const subjectInput = document.getElementById('subject-value');
-      const subjectSelected = subjectDropdown.querySelector('.selected-option');
+  const subjectInput = document.getElementById('subject-value');
+  const subjectSelected = subjectDropdown.querySelector('.selected-option');
 
-      if (subjects.length > 0) {
-        subjectInput.value = subjects[0];
-        subjectSelected.textContent = subjects[0];
-      } else {
-        subjectInput.value = '';
-        subjectSelected.textContent = 'Select Subject';
-      }
+  subjectInput.value = '';
+  subjectSelected.textContent = 'Select Subject';
 
-      updateChapterDropdown();
-      fetchAndDisplayQuestions();
-    }
+  const chapterDropdown = document.getElementById('chapter-dropdown');
+  chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', [], 'Select Chapter');
+  addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
 
+  document.getElementById('questions-display-area').innerHTML =
+    '<p class="no-questions-message">Select Subject to load chapters.</p>';
+}
     function onSubjectChange() {
-      updateChapterDropdown();
-      fetchAndDisplayQuestions();
-    }
+  updateChapterDropdown();
+}
 
     async function updateChapterDropdown() {
-      const classVal = document.getElementById('class-value').value;
-      const boardVal = document.getElementById('board-value').value;
-      const subjectVal = document.getElementById('subject-value').value;
-      const chapterDropdown = document.getElementById('chapter-dropdown');
+  const classVal = document.getElementById('class-value').value;
+  const boardVal = document.getElementById('board-value').value;
+  const subjectVal = document.getElementById('subject-value').value;
+  const chapterDropdown = document.getElementById('chapter-dropdown');
+  const displayArea = document.getElementById('questions-display-area');
 
-       if (!classVal || classVal === 'All' || !boardVal || boardVal === 'All' || !subjectVal || subjectVal === 'All') {
+  if (!classVal || classVal === 'All' || !boardVal || boardVal === 'All' || !subjectVal || subjectVal === 'All') {
     chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', [], 'Select Chapter');
     addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
+    displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to load chapters.</p>';
     return;
   }
 
-    try {
+  displayArea.innerHTML = '<p class="no-questions-message">Loading chapters...</p>';
+
+  try {
     const q = questionsDb.collection('questions')
       .where('class', '==', classVal)
       .where('board', '==', boardVal)
       .where('subject', '==', subjectVal);
+
     const snapshot = await q.get();
     const chapters = new Set();
+
     snapshot.forEach(doc => {
       const ch = doc.data().chapter;
       if (ch) chapters.add(ch);
     });
 
     const list = Array.from(chapters).sort();
-    chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', list, 'All');
+
+    chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', list, 'Select Chapter');
     addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
+
+    if (list.length) {
+      displayArea.innerHTML = '<p class="no-questions-message">Select Chapter to view questions.</p>';
+    } else {
+      displayArea.innerHTML = '<p class="no-questions-message">No chapters found for this subject.</p>';
+    }
   } catch (error) {
     console.error("Error fetching chapters: ", error);
+    displayArea.innerHTML = '<p class="no-questions-message">Failed to load chapters.</p>';
   }
-    }
-
+}
     async function fetchAndDisplayQuestions() {
       if (!currentUser) return;
 
       const displayArea = document.getElementById('questions-display-area');
 
-     const classVal   = document.getElementById('class-value').value;
-      const boardVal   = document.getElementById('board-value').value;
-      const subjectVal = document.getElementById('subject-value').value;
-      
-      // Require Class + Board + Subject before querying
-      if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
-        displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
-        return;
-      }
-      
-      displayArea.innerHTML = '<p class="no-questions-message">Loading questions...</p>';
-      
-      try {
-        const selChapters = getMultiSelected('chapter');          // array of chapter names
-const selQtypes   = getMultiSelected('qtype');            // array of types
-const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
-const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
+    const classVal   = document.getElementById('class-value').value;
+const boardVal   = document.getElementById('board-value').value;
+const subjectVal = document.getElementById('subject-value').value;
 
+if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
+  displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to load chapters.</p>';
+  return;
+}
+
+const selChapters = getMultiSelected('chapter');   // array of chapter names
+const selQtypes   = getMultiSelected('qtype');
+const selMarks    = getMultiSelected('marks');
+const selLevels   = getMultiSelected('level');
+
+if (!selChapters.length) {
+  displayArea.innerHTML = '<p class="no-questions-message">Select at least one Chapter to view questions.</p>';
+  return;
+}
+
+displayArea.innerHTML = '<p class="no-questions-message">Loading questions...</p>';
+
+try {
     let query = questionsDb.collection('questions');
 
 if (classVal && classVal !== 'Select Class' && classVal !== 'All') {
