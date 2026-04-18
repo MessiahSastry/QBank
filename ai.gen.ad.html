@@ -1026,7 +1026,6 @@ questionTypes: [
     document.addEventListener('DOMContentLoaded', () => {
      auth.onAuthStateChanged(user => {
   if (user) {
-    alert('AI GEN AD sees user: ' + (user.email || user.uid));
     currentUserProfile = { uid: user.uid, email: user.email, displayName: user.displayName };
     const state = history.state || {};
     if (state.page === 'chat') {
@@ -1035,8 +1034,8 @@ questionTypes: [
       loadAiQuestionGeneratorForm();
     }
   } else {
-    alert('AI GEN AD sees NO user');
-    loadAiQuestionGeneratorForm();
+    alert('Please log in first.');
+    window.location.href = './index.html';
   }
 });
 
