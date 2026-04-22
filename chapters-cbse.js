@@ -260,7 +260,7 @@
       "English": [
         "A Letter to God",
         "A Triumph of Surgery",
-        "Grammar",
+        "Change from Active Voice to Passive Voice",
         "Writing Skills",
         "Reading Comprehension"
       ],
