@@ -1659,7 +1659,14 @@ const isSectionHeading = /^MCQ\s*\(Single\)$|^MCQ\s*\(Multiple\)$|^Fill in the B
     break-after:avoid;
     display:block;
   `;
-  h.textContent = t.toUpperCase();
+
+  const levelMap = {
+    'Level 1': 'Level 1 (Concept)',
+    'Level 2': 'Level 2 (Application)',
+    'Level 3': 'Level 3 (Reasoning)'
+  };
+
+  h.textContent = (levelMap[t] || t).toUpperCase();
 } else if (isSectionHeading) {
   h.style.cssText = `
     font-size:1.12em;
