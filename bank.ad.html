@@ -1151,7 +1151,12 @@ const __singleChapterLabel =
     : '';
 // Use actual selected types to drive layout later
 const selectedQtypes = getMultiSelected('qtype'); // [] means All
-const __typesOrderHdr = ['MCQ (Single)','MCQ (Multiple)','Descriptive'];
+const __typesOrderHdr = [
+  'MCQ (Single)',
+  'MCQ (Multiple)',
+  'Assertion and Reason (MCQ Single)',
+  'Descriptive'
+];
 const __chosenTypes = (selectedQtypes.length === 0)
   ? __typesOrderHdr
   : __typesOrderHdr.filter(t => selectedQtypes.includes(t));
@@ -2125,13 +2130,13 @@ if (includeWorksheet) {
     if (orderedSelectedChapters.length === 1) {
       renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
     }
+const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
+const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
+const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-   const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-    const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-    const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-    const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
-
-    function __renderTypeByLevel(listScope, typeLabel) {
+function __renderTypeByLevel(listScope, typeLabel) {
       const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
       if (!itemsOfType.length) return;
 
@@ -2157,8 +2162,9 @@ if (includeWorksheet) {
     }
 
     if (wantSingle) __renderTypeByLevel(list, 'MCQ (Single)');
-    if (wantMulti) __renderTypeByLevel(list, 'MCQ (Multiple)');
-    if (wantFill) __renderTypeByLevel(list, 'Fill in the Blanks');
+if (wantMulti) __renderTypeByLevel(list, 'MCQ (Multiple)');
+if (wantAR) __renderTypeByLevel(list, 'Assertion and Reason (MCQ Single)');
+if (wantFill) __renderTypeByLevel(list, 'Fill in the Blanks');
 
          if (wantDesc) {
         const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
@@ -2209,11 +2215,12 @@ if (includeWorksheet) {
   renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
 
      const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-      const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-      const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-      const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
+const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
+const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-      function __renderTypeByLevelFor(listScope, typeLabel) {
+function __renderTypeByLevelFor(listScope, typeLabel) {
         const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
         if (!itemsOfType.length) return;
 
@@ -2238,9 +2245,10 @@ if (includeWorksheet) {
         });
       }
 
-      if (wantSingle) __renderTypeByLevelFor(list, 'MCQ (Single)');
-      if (wantMulti) __renderTypeByLevelFor(list, 'MCQ (Multiple)');
-      if (wantFill) __renderTypeByLevelFor(list, 'Fill in the Blanks');
+     if (wantSingle) __renderTypeByLevelFor(list, 'MCQ (Single)');
+if (wantMulti) __renderTypeByLevelFor(list, 'MCQ (Multiple)');
+if (wantAR) __renderTypeByLevelFor(list, 'Assertion and Reason (MCQ Single)');
+if (wantFill) __renderTypeByLevelFor(list, 'Fill in the Blanks');
          if (wantDesc) {
       const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
 
@@ -2354,12 +2362,13 @@ if (includeKey) {
       renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
     }
 
-   const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-    const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-    const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-    const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+  const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
+const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
+const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-    function __renderKeyTypeByLevel(listScope, typeLabel) {
+function __renderKeyTypeByLevel(listScope, typeLabel) {
       const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
       if (!itemsOfType.length) return;
 
@@ -2386,9 +2395,10 @@ if (includeKey) {
       });
     }
 
-    if (wantSingle) __renderKeyTypeByLevel(list, 'MCQ (Single)');
-    if (wantMulti)  __renderKeyTypeByLevel(list, 'MCQ (Multiple)');
-    if (wantFill)   __renderKeyTypeByLevel(list, 'Fill in the Blanks');
+   if (wantSingle) __renderKeyTypeByLevel(list, 'MCQ (Single)');
+if (wantMulti)  __renderKeyTypeByLevel(list, 'MCQ (Multiple)');
+if (wantAR)     __renderKeyTypeByLevel(list, 'Assertion and Reason (MCQ Single)');
+if (wantFill)   __renderKeyTypeByLevel(list, 'Fill in the Blanks');
 
     if (wantDesc) {
       const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
@@ -2438,12 +2448,13 @@ if (includeKey) {
 
   renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
 
-     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-      const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-      const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-      const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+    const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
+const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
+const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
+const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
+const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-      function __renderKeyTypeByLevelFor(listScope, typeLabel) {
+function __renderKeyTypeByLevelFor(listScope, typeLabel) {
         const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
         if (!itemsOfType.length) return;
 
@@ -2470,9 +2481,10 @@ if (includeKey) {
         });
       }
 
-      if (wantSingle) __renderKeyTypeByLevelFor(list, 'MCQ (Single)');
-      if (wantMulti)  __renderKeyTypeByLevelFor(list, 'MCQ (Multiple)');
-      if (wantFill)   __renderKeyTypeByLevelFor(list, 'Fill in the Blanks');
+     if (wantSingle) __renderKeyTypeByLevelFor(list, 'MCQ (Single)');
+if (wantMulti)  __renderKeyTypeByLevelFor(list, 'MCQ (Multiple)');
+if (wantAR)     __renderKeyTypeByLevelFor(list, 'Assertion and Reason (MCQ Single)');
+if (wantFill)   __renderKeyTypeByLevelFor(list, 'Fill in the Blanks');
 
       if (wantDesc) {
         const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
