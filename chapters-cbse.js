@@ -258,8 +258,8 @@
         "Sustainable Management of Natural Resources"
       ],
       "English": [
-        "First Flight",
-        "Footprints Without Feet",
+        "A Letter to God",
+        "A Triumph of Surgery",
         "Grammar",
         "Writing Skills",
         "Reading Comprehension"
