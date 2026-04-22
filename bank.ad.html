@@ -1636,7 +1636,7 @@ function renderLeftHeading(text, __parent = printable) {
   const t = String(text || '').trim();
 
  const isLevel = /^Level\s*[1-3]$/i.test(t);
-const isSectionHeading = /^MCQ\s*\(Single\)$|^MCQ\s*\(Multiple\)$|^Fill in the Blanks$/i.test(t);
+const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\))$/i.test(t);
 
   const h = document.createElement('div');
 
