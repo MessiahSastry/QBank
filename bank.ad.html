@@ -6381,15 +6381,24 @@ function __qbFormatOptionForPrint(opt, forceMathTheme = null) {
   const s = String(opt || '').trim();
   const m = s.match(/^([A-D]\))\s*(.*)$/);
 
-  const __currentSubject =
+  const __currentSubject = String(
     document.getElementById('subject-value')?.value ||
     document.getElementById('subject-dropdown')?.querySelector('.selected-option')?.textContent ||
-    '';
+    ''
+  ).toLowerCase().trim();
 
   const __localIsMathTheme =
     typeof forceMathTheme === 'boolean'
       ? forceMathTheme
-      : __qbIsMathSubject(__currentSubject);
+      : (
+          __currentSubject === 'math' ||
+          __currentSubject === 'mathematics' ||
+          __currentSubject === 'math iit' ||
+          __currentSubject === 'math 1' ||
+          __currentSubject === 'math 2' ||
+          __currentSubject === 'mathematics (mains)' ||
+          __currentSubject === 'mathematics (advance)'
+        );
 
   const __optColor = __localIsMathTheme ? '#0f6b5b' : '#000000';
 
