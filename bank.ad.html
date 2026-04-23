@@ -1377,13 +1377,13 @@ const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
    <div class="question-container" style="width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'}; font-weight:400;">
-            ${__displayQNo}.
-          </td>
-          <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-                    <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'};font-weight:400;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
-          .replace(/^\s+/, '')
-          .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
+                  <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:#0f6b5b; font-weight:700;">
+  ${__displayQNo}.
+</td>
+<td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
+  <div class="question-text" style="line-height:1.35;font-size:12pt;color:#0f6b5b;font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+    .replace(/^\s+/, '')
+    .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
                 <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.15;">
           ${
@@ -2013,11 +2013,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   qRow.style.cssText = 'display:flex; align-items:flex-start; width:100%; margin-bottom:4px;';
 
   const qNoDiv = document.createElement('div');
-  qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'}; line-height:inherit;`;
-  qNoDiv.textContent = qNoLabel;
+ qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:700; color:#0f6b5b; line-height:inherit;`;
+qNoDiv.textContent = qNoLabel;
 
-  const qTextDiv = document.createElement('div');
-  qTextDiv.style.cssText = `flex:1; min-width:0; color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'}; font-weight:400; line-height:inherit; white-space:pre-wrap;`;
+const qTextDiv = document.createElement('div');
+qTextDiv.style.cssText = `flex:1; min-width:0; color:#0f6b5b; font-weight:700; line-height:inherit; white-space:pre-wrap;`;
   qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
 
   qRow.appendChild(qNoDiv);
@@ -6401,7 +6401,7 @@ function __qbFormatOptionForPrint(opt, forceMathTheme = null) {
           __currentSubject === 'mathematics (advance)'
         );
 
-  const __optColor = __localIsMathTheme ? '#0f6b5b' : '#000000';
+  const __optColor = '#000000';
 
   if (!m) {
     return `<span style="color:${__optColor};font-weight:400;">${s}</span>`;
