@@ -1106,9 +1106,10 @@ const includeKey = exportMode === 'key';
       pdfBtn.disabled = true;
       pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Preview...';
 
-      const classVal = document.getElementById('class-value').value || '';
-      const subjectVal = document.getElementById('subject-value').value || '';
-     const selChaptersForHeader = getMultiSelected('chapter');
+     const classVal = document.getElementById('class-value').value || '';
+const subjectVal = document.getElementById('subject-value').value || '';
+const __isMathTheme = __qbIsMathSubject(subjectVal);
+const selChaptersForHeader = getMultiSelected('chapter');
 
 let __chapterEntries = selChaptersForHeader.map((ch, idx) => ({
   chapter: ch,
@@ -1464,6 +1465,32 @@ function __qbGetExportChapterLabel(chapterName, idx) {
 }
 
 function renderCenteredChapterTitle(text, chapterLabel = '') {
+  const __theme = __isMathTheme
+    ? {
+        outerBorder: '#8ea49d',
+        innerBorder: '#bfcfc9',
+        pillBg: '#0f6b5b',
+        pillBorder: '#0f6b5b',
+        titleFill: '#0f6b5b',
+        titleStroke: '#0f6b5b',
+        subText: '#0f6b5b',
+        assimBg: '#0f6b5b',
+        assimText: '#ffffff',
+        bodyBg: '#fbfcfb'
+      }
+    : {
+        outerBorder: '#1b4f8a',
+        innerBorder: '#7A2230',
+        pillBg: '#1762a7',
+        pillBorder: '#7A2230',
+        titleFill: '#7A2230',
+        titleStroke: '#163A63',
+        subText: '#7A2230',
+        assimBg: '#000000',
+        assimText: '#ffffff',
+        bodyBg: '#ffffff'
+      };
+
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
   t.setAttribute('data-chapter-name', String(text || ''));
@@ -1487,9 +1514,9 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
     <div style="
       margin:0 auto 10px auto;
       max-width:540px;
-      border:2.5px solid #1b4f8a;
+      border:2px solid ${__theme.outerBorder};
       border-radius:18px;
-      background:#ffffff;
+      background:${__theme.bodyBg};
       box-sizing:border-box;
       position:relative;
       overflow:visible;
@@ -1502,7 +1529,7 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
         transform:translateX(-50%);
         min-width:170px;
         text-align:center;
-        background:#1762a7;
+        background:${__theme.pillBg};
         color:#ffffff;
         font-family:'Times New Roman', Times, serif;
         font-size:0.98em;
@@ -1511,7 +1538,7 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
         text-transform:uppercase;
         padding:10px 18px;
         border-radius:10px;
-        border:2px solid #7A2230;
+        border:2px solid ${__theme.pillBorder};
         white-space:nowrap;
         line-height:1;
         z-index:20;
@@ -1522,15 +1549,15 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
 
       <div style="
         margin:14px;
-        border:1.5px solid #7A2230;
+        border:1.5px solid ${__theme.innerBorder};
         border-radius:12px;
         padding:34px 20px 16px 20px;
         text-align:center;
-        background:#ffffff;
+        background:${__theme.bodyBg};
         position:relative;
         z-index:1;
       ">
-                <div style="
+        <div style="
           font-size:1.34em;
           font-weight:900;
           letter-spacing:0.03em;
@@ -1539,16 +1566,16 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
           margin-bottom:${__chapterInfo.assimilationTitle ? '4px' : '6px'};
           line-height:1.15;
           font-family:'Times New Roman', Times, serif;
-          color:#7A2230;
-          -webkit-text-fill-color:#7A2230;
-          -webkit-text-stroke:1px #163A63;
-          text-shadow:0 0 0 #163A63;
+          color:${__theme.titleFill};
+          -webkit-text-fill-color:${__theme.titleFill};
+          -webkit-text-stroke:1px ${__theme.titleStroke};
+          text-shadow:0 0 0 ${__theme.titleStroke};
         ">
-         ${__qbEscapeHtml(
-  String(__chapterInfo.mainTitle || 'Unspecified')
-    .replace(/\s*:\s*$/,'')
-    .toUpperCase()
-)}
+          ${__qbEscapeHtml(
+            String(__chapterInfo.mainTitle || 'Unspecified')
+              .replace(/\s*:\s*$/,'')
+              .toUpperCase()
+          )}
         </div>
 
         ${__chapterInfo.assimilationTitle ? `
@@ -1561,8 +1588,8 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
           text-transform:uppercase;
           margin:0 auto 8px auto;
           line-height:1.05;
-          color:#ffffff;
-          background:#000000;
+          color:${__theme.assimText};
+          background:${__theme.assimBg};
           padding:4px 12px;
           border-radius:6px;
           font-family:'Times New Roman', Times, serif;
@@ -1576,7 +1603,7 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
           font-weight:800;
           letter-spacing:0.08em;
           text-align:center;
-          color:#7A2230;
+          color:${__theme.subText};
           font-family:'Times New Roman', Times, serif;
         ">
           ${subLine}
@@ -1594,96 +1621,97 @@ function renderTypeHeading(text, __parent = printable) {
   const t = String(text || '').trim();
   const h = document.createElement('div');
 
+  const __textColor = __isMathTheme ? '#0f6b5b' : '#7A2230';
+
   if (/^descriptive$/i.test(t)) {
-  h.style.cssText = `
-    font-size:1.12em;
-    font-weight:900;
-    letter-spacing:0.03em;
-    text-align:center;
-    margin:14px 0 10px 0;
-    page-break-inside:avoid;
-    break-inside:avoid;
-    page-break-after:avoid;
-    break-after:avoid;
-    display:block;
-    width:100%;
-    color:#7A2230;
-  `;
-  h.textContent = 'DESCRIPTIVE';
-} else {
-  h.style.cssText = `
-    font-size:1.08em;
-    font-weight:900;
-    letter-spacing:0.02em;
-    text-align:center;
-    margin:14px 0 10px 0;
-    page-break-inside:avoid;
-    break-inside:avoid;
-    page-break-after:avoid;
-    break-after:avoid;
-    display:block;
-    width:100%;
-    color:#7A2230;
-  `;
-  h.textContent = t.toUpperCase();
-}
+    h.style.cssText = `
+      font-size:1.12em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      text-align:center;
+      margin:14px 0 10px 0;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
+      color:${__textColor};
+    `;
+    h.textContent = 'DESCRIPTIVE';
+  } else {
+    h.style.cssText = `
+      font-size:1.08em;
+      font-weight:900;
+      letter-spacing:0.02em;
+      text-align:center;
+      margin:14px 0 10px 0;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
+      color:${__textColor};
+    `;
+    h.textContent = t.toUpperCase();
+  }
 
   __parent.appendChild(h);
   return h;
 }
-
 function renderLeftHeading(text, __parent = printable) {
   const t = String(text || '').trim();
 
- const isLevel = /^Level\s*[1-3]$/i.test(t);
-const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\))$/i.test(t);
+  const isLevel = /^Level\s*[1-3]$/i.test(t);
+  const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\))$/i.test(t);
 
   const h = document.createElement('div');
 
   if (isLevel) {
-  h.style.cssText = `
-    width:100%;
-    box-sizing:border-box;
-    background:#F3F3F3;
-    color:#111111;
-    border:2px solid #111111;
-    text-align:center;
-    font-weight:900;
-    letter-spacing:0.06em;
-    padding:6px 10px;
-    border-radius:12px;
-    margin:10px 0 8px 0;
-    page-break-inside:avoid;
-    break-inside:avoid;
-    page-break-after:avoid;
-    break-after:avoid;
-    display:block;
-  `;
+    h.style.cssText = `
+      width:100%;
+      box-sizing:border-box;
+      background:${__isMathTheme ? '#f3f6f4' : '#F3F3F3'};
+      color:${__isMathTheme ? '#0f6b5b' : '#111111'};
+      border:2px solid ${__isMathTheme ? '#5d6c67' : '#111111'};
+      text-align:center;
+      font-weight:900;
+      letter-spacing:0.06em;
+      padding:6px 10px;
+      border-radius:12px;
+      margin:10px 0 8px 0;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+    `;
 
-  const levelMap = {
-    'Level 1': 'Level 1 (Concept)',
-    'Level 2': 'Level 2 (Application)',
-    'Level 3': 'Level 3 (Reasoning)'
-  };
+    const levelMap = {
+      'Level 1': 'Level 1 (Concept)',
+      'Level 2': 'Level 2 (Application)',
+      'Level 3': 'Level 3 (Reasoning)'
+    };
 
-  h.textContent = (levelMap[t] || t).toUpperCase();
-} else if (isSectionHeading) {
-  h.style.cssText = `
-    font-size:1.12em;
-    font-weight:900;
-    letter-spacing:0.03em;
-    text-align:center;
-    margin:14px 0 10px 0;
-    page-break-inside:avoid;
-    break-inside:avoid;
-    page-break-after:avoid;
-    break-after:avoid;
-    display:block;
-    width:100%;
-    color:#7A2230;
-  `;
-  h.textContent = t.toUpperCase();
-} else {
+    h.textContent = (levelMap[t] || t).toUpperCase();
+  } else if (isSectionHeading) {
+    h.style.cssText = `
+      font-size:1.12em;
+      font-weight:900;
+      letter-spacing:0.03em;
+      text-align:center;
+      margin:14px 0 10px 0;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
+      display:block;
+      width:100%;
+      color:${__isMathTheme ? '#0f6b5b' : '#7A2230'};
+    `;
+    h.textContent = t.toUpperCase();
+  } else {
     h.style.cssText = `
       font-size:1.05em;
       font-weight:800;
@@ -1696,6 +1724,7 @@ const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blan
       break-after:avoid;
       display:block;
       width:100%;
+      color:${__isMathTheme ? '#0f6b5b' : '#000000'};
     `;
     h.textContent = t;
   }
@@ -2892,16 +2921,16 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 .a4-running-header{
   width:100%;
   max-width:none;
-  min-height:7mm;
+  min-height:6mm;
   display:flex;
   align-items:center;
   box-sizing:border-box;
-  padding:0 14px;
+  padding:0 12px;
   margin:0 0 8px 0;
   font-size:9.6pt;
   font-weight:700;
   color:#ffffff;
-  line-height:1.05;
+  line-height:1;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -2912,17 +2941,14 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 }
 
 .a4-running-header.odd{
-  margin-left:auto;
-  justify-content:flex-end;
-  text-align:right;
-  background:linear-gradient(to left, #1762a7 0%, #1762a7 38%, rgba(23,98,167,0.45) 72%, rgba(23,98,167,0) 100%);
+  display:none !important;
 }
 
 .a4-running-header.even{
   margin-right:auto;
   justify-content:flex-start;
   text-align:left;
-  background:linear-gradient(to right, #1762a7 0%, #1762a7 38%, rgba(23,98,167,0.45) 72%, rgba(23,98,167,0) 100%);
+  background:linear-gradient(to right, #0f6b5b 0%, #0f6b5b 34%, rgba(15,107,91,0.36) 70%, rgba(15,107,91,0) 100%);
 }
 
 .a4-running-header.hide{
@@ -3326,20 +3352,16 @@ inner.appendChild(runningHeader);
 
 const footerWrap = document.createElement('div');
 footerWrap.style.position = 'absolute';
-footerWrap.style.bottom = '8mm';
-footerWrap.style.width = '52mm';
+footerWrap.style.left = '50%';
+footerWrap.style.bottom = '7mm';
+footerWrap.style.transform = 'translateX(-50%)';
+footerWrap.style.width = '62mm';
 footerWrap.style.display = 'flex';
 footerWrap.style.flexDirection = 'column';
 footerWrap.style.alignItems = 'center';
 footerWrap.style.justifyContent = 'flex-end';
-footerWrap.style.gap = '5px';
+footerWrap.style.gap = '4px';
 footerWrap.style.zIndex = '5';
-
-if (pageIndex % 2 === 0) {
-  footerWrap.style.right = '12mm';   // odd page → right side
-} else {
-  footerWrap.style.left = '12mm';    // even page → left side
-}
 
 const footerDesign = document.createElement('div');
 footerDesign.style.width = '100%';
@@ -3350,40 +3372,40 @@ footerDesign.style.gap = '8px';
 
 const lineLeft = document.createElement('div');
 lineLeft.style.flex = '1';
-lineLeft.style.height = '2px';
-lineLeft.style.background = 'linear-gradient(90deg, transparent, #1762a7)';
+lineLeft.style.height = '1.5px';
+lineLeft.style.background = 'linear-gradient(90deg, transparent, #9fc5d2 40%, #9fc5d2 100%)';
 
-const diamond = document.createElement('div');
-diamond.style.width = '10px';
-diamond.style.height = '10px';
-diamond.style.background = '#1762a7';
-diamond.style.transform = 'rotate(45deg)';
-diamond.style.borderRadius = '2px';
-diamond.style.flexShrink = '0';
+const centerDot = document.createElement('div');
+centerDot.style.width = '8px';
+centerDot.style.height = '8px';
+centerDot.style.background = '#1762a7';
+centerDot.style.borderRadius = '50%';
+centerDot.style.flexShrink = '0';
 
 const lineRight = document.createElement('div');
 lineRight.style.flex = '1';
-lineRight.style.height = '2px';
-lineRight.style.background = 'linear-gradient(90deg, #1762a7, transparent)';
+lineRight.style.height = '1.5px';
+lineRight.style.background = 'linear-gradient(90deg, #9fc5d2 0%, #9fc5d2 60%, transparent 100%)';
 
 footerDesign.appendChild(lineLeft);
-footerDesign.appendChild(diamond);
+footerDesign.appendChild(centerDot);
 footerDesign.appendChild(lineRight);
 
 const pageNo = document.createElement('div');
 pageNo.textContent = String((Number(__PAGE_START) || 1) + pageIndex).padStart(2, '0');
-pageNo.style.width = '28px';
+pageNo.style.minWidth = '28px';
 pageNo.style.height = '28px';
-pageNo.style.borderRadius = '50%';
+pageNo.style.padding = '0 8px';
+pageNo.style.borderRadius = '50px';
 pageNo.style.background = '#1762a7';
 pageNo.style.color = '#ffffff';
 pageNo.style.display = 'flex';
 pageNo.style.alignItems = 'center';
 pageNo.style.justifyContent = 'center';
-pageNo.style.fontSize = '11pt';
+pageNo.style.fontSize = '10.5pt';
 pageNo.style.fontWeight = '700';
 pageNo.style.lineHeight = '1';
-pageNo.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+pageNo.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
 pageNo.style.fontFamily = "'Times New Roman', Times, serif";
 
 footerWrap.appendChild(footerDesign);
@@ -3880,21 +3902,25 @@ if (node.classList.contains('worksheet-flow-block')) {
         const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
 
         if (headerEl) {
-          if (isChapterTitlePage) {
-            headerEl.classList.add('hide');
-            headerEl.textContent = '';
-          } else if (pageIndex % 2 === 0) {
-            headerEl.textContent = __HEADER_TEXT || '';
-            if (!(__HEADER_TEXT || '').trim()) {
-              headerEl.classList.add('hide');
-            }
-          } else {
-            headerEl.textContent = pageChapterName || '';
-            if (!(pageChapterName || '').trim()) {
-              headerEl.classList.add('hide');
-            }
-          }
-        }
+  const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
+
+  if (isChapterTitlePage) {
+    headerEl.classList.add('hide');
+    headerEl.textContent = '';
+  } else if (actualPageNumber % 2 !== 0) {
+    headerEl.classList.add('hide');
+    headerEl.textContent = '';
+  } else {
+    headerEl.classList.remove('hide');
+    headerEl.classList.remove('odd');
+    headerEl.classList.add('even');
+    headerEl.textContent = pageChapterName || '';
+
+    if (!(pageChapterName || '').trim()) {
+      headerEl.classList.add('hide');
+    }
+  }
+}
 
         pagesHost.appendChild(finalShell.page);
 
