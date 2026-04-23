@@ -6377,11 +6377,26 @@ function __qbEscapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-function __qbFormatOptionForPrint(opt) {
+function __qbFormatOptionForPrint(opt, forceMathTheme = null) {
   const s = String(opt || '').trim();
   const m = s.match(/^([A-D]\))\s*(.*)$/);
-  const __optColor = __isMathTheme ? '#0f6b5b' : '#000000';
-  if (!m) return `<span style="color:${__optColor};font-weight:400;">${s}</span>`;
+
+  const __currentSubject =
+    document.getElementById('subject-value')?.value ||
+    document.getElementById('subject-dropdown')?.querySelector('.selected-option')?.textContent ||
+    '';
+
+  const __localIsMathTheme =
+    typeof forceMathTheme === 'boolean'
+      ? forceMathTheme
+      : __qbIsMathSubject(__currentSubject);
+
+  const __optColor = __localIsMathTheme ? '#0f6b5b' : '#000000';
+
+  if (!m) {
+    return `<span style="color:${__optColor};font-weight:400;">${s}</span>`;
+  }
+
   return `<span style="color:${__optColor};font-weight:600;">${m[1]}</span> <span style="color:${__optColor};font-weight:400;">${m[2]}</span>`;
 }
 function __qbNormalizeOptions(options) {
