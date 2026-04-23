@@ -1377,11 +1377,11 @@ const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
    <div class="question-container" style="width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                   <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:#5A2E1B; font-weight:400;">
+                   <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'}; font-weight:400;">
             ${__displayQNo}.
           </td>
           <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-                    <div class="question-text" style="line-height:1.35;font-size:12pt;color:#5A2E1B;font-weight:400;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+                    <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'};font-weight:400;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
           .replace(/^\s+/, '')
           .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
@@ -2013,11 +2013,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   qRow.style.cssText = 'display:flex; align-items:flex-start; width:100%; margin-bottom:4px;';
 
   const qNoDiv = document.createElement('div');
-  qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:#5A2E1B; line-height:inherit;`;
+  qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:400; color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'}; line-height:inherit;`;
   qNoDiv.textContent = qNoLabel;
 
   const qTextDiv = document.createElement('div');
-  qTextDiv.style.cssText = 'flex:1; min-width:0; color:#5A2E1B; font-weight:400; line-height:inherit; white-space:pre-wrap;';
+  qTextDiv.style.cssText = `flex:1; min-width:0; color:${__isMathTheme ? '#0f6b5b' : '#5A2E1B'}; font-weight:400; line-height:inherit; white-space:pre-wrap;`;
   qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
 
   qRow.appendChild(qNoDiv);
@@ -2583,11 +2583,12 @@ await __waitForImages(printable);
           const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((orderedSelectedChapters.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
 
       try {
-                await __qbOpenPrintWindowForPDF({
+               await __qbOpenPrintWindowForPDF({
   title: exportFileName.replace(/\.pdf$/i, ''),
   contentHtml: printable.innerHTML,
   headerText: `${classVal} / ${subjectVal}`,
-  pageStartNumber: __pageStartNumber
+  pageStartNumber: __pageStartNumber,
+  isMathTheme: __isMathTheme
 });
         __cleanupMount();
         pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
@@ -2743,7 +2744,7 @@ await __waitForImages(printable);
       }, 50);
     }
 
-async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', pageStartNumber = 1 }) {
+async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', pageStartNumber = 1, isMathTheme = false }) {
   const printWin = window.open('', '_blank');
   if (!printWin) {
     throw new Error('Popup blocked. Please allow popups for preview.');
@@ -3003,13 +3004,13 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
       break-inside:auto !important;
     }
 
-        .a4-page .question-number{
+       .a4-page .question-number{
       min-width:46px !important;
       padding-right:8px !important;
       box-sizing:border-box !important;
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
-      color:#5A2E1B !important;
+      color:${isMathTheme ? '#0f6b5b' : '#5A2E1B'} !important;
       font-weight:400 !important;
       flex:0 0 auto !important;
     }
@@ -3022,12 +3023,11 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 
     .a4-page .question-text{
       font-size:var(--qb-question-font) !important;
-      color:#5A2E1B !important;
+      color:${isMathTheme ? '#0f6b5b' : '#5A2E1B'} !important;
       font-weight:400 !important;
       word-break:normal !important;
       overflow-wrap:normal !important;
     }
-
     .a4-page .question-text > div{
       margin:0 !important;
       padding:0 !important;
@@ -3352,63 +3352,36 @@ inner.appendChild(runningHeader);
 
 const footerWrap = document.createElement('div');
 footerWrap.style.position = 'absolute';
-footerWrap.style.left = '50%';
-footerWrap.style.bottom = '7mm';
-footerWrap.style.transform = 'translateX(-50%)';
-footerWrap.style.width = '62mm';
-footerWrap.style.display = 'flex';
-footerWrap.style.flexDirection = 'column';
-footerWrap.style.alignItems = 'center';
-footerWrap.style.justifyContent = 'flex-end';
-footerWrap.style.gap = '4px';
+footerWrap.style.left = settings.marginSide + 'cm';
+footerWrap.style.right = settings.marginSide + 'cm';
+footerWrap.style.bottom = '4mm';
+footerWrap.style.height = '11mm';
 footerWrap.style.zIndex = '5';
+footerWrap.style.boxSizing = 'border-box';
 
-const footerDesign = document.createElement('div');
-footerDesign.style.width = '100%';
-footerDesign.style.display = 'flex';
-footerDesign.style.alignItems = 'center';
-footerDesign.style.justifyContent = 'center';
-footerDesign.style.gap = '8px';
-
-const lineLeft = document.createElement('div');
-lineLeft.style.flex = '1';
-lineLeft.style.height = '1.5px';
-lineLeft.style.background = 'linear-gradient(90deg, transparent, #9fc5d2 40%, #9fc5d2 100%)';
-
-const centerDot = document.createElement('div');
-centerDot.style.width = '8px';
-centerDot.style.height = '8px';
-centerDot.style.background = '#1762a7';
-centerDot.style.borderRadius = '50%';
-centerDot.style.flexShrink = '0';
-
-const lineRight = document.createElement('div');
-lineRight.style.flex = '1';
-lineRight.style.height = '1.5px';
-lineRight.style.background = 'linear-gradient(90deg, #9fc5d2 0%, #9fc5d2 60%, transparent 100%)';
-
-footerDesign.appendChild(lineLeft);
-footerDesign.appendChild(centerDot);
-footerDesign.appendChild(lineRight);
+const footerLine = document.createElement('div');
+footerLine.style.position = 'absolute';
+footerLine.style.left = '0';
+footerLine.style.right = '0';
+footerLine.style.bottom = '4mm';
+footerLine.style.height = '1px';
+footerLine.style.background = '#d4d4d4';
 
 const pageNo = document.createElement('div');
-pageNo.textContent = String((Number(__PAGE_START) || 1) + pageIndex).padStart(2, '0');
-pageNo.style.minWidth = '28px';
-pageNo.style.height = '28px';
-pageNo.style.padding = '0 8px';
-pageNo.style.borderRadius = '50px';
-pageNo.style.background = '#1762a7';
-pageNo.style.color = '#ffffff';
-pageNo.style.display = 'flex';
-pageNo.style.alignItems = 'center';
-pageNo.style.justifyContent = 'center';
-pageNo.style.fontSize = '10.5pt';
-pageNo.style.fontWeight = '700';
+pageNo.textContent = String((Number(__PAGE_START) || 1) + pageIndex) + ' | P a g e';
+pageNo.style.position = 'absolute';
+pageNo.style.right = '0';
+pageNo.style.bottom = '2mm';
+pageNo.style.background = '#ffffff';
+pageNo.style.paddingLeft = '10px';
+pageNo.style.color = '#6b2b2b';
+pageNo.style.fontSize = '11pt';
+pageNo.style.fontWeight = '400';
 pageNo.style.lineHeight = '1';
-pageNo.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+pageNo.style.letterSpacing = '0.08em';
 pageNo.style.fontFamily = "'Times New Roman', Times, serif";
 
-footerWrap.appendChild(footerDesign);
+footerWrap.appendChild(footerLine);
 footerWrap.appendChild(pageNo);
 
 inner.appendChild(content);
@@ -6407,10 +6380,10 @@ function __qbEscapeHtml(str) {
 function __qbFormatOptionForPrint(opt) {
   const s = String(opt || '').trim();
   const m = s.match(/^([A-D]\))\s*(.*)$/);
-  if (!m) return s;
-  return `<span style="color:#444444;font-weight:600;">${m[1]}</span> <span style="color:#000000;font-weight:400;">${m[2]}</span>`;
+  const __optColor = __isMathTheme ? '#0f6b5b' : '#000000';
+  if (!m) return `<span style="color:${__optColor};font-weight:400;">${s}</span>`;
+  return `<span style="color:${__optColor};font-weight:600;">${m[1]}</span> <span style="color:${__optColor};font-weight:400;">${m[2]}</span>`;
 }
-
 function __qbNormalizeOptions(options) {
   if (!Array.isArray(options)) return [];
   return options.map((opt, i) => {
