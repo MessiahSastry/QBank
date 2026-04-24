@@ -4863,257 +4863,287 @@ function autoLatexAll(str) {
 
     if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
 
-    function showEditPopupForBank(docId, data) {
-      document.querySelectorAll('.edit-popup').forEach(p => p.remove());
+   function showEditPopupForBank(docId, data) {
+  document.querySelectorAll('.edit-popup').forEach(p => p.remove());
 
-      const isMCQInitial = Array.isArray(data.options) && data.options.length === 4;
-      const initialType =
-        data.mcqType && (data.mcqType === 'MCQ (Single)' || data.mcqType === 'MCQ (Multiple)')
-          ? data.mcqType
-          : (isMCQInitial ? 'MCQ (Single)' : 'Descriptive');
+  const isMCQInitial = Array.isArray(data.options) && data.options.length === 4;
+  const initialType =
+    data.mcqType && (data.mcqType === 'MCQ (Single)' || data.mcqType === 'MCQ (Multiple)')
+      ? data.mcqType
+      : (isMCQInitial ? 'MCQ (Single)' : 'Descriptive');
 
-      const initMarks = (typeof data.marks === 'number' || /^[0-9]+$/.test(String(data.marks))) ? data.marks : '';
-      const initLevel = data.difficulty || '';
-      const initBoard = data.board || '';
-      const initChapter = data.chapter || '';
-      const initQNo = (typeof data.questionNumber === 'number' || /^[0-9]+$/.test(String(data.questionNumber))) ? data.questionNumber : '';
+  const initMarks = (typeof data.marks === 'number' || /^[0-9]+$/.test(String(data.marks))) ? data.marks : '';
+  const initLevel = data.difficulty || '';
+  const initBoard = data.board || '';
+  const initChapter = data.chapter || '';
+  const initQNo = (typeof data.questionNumber === 'number' || /^[0-9]+$/.test(String(data.questionNumber))) ? data.questionNumber : '';
 
-      const opts = isMCQInitial ? (data.options || ["", "", "", ""]) : ["", "", "", ""];
+  const opts = isMCQInitial ? (data.options || ["", "", "", ""]) : ["", "", "", ""];
 
-      const popup = document.createElement('div');
-      popup.className = 'edit-popup';
-      popup.innerHTML = `
-        <div style="
-          background:#fff;border-radius:18px;box-shadow:0 6px 24px rgba(23,98,167,0.20);
-          padding:28px 20px 20px 20px;max-width:98vw;width:620px;margin:0 auto;position:relative;
-          max-height:none;">
-          <div style="font-weight:bold;font-size:1.24em;margin-bottom:12px;letter-spacing:0.01em;text-align:center;">Edit Question & Meta</div>
+  const popup = document.createElement('div');
+  popup.className = 'edit-popup';
+  popup.innerHTML = `
+    <div style="
+      background:#fff;border-radius:18px;box-shadow:0 6px 24px rgba(23,98,167,0.20);
+      padding:28px 20px 20px 20px;max-width:98vw;width:620px;margin:0 auto;position:relative;
+      max-height:none;">
+      <div style="font-weight:bold;font-size:1.24em;margin-bottom:12px;letter-spacing:0.01em;text-align:center;">Edit Question & Meta</div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-            <div>
-              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question Type</label>
-              <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-              <option value="Descriptive">Descriptive</option>
-              <option value="MCQ (Single)">MCQ (Single)</option>
-              <option value="MCQ (Multiple)">MCQ (Multiple)</option>
-              <option value="Fill in the Blanks">Fill in the Blanks</option>
-              <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
-            </select>
-            </div>
-            <div>
-              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
-              <input id="edit-q-marks" type="number" min="1" step="1" value="${initMarks}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-            </div>
-            <div>
-              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Level / Difficulty</label>
-              <select id="edit-q-level" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-                <option value="">Select Level</option>
-                <option value="Level 1">Level 1</option>
-                <option value="Level 2">Level 2</option>
-                <option value="Level 3">Level 3</option>
-              </select>
-            </div>
-            <div>
-              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Board</label>
-              <input id="edit-q-board" type="text" value="${initBoard.replace(/"/g,'&quot;')}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-            </div>
-            <div>
-              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question No.</label>
-              <input id="edit-q-number" type="number" min="1" step="1" value="${initQNo}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-            </div>
-            <div style="grid-column:1 / -1;">
-              <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Chapter</label>
-              <input id="edit-q-chapter" type="text" value="${initChapter.replace(/"/g,'&quot;')}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-            </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question Type</label>
+          <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+            <option value="Descriptive">Descriptive</option>
+            <option value="MCQ (Single)">MCQ (Single)</option>
+            <option value="MCQ (Multiple)">MCQ (Multiple)</option>
+            <option value="Fill in the Blanks">Fill in the Blanks</option>
+            <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
+          <input id="edit-q-marks" type="number" min="1" step="1" value="${initMarks}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Level / Difficulty</label>
+          <select id="edit-q-level" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+            <option value="">Select Level</option>
+            <option value="Level 1">Level 1</option>
+            <option value="Level 2">Level 2</option>
+            <option value="Level 3">Level 3</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Board</label>
+          <input id="edit-q-board" type="text" value="${initBoard.replace(/"/g,'&quot;')}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question No.</label>
+          <input id="edit-q-number" type="number" min="1" step="1" value="${initQNo}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+        <div style="grid-column:1 / -1;">
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Chapter</label>
+          <input id="edit-q-chapter" type="text" value="${initChapter.replace(/"/g,'&quot;')}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+      </div>
+
+      <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
+      <textarea id="edit-q-text" rows="8" style="width:100%;min-height:140px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.05em;resize:vertical;">${(data.question || data.body || data.text || '').replace(/</g,'&lt;')}</textarea>
+
+      <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Explanation</label>
+      <textarea id="edit-q-explanation" rows="6" style="width:100%;min-height:110px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.02em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
+
+      <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option A</label>
+            <input id="edit-q-optA" type="text" value="${(opts[0]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
           </div>
-
-                   <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Question Text</label>
-          <textarea id="edit-q-text" rows="8" style="width:100%;min-height:140px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.05em;resize:vertical;">${(data.question || data.body || data.text || '').replace(/</g,'&lt;')}</textarea>
-
-          <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Explanation</label>
-          <textarea id="edit-q-explanation" rows="6" style="width:100%;min-height:110px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.02em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
-
-          <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-              <div>
-                <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option A</label>
-                <input id="edit-q-optA" type="text" value="${(opts[0]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-              </div>
-              <div>
-                <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option B</label>
-                <input id="edit-q-optB" type="text" value="${(opts[1]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-              </div>
-              <div>
-                <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option C</label>
-                <input id="edit-q-optC" type="text" value="${(opts[2]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-              </div>
-              <div>
-                <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option D</label>
-                <input id="edit-q-optD" type="text" value="${(opts[3]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
-              </div>
-            </div>
-            <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer (e.g., A or A,C)</label>
-            <input id="edit-q-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
+          <div>
+            <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option B</label>
+            <input id="edit-q-optB" type="text" value="${(opts[1]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
           </div>
-
-          <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:6px;">
-            <button id="edit-cancel" style="background:#eee;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#346799;cursor:pointer;">Cancel</button>
-            <button id="edit-save" style="background:#1762a7;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#fff;cursor:pointer;">Save</button>
+          <div>
+            <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option C</label>
+            <input id="edit-q-optC" type="text" value="${(opts[2]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option D</label>
+            <input id="edit-q-optD" type="text" value="${(opts[3]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
           </div>
         </div>
-      `;
+        <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer (e.g., A or A,C)</label>
+        <input id="edit-q-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
+      </div>
 
-      Object.assign(popup.style, {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        background: 'rgba(12,29,68,0.12)',
-        zIndex: 5000,
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        padding: '20px 10px',
-        overflowY: 'auto',
-        boxSizing: 'border-box'
-      });
-      document.body.appendChild(popup);
+      <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:6px;">
+        <button id="edit-cancel" style="background:#eee;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#346799;cursor:pointer;">Cancel</button>
+        <button id="edit-save" style="background:#1762a7;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#fff;cursor:pointer;">Save</button>
+      </div>
+    </div>
+  `;
 
-      const selType = popup.querySelector('#edit-q-type');
-      const selLevel = popup.querySelector('#edit-q-level');
-      selType.value = initialType;
-      if (initLevel) selLevel.value = initLevel;
+  Object.assign(popup.style, {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(12,29,68,0.12)',
+    zIndex: 5000,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    padding: '20px 10px',
+    overflowY: 'auto',
+    boxSizing: 'border-box'
+  });
 
-      const mcqBlock = popup.querySelector('#edit-mcq-block');
-      const toggleMCQBlock = () => {
-       mcqBlock.style.display = (
-  selType.value === 'MCQ (Single)' ||
-  selType.value === 'MCQ (Multiple)' ||
-  selType.value === 'Assertion and Reason (MCQ Single)'
-) ? 'block' : 'none';
-      };
-      selType.addEventListener('change', toggleMCQBlock);
-      toggleMCQBlock();
+  document.body.appendChild(popup);
 
-      popup.querySelector('#edit-cancel').onclick = () => popup.remove();
+  let __editPopupHistoryAdded = false;
 
-      popup.querySelector('#edit-save').onclick = async () => {
-               const qType = selType.value;
-        const qText = popup.querySelector('#edit-q-text').value.trim();
-        const explanationText = popup.querySelector('#edit-q-explanation').value.trim();
-        const marksRaw = popup.querySelector('#edit-q-marks').value.trim();
-        const levelVal = selLevel.value || '';
-        const boardVal = popup.querySelector('#edit-q-board').value.trim();
-        const chapterVal = popup.querySelector('#edit-q-chapter').value.trim();
-        const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
-        if (!qText) { alert("Question text is required."); return; }
-
-                   const __oldSub = String((data && data.subject) || '').trim();
-let __newSub = __oldSub;
-
-if (__oldSub === 'Math 1' || __oldSub === 'Math 2') __newSub = 'Math';
-if (__oldSub === 'Math 1 IIT' || __oldSub === 'Math 2 IIT') __newSub = 'Math IIT';
-
-const __oldSeed = __qbBuildNumberSeed(data, {
-  subject: __oldSub
-});
-
-const __newMarksValue = marksRaw === '' ? '' : Number(marksRaw);
-const __newSeed = __qbBuildNumberSeed(data, {
-  board: boardVal || '',
-  subject: __newSub || __oldSub || '',
-  chapter: chapterVal || '',
-  mcqType: qType,
-  type: qType,
-  marks: __newMarksValue,
-  difficulty: levelVal || '',
-  level: levelVal || ''
-});
-
-const updateObj = {
-  question: qText,
-  difficulty: levelVal || firebase.firestore.FieldValue.delete(),
-  board: boardVal || firebase.firestore.FieldValue.delete(),
-  chapter: chapterVal || firebase.firestore.FieldValue.delete(),
-  explanation: explanationText || firebase.firestore.FieldValue.delete(),
-  sectionKey: __qbGetSectionKey(__newSeed),
-  workbookShuffledOptions: firebase.firestore.FieldValue.delete(),
-  workbookShuffledAnswer: firebase.firestore.FieldValue.delete(),
-  workbookShuffleSavedAt: firebase.firestore.FieldValue.delete(),
-};
-
-if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
-
-        if (marksRaw === '') {
-          updateObj.marks = firebase.firestore.FieldValue.delete();
-        } else {
-          const m = Number(marksRaw);
-          if (Number.isNaN(m) || m < 0) { alert("Marks must be a positive number."); return; }
-          updateObj.marks = m;
-        }
-
-        if (qNoRaw === '') {
-          updateObj.questionNumber = firebase.firestore.FieldValue.delete();
-        } else {
-          const qn = Number(qNoRaw);
-          if (!Number.isInteger(qn) || qn < 1) { alert("Question No. must be a positive integer."); return; }
-          updateObj.questionNumber = qn;
-        }
-
-       if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
-  updateObj.type = qType;
-  updateObj.mcqType = firebase.firestore.FieldValue.delete();
-  updateObj.options = firebase.firestore.FieldValue.delete();
-  updateObj.body = qText;
-  updateObj.text = qText;
-  updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
-} else {
-  const optA = popup.querySelector('#edit-q-optA').value.trim();
-  const optB = popup.querySelector('#edit-q-optB').value.trim();
-  const optC = popup.querySelector('#edit-q-optC').value.trim();
-  const optD = popup.querySelector('#edit-q-optD').value.trim();
-  const ans = popup.querySelector('#edit-q-answer').value.trim();
-  if (!optA || !optB || !optC || !optD || !ans) {
-    alert("For MCQ, all four options and the answer are required.");
-    return;
-  }
-  updateObj.type = qType;
-  updateObj.mcqType = qType;
-  updateObj.options = [optA, optB, optC, optD];
-  updateObj.parsedAnswer = ans;
-}
-
-       try {
-  await questionsDb.collection('questions').doc(docId).update(updateObj);
-
-  const __oldSectionKey = __qbGetSectionKey(__oldSeed);
-  const __newSectionKey = __qbGetSectionKey(__newSeed);
-  const __oldBoard = String(__oldSeed.board || '');
-  const __newBoard = String(__newSeed.board || '');
-  const __oldSubject2 = String(__oldSeed.subject || '');
-  const __newSubject2 = String(__newSeed.subject || '');
-  const __oldChapter = String(__oldSeed.chapter || '');
-  const __newChapter = String(__newSeed.chapter || '');
-
-  await __qbRenumberSectionQuestions(__oldSeed);
-
-  if (
-    __oldSectionKey !== __newSectionKey ||
-    __oldBoard !== __newBoard ||
-    __oldSubject2 !== __newSubject2 ||
-    __oldChapter !== __newChapter
-  ) {
-    await __qbRenumberSectionQuestions(__newSeed);
+  function __closeEditPopupFromCode() {
+    window.removeEventListener('popstate', __editPopupPopHandler);
+    popup.remove();
   }
 
-  popup.remove();
-  fetchAndDisplayQuestions();
-} catch (err) {
-  alert("Failed to save: " + err.message);
-}
-      };
+  function __editPopupPopHandler() {
+    __closeEditPopupFromCode();
+  }
+
+  if (!history.state || !history.state.__editPopupOpen) {
+    history.pushState({ __editPopupOpen: true }, '');
+    __editPopupHistoryAdded = true;
+  }
+
+  window.addEventListener('popstate', __editPopupPopHandler);
+
+  const selType = popup.querySelector('#edit-q-type');
+  const selLevel = popup.querySelector('#edit-q-level');
+  selType.value = initialType;
+  if (initLevel) selLevel.value = initLevel;
+
+  const mcqBlock = popup.querySelector('#edit-mcq-block');
+  const toggleMCQBlock = () => {
+    mcqBlock.style.display = (
+      selType.value === 'MCQ (Single)' ||
+      selType.value === 'MCQ (Multiple)' ||
+      selType.value === 'Assertion and Reason (MCQ Single)'
+    ) ? 'block' : 'none';
+  };
+  selType.addEventListener('change', toggleMCQBlock);
+  toggleMCQBlock();
+
+  popup.querySelector('#edit-cancel').onclick = () => {
+    if (__editPopupHistoryAdded) {
+      history.back();
+    } else {
+      __closeEditPopupFromCode();
     }
+  };
+
+  popup.querySelector('#edit-save').onclick = async () => {
+    const qType = selType.value;
+    const qText = popup.querySelector('#edit-q-text').value.trim();
+    const explanationText = popup.querySelector('#edit-q-explanation').value.trim();
+    const marksRaw = popup.querySelector('#edit-q-marks').value.trim();
+    const levelVal = selLevel.value || '';
+    const boardVal = popup.querySelector('#edit-q-board').value.trim();
+    const chapterVal = popup.querySelector('#edit-q-chapter').value.trim();
+    const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
+    if (!qText) { alert("Question text is required."); return; }
+
+    const __oldSub = String((data && data.subject) || '').trim();
+    let __newSub = __oldSub;
+
+    if (__oldSub === 'Math 1' || __oldSub === 'Math 2') __newSub = 'Math';
+    if (__oldSub === 'Math 1 IIT' || __oldSub === 'Math 2 IIT') __newSub = 'Math IIT';
+
+    const __oldSeed = __qbBuildNumberSeed(data, {
+      subject: __oldSub
+    });
+
+    const __newMarksValue = marksRaw === '' ? '' : Number(marksRaw);
+    const __newSeed = __qbBuildNumberSeed(data, {
+      board: boardVal || '',
+      subject: __newSub || __oldSub || '',
+      chapter: chapterVal || '',
+      mcqType: qType,
+      type: qType,
+      marks: __newMarksValue,
+      difficulty: levelVal || '',
+      level: levelVal || ''
+    });
+
+    const updateObj = {
+      question: qText,
+      difficulty: levelVal || firebase.firestore.FieldValue.delete(),
+      board: boardVal || firebase.firestore.FieldValue.delete(),
+      chapter: chapterVal || firebase.firestore.FieldValue.delete(),
+      explanation: explanationText || firebase.firestore.FieldValue.delete(),
+      sectionKey: __qbGetSectionKey(__newSeed),
+      workbookShuffledOptions: firebase.firestore.FieldValue.delete(),
+      workbookShuffledAnswer: firebase.firestore.FieldValue.delete(),
+      workbookShuffleSavedAt: firebase.firestore.FieldValue.delete(),
+    };
+
+    if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
+
+    if (marksRaw === '') {
+      updateObj.marks = firebase.firestore.FieldValue.delete();
+    } else {
+      const m = Number(marksRaw);
+      if (Number.isNaN(m) || m < 0) { alert("Marks must be a positive number."); return; }
+      updateObj.marks = m;
+    }
+
+    if (qNoRaw === '') {
+      updateObj.questionNumber = firebase.firestore.FieldValue.delete();
+    } else {
+      const qn = Number(qNoRaw);
+      if (!Number.isInteger(qn) || qn < 1) { alert("Question No. must be a positive integer."); return; }
+      updateObj.questionNumber = qn;
+    }
+
+    if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
+      updateObj.type = qType;
+      updateObj.mcqType = firebase.firestore.FieldValue.delete();
+      updateObj.options = firebase.firestore.FieldValue.delete();
+      updateObj.body = qText;
+      updateObj.text = qText;
+      updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
+    } else {
+      const optA = popup.querySelector('#edit-q-optA').value.trim();
+      const optB = popup.querySelector('#edit-q-optB').value.trim();
+      const optC = popup.querySelector('#edit-q-optC').value.trim();
+      const optD = popup.querySelector('#edit-q-optD').value.trim();
+      const ans = popup.querySelector('#edit-q-answer').value.trim();
+      if (!optA || !optB || !optC || !optD || !ans) {
+        alert("For MCQ, all four options and the answer are required.");
+        return;
+      }
+      updateObj.type = qType;
+      updateObj.mcqType = qType;
+      updateObj.options = [optA, optB, optC, optD];
+      updateObj.parsedAnswer = ans;
+    }
+
+    try {
+      await questionsDb.collection('questions').doc(docId).update(updateObj);
+
+      const __oldSectionKey = __qbGetSectionKey(__oldSeed);
+      const __newSectionKey = __qbGetSectionKey(__newSeed);
+      const __oldBoard = String(__oldSeed.board || '');
+      const __newBoard = String(__newSeed.board || '');
+      const __oldSubject2 = String(__oldSeed.subject || '');
+      const __newSubject2 = String(__newSeed.subject || '');
+      const __oldChapter = String(__oldSeed.chapter || '');
+      const __newChapter = String(__newSeed.chapter || '');
+
+      await __qbRenumberSectionQuestions(__oldSeed);
+
+      if (
+        __oldSectionKey !== __newSectionKey ||
+        __oldBoard !== __newBoard ||
+        __oldSubject2 !== __newSubject2 ||
+        __oldChapter !== __newChapter
+      ) {
+        await __qbRenumberSectionQuestions(__newSeed);
+      }
+
+      if (__editPopupHistoryAdded) {
+        history.back();
+      } else {
+        __closeEditPopupFromCode();
+      }
+
+      fetchAndDisplayQuestions();
+    } catch (err) {
+      alert("Failed to save: " + err.message);
+    }
+  };
+}
 
     function showClassSectionStudentPopup() {
   document.querySelectorAll('.class-student-popup').forEach(el => el.remove());
