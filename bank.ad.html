@@ -3367,6 +3367,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
 const __HEADER_TEXT = ${JSON.stringify('' + (headerText || ''))};
 const __PAGE_START = ${JSON.stringify(Number(pageStartNumber || 1))};
+const __PDF_THEME = ${JSON.stringify(__themeForPdf)};
 
     document.title = __TITLE;
 
@@ -3476,7 +3477,7 @@ pageNo.style.position = 'absolute';
 pageNo.style.top = '4mm';
 pageNo.style.background = 'transparent';
 pageNo.style.paddingLeft = '0';
-pageNo.style.color = __themeForPdf.dark;
+pageNo.style.color = (__PDF_THEME && __PDF_THEME.dark) ? __PDF_THEME.dark : '#6b2b2b';
 pageNo.style.fontSize = '11pt';
 pageNo.style.fontWeight = '400';
 pageNo.style.lineHeight = '1';
