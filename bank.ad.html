@@ -1108,7 +1108,8 @@ const includeKey = exportMode === 'key';
 
      const classVal = document.getElementById('class-value').value || '';
 const subjectVal = document.getElementById('subject-value').value || '';
-const __isMathTheme = __qbIsMathSubject(subjectVal);
+const __pdfTheme = __qbGetSubjectTheme(subjectVal);
+const __isMathTheme = __pdfTheme.key === 'math';
 const selChaptersForHeader = getMultiSelected('chapter');
 
 let __chapterEntries = selChaptersForHeader.map((ch, idx) => ({
@@ -1372,16 +1373,17 @@ function buildQuestionHTML(item, __parent = printable) {
     const isMCQ = options.length === 4;
   const __displayQNo = Number(source && source.questionNumber) > 0 ? Number(source.questionNumber) : qCounter;
 const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
+const __theme = __pdfTheme;
 
    const questionHtml = `
    <div class="question-container" style="width:100%;box-sizing:border-box;page-break-inside:auto;break-inside:auto;">
       <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
         <tr>
-                  <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:#0f6b5b; font-weight:700;">
+                  <td class="question-number" style="width:${__qNoWidth}px; min-width:${__qNoWidth}px; vertical-align:top; padding-right:8px; box-sizing:border-box; line-height:1.25; font-size:12pt; color:${__theme.questionColor}; font-weight:700;">
   ${__displayQNo}.
 </td>
 <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-  <div class="question-text" style="line-height:1.35;font-size:12pt;color:#0f6b5b;font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
+  <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__theme.questionColor};font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
     .replace(/^\s+/, '')
     .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
         ${imgHtml ? imgHtml : ''}
@@ -1465,31 +1467,7 @@ function __qbGetExportChapterLabel(chapterName, idx) {
 }
 
 function renderCenteredChapterTitle(text, chapterLabel = '') {
-  const __theme = __isMathTheme
-    ? {
-        outerBorder: '#8ea49d',
-        innerBorder: '#bfcfc9',
-        pillBg: '#0f6b5b',
-        pillBorder: '#0f6b5b',
-        titleFill: '#0f6b5b',
-        titleStroke: '#0f6b5b',
-        subText: '#0f6b5b',
-        assimBg: '#0f6b5b',
-        assimText: '#ffffff',
-        bodyBg: '#fbfcfb'
-      }
-    : {
-        outerBorder: '#1b4f8a',
-        innerBorder: '#7A2230',
-        pillBg: '#1762a7',
-        pillBorder: '#7A2230',
-        titleFill: '#7A2230',
-        titleStroke: '#163A63',
-        subText: '#7A2230',
-        assimBg: '#000000',
-        assimText: '#ffffff',
-        bodyBg: '#ffffff'
-      };
+   const __theme = __pdfTheme;
 
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
@@ -1621,7 +1599,8 @@ function renderTypeHeading(text, __parent = printable) {
   const t = String(text || '').trim();
   const h = document.createElement('div');
 
-  const __textColor = __isMathTheme ? '#0f6b5b' : '#7A2230';
+   const __theme = __pdfTheme;
+  const __textColor = __theme.sectionColor;
 
   if (/^descriptive$/i.test(t)) {
     h.style.cssText = `
@@ -1666,15 +1645,16 @@ function renderLeftHeading(text, __parent = printable) {
   const isLevel = /^Level\s*[1-3]$/i.test(t);
   const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\))$/i.test(t);
 
-  const h = document.createElement('div');
+    const h = document.createElement('div');
+  const __theme = __pdfTheme;
 
   if (isLevel) {
     h.style.cssText = `
       width:100%;
       box-sizing:border-box;
-      background:${__isMathTheme ? '#f3f6f4' : '#F3F3F3'};
-      color:${__isMathTheme ? '#0f6b5b' : '#111111'};
-      border:2px solid ${__isMathTheme ? '#5d6c67' : '#111111'};
+           background:${__theme.levelBg};
+      color:${__theme.levelText};
+      border:2px solid ${__theme.levelBorder};
       text-align:center;
       font-weight:900;
       letter-spacing:0.06em;
@@ -1708,7 +1688,7 @@ function renderLeftHeading(text, __parent = printable) {
       break-after:avoid;
       display:block;
       width:100%;
-      color:${__isMathTheme ? '#0f6b5b' : '#7A2230'};
+            color:${__theme.sectionColor};
     `;
     h.textContent = t.toUpperCase();
   } else {
@@ -1724,7 +1704,7 @@ function renderLeftHeading(text, __parent = printable) {
       break-after:avoid;
       display:block;
       width:100%;
-      color:${__isMathTheme ? '#0f6b5b' : '#000000'};
+            color:${__theme.normalHeadingColor};
     `;
     h.textContent = t;
   }
@@ -1875,6 +1855,125 @@ function __qbIsMathSubject(subject) {
   );
 }
 
+function __qbMakeSubjectTheme(key, dark, mid, light, pale) {
+  return {
+    key,
+    dark,
+    mid,
+    light,
+    pale,
+
+    outerBorder: dark,
+    innerBorder: mid,
+    pillBg: dark,
+    pillBorder: mid,
+    titleFill: dark,
+    titleStroke: dark,
+    subText: mid,
+    assimBg: dark,
+    assimText: '#ffffff',
+    bodyBg: pale,
+
+    levelBg: pale,
+    levelText: dark,
+    levelBorder: mid,
+
+    sectionColor: dark,
+    normalHeadingColor: dark,
+    questionColor: dark
+  };
+}
+
+function __qbGetSubjectTheme(subject) {
+  const s = String(subject || '').toLowerCase().trim();
+
+  if (__qbIsMathSubject(s)) {
+    return {
+      key: 'math',
+      dark: '#0f6b5b',
+      mid: '#5d6c67',
+      light: '#bfcfc9',
+      pale: '#fbfcfb',
+
+      outerBorder: '#8ea49d',
+      innerBorder: '#bfcfc9',
+      pillBg: '#0f6b5b',
+      pillBorder: '#0f6b5b',
+      titleFill: '#0f6b5b',
+      titleStroke: '#0f6b5b',
+      subText: '#0f6b5b',
+      assimBg: '#0f6b5b',
+      assimText: '#ffffff',
+      bodyBg: '#fbfcfb',
+
+      levelBg: '#f3f6f4',
+      levelText: '#0f6b5b',
+      levelBorder: '#5d6c67',
+
+      sectionColor: '#0f6b5b',
+      normalHeadingColor: '#0f6b5b',
+      questionColor: '#0f6b5b'
+    };
+  }
+
+  if (s.includes('physics')) {
+    return __qbMakeSubjectTheme(
+      'physics',
+      '#6B1E2D',
+      '#9A3A4A',
+      '#F3DDE2',
+      '#FBF3F5'
+    );
+  }
+
+  if (s.includes('biology') || s.includes('biological') || s === 'bio') {
+    return __qbMakeSubjectTheme(
+      'biology',
+      '#2E5A3A',
+      '#4F7F52',
+      '#DFEFDF',
+      '#F3FAF3'
+    );
+  }
+
+  if (s.includes('chemistry') || s.includes('science')) {
+    return __qbMakeSubjectTheme(
+      'chemistry',
+      '#1F3A5F',
+      '#2F5D8C',
+      '#DCEAF7',
+      '#F2F7FC'
+    );
+  }
+
+  return {
+    key: 'default',
+    dark: '#163A63',
+    mid: '#1762a7',
+    light: '#e0eaff',
+    pale: '#ffffff',
+
+    outerBorder: '#1b4f8a',
+    innerBorder: '#7A2230',
+    pillBg: '#1762a7',
+    pillBorder: '#7A2230',
+    titleFill: '#7A2230',
+    titleStroke: '#163A63',
+    subText: '#7A2230',
+    assimBg: '#000000',
+    assimText: '#ffffff',
+    bodyBg: '#ffffff',
+
+    levelBg: '#F3F3F3',
+    levelText: '#111111',
+    levelBorder: '#111111',
+
+    sectionColor: '#7A2230',
+    normalHeadingColor: '#000000',
+    questionColor: '#5A2E1B'
+  };
+}
+
 function __qbFormatExplanationHTML(text, subject) {
   const isMath = __qbIsMathSubject(subject);
 
@@ -1974,7 +2073,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
     .replace(/^\s*Explanation\s*:\s*/i, '')
     .trim();
 
-  const subjectText = String((source && source.subject) || '').trim();
+    const subjectText = String((source && source.subject) || '').trim();
+  const __theme = __qbGetSubjectTheme(subjectText || subjectVal);
   const __displayQNo = Number(source && source.questionNumber) > 0 ? Number(source.questionNumber) : qNum;
   const qNoLabel = 'Q' + __displayQNo + '.';
   const qNoWidth = __qbQuestionNumberWidth(qNoLabel);
@@ -2013,11 +2113,11 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   qRow.style.cssText = 'display:flex; align-items:flex-start; width:100%; margin-bottom:4px;';
 
   const qNoDiv = document.createElement('div');
- qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:700; color:#0f6b5b; line-height:inherit;`;
+ qNoDiv.style.cssText = `min-width:${qNoWidth}px; max-width:${qNoWidth}px; flex:0 0 ${qNoWidth}px; padding-right:8px; box-sizing:border-box; font-weight:700; color:${__theme.questionColor}; line-height:inherit;`;
 qNoDiv.textContent = qNoLabel;
 
 const qTextDiv = document.createElement('div');
-qTextDiv.style.cssText = `flex:1; min-width:0; color:#0f6b5b; font-weight:700; line-height:inherit; white-space:pre-wrap;`;
+qTextDiv.style.cssText = `flex:1; min-width:0; color:${__theme.questionColor}; font-weight:700; line-height:inherit; white-space:pre-wrap;`;
   qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
 
   qRow.appendChild(qNoDiv);
@@ -2583,12 +2683,12 @@ await __waitForImages(printable);
           const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((orderedSelectedChapters.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
 
       try {
-               await __qbOpenPrintWindowForPDF({
+              await __qbOpenPrintWindowForPDF({
   title: exportFileName.replace(/\.pdf$/i, ''),
   contentHtml: printable.innerHTML,
   headerText: `${classVal} / ${subjectVal}`,
   pageStartNumber: __pageStartNumber,
-  isMathTheme: __isMathTheme
+  pdfTheme: __pdfTheme
 });
         __cleanupMount();
         pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
@@ -2744,7 +2844,8 @@ await __waitForImages(printable);
       }, 50);
     }
 
-async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', pageStartNumber = 1, isMathTheme = false }) {
+async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', pageStartNumber = 1, pdfTheme = null }) {
+  const __themeForPdf = pdfTheme || __qbGetSubjectTheme('');
   const printWin = window.open('', '_blank');
   if (!printWin) {
     throw new Error('Popup blocked. Please allow popups for preview.');
@@ -2949,7 +3050,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
   margin-right:auto;
   justify-content:flex-start;
   text-align:left;
-  background:linear-gradient(to right, #0f6b5b 0%, #0f6b5b 34%, rgba(15,107,91,0.36) 70%, rgba(15,107,91,0) 100%);
+  background:linear-gradient(to right, ${__themeForPdf.dark} 0%, ${__themeForPdf.dark} 34%, ${__themeForPdf.light} 70%, rgba(255,255,255,0) 100%);
 }
 
 .a4-running-header.hide{
@@ -3010,7 +3111,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
       box-sizing:border-box !important;
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
-      color:${isMathTheme ? '#0f6b5b' : '#5A2E1B'} !important;
+           color:${__themeForPdf.questionColor} !important;
       font-weight:400 !important;
       flex:0 0 auto !important;
     }
@@ -3023,7 +3124,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 
     .a4-page .question-text{
       font-size:var(--qb-question-font) !important;
-      color:${isMathTheme ? '#0f6b5b' : '#5A2E1B'} !important;
+           color:${__themeForPdf.questionColor} !important;
       font-weight:400 !important;
       word-break:normal !important;
       overflow-wrap:normal !important;
@@ -3375,7 +3476,7 @@ pageNo.style.position = 'absolute';
 pageNo.style.top = '4mm';
 pageNo.style.background = 'transparent';
 pageNo.style.paddingLeft = '0';
-pageNo.style.color = '#6b2b2b';
+pageNo.style.color = __themeForPdf.dark;
 pageNo.style.fontSize = '11pt';
 pageNo.style.fontWeight = '400';
 pageNo.style.lineHeight = '1';
