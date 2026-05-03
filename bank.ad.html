@@ -2259,177 +2259,139 @@ headRight.innerHTML = `
   __parent.appendChild(wrap);
 }
 if (includeWorksheet) {
-  // === RENDER WORKSHEET ===
- if (!multipleChaptersSelected) {
+  // === RENDER WORKSHEET — LEVEL-WISE FIRST ===
+  // New order:
+  // Level 1 -> all selected question types
+  // Level 2 -> all selected question types
+  // Level 3 -> all selected question types
+
+  const __worksheetTypesOrder = [
+    'MCQ (Single)',
+    'MCQ (Multiple)',
+    'Assertion and Reason (MCQ Single)',
+    'Fill in the Blanks',
+    'Descriptive'
+  ];
+
+  const __wantedWorksheetTypes = (selectedQtypes.length === 0)
+    ? __worksheetTypesOrder
+    : __worksheetTypesOrder.filter(t => selectedQtypes.includes(t));
+
+  function __qbCreateKeepBlock() {
+    const __sec = document.createElement('div');
+    __sec.className = 'keep-with-next';
+    __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+    printable.appendChild(__sec);
+    return __sec;
+  }
+
+  function __qbGetLevelBuckets(listScope) {
+    const buckets = levelsOrder.map(lvl => ({
+      name: lvl,
+      items: listScope.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+    }));
+
+    const unspecified = listScope.filter(n => !(n.getAttribute('data-level') || '').trim());
+
+    if (unspecified.length) {
+      buckets.push({
+        name: 'Unspecified Level',
+        items: unspecified
+      });
+    }
+
+    return buckets.filter(b => b.items.length);
+  }
+
+  function __qbRenderNormalTypeQuestions(typeLabel, items) {
+    if (!items.length) return;
+
+    const __sec = __qbCreateKeepBlock();
+
+    renderLeftHeading(typeLabel, __sec);
+    buildQuestionHTML(items[0], __sec);
+    items.slice(1).forEach(item => buildQuestionHTML(item));
+  }
+
+  function __qbRenderDescriptiveQuestions(descItems) {
+    if (!descItems.length) return;
+
+    const presentMarks = Array.from(new Set(
+      descItems.map(n => Number(n.getAttribute('data-marks') || ''))
+        .filter(m => Number.isFinite(m) && m > 0)
+    )).sort((a, b) => a - b);
+
+    // If marks are available, show Descriptive -> 2 Marks / 4 Marks / etc.
+    if (presentMarks.length) {
+      let __descHeadingShown = false;
+
+      presentMarks.forEach(m => {
+        const byMarks = descItems.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+        if (!byMarks.length) return;
+
+        const __sec = __qbCreateKeepBlock();
+
+        if (!__descHeadingShown) {
+          renderTypeHeading('DESCRIPTIVE', __sec);
+          __descHeadingShown = true;
+        }
+
+        renderLeftHeading(`${m} Marks`, __sec);
+        buildQuestionHTML(byMarks[0], __sec);
+        byMarks.slice(1).forEach(item => buildQuestionHTML(item));
+      });
+
+      return;
+    }
+
+    // If marks are missing, still print descriptive questions safely.
+    const __sec = __qbCreateKeepBlock();
+    renderTypeHeading('DESCRIPTIVE', __sec);
+    buildQuestionHTML(descItems[0], __sec);
+    descItems.slice(1).forEach(item => buildQuestionHTML(item));
+  }
+
+  function __qbRenderWorksheetLevelWise(listScope) {
+    const levelBuckets = __qbGetLevelBuckets(listScope);
+
+    levelBuckets.forEach(bucket => {
+      renderLeftHeading(bucket.name);
+
+      __wantedWorksheetTypes.forEach(typeLabel => {
+        const itemsOfType = bucket.items.filter(n =>
+          (n.getAttribute('data-type') || '').trim() === typeLabel
+        );
+
+        if (!itemsOfType.length) return;
+
+        if (typeLabel === 'Descriptive') {
+          __qbRenderDescriptiveQuestions(itemsOfType);
+        } else {
+          __qbRenderNormalTypeQuestions(typeLabel, itemsOfType);
+        }
+      });
+    });
+  }
+
+  if (!multipleChaptersSelected) {
     const list = Array.from(nodes);
 
     if (orderedSelectedChapters.length === 1) {
       renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
     }
-const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
-const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
 
-function __renderTypeByLevel(listScope, typeLabel) {
-      const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-      if (!itemsOfType.length) return;
+    __qbRenderWorksheetLevelWise(list);
 
-      renderLeftHeading(typeLabel);
-      const buckets = levelsOrder.map(lvl => ({
-        name: lvl,
-        items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-      }));
-      const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
-      if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
-
-      buckets.forEach(b => {
-        if (!b.items.length) return;
-        const __sec = document.createElement('div');
-        __sec.className = 'keep-with-next';
-        __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-        printable.appendChild(__sec);
-
-        renderLeftHeading(b.name, __sec);
-        buildQuestionHTML(b.items[0], __sec);
-        b.items.slice(1).forEach(item => buildQuestionHTML(item));
-      });
-    }
-
-    if (wantSingle) __renderTypeByLevel(list, 'MCQ (Single)');
-if (wantMulti) __renderTypeByLevel(list, 'MCQ (Multiple)');
-if (wantAR) __renderTypeByLevel(list, 'Assertion and Reason (MCQ Single)');
-if (wantFill) __renderTypeByLevel(list, 'Fill in the Blanks');
-
-         if (wantDesc) {
-        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
-
-        const presentMarks = Array.from(new Set(
-          descList.map(n => Number(n.getAttribute('data-marks') || ''))
-                  .filter(m => Number.isFinite(m) && m > 0)
-        )).sort((a,b) => a - b);
-
-        let __descHeadingShown = false;
-
-        presentMarks.forEach(m => {
-          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
-
-          const groups = levelsOrder.map(lvl => ({
-            lvl,
-            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-          })).filter(g => g.items.length);
-
-          if (!groups.length) return;
-
-          groups.forEach((g, idx) => {
-            const __sec = document.createElement('div');
-            __sec.className = 'keep-with-next';
-            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-            printable.appendChild(__sec);
-
-            if (!__descHeadingShown) {
-              renderTypeHeading('DESCRIPTIVE', __sec);
-              __descHeadingShown = true;
-            }
-
-            if (idx === 0) {
-              renderLeftHeading(`${m} Marks`, __sec);
-            }
-
-            renderLeftHeading(g.lvl, __sec);
-            buildQuestionHTML(g.items[0], __sec);
-            g.items.slice(1).forEach(item => buildQuestionHTML(item));
-          });
-        });
-      }
   } else {
     chapterOrder.forEach((ch, chapterIdx) => {
-  const list = chapterMap.get(ch) || [];
-  if (!list.length) return;
+      const list = chapterMap.get(ch) || [];
+      if (!list.length) return;
 
-  renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
-
-     const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
-const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
-
-function __renderTypeByLevelFor(listScope, typeLabel) {
-        const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-        if (!itemsOfType.length) return;
-
-        renderLeftHeading(typeLabel);
-        const buckets = levelsOrder.map(lvl => ({
-          name: lvl,
-          items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-        }));
-        const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
-        if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
-
-        buckets.forEach(b => {
-          if (!b.items.length) return;
-          const __sec = document.createElement('div');
-          __sec.className = 'keep-with-next';
-          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-          printable.appendChild(__sec);
-
-          renderLeftHeading(b.name, __sec);
-          buildQuestionHTML(b.items[0], __sec);
-          b.items.slice(1).forEach(item => buildQuestionHTML(item));
-        });
-      }
-
-     if (wantSingle) __renderTypeByLevelFor(list, 'MCQ (Single)');
-if (wantMulti) __renderTypeByLevelFor(list, 'MCQ (Multiple)');
-if (wantAR) __renderTypeByLevelFor(list, 'Assertion and Reason (MCQ Single)');
-if (wantFill) __renderTypeByLevelFor(list, 'Fill in the Blanks');
-         if (wantDesc) {
-      const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
-
-      const presentMarks = Array.from(new Set(
-        descList.map(n => Number(n.getAttribute('data-marks') || ''))
-                .filter(m => Number.isFinite(m) && m > 0)
-      )).sort((a,b) => a - b);
-
-      let __descHeadingShown = false;
-
-      presentMarks.forEach(m => {
-        const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
-
-        const groups = levelsOrder.map(lvl => ({
-          lvl,
-          items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-        })).filter(g => g.items.length);
-
-        if (!groups.length) return;
-
-        groups.forEach((g, idx) => {
-          const __sec = document.createElement('div');
-          __sec.className = 'keep-with-next';
-          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-          printable.appendChild(__sec);
-
-          if (!__descHeadingShown) {
-            renderTypeHeading('DESCRIPTIVE', __sec);
-            __descHeadingShown = true;
-          }
-
-          if (idx === 0) {
-            renderLeftHeading(`${m} Marks`, __sec);
-          }
-
-          renderLeftHeading(g.lvl, __sec);
-          buildQuestionHTML(g.items[0], __sec);
-          g.items.slice(1).forEach(item => buildQuestionHTML(item));
-        });
-      });
-    }
+      renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
+      __qbRenderWorksheetLevelWise(list);
     });
   }
 }
-
 if (includeKey) {
   if (includeWorksheet) {
     const spacer = document.createElement('div');
@@ -2450,7 +2412,7 @@ if (includeKey) {
     printable.appendChild(keySchool);
 
     const keyHeader = document.createElement('div');
-  keyHeader.style.cssText = `
+    keyHeader.style.cssText = `
       margin:0 auto 10px auto;
       max-width:540px;
       border:2.5px solid #1b4f8a;
@@ -2491,178 +2453,136 @@ if (includeKey) {
     keyCounter++;
   }
 
- if (!multipleChaptersSelected) {
+  // === RENDER KEY — LEVEL-WISE FIRST ===
+  // Same order as worksheet:
+  // Level 1 -> all selected question types
+  // Level 2 -> all selected question types
+  // Level 3 -> all selected question types
+
+  const __keyTypesOrder = [
+    'MCQ (Single)',
+    'MCQ (Multiple)',
+    'Assertion and Reason (MCQ Single)',
+    'Fill in the Blanks',
+    'Descriptive'
+  ];
+
+  const __wantedKeyTypes = (selectedQtypes.length === 0)
+    ? __keyTypesOrder
+    : __keyTypesOrder.filter(t => selectedQtypes.includes(t));
+
+  function __qbCreateKeyKeepBlock() {
+    const __sec = document.createElement('div');
+    __sec.className = 'keep-with-next';
+    __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
+    printable.appendChild(__sec);
+    return __sec;
+  }
+
+  function __qbGetKeyLevelBuckets(listScope) {
+    const buckets = levelsOrder.map(lvl => ({
+      name: lvl,
+      items: listScope.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
+    }));
+
+    const unspecified = listScope.filter(n => !(n.getAttribute('data-level') || '').trim());
+
+    if (unspecified.length) {
+      buckets.push({
+        name: 'Unspecified Level',
+        items: unspecified
+      });
+    }
+
+    return buckets.filter(b => b.items.length);
+  }
+
+  function __qbRenderKeyNormalTypeQuestions(typeLabel, items) {
+    if (!items.length) return;
+
+    const __sec = __qbCreateKeyKeepBlock();
+
+    renderLeftHeading(typeLabel, __sec);
+    __renderKeyQuestion(items[0], __sec);
+    items.slice(1).forEach(item => __renderKeyQuestion(item));
+  }
+
+  function __qbRenderKeyDescriptiveQuestions(descItems) {
+    if (!descItems.length) return;
+
+    const presentMarks = Array.from(new Set(
+      descItems.map(n => Number(n.getAttribute('data-marks') || ''))
+        .filter(m => Number.isFinite(m) && m > 0)
+    )).sort((a, b) => a - b);
+
+    // If marks are available, show Descriptive -> 2 Marks / 4 Marks / etc.
+    if (presentMarks.length) {
+      let __descHeadingShown = false;
+
+      presentMarks.forEach(m => {
+        const byMarks = descItems.filter(n => Number(n.getAttribute('data-marks') || '') === m);
+        if (!byMarks.length) return;
+
+        const __sec = __qbCreateKeyKeepBlock();
+
+        if (!__descHeadingShown) {
+          renderTypeHeading('DESCRIPTIVE', __sec);
+          __descHeadingShown = true;
+        }
+
+        renderLeftHeading(`${m} Marks`, __sec);
+        __renderKeyQuestion(byMarks[0], __sec);
+        byMarks.slice(1).forEach(item => __renderKeyQuestion(item));
+      });
+
+      return;
+    }
+
+    // If marks are missing, still print descriptive questions safely.
+    const __sec = __qbCreateKeyKeepBlock();
+    renderTypeHeading('DESCRIPTIVE', __sec);
+    __renderKeyQuestion(descItems[0], __sec);
+    descItems.slice(1).forEach(item => __renderKeyQuestion(item));
+  }
+
+  function __qbRenderKeyLevelWise(listScope) {
+    const levelBuckets = __qbGetKeyLevelBuckets(listScope);
+
+    levelBuckets.forEach(bucket => {
+      renderLeftHeading(bucket.name);
+
+      __wantedKeyTypes.forEach(typeLabel => {
+        const itemsOfType = bucket.items.filter(n =>
+          (n.getAttribute('data-type') || '').trim() === typeLabel
+        );
+
+        if (!itemsOfType.length) return;
+
+        if (typeLabel === 'Descriptive') {
+          __qbRenderKeyDescriptiveQuestions(itemsOfType);
+        } else {
+          __qbRenderKeyNormalTypeQuestions(typeLabel, itemsOfType);
+        }
+      });
+    });
+  }
+
+  if (!multipleChaptersSelected) {
     const list = Array.from(nodes);
 
     if (orderedSelectedChapters.length === 1) {
       renderCenteredChapterTitle(orderedSelectedChapters[0], __singleChapterLabel);
     }
 
-  const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
-const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
+    __qbRenderKeyLevelWise(list);
 
-function __renderKeyTypeByLevel(listScope, typeLabel) {
-      const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-      if (!itemsOfType.length) return;
-
-      renderLeftHeading(typeLabel);
-
-      const buckets = levelsOrder.map(lvl => ({
-        name: lvl,
-        items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-      }));
-      const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
-      if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
-
-      buckets.forEach(b => {
-        if (!b.items.length) return;
-
-        const __sec = document.createElement('div');
-        __sec.className = 'keep-with-next';
-        __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-        printable.appendChild(__sec);
-
-        renderLeftHeading(b.name, __sec);
-        __renderKeyQuestion(b.items[0], __sec);
-        b.items.slice(1).forEach(item => __renderKeyQuestion(item));
-      });
-    }
-
-   if (wantSingle) __renderKeyTypeByLevel(list, 'MCQ (Single)');
-if (wantMulti)  __renderKeyTypeByLevel(list, 'MCQ (Multiple)');
-if (wantAR)     __renderKeyTypeByLevel(list, 'Assertion and Reason (MCQ Single)');
-if (wantFill)   __renderKeyTypeByLevel(list, 'Fill in the Blanks');
-
-    if (wantDesc) {
-      const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
-
-      const presentMarks = Array.from(new Set(
-        descList.map(n => Number(n.getAttribute('data-marks') || ''))
-                .filter(m => Number.isFinite(m) && m > 0)
-      )).sort((a,b) => a - b);
-
-      let __descHeadingShown = false;
-
-      presentMarks.forEach(m => {
-        const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
-
-        const groups = levelsOrder.map(lvl => ({
-          lvl,
-          items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-        })).filter(g => g.items.length);
-
-        if (!groups.length) return;
-
-        groups.forEach((g, idx) => {
-          const __sec = document.createElement('div');
-          __sec.className = 'keep-with-next';
-          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-          printable.appendChild(__sec);
-
-          if (!__descHeadingShown) {
-            renderTypeHeading('DESCRIPTIVE', __sec);
-            __descHeadingShown = true;
-          }
-
-          if (idx === 0) {
-            renderLeftHeading(`${m} Marks`, __sec);
-          }
-
-          renderLeftHeading(g.lvl, __sec);
-          __renderKeyQuestion(g.items[0], __sec);
-          g.items.slice(1).forEach(item => __renderKeyQuestion(item));
-        });
-      });
-    }
   } else {
     chapterOrder.forEach((ch, chapterIdx) => {
-  const list = chapterMap.get(ch) || [];
-  if (!list.length) return;
+      const list = chapterMap.get(ch) || [];
+      if (!list.length) return;
 
-  renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
-
-    const wantSingle = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Single)');
-const wantMulti  = (selectedQtypes.length === 0) || selectedQtypes.includes('MCQ (Multiple)');
-const wantAR     = (selectedQtypes.length === 0) || selectedQtypes.includes('Assertion and Reason (MCQ Single)');
-const wantFill   = (selectedQtypes.length === 0) || selectedQtypes.includes('Fill in the Blanks');
-const wantDesc   = (selectedQtypes.length === 0) || selectedQtypes.includes('Descriptive');
-
-function __renderKeyTypeByLevelFor(listScope, typeLabel) {
-        const itemsOfType = listScope.filter(n => (n.getAttribute('data-type') || '').trim() === typeLabel);
-        if (!itemsOfType.length) return;
-
-        renderLeftHeading(typeLabel);
-
-        const buckets = levelsOrder.map(lvl => ({
-          name: lvl,
-          items: itemsOfType.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-        }));
-        const unspecified = itemsOfType.filter(n => !(n.getAttribute('data-level') || '').trim());
-        if (unspecified.length) buckets.push({ name: 'Unspecified Level', items: unspecified });
-
-        buckets.forEach(b => {
-          if (!b.items.length) return;
-
-          const __sec = document.createElement('div');
-          __sec.className = 'keep-with-next';
-          __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-          printable.appendChild(__sec);
-
-          renderLeftHeading(b.name, __sec);
-          __renderKeyQuestion(b.items[0], __sec);
-          b.items.slice(1).forEach(item => __renderKeyQuestion(item));
-        });
-      }
-
-     if (wantSingle) __renderKeyTypeByLevelFor(list, 'MCQ (Single)');
-if (wantMulti)  __renderKeyTypeByLevelFor(list, 'MCQ (Multiple)');
-if (wantAR)     __renderKeyTypeByLevelFor(list, 'Assertion and Reason (MCQ Single)');
-if (wantFill)   __renderKeyTypeByLevelFor(list, 'Fill in the Blanks');
-
-      if (wantDesc) {
-        const descList = list.filter(n => (n.getAttribute('data-type') || '').trim() === 'Descriptive');
-
-        const presentMarks = Array.from(new Set(
-          descList.map(n => Number(n.getAttribute('data-marks') || ''))
-                  .filter(m => Number.isFinite(m) && m > 0)
-        )).sort((a,b) => a - b);
-
-        let __descHeadingShown = false;
-
-        presentMarks.forEach(m => {
-          const byMarks = descList.filter(n => Number(n.getAttribute('data-marks') || '') === m);
-
-          const groups = levelsOrder.map(lvl => ({
-            lvl,
-            items: byMarks.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-          })).filter(g => g.items.length);
-
-          if (!groups.length) return;
-
-          groups.forEach((g, idx) => {
-            const __sec = document.createElement('div');
-            __sec.className = 'keep-with-next';
-            __sec.style.cssText = 'page-break-inside:avoid;break-inside:avoid;display:block;';
-            printable.appendChild(__sec);
-
-            if (!__descHeadingShown) {
-              renderTypeHeading('DESCRIPTIVE', __sec);
-              __descHeadingShown = true;
-            }
-
-            if (idx === 0) {
-              renderLeftHeading(`${m} Marks`, __sec);
-            }
-
-            renderLeftHeading(g.lvl, __sec);
-            __renderKeyQuestion(g.items[0], __sec);
-            g.items.slice(1).forEach(item => __renderKeyQuestion(item));
-          });
-        });
-      }
+      renderCenteredChapterTitle(ch, __qbGetExportChapterLabel(ch, chapterIdx));
+      __qbRenderKeyLevelWise(list);
     });
   }
 }
