@@ -205,17 +205,17 @@
           <label>Board:</label>
           <div id="board-dropdown" class="custom-dropdown"></div>
         </div>
-        <div class="form-group">
+                <div class="form-group">
           <label>Subject:</label>
           <div id="subject-dropdown" class="custom-dropdown"></div>
         </div>
           <div class="form-group">
-            <label>Question Type:</label>
-            <div id="qtype-dropdown" class="custom-dropdown"></div>
-          </div>
-          <div class="form-group">
             <label>Chapter:</label>
             <div id="chapter-dropdown" class="custom-dropdown"></div>
+          </div>
+          <div class="form-group">
+            <label>Question Type:</label>
+            <div id="qtype-dropdown" class="custom-dropdown"></div>
           </div>
           <div class="form-group">
             <label>Level:</label>
@@ -2709,9 +2709,13 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       fetchAndDisplayQuestions();
     }
 
-    function onSubjectChange() {
+        function onSubjectChange() {
       updateChapterDropdown();
-      fetchAndDisplayQuestions();
+
+      const displayArea = document.getElementById('questions-display-area');
+      if (displayArea) {
+        displayArea.innerHTML = '<p class="no-questions-message">Select Chapter to view questions.</p>';
+      }
     }
 
     async function updateChapterDropdown() {
@@ -2738,8 +2742,8 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       if (ch) chapters.add(ch);
     });
 
-    const list = Array.from(chapters).sort();
-    chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', list, 'All');
+       const list = Array.from(chapters).sort();
+    chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', list, 'Select Chapter');
     addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
   } catch (error) {
     console.error("Error fetching chapters: ", error);
@@ -2755,16 +2759,23 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       const boardVal   = document.getElementById('board-value').value;
       const subjectVal = document.getElementById('subject-value').value;
       
-      // Require Class + Board + Subject before querying
+            // Require Class + Board + Subject before chapter selection
       if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
         displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
+        return;
+      }
+
+      const selChapters = getMultiSelected('chapter');          // array of chapter names
+
+      // Chapter is compulsory now
+      if (selChapters.length === 0) {
+        displayArea.innerHTML = '<p class="no-questions-message">Select Chapter to view questions.</p>';
         return;
       }
       
       displayArea.innerHTML = '<p class="no-questions-message">Loading questions...</p>';
       
       try {
-        const selChapters = getMultiSelected('chapter');          // array of chapter names
 const selQtypes   = getMultiSelected('qtype');            // array of types
 const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
 const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
@@ -2991,10 +3002,28 @@ overlay.innerHTML = `
       border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.35);
       display:flex;flex-direction:column;overflow:hidden;">
       
-      <div style="
-        padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.12);
-        font-size:1.12em;font-weight:700;text-align:center;">
-        ${popupTitle}
+            <div style="
+        padding:16px 18px 14px 18px;
+        border-bottom:1px solid rgba(255,255,255,0.12);
+        text-align:center;">
+        
+        <div style="
+          font-size:1.32em;
+          font-weight:900;
+          color:#ffffff;
+          line-height:1.25;
+          letter-spacing:0.02em;">
+          SciMentra
+        </div>
+
+        <div style="
+          font-size:1.08em;
+          font-weight:800;
+          color:#ffffff;
+          line-height:1.25;
+          margin-top:4px;">
+          ${popupTitle}
+        </div>
       </div>
 
       <div id="explanation-popup-body" style="
@@ -3003,25 +3032,44 @@ overlay.innerHTML = `
         ${__qbEscapeHtml(popupContent)}
       </div>
 
-            <div style="
-              <div style="
-  padding:14px 18px;border-top:1px solid rgba(255,255,255,0.12);
-  display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
-  
-  <button type="button" id="more-explanation-btn" style="
-    border:none;border-radius:10px;padding:10px 18px;
-    background:#1762a7;color:#ffffff;font-weight:700;cursor:pointer;">
-    Need More Explanation
-  </button>
+                        <div style="
+              padding:16px 18px 26px 18px;
+              border-top:1px solid rgba(255,255,255,0.12);
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              gap:12px;
+              width:100%;
+              box-sizing:border-box;">
+              
+              <button type="button" id="close-explanation-popup" style="
+                border:none;
+                border-radius:12px;
+                padding:11px 20px;
+                background:#ffffff;
+                color:#111827;
+                font-weight:800;
+                cursor:pointer;
+                text-align:center;
+                flex:0 0 auto;">
+                Close
+              </button>
 
-  <button type="button" id="close-explanation-popup" style="
-    border:none;border-radius:10px;padding:10px 18px;
-    background:#ffffff;color:#111827;font-weight:700;cursor:pointer;">
-    Close
-  </button>
-</div>
-          </div>
-        </div>
+              <button type="button" id="more-explanation-btn" style="
+                border:none;
+                border-radius:12px;
+                padding:11px 18px;
+                background:#1762a7;
+                color:#ffffff;
+                font-weight:800;
+                cursor:pointer;
+                text-align:center;
+                flex:0 0 auto;
+                margin-left:auto;
+                white-space:nowrap;">
+                Need More Explanation
+              </button>
+            </div>
       `;
 
       document.body.appendChild(overlay);
