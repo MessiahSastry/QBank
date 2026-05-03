@@ -2819,14 +2819,20 @@ window.__pdfQuestionDataMap[doc.id] = data;
             console.log("Options for", doc.id, data.options);
           }
           // --- normalize mcqType & detect textbook flag (used later) ---
-const __rt  = data.mcqType
-  ? String(data.mcqType)
-  : (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive');
+const __rt = String(
+  data.mcqType ||
+  data.type ||
+  (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
+).trim();
 
 const __rtl = __rt.toLowerCase();
+
 const __normType =
-  __rtl.includes('multiple') ? 'MCQ (Multiple)'
-  : __rtl.includes('single') ? 'MCQ (Single)'
+  (__rtl.includes('assertion') && __rtl.includes('reason')) ? 'Assertion and Reason (MCQ Single)'
+  : (__rtl.includes('multiple')) ? 'MCQ (Multiple)'
+  : (__rtl === 'mcq (single)' || __rtl === 'mcq single') ? 'MCQ (Single)'
+  : (__rtl.includes('fill') && __rtl.includes('blank')) ? 'Fill in the Blanks'
+  : (__rtl.includes('descriptive')) ? 'Descriptive'
   : __rt;
 
 const __isTextbook =
