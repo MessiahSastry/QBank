@@ -2722,9 +2722,13 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     }
 
     function onSubjectChange() {
-      updateChapterDropdown();
-      fetchAndDisplayQuestions();
-    }
+  updateChapterDropdown();
+
+  const displayArea = document.getElementById('questions-display-area');
+  if (displayArea) {
+    displayArea.innerHTML = '<p class="no-questions-message">Select Chapter to view questions.</p>';
+  }
+}
 
     async function updateChapterDropdown() {
       const classVal = document.getElementById('class-value').value;
@@ -2753,7 +2757,7 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     });
 
     const list = Array.from(chapters).sort();
-    chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', list, 'All');
+    chapterDropdown.innerHTML = createMultiDropdownHTML('chapter', list, 'Select Chapter');
     addMultiDropdownListener('chapter-dropdown', fetchAndDisplayQuestions);
   } catch (error) {
     console.error("Error fetching chapters: ", error);
@@ -2769,16 +2773,23 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       const boardVal   = document.getElementById('board-value').value;
       const subjectVal = document.getElementById('subject-value').value;
       
-      // Require Class + Board + Subject before querying
+            // Require Class + Board + Subject before chapter selection
       if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
         displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
+        return;
+      }
+
+      const selChapters = getMultiSelected('chapter');          // array of chapter names
+
+      // Chapter is compulsory now
+      if (selChapters.length === 0) {
+        displayArea.innerHTML = '<p class="no-questions-message">Select Chapter to view questions.</p>';
         return;
       }
       
       displayArea.innerHTML = '<p class="no-questions-message">Loading questions...</p>';
       
       try {
-        const selChapters = getMultiSelected('chapter');          // array of chapter names
 const selQtypes   = getMultiSelected('qtype');            // array of types
 const selMarks    = getMultiSelected('marks');            // array of strings like "2 Mark(s)"
 const selLevels   = getMultiSelected('level');            // array of "Level 1/2/3"
@@ -2994,10 +3005,26 @@ overlay.innerHTML = `
       border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.35);
       display:flex;flex-direction:column;overflow:hidden;">
       
-      <div style="
-        padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.12);
-        font-size:1.12em;font-weight:700;text-align:center;">
-        ${popupTitle}
+           <div style="
+        padding:16px 18px 14px 18px;
+        border-bottom:1px solid rgba(255,255,255,0.12);
+        text-align:center;">
+        <div style="
+          font-size:1.32em;
+          font-weight:900;
+          color:#ffffff;
+          line-height:1.25;
+          letter-spacing:0.02em;">
+          SciMentra
+        </div>
+        <div style="
+          font-size:1.08em;
+          font-weight:800;
+          color:#ffffff;
+          line-height:1.25;
+          margin-top:4px;">
+          ${popupTitle}
+        </div>
       </div>
 
       <div id="explanation-popup-body" style="
@@ -3006,13 +3033,40 @@ overlay.innerHTML = `
         ${__qbEscapeHtml(popupContent)}
       </div>
 
-            <div style="
-              padding:14px 18px;border-top:1px solid rgba(255,255,255,0.12);
-              display:flex;justify-content:flex-end;">
+                       <div style="
+              padding:16px 18px 26px 18px;
+              border-top:1px solid rgba(255,255,255,0.12);
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              gap:12px;">
+              
               <button type="button" id="close-explanation-popup" style="
-                border:none;border-radius:10px;padding:10px 18px;
-                background:#ffffff;color:#111827;font-weight:700;cursor:pointer;">
+                border:none;
+                border-radius:12px;
+                padding:11px 20px;
+                background:#ffffff;
+                color:#111827;
+                font-weight:800;
+                cursor:pointer;
+                text-align:center;
+                flex:0 0 auto;">
                 Close
+              </button>
+
+              <button type="button" id="need-more-explanation-btn" style="
+                border:none;
+                border-radius:12px;
+                padding:11px 18px;
+                background:#1762a7;
+                color:#ffffff;
+                font-weight:800;
+                cursor:pointer;
+                text-align:center;
+                flex:0 0 auto;
+                margin-left:auto;
+                white-space:nowrap;">
+                Need More Explanation
               </button>
             </div>
           </div>
@@ -3021,9 +3075,34 @@ overlay.innerHTML = `
 
       document.body.appendChild(overlay);
 
-      document.getElementById('close-explanation-popup').onclick = function() {
+           document.getElementById('close-explanation-popup').onclick = function() {
         overlay.remove();
       };
+
+      const needMoreBtn = document.getElementById('need-more-explanation-btn');
+      if (needMoreBtn) {
+        needMoreBtn.onclick = function() {
+          const qText = String(data.question || data.body || data.text || '').trim();
+
+          const optionsText = Array.isArray(data.options)
+            ? data.options.map((opt, i) => {
+                const cleanOpt = String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
+                return String.fromCharCode(65 + i) + ') ' + cleanOpt;
+              }).join('\n')
+            : '';
+
+          const morePrompt =
+            'Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and common mistakes.\n\nQuestion:\n' +
+            qText +
+            (optionsText ? '\n' + optionsText : '');
+
+          window.open(
+            'https://chatgpt.com/?q=' + encodeURIComponent(morePrompt),
+            '_blank',
+            'noopener,noreferrer'
+          );
+        };
+      }
 
       overlay.onclick = function(ev) {
         if (ev.target === overlay.firstElementChild) {
