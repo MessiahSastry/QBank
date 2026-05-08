@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Upload & Brand | St. Patrick's School</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0f3d6b;
+      --secondary-blue: #1762a7;
+      --light-blue-bg: #f4f8fc;
+      --border-color: #bcd6ef;
+      --text-dark: #12416c;
+      --text-light: #54656f;
+    }
+    html { height: -webkit-fill-available; }
+    body {
+      margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif;
+      background-color: #f4f8fc;
+      min-height: 100vh;
+      height: -webkit-fill-available;
+    }
+    .page-wrapper {
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    #main-header {
+      background: linear-gradient(90deg, #1762a7, #0f3d6b);
+      color: #fff;
+      border-bottom-left-radius: 28px; border-bottom-right-radius: 28px;
+      min-height: 84px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 15px 10px 18px 10px;
+      box-sizing: border-box; flex-shrink: 0;
+      position: sticky; top: 0; z-index: 10;
+    }
+    #main-header .school-title { font-size: 1.8em; font-weight: bold; margin: 0;}
+    #main-header .subtitle { font-size: 1.05em; color: #e0eaff; margin-top: 5px; }
+    main {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    .form-container {
+      width: 100%;
+      max-width: 430px;
+      margin: 0 auto 22px auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 18px rgba(0, 27, 68, 0.11);
+      padding: 28px 18px 24px 18px;
+      flex-shrink: 0;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    .form-group { margin-bottom: 17px; }
+    .form-group label {
+      font-weight: 600;
+      color: #185496;
+      display: block;
+      margin-bottom: 7px;
+      font-size: 1em;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="file"],
+    .form-group input[type="date"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1.3px solid #bcd6ef;
+      font-size: 1em;
+      background: #f7fafd;
+      box-sizing: border-box;
+      height: 42px;
+    }
+    .form-group input[type="file"] { padding: 7px 4px; height: auto; background: none; }
+    .submit-btn {
+      background: linear-gradient(90deg, #1762a7, #0f3d6b);
+      color: #fff; font-weight: bold; cursor: pointer; padding: 13px 0;
+      margin-top: 18px; width: 100%; border-radius: 8px; border: none; font-size: 1.09em;
+      box-shadow: 0 2px 10px #0f3d6b0a;
+    }
+    .submit-btn:active { transform: scale(0.98);}
+    #downloadLink {
+      display: none; margin-top:18px; color: #0f3d6b;
+      text-decoration: underline; font-weight:bold; text-align: center;
+    }
+    @media (max-width: 600px) {
+      main { padding-top: 14px; }
+      .form-container { padding: 15px 5vw 18px 5vw; border-radius: 12px; }
+    }
+    .custom-dropdown {
+      position: relative;
+      border: 1.3px solid #bcd6ef;
+      border-radius: 6px;
+      background: #f7fafd;
+      font-size: 1em;
+      color: #12416c;
+      height: 42px;
+      cursor: pointer;
+      padding: 10px 12px;
+    }
+    .custom-dropdown .dropdown-options {
+      display: none;
+      position: absolute;
+      top: 100%; left: 0; right: 0;
+      background: white;
+      border: 1px solid #bcd6ef;
+      border-top: none;
+      z-index: 100;
+      max-height: 180px;
+      overflow-y: auto;
+      border-radius: 0 0 6px 6px;
+      box-shadow: 0 6px 15px rgba(0, 27, 68, 0.1);
+    }
+    .custom-dropdown.open .dropdown-options {
+      display: block;
+    }
+    .dropdown-options div[data-value] {
+      padding: 10px;
+    }
+    .dropdown-options div[data-value]:hover {
+      background: #e0eaff;
+    }
+    @keyframes spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
+</script>
+
+</head>
+<body>
+  <div class="page-wrapper">
+    <header id="main-header">
+      <h1 class="school-title">St. Patrick's School</h1>
+      <div class="subtitle">IIT & NEET FOUNDATION</div>
+    </header>
+    <main>
+      <div class="form-container">
+        <h2>Upload & Brand Question Paper</h2>
+        <div class="form-group">
+          <label>Question Paper PDF (from Examin8):</label>
+          <input type="file" id="pdfFile" accept="application/pdf">
+        </div>
+        <div class="form-group">
+          <label>Exam Name:</label>
+          <input type="text" id="examName">
+        </div>
+        <div class="form-group">
+          <label>Class:</label>
+          <div id="class-dropdown" class="custom-dropdown"></div>
+        </div>
+        <div class="form-group">
+          <label>Subject:</label>
+          <div id="subject-dropdown" class="custom-dropdown"></div>
+        </div>
+        <div class="form-group">
+          <label>Date (YYYY-MM-DD):</label>
+          <input type="text" id="date" placeholder="DD-MM-YYYY" readonly>
+        </div>
+        <div class="form-group">
+          <label>Time (minutes):</label>
+          <input type="text" id="time">
+        </div>
+        <div class="form-group">
+  <label>Max Marks:</label>
+  <input type="text" id="maxMarks">
+</div>
+
+<!-- Section Inputs (manual) -->
+<!-- Sections (Dynamic) -->
+<div class="form-group" style="margin-top:8px;">
+  <label>Sections (for black ribbon):</label>
+
+  <div id="sectionsContainer" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+  <button type="button" id="addSectionBtn"
+    style="margin-top:10px;width:100%;height:42px;border-radius:8px;border:1.3px dashed #bcd6ef;background:#fff;color:#1762a7;font-weight:700;cursor:pointer;">
+    + Add Section
+  </button>
+
+  <small style="color:#54656f;display:block;margin-top:6px;">
+    (PDF detects “Section X” positions. Add sections like A, B, C, D, E… and enter rules.)
+  </small>
+</div>
+<button class="submit-btn" id="processBtn">Add Header & Download</button>
+<a id="downloadLink">Download Branded PDF</a>
+
+<!-- Single control: SCALE only the FIRST PAGE content (keeps top just under header) -->
+<div class="form-group" style="margin-top:10px;">
+  <label>First Page Scale (%):</label>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button type="button" id="scale1Minus" aria-label="Decrease scale"
+            style="min-width:40px;height:36px;border:1px solid #bcd6ef;border-radius:6px;background:#fff;cursor:pointer;">−</button>
+
+    <input type="range" id="scale1Input" min="85" max="100" step="1" value="100"
+           oninput="document.getElementById('scale1Value').textContent=this.value + '%';"
+           style="flex:1;">
+
+    <button type="button" id="scale1Plus" aria-label="Increase scale"
+            style="min-width:40px;height:36px;border:1px solid #bcd6ef;border-radius:6px;background:#fff;cursor:pointer;">+</button>
+  </div>
+
+  <div style="margin-top:6px;color:#54656f;">
+    Current: <span id="scale1Value">100%</span>
+  </div>
+  <small style="color:#54656f;">(Only affects page 1; other pages untouched)</small>
+</div>
+
+<!-- Desktop: iframe; Mobile: live canvas preview (no new tab) -->
+<div id="previewWrap" style="display:none; margin-top:16px;">
+  <div style="font-weight:600;color:#1762a7;margin-bottom:8px;">Preview</div>
+  <iframe id="pdfPreview" style="width:100%;height:70vh;border:1px solid #bcd6ef;border-radius:8px;background:#fff;"></iframe>
+  <canvas id="pdfCanvas" style="display:none;width:100%;height:auto;border:1px solid #bcd6ef;border-radius:8px;background:#fff;"></canvas>
+</div>
+
+
+      </div>
+    </main>
+  </div>
+
+<script>
+  window.PDFLib = PDFLib;
+const config = {
+  classes: ["Nursery", "LKG", "UKG", "1st Class", "2nd Class", "3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class"],
+  subjectMappings: {
+    "Nursery":   ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
+    "LKG":       ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
+    "UKG":       ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
+    "1st Class": ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
+    "2nd Class": ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
+
+    "3rd Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
+    "4th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
+    "5th Class": ["Telugu", "Hindi", "English", "Math", "Science", "Social"],
+   "6th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+    "7th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+    "8th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+    "9th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+    "10th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"]
+  }
+};
+function createDropdown(containerId, options, placeholder) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const optionsHTML = options.map(opt => `<div data-value="${opt}">${opt}</div>`).join('');
+  container.innerHTML = `<div class="selected-option">${placeholder}</div><div class="dropdown-options">${optionsHTML}</div>`;
+  container.dataset.value = '';
+  container.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.custom-dropdown.open').forEach(d => { if (d !== container) d.classList.remove('open'); });
+    container.classList.toggle('open');
+    if (e.target.dataset.value) {
+      container.querySelector('.selected-option').textContent = e.target.dataset.value;
+      container.dataset.value = e.target.dataset.value;
+      container.classList.remove('open');
+      container.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+}
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [d, m, y] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// Convert minutes to "H½ hours" style (e.g., 90 -> "1½ hours")
+function formatDuration(minutes) {
+  const m = parseInt(minutes, 10);
+  if (isNaN(m) || m <= 0) return '';
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  const HALF = '\u00BD'; // ½
+
+  if (r === 0 && h > 0) {
+    return h === 1 ? '1 hour' : `${h} hours`;
+  }
+  if (r === 30) {
+    if (h === 0) return `${HALF} hour`;   // "½ hour"
+    return `${h}${HALF} hours`;           // "1½ hours", "2½ hours", ...
+  }
+  // Fallback for non-half-hour cases
+  return `${m} min`;
+}
+
+function addSectionRow(prefill = {}) {
+  const wrap = document.getElementById('sectionsContainer');
+  if (!wrap) return;
+
+  const row = document.createElement('div');
+  row.className = 'sec-row';
+  row.style.cssText = "border:1px solid #bcd6ef;border-radius:10px;padding:10px;background:#f7fafd;";
+
+  row.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <input type="text" class="sec-key" placeholder="Anchor (A/B/C...)" value="${prefill.key || ''}"
+        style="width:100%;padding:10px 12px;border-radius:6px;border:1.3px solid #bcd6ef;height:42px;box-sizing:border-box;">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <select class="sec-mode"
+        style="width:100%;padding:10px 12px;border-radius:6px;border:1.3px solid #bcd6ef;height:42px;box-sizing:border-box;background:#fff;">
+        <option value="all">Answer all</option>
+        <option value="any">Answer any</option>
+      </select>
+
+      <button type="button" class="sec-remove"
+        style="width:100%;height:42px;border-radius:8px;border:1.3px solid #bcd6ef;background:#fff;color:#b00020;font-weight:700;cursor:pointer;">
+        Remove
+      </button>
+    </div>
+
+    <div class="sec-anywrap" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <input type="text" class="sec-any" placeholder="Answer any (e.g., 2)"
+        value="${prefill.any || ''}"
+        style="width:100%;padding:10px 12px;border-radius:6px;border:1.3px solid #bcd6ef;height:42px;box-sizing:border-box;">
+      <input type="text" class="sec-total" placeholder="Out of (e.g., 3)"
+        value="${prefill.total || ''}"
+        style="width:100%;padding:10px 12px;border-radius:6px;border:1.3px solid #bcd6ef;height:42px;box-sizing:border-box;">
+    </div>
+
+    <div class="sec-allwrap" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <input type="text" class="sec-q" placeholder="No. of Questions (e.g., 6)"
+        value="${prefill.q || ''}"
+        style="width:100%;padding:10px 12px;border-radius:6px;border:1.3px solid #bcd6ef;height:42px;box-sizing:border-box;">
+      <input type="text" class="sec-m" placeholder="Marks each (e.g., 1)"
+        value="${prefill.m || ''}"
+        style="width:100%;padding:10px 12px;border-radius:6px;border:1.3px solid #bcd6ef;height:42px;box-sizing:border-box;">
+    </div>
+  `;
+
+  wrap.appendChild(row);
+
+  const mode = row.querySelector('.sec-mode');
+  const anyWrap = row.querySelector('.sec-anywrap');
+  const allWrap = row.querySelector('.sec-allwrap');
+  const removeBtn = row.querySelector('.sec-remove');
+
+  const syncMode = () => {
+    const v = (mode.value || 'all');
+    if (v === 'any') {
+      anyWrap.style.display = 'grid';
+      allWrap.querySelector('.sec-q').placeholder = 'Total Questions (e.g., 3)';
+    } else {
+      anyWrap.style.display = 'none';
+      allWrap.querySelector('.sec-q').placeholder = 'No. of Questions (e.g., 6)';
+    }
+  };
+
+  mode.addEventListener('change', syncMode);
+  removeBtn.addEventListener('click', () => row.remove());
+
+  if (prefill.mode) mode.value = prefill.mode;
+  syncMode();
+}
+
+function getSectionConfig() {
+  const rows = Array.from(document.querySelectorAll('#sectionsContainer .sec-row'));
+  const cfg = {};
+
+  const num = (v) => {
+    const n = Number(String(v || '').trim());
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  rows.forEach(row => {
+    const key = String(row.querySelector('.sec-key')?.value || '').trim().toUpperCase();
+    if (!key) return;
+
+    const title = '';
+    const mode  = String(row.querySelector('.sec-mode')?.value || 'all');
+
+    const q = num(row.querySelector('.sec-q')?.value);
+    const m = num(row.querySelector('.sec-m')?.value);
+
+    const any = num(row.querySelector('.sec-any')?.value);
+    const total = num(row.querySelector('.sec-total')?.value);
+
+    cfg[key] = { mode, q, m, any, total };
+  });
+
+  return cfg;
+}
+
+// Detect “Section A/B/C/D” anchor positions (only detection, no marks parsing)
+async function detectSectionAnchors(srcBytes) {
+  const anchors = []; // {pageIndex, letter, x, y}
+
+  // IMPORTANT: PDF.js may detach buffers when using workers.
+  // So always pass a COPY to PDF.js, never the original buffer used by pdf-lib.
+  const bytes = (srcBytes instanceof Uint8Array) ? srcBytes : new Uint8Array(srcBytes);
+  const pdfjsBytes = new Uint8Array(bytes); // copy
+
+  const pdf = await pdfjsLib.getDocument({ data: pdfjsBytes }).promise;
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+
+    for (const item of (tc.items || [])) {
+      const str = (item.str || '').trim();
+      if (!str) continue;
+
+      // Match: "Section A", "SECTION A", "Section-A", "SectionA" (loose)
+      const m = str.match(/section\s*[-:]?\s*([A-Z])\b/i);
+      if (!m) continue;
+
+      const letter = (m[1] || '').toUpperCase();
+      const t = item.transform || [];
+      const x = t[4] || 0;
+      const y = t[5] || 0;
+
+      // keep first occurrence per section per page
+      const exists = anchors.some(a => a.pageIndex === (p - 1) && a.letter === letter);
+      if (!exists) anchors.push({ pageIndex: (p - 1), letter, x, y });
+    }
+  }
+  return anchors;
+}
+
+// Draw a black capsule ribbon (no image) + texts; also masks original line
+function drawSectionRibbon(outPage, pageW, pageH, yAnchor, letter, cfg, fontBold) {
+  const marginX = 35;
+  const barW = pageW - (marginX * 2);
+  const barH = 14;
+  const barY = Math.max(0, yAnchor - 2);
+
+  // 1) Mask old line area
+  outPage.drawRectangle({
+    x: marginX,
+    y: barY - 2,
+    width: barW,
+    height: barH + 4,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  // 2) White capsule with black border
+  const r = barH / 2;
+  const borderWidth = 1.2;
+
+  // Outer black capsule
+  outPage.drawRectangle({
+    x: marginX + r,
+    y: barY,
+    width: barW - (2 * r),
+    height: barH,
+    color: PDFLib.rgb(0, 0, 0)
+  });
+
+  outPage.drawEllipse({
+    x: marginX + r,
+    y: barY + r,
+    xScale: r,
+    yScale: r,
+    color: PDFLib.rgb(0, 0, 0)
+  });
+
+  outPage.drawEllipse({
+    x: marginX + barW - r,
+    y: barY + r,
+    xScale: r,
+    yScale: r,
+    color: PDFLib.rgb(0, 0, 0)
+  });
+
+  // Inner white capsule
+  const inX = marginX + borderWidth;
+  const inY = barY + borderWidth;
+  const inW = barW - (2 * borderWidth);
+  const inH = barH - (2 * borderWidth);
+  const inR = Math.max(0, r - borderWidth);
+
+  outPage.drawRectangle({
+    x: inX + inR,
+    y: inY,
+    width: inW - (2 * inR),
+    height: inH,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  outPage.drawRectangle({
+    x: inX,
+    y: inY + inR,
+    width: inW,
+    height: inH - (2 * inR),
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  outPage.drawEllipse({
+    x: inX + inR,
+    y: inY + inR,
+    xScale: inR,
+    yScale: inR,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  outPage.drawEllipse({
+    x: inX + inW - inR,
+    y: inY + inR,
+    xScale: inR,
+    yScale: inR,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  outPage.drawEllipse({
+    x: inX + inR,
+    y: inY + inH - inR,
+    xScale: inR,
+    yScale: inR,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  outPage.drawEllipse({
+    x: inX + inW - inR,
+    y: inY + inH - inR,
+    xScale: inR,
+    yScale: inR,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  // 3) Texts
+  const sc = cfg?.[letter] || {};
+  const mode = (sc.mode || 'all');
+
+  const q = sc.q || 0;
+  const m = sc.m || 0;
+
+  const any = sc.any || 0;
+  const totalQ = sc.total || 0;
+
+  let leftText = `Section ${letter}: Answer all the questions`;
+  let rightText = '';
+
+  if (mode === 'any' && any > 0 && totalQ > 0 && m > 0) {
+    leftText = `Section ${letter}: Answer any ${any} out of ${totalQ} questions`;
+    const totMarks = any * m;
+    rightText = `${any} × ${m} = ${totMarks} Marks`;
+  } else if (q > 0 && m > 0) {
+    leftText = `Section ${letter}: Answer all the questions`;
+    const totMarks = q * m;
+    rightText = `${q} × ${m} = ${totMarks} Marks`;
+  }
+
+  const fontSize = 11;
+
+  outPage.drawText(leftText, {
+    x: marginX + 14,
+    y: barY + 3,
+    size: fontSize,
+    font: fontBold,
+    color: PDFLib.rgb(0, 0, 0)
+  });
+
+  if (rightText) {
+    const rw = fontBold.widthOfTextAtSize(rightText, fontSize);
+    outPage.drawText(rightText, {
+      x: marginX + barW - 14 - rw,
+      y: barY + 3,
+      size: fontSize,
+      font: fontBold,
+      color: PDFLib.rgb(0, 0, 0)
+    });
+  }
+}
+// Apply ribbons to one page based on detected anchors
+function applySectionRibbonsToPage(outPage, pageIndex, pageW, pageH, anchors, cfg, fontBold, scaleFactor = 1) {
+  const list = (anchors || []).filter(a => a.pageIndex === pageIndex);
+  for (const a of list) {
+    const yScaled = (a.y || 0) * scaleFactor;   // IMPORTANT: page-1 is scaled
+    drawSectionRibbon(outPage, pageW, pageH, yScaled, a.letter, cfg, fontBold);
+  }
+}
+
+async function process(mode = 'download') {
+  const showSpinner = () => document.getElementById('spinner-overlay').style.display = "flex";
+  const hideSpinner = () => document.getElementById('spinner-overlay').style.display = "none";
+
+  showSpinner();
+  try {
+    const fileInput = document.getElementById('pdfFile');
+    const pdfFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+    if (!pdfFile) { hideSpinner(); return alert("Please select a PDF to brand!"); }
+
+    const schoolName = "St. Patrick's School";
+    const examName = (document.getElementById('examName').value || '').trim().toUpperCase();
+    const className = document.getElementById('class-dropdown').dataset.value || '';
+    const subject = document.getElementById('subject-dropdown').dataset.value || '';
+    const date = document.getElementById('date').value || '';
+    const time = (document.getElementById('time').value || '').trim();
+    const maxMarks = (document.getElementById('maxMarks').value || '').trim();
+
+   const srcBuffer = await pdfFile.arrayBuffer();
+const srcBytes = new Uint8Array(srcBuffer);
+
+// Detect Section anchors (PDF.js) + read manual inputs
+const sectionAnchors = await detectSectionAnchors(new Uint8Array(srcBytes)); // copy
+const sectionCfg = getSectionConfig();
+
+// pdf-lib uses its own copy (safe even if PDF.js detached its copy)
+const srcDoc = await PDFLib.PDFDocument.load(new Uint8Array(srcBytes));
+const outDoc = await PDFLib.PDFDocument.create();
+
+    // Fonts & assets for the output doc
+    const fontBold = await outDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold);
+    const fontReg  = await outDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+    const fetchLogo = async (path) => {
+      const res = await fetch(path);
+      const imgBytes = await res.arrayBuffer();
+      return await outDoc.embedPng(imgBytes);
+    };
+    const logo1Img = await fetchLogo('schoollogo1.png');
+    const logo2Img = await fetchLogo('schoollogo2.png');
+
+    const subj = (subject || '').toUpperCase();
+
+    // Header metrics
+    const headH = 170;     // header height
+    const topPad = 10;     // small gap under header
+
+    // Single control: first-page scale (%). No vertical slide.
+const scale1Pct = document.getElementById('scale1Input')
+  ? Number(document.getElementById('scale1Input').value) : 96;
+
+    const pageCount = srcDoc.getPageCount();
+
+    for (let i = 0; i < pageCount; i++) {
+      const srcPage = srcDoc.getPage(i);
+      const { width, height } = srcPage.getSize();
+
+     if (i === 0) {
+  const outPage = outDoc.addPage([width, height]);
+
+  // 1) Original first-page content SCALED (no slide). Keep top just below header.
+  const embedded = await outDoc.embedPage(srcPage);
+  const scale = Math.min(1, Math.max(0.85, scale1Pct / 100)); // clamp 85–100%, no auto shift
+  const drawW = width * scale;
+  const drawH = height * scale;
+  const x = 0;           // no sideways move
+const y = 0;           // no vertical push; original origin
+
+outPage.drawPage(embedded, { x, y, width: drawW, height: drawH });
+
+     // 2) White mask band to ensure header area is clean (defensive)
+  // Mask up to just below the info box WITHOUT referencing boxY before it's declared
+  const boxY_tmp = height - 185;  // same value as your boxY
+  const maskPadBelowBox = 20;      // adjust 4–10 if needed
+  const maskY = boxY_tmp - maskPadBelowBox;
+  const maskH = height - maskY;
+
+  outPage.drawRectangle({
+    x: 0,
+    y: maskY,
+    width: width,
+    height: maskH,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  // 3) Header (logos + titles) on TOP
+  const logoScale1 = 66 / logo1Img.height;
+  const logoScale2 = 66 / logo2Img.height;
+  const logo1Dims = { width: logo1Img.width * logoScale1, height: 66 };
+  const logo2Dims = { width: logo2Img.width * logoScale2, height: 66 };
+
+  const logoY = height - 100;
+  outPage.drawImage(logo1Img, { x: 50, y: logoY, width: logo1Dims.width, height: logo1Dims.height });
+  outPage.drawImage(logo2Img, { x: width - 50 - logo2Dims.width, y: logoY, width: logo2Dims.width, height: logo2Dims.height });
+
+  const headingY = logoY + 15;
+  outPage.drawText(schoolName, {
+    x: width / 2 - fontBold.widthOfTextAtSize(schoolName, 24) / 2,
+    y: headingY + 30, size: 24, font: fontBold, color: PDFLib.rgb(0.10, 0.18, 0.5)
+  });
+  outPage.drawText('IIT & NEET FOUNDATION', {
+    x: width / 2 - fontReg.widthOfTextAtSize('IIT & NEET FOUNDATION', 15) / 2,
+    y: headingY + 10, size: 15, font: fontReg, color: PDFLib.rgb(0.08, 0.25, 0.48)
+  });
+  outPage.drawText(examName, {
+    x: width / 2 - fontBold.widthOfTextAtSize(examName, 15) / 2,
+    y: headingY - 10, size: 15, font: fontBold, color: PDFLib.rgb(0.12, 0.12, 0.16)
+  });
+
+ // Info box (capsule / rounded corners)
+  const boxX = 50, boxY = height - 185, boxW = width - 100, boxH = 55;
+
+  const rBox = 12; // corner radius (adjust 10–16 if needed)
+  const borderW = 2;
+
+  // --- Outer border (rounded) ---
+  // center rects
+  outPage.drawRectangle({
+    x: boxX + rBox,
+    y: boxY,
+    width: boxW - (2 * rBox),
+    height: boxH,
+    color: PDFLib.rgb(0, 0, 0)
+  });
+  outPage.drawRectangle({
+    x: boxX,
+    y: boxY + rBox,
+    width: boxW,
+    height: boxH - (2 * rBox),
+    color: PDFLib.rgb(0, 0, 0)
+  });
+
+  // corner circles
+  outPage.drawEllipse({ x: boxX + rBox,         y: boxY + rBox,         xScale: rBox, yScale: rBox, color: PDFLib.rgb(0,0,0) });
+  outPage.drawEllipse({ x: boxX + boxW - rBox,  y: boxY + rBox,         xScale: rBox, yScale: rBox, color: PDFLib.rgb(0,0,0) });
+  outPage.drawEllipse({ x: boxX + rBox,         y: boxY + boxH - rBox,  xScale: rBox, yScale: rBox, color: PDFLib.rgb(0,0,0) });
+  outPage.drawEllipse({ x: boxX + boxW - rBox,  y: boxY + boxH - rBox,  xScale: rBox, yScale: rBox, color: PDFLib.rgb(0,0,0) });
+
+  // --- Inner fill (white) ---
+  const inX = boxX + borderW;
+  const inY = boxY + borderW;
+  const inW = boxW - (2 * borderW);
+  const inH = boxH - (2 * borderW);
+  const rIn = Math.max(0, rBox - borderW);
+
+  // center rects
+  outPage.drawRectangle({
+    x: inX + rIn,
+    y: inY,
+    width: inW - (2 * rIn),
+    height: inH,
+    color: PDFLib.rgb(1, 1, 1)
+  });
+  outPage.drawRectangle({
+    x: inX,
+    y: inY + rIn,
+    width: inW,
+    height: inH - (2 * rIn),
+    color: PDFLib.rgb(1, 1, 1)
+  });
+
+  // corner circles
+  outPage.drawEllipse({ x: inX + rIn,        y: inY + rIn,        xScale: rIn, yScale: rIn, color: PDFLib.rgb(1,1,1) });
+  outPage.drawEllipse({ x: inX + inW - rIn,  y: inY + rIn,        xScale: rIn, yScale: rIn, color: PDFLib.rgb(1,1,1) });
+  outPage.drawEllipse({ x: inX + rIn,        y: inY + inH - rIn,  xScale: rIn, yScale: rIn, color: PDFLib.rgb(1,1,1) });
+  outPage.drawEllipse({ x: inX + inW - rIn,  y: inY + inH - rIn,  xScale: rIn, yScale: rIn, color: PDFLib.rgb(1,1,1) });
+  outPage.drawText("Class: " + className, { x: 68, y: boxY + boxH - 22, size: 12.5, font: fontBold, color: PDFLib.rgb(0.11, 0.23, 0.53) });
+  outPage.drawText((subject || '').toUpperCase(), { x: width/2 - fontBold.widthOfTextAtSize((subject||'').toUpperCase(), 17)/2, y: boxY + boxH - 20, size: 17, font: fontBold, color: PDFLib.rgb(0.07, 0.18, 0.5) });
+  outPage.drawText("Date: " + (formatDate(date) || ''), { x: width - 168, y: boxY + boxH - 22, size: 12.5, font: fontBold, color: PDFLib.rgb(0.11, 0.23, 0.53) });
+  const timeStr = formatDuration(Number(time));
+if (timeStr) {
+  outPage.drawText("Time: " + timeStr, {
+    x: 68, y: boxY + 13, size: 12.5, font: fontBold,
+    color: PDFLib.rgb(0.15, 0.24, 0.35)
+  });
+}
+if ((maxMarks || '').trim()) {
+  outPage.drawText("Max Marks: " + String(maxMarks).trim(), {
+    x: width - 168, y: boxY + 13, size: 12.5, font: fontBold,
+    color: PDFLib.rgb(0.15, 0.24, 0.35)
+  });
+}
+
+// Apply Section ribbons (page 1 too)
+applySectionRibbonsToPage(outPage, i, width, height, sectionAnchors, sectionCfg, fontBold, scale);
+      } else {
+  // OTHER PAGES: copy, then overlay section ribbons if needed
+  const [copied] = await outDoc.copyPages(srcDoc, [i]);
+  outDoc.addPage(copied);
+
+  const outPage = outDoc.getPage(outDoc.getPageCount() - 1);
+  applySectionRibbonsToPage(outPage, i, width, height, sectionAnchors, sectionCfg, fontBold, 1);
+}
+    }
+
+    const newPdfBytes = await outDoc.save();
+    const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    // Refresh inline preview
+    if (typeof showInlinePreview === 'function') showInlinePreview(url);
+
+    if (mode === 'download') {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'QuestionPaper_Branded.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  } catch (e) {
+    alert("Error while branding PDF: " + (e.message || e));
+  } finally {
+    hideSpinner();
+  }
+}
+
+
+async function showInlinePreview(url) {
+  const wrap = document.getElementById('previewWrap');
+  const frame = document.getElementById('pdfPreview');
+  const canvas = document.getElementById('pdfCanvas');
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!wrap) return;
+
+  if (isMobile && canvas) {
+    // Mobile: render first page into canvas (feed ArrayBuffer to PDF.js)
+    if (frame) { frame.removeAttribute('src'); frame.style.display = 'none'; }
+    canvas.style.display = 'block';
+
+    try {
+      // Convert blob URL -> ArrayBuffer (more reliable on mobile)
+      const resp = await fetch(url);
+      const buffer = await resp.arrayBuffer();
+
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const page = await pdf.getPage(1);
+
+      const containerWidth = canvas.parentElement.clientWidth;
+      const v1 = page.getViewport({ scale: 1 });
+      const scale = containerWidth / v1.width;
+      const viewport = page.getViewport({ scale });
+
+      // Retina-friendly sizing
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.style.width = Math.round(viewport.width) + 'px';
+      canvas.style.height = Math.round(viewport.height) + 'px';
+      canvas.width = Math.round(viewport.width * dpr);
+      canvas.height = Math.round(viewport.height * dpr);
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      await page.render({ canvasContext: ctx, viewport }).promise;
+    } catch (err) {
+      console.warn('Mobile canvas preview failed:', err);
+      canvas.style.display = 'none';
+    }
+  } else {
+    // Desktop: iframe preview
+    if (canvas) canvas.style.display = 'none';
+    if (frame) { frame.style.display = 'block'; frame.src = url; }
+  }
+  wrap.style.display = 'block';
+}
+
+document.getElementById('processBtn').onclick = () => process('download');
+
+
+// Live inline preview when the first-page SCALE slider moves
+(function () {
+  const el = document.getElementById('scale1Input');
+  if (!el) return;
+  let t = null;
+  el.addEventListener('input', () => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => process('inline'), 200); // debounce
+  });
+})();
+// Plus / Minus controls for first-page scale
+(function () {
+  const slider = document.getElementById('scale1Input');
+  const minus  = document.getElementById('scale1Minus');
+  const plus   = document.getElementById('scale1Plus');
+  if (!slider || !minus || !plus) return;
+
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  const bump = (delta) => {
+    const min = Number(slider.min) || 85;
+    const max = Number(slider.max) || 100;
+    const step = Number(slider.step) || 1;
+    let next = Number(slider.value || 100) + delta * step;
+    next = clamp(next, min, max);
+    if (next !== Number(slider.value)) {
+      slider.value = String(next);
+      // Update label
+      const lbl = document.getElementById('scale1Value');
+      if (lbl) lbl.textContent = next + '%';
+      // Reuse the same preview logic by firing the input event
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  };
+
+  minus.addEventListener('click', () => bump(-1));
+  plus.addEventListener('click',  () => bump(+1));
+})();
+
+// Dynamic Sections UI init
+(function () {
+  const btn = document.getElementById('addSectionBtn');
+  if (btn) btn.addEventListener('click', () => addSectionRow({}));
+
+  // Default first row
+  addSectionRow({ key: 'A' });
+})();
+flatpickr("#date", {
+  dateFormat: "d-m-Y",
+  allowInput: false,      // disables typing, popup only
+  defaultDate: "today"
+});
+createDropdown('class-dropdown', config.classes, 'Select Class');
+createDropdown('subject-dropdown', [], 'Select Subject');
+document.getElementById('class-dropdown').addEventListener('change', () => {
+  const selectedClass = document.getElementById('class-dropdown').dataset.value;
+  const subjects = config.subjectMappings[selectedClass] || [];
+  createDropdown('subject-dropdown', subjects, 'Select Subject');
+});
+
+// Auto inline preview as soon as a file is chosen
+document.getElementById('pdfFile').addEventListener('change', async () => {
+  const input = document.getElementById('pdfFile');
+  if (!input.files || !input.files.length) {
+    const wrap = document.getElementById('previewWrap');
+    const frame = document.getElementById('pdfPreview');
+    if (frame) frame.removeAttribute('src');
+    if (wrap) wrap.style.display = 'none';
+    return;
+  }
+  await process('inline'); // no download; refresh inline preview
+});
+</script>
+<div id="spinner-overlay" style="display:none;position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.80);align-items:center;justify-content:center;">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+    <div class="spinner" style="width:52px;height:52px;border:6px solid #1762a7;border-top:6px solid #bcd6ef;border-radius:50%;animation:spin 1s linear infinite;"></div>
+    <div style="font-size:1.1em;color:#1762a7;font-weight:600;">Branding PDF, please wait...</div>
+  </div>
+</div>
+</body>
+</html>
+
+
