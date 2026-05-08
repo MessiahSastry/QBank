@@ -6,6 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <style>
     :root {
       --primary-blue: #0f3d6b;
@@ -86,10 +93,169 @@
       box-shadow: 0 2px 10px #0f3d6b0a;
     }
     .submit-btn:active { transform: scale(0.98);}
-    #downloadLink {
-      display: none; margin-top:18px; color: #0f3d6b;
-      text-decoration: underline; font-weight:bold; text-align: center;
-    }
+   #downloadLink {
+  display: none; margin-top:18px; color: #0f3d6b;
+  text-decoration: underline; font-weight:bold; text-align: center;
+}
+
+/* ===== SCHOOL MANAGER UI ===== */
+.school-manager-card {
+  border: 1.4px solid #bcd6ef;
+  background: #f7fafd;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.school-manager-title {
+  font-size: 1.05em;
+  font-weight: 800;
+  color: #0f3d6b;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.school-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.school-action-btn {
+  height: 38px;
+  border-radius: 8px;
+  border: 1.2px solid #bcd6ef;
+  background: #fff;
+  color: #1762a7;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.school-action-btn.danger {
+  color: #b00020;
+}
+
+.school-preview-card {
+  margin-top: 12px;
+  border: 1px solid #d5e5f5;
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 58px 1fr 58px;
+  gap: 10px;
+  align-items: center;
+  min-height: 70px;
+}
+
+.school-logo-preview {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  border: 1px solid #d5e5f5;
+  object-fit: contain;
+  background: #fff;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.school-preview-center {
+  text-align: center;
+  min-width: 0;
+}
+
+.school-preview-name {
+  font-weight: 800;
+  color: #0f3d6b;
+  font-size: 1em;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.school-preview-subtitle {
+  margin-top: 3px;
+  font-size: 0.82em;
+  color: #54656f;
+  font-weight: 600;
+}
+
+/* ===== SCHOOL POPUP ===== */
+.school-modal-overlay {
+  display: none;
+  position: fixed;
+  z-index: 9998;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+.school-modal {
+  width: 100%;
+  max-width: 430px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 27, 68, 0.25);
+  overflow: hidden;
+}
+
+.school-modal-header {
+  background: linear-gradient(90deg, #1762a7, #0f3d6b);
+  color: #fff;
+  padding: 13px 16px;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.school-modal-close {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.school-modal-body {
+  padding: 16px;
+}
+
+.school-modal-footer {
+  padding: 0 16px 16px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.school-save-btn {
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #1762a7, #0f3d6b);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.school-cancel-btn {
+  height: 42px;
+  border: 1.3px solid #bcd6ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f3d6b;
+  font-weight: 800;
+  cursor: pointer;
+}
     @media (max-width: 600px) {
       main { padding-top: 14px; }
       .form-container { padding: 15px 5vw 18px 5vw; border-radius: 12px; }
@@ -150,6 +316,40 @@
     <main>
       <div class="form-container">
         <h2>Upload & Brand Question Paper</h2>
+
+<!-- School Manager -->
+<div class="school-manager-card">
+  <div class="school-manager-title">
+    <i class="fa-solid fa-school"></i>
+    School Branding
+  </div>
+
+  <div class="form-group" style="margin-bottom:10px;">
+    <label>Select School:</label>
+    <div id="school-dropdown" class="custom-dropdown"></div>
+  </div>
+
+  <div class="school-actions">
+    <button type="button" class="school-action-btn" id="addSchoolBtn">
+      + Add
+    </button>
+    <button type="button" class="school-action-btn" id="editSchoolBtn">
+      Edit
+    </button>
+    <button type="button" class="school-action-btn danger" id="deleteSchoolBtn">
+      Delete
+    </button>
+  </div>
+
+  <div class="school-preview-card">
+    <img id="previewLeftLogo" class="school-logo-preview" alt="Left Logo">
+    <div class="school-preview-center">
+      <div id="previewSchoolName" class="school-preview-name">No school selected</div>
+      <div id="previewSchoolSubtitle" class="school-preview-subtitle">Add or select a school</div>
+    </div>
+    <img id="previewRightLogo" class="school-logo-preview" alt="Right Logo">
+  </div>
+</div>
         <div class="form-group">
           <label>Question Paper PDF (from Examin8):</label>
           <input type="file" id="pdfFile" accept="application/pdf">
@@ -195,7 +395,13 @@
     (PDF detects “Section X” positions. Add sections like A, B, C, D, E… and enter rules.)
   </small>
 </div>
-<button class="submit-btn" id="processBtn">Add Header & Download</button>
+<button class="submit-btn" id="processBtn">Download Selected School PDF</button>
+
+<button class="submit-btn" id="zipAllSchoolsBtn"
+  style="margin-top:10px;background:linear-gradient(90deg,#2e7d32,#1b5e20);">
+  Download ZIP for All Schools
+</button>
+
 <a id="downloadLink">Download Branded PDF</a>
 
 <!-- Single control: SCALE only the FIRST PAGE content (keeps top just under header) -->
@@ -231,8 +437,70 @@
     </main>
   </div>
 
+<!-- Add / Edit School Popup -->
+<div id="schoolModalOverlay" class="school-modal-overlay">
+  <div class="school-modal">
+    <div class="school-modal-header">
+      <span id="schoolModalTitle">Add New School</span>
+      <button type="button" id="closeSchoolModalBtn" class="school-modal-close">×</button>
+    </div>
+
+    <div class="school-modal-body">
+      <div class="form-group">
+        <label>School Name:</label>
+        <input type="text" id="modalSchoolName" placeholder="Enter school name">
+      </div>
+
+      <div class="form-group">
+        <label>Subtitle / Tagline:</label>
+        <input type="text" id="modalSchoolSubtitle" placeholder="Example: IIT & NEET FOUNDATION">
+      </div>
+
+      <div class="form-group">
+        <label>Left Logo:</label>
+        <input type="file" id="modalLeftLogo" accept="image/*">
+      </div>
+
+      <div class="form-group">
+        <label>Right Logo:</label>
+        <input type="file" id="modalRightLogo" accept="image/*">
+      </div>
+
+      <div class="form-group">
+        <label>Header Colour:</label>
+        <input type="text" id="modalHeaderColor" value="#0f3d6b" placeholder="#0f3d6b">
+      </div>
+    </div>
+
+    <div class="school-modal-footer">
+      <button type="button" id="cancelSchoolModalBtn" class="school-cancel-btn">Cancel</button>
+      <button type="button" id="saveSchoolBtn" class="school-save-btn">Save School</button>
+    </div>
+  </div>
+</div>
+
 <script>
   window.PDFLib = PDFLib;
+
+  // ===== FIREBASE SETUP =====
+  const firebaseConfig = {
+    apiKey: "AIzaSyCvmAUKhINkAXkOdvX1ZN3yESl5XC9iCkE",
+    authDomain: "scimentra-qbank.firebaseapp.com",
+    projectId: "scimentra-qbank",
+    storageBucket: "scimentra-qbank.firebasestorage.app",
+    messagingSenderId: "371409178675",
+    appId: "1:371409178675:web:fc25a0ff3897e8a5031346",
+    measurementId: "G-KV01PDN7QD"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
 const config = {
   classes: ["Nursery", "LKG", "UKG", "1st Class", "2nd Class", "3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class"],
   subjectMappings: {
@@ -583,7 +851,7 @@ function applySectionRibbonsToPage(outPage, pageIndex, pageW, pageH, anchors, cf
   }
 }
 
-async function process(mode = 'download') {
+async function process(mode = 'download', schoolOverride = null, keepSpinner = false) {
   const showSpinner = () => document.getElementById('spinner-overlay').style.display = "flex";
   const hideSpinner = () => document.getElementById('spinner-overlay').style.display = "none";
 
@@ -593,8 +861,15 @@ async function process(mode = 'download') {
     const pdfFile = fileInput && fileInput.files ? fileInput.files[0] : null;
     if (!pdfFile) { hideSpinner(); return alert("Please select a PDF to brand!"); }
 
-    const schoolName = "St. Patrick's School";
-    const examName = (document.getElementById('examName').value || '').trim().toUpperCase();
+   const selectedSchool = schoolOverride || allSchools.find(s => s.id === selectedSchoolId);
+if (!selectedSchool) {
+  if (!keepSpinner) hideSpinner();
+  return alert("Please select a school first!");
+}
+
+const schoolName = selectedSchool.schoolName || "School";
+const schoolSubtitle = selectedSchool.subtitle || "";
+const examName = (document.getElementById('examName').value || '').trim().toUpperCase();
     const className = document.getElementById('class-dropdown').dataset.value || '';
     const subject = document.getElementById('subject-dropdown').dataset.value || '';
     const date = document.getElementById('date').value || '';
@@ -615,13 +890,25 @@ const outDoc = await PDFLib.PDFDocument.create();
     // Fonts & assets for the output doc
     const fontBold = await outDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold);
     const fontReg  = await outDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
-    const fetchLogo = async (path) => {
-      const res = await fetch(path);
-      const imgBytes = await res.arrayBuffer();
-      return await outDoc.embedPng(imgBytes);
-    };
-    const logo1Img = await fetchLogo('schoollogo1.png');
-    const logo2Img = await fetchLogo('schoollogo2.png');
+    const fetchLogoFromUrl = async (url) => {
+  if (!url) return null;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Logo loading failed");
+
+  const imgBytes = await res.arrayBuffer();
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  const lowerUrl = String(url).toLowerCase();
+
+  if (contentType.includes('jpeg') || contentType.includes('jpg') || lowerUrl.includes('.jpg') || lowerUrl.includes('.jpeg')) {
+    return await outDoc.embedJpg(imgBytes);
+  }
+
+  return await outDoc.embedPng(imgBytes);
+};
+
+const logo1Img = await fetchLogoFromUrl(selectedSchool.leftLogoUrl);
+const logo2Img = await fetchLogoFromUrl(selectedSchool.rightLogoUrl);
 
     const subj = (subject || '').toUpperCase();
 
@@ -668,24 +955,44 @@ outPage.drawPage(embedded, { x, y, width: drawW, height: drawH });
   });
 
   // 3) Header (logos + titles) on TOP
-  const logoScale1 = 66 / logo1Img.height;
-  const logoScale2 = 66 / logo2Img.height;
-  const logo1Dims = { width: logo1Img.width * logoScale1, height: 66 };
-  const logo2Dims = { width: logo2Img.width * logoScale2, height: 66 };
-
   const logoY = height - 100;
-  outPage.drawImage(logo1Img, { x: 50, y: logoY, width: logo1Dims.width, height: logo1Dims.height });
-  outPage.drawImage(logo2Img, { x: width - 50 - logo2Dims.width, y: logoY, width: logo2Dims.width, height: logo2Dims.height });
+
+if (logo1Img) {
+  const logoScale1 = 66 / logo1Img.height;
+  const logo1Dims = { width: logo1Img.width * logoScale1, height: 66 };
+  outPage.drawImage(logo1Img, {
+    x: 50,
+    y: logoY,
+    width: logo1Dims.width,
+    height: logo1Dims.height
+  });
+}
+
+if (logo2Img) {
+  const logoScale2 = 66 / logo2Img.height;
+  const logo2Dims = { width: logo2Img.width * logoScale2, height: 66 };
+  outPage.drawImage(logo2Img, {
+    x: width - 50 - logo2Dims.width,
+    y: logoY,
+    width: logo2Dims.width,
+    height: logo2Dims.height
+  });
+}
 
   const headingY = logoY + 15;
   outPage.drawText(schoolName, {
     x: width / 2 - fontBold.widthOfTextAtSize(schoolName, 24) / 2,
     y: headingY + 30, size: 24, font: fontBold, color: PDFLib.rgb(0.10, 0.18, 0.5)
   });
-  outPage.drawText('IIT & NEET FOUNDATION', {
-    x: width / 2 - fontReg.widthOfTextAtSize('IIT & NEET FOUNDATION', 15) / 2,
-    y: headingY + 10, size: 15, font: fontReg, color: PDFLib.rgb(0.08, 0.25, 0.48)
+  if (schoolSubtitle) {
+  outPage.drawText(schoolSubtitle, {
+    x: width / 2 - fontReg.widthOfTextAtSize(schoolSubtitle, 15) / 2,
+    y: headingY + 10,
+    size: 15,
+    font: fontReg,
+    color: PDFLib.rgb(0.08, 0.25, 0.48)
   });
+}
   outPage.drawText(examName, {
     x: width / 2 - fontBold.widthOfTextAtSize(examName, 15) / 2,
     y: headingY - 10, size: 15, font: fontBold, color: PDFLib.rgb(0.12, 0.12, 0.16)
@@ -778,25 +1085,43 @@ applySectionRibbonsToPage(outPage, i, width, height, sectionAnchors, sectionCfg,
     }
 
     const newPdfBytes = await outDoc.save();
-    const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
 
-    // Refresh inline preview
-    if (typeof showInlinePreview === 'function') showInlinePreview(url);
+const safeSchoolName = makeSafeFileName(schoolName);
+const safeExamName = makeSafeFileName(examName || 'exam');
+const safeClassName = makeSafeFileName(className || 'class');
+const safeSubjectName = makeSafeFileName(subject || 'subject');
 
-    if (mode === 'download') {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'QuestionPaper_Branded.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+const fileName = `${safeExamName}_${safeClassName}_${safeSubjectName}_${safeSchoolName}.pdf`;
+
+// For ZIP generation: return PDF bytes instead of downloading
+if (mode === 'bytes') {
+  return {
+    bytes: newPdfBytes,
+    fileName
+  };
+}
+
+const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+const url = URL.createObjectURL(blob);
+
+// Refresh inline preview
+if (typeof showInlinePreview === 'function') {
+  await showInlinePreview(url);
+}
+
+if (mode === 'download') {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
   } catch (e) {
     alert("Error while branding PDF: " + (e.message || e));
-  } finally {
-    hideSpinner();
-  }
+ } finally {
+  if (!keepSpinner) hideSpinner();
+}
 }
 
 
@@ -848,7 +1173,84 @@ async function showInlinePreview(url) {
   wrap.style.display = 'block';
 }
 
+function setSpinnerText(text) {
+  const spinnerText = document.querySelector('#spinner-overlay div div:last-child');
+  if (spinnerText) spinnerText.textContent = text;
+}
+
+async function downloadZipForAllSchools() {
+  const showSpinner = () => document.getElementById('spinner-overlay').style.display = "flex";
+  const hideSpinner = () => document.getElementById('spinner-overlay').style.display = "none";
+
+  const fileInput = document.getElementById('pdfFile');
+  const pdfFile = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+  if (!pdfFile) {
+    return alert("Please select a PDF first!");
+  }
+
+  if (!allSchools || !allSchools.length) {
+    return alert("No active schools found. Please add schools first.");
+  }
+
+  if (typeof JSZip === 'undefined') {
+    return alert("JSZip library not loaded. Please check internet connection.");
+  }
+
+  showSpinner();
+
+  try {
+    const zip = new JSZip();
+
+    for (let i = 0; i < allSchools.length; i++) {
+      const school = allSchools[i];
+
+      setSpinnerText(`Preparing ${i + 1}/${allSchools.length}: ${school.schoolName}`);
+
+      const result = await process('bytes', school, true);
+
+      if (result && result.bytes && result.fileName) {
+        zip.file(result.fileName, result.bytes);
+      }
+    }
+
+    setSpinnerText("Creating ZIP file, please wait...");
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const zipUrl = URL.createObjectURL(zipBlob);
+
+    const examName = (document.getElementById('examName').value || '').trim().toUpperCase();
+    const className = document.getElementById('class-dropdown').dataset.value || '';
+    const subject = document.getElementById('subject-dropdown').dataset.value || '';
+
+    const safeExamName = makeSafeFileName(examName || 'exam');
+    const safeClassName = makeSafeFileName(className || 'class');
+    const safeSubjectName = makeSafeFileName(subject || 'subject');
+
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = `${safeExamName}_${safeClassName}_${safeSubjectName}_all-schools.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(zipUrl);
+
+  } catch (err) {
+    console.error('ZIP generation error:', err);
+    alert("Error creating ZIP: " + (err.message || err));
+  } finally {
+    setSpinnerText("Branding PDF, please wait...");
+    hideSpinner();
+  }
+}
+
 document.getElementById('processBtn').onclick = () => process('download');
+
+const zipBtn = document.getElementById('zipAllSchoolsBtn');
+if (zipBtn) {
+  zipBtn.addEventListener('click', downloadZipForAllSchools);
+}
 
 
 // Live inline preview when the first-page SCALE slider moves
@@ -898,6 +1300,375 @@ document.getElementById('processBtn').onclick = () => process('download');
   // Default first row
   addSectionRow({ key: 'A' });
 })();
+
+
+// ===== SCHOOL MANAGER POPUP LOGIC =====
+let allSchools = [];
+let selectedSchoolId = '';
+let editingSchoolId = '';
+
+function resetSchoolModal() {
+  const name = document.getElementById('modalSchoolName');
+  const subtitle = document.getElementById('modalSchoolSubtitle');
+  const leftLogo = document.getElementById('modalLeftLogo');
+  const rightLogo = document.getElementById('modalRightLogo');
+  const headerColor = document.getElementById('modalHeaderColor');
+
+  if (name) name.value = '';
+  if (subtitle) subtitle.value = '';
+  if (leftLogo) leftLogo.value = '';
+  if (rightLogo) rightLogo.value = '';
+  if (headerColor) headerColor.value = '#0f3d6b';
+
+  editingSchoolId = '';
+}
+
+function openSchoolModal(mode = 'add') {
+  const overlay = document.getElementById('schoolModalOverlay');
+  const title = document.getElementById('schoolModalTitle');
+  const saveBtn = document.getElementById('saveSchoolBtn');
+
+  if (!overlay) return;
+
+  resetSchoolModal();
+
+  if (mode === 'edit') {
+    if (!selectedSchoolId) {
+      alert('Please select a school to edit.');
+      return;
+    }
+
+    const school = allSchools.find(s => s.id === selectedSchoolId);
+    if (!school) {
+      alert('Selected school details not found.');
+      return;
+    }
+
+    editingSchoolId = selectedSchoolId;
+
+    document.getElementById('modalSchoolName').value = school.schoolName || '';
+    document.getElementById('modalSchoolSubtitle').value = school.subtitle || '';
+    document.getElementById('modalHeaderColor').value = school.headerColor || '#0f3d6b';
+
+    if (title) title.textContent = 'Edit School';
+    if (saveBtn) saveBtn.textContent = 'Update School';
+  } else {
+    if (title) title.textContent = 'Add New School';
+    if (saveBtn) saveBtn.textContent = 'Save School';
+  }
+
+  overlay.style.display = 'flex';
+}
+
+function closeSchoolModal() {
+  const overlay = document.getElementById('schoolModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function escapeHTML(text) {
+  return String(text || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function makeSafeFileName(text) {
+  return String(text || 'school')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'school';
+}
+
+function getFileExtension(file) {
+  const name = file?.name || '';
+  const ext = name.split('.').pop();
+  return ext ? ext.toLowerCase() : 'png';
+}
+
+async function uploadSchoolLogo(file, schoolSlug, side) {
+  if (!file) return '';
+
+  const ext = getFileExtension(file);
+  const filePath = `schoolLogos/${schoolSlug}/${Date.now()}-${side}-logo.${ext}`;
+
+  const storageRef = storage.ref(filePath);
+  const snapshot = await storageRef.put(file);
+  return await snapshot.ref.getDownloadURL();
+}
+
+function updateSchoolPreview(school) {
+  const leftLogo = document.getElementById('previewLeftLogo');
+  const rightLogo = document.getElementById('previewRightLogo');
+  const nameEl = document.getElementById('previewSchoolName');
+  const subEl = document.getElementById('previewSchoolSubtitle');
+
+  if (!school) {
+    if (leftLogo) {
+      leftLogo.removeAttribute('src');
+      leftLogo.style.visibility = 'hidden';
+    }
+    if (rightLogo) {
+      rightLogo.removeAttribute('src');
+      rightLogo.style.visibility = 'hidden';
+    }
+    if (nameEl) nameEl.textContent = 'No school selected';
+    if (subEl) subEl.textContent = 'Add or select a school';
+    return;
+  }
+
+  if (leftLogo) {
+    if (school.leftLogoUrl) {
+      leftLogo.src = school.leftLogoUrl;
+      leftLogo.style.visibility = 'visible';
+    } else {
+      leftLogo.removeAttribute('src');
+      leftLogo.style.visibility = 'hidden';
+    }
+  }
+
+  if (rightLogo) {
+    if (school.rightLogoUrl) {
+      rightLogo.src = school.rightLogoUrl;
+      rightLogo.style.visibility = 'visible';
+    } else {
+      rightLogo.removeAttribute('src');
+      rightLogo.style.visibility = 'hidden';
+    }
+  }
+
+  if (nameEl) nameEl.textContent = school.schoolName || 'School';
+  if (subEl) subEl.textContent = school.subtitle || '';
+}
+
+function renderSchoolDropdown() {
+  const container = document.getElementById('school-dropdown');
+  if (!container) return;
+
+  if (!allSchools.length) {
+    container.innerHTML = `
+      <div class="selected-option">No schools added yet</div>
+      <div class="dropdown-options"></div>
+    `;
+    container.dataset.value = '';
+    selectedSchoolId = '';
+    updateSchoolPreview(null);
+    return;
+  }
+
+  const selectedSchool = allSchools.find(s => s.id === selectedSchoolId) || allSchools[0];
+  selectedSchoolId = selectedSchool.id;
+
+  const optionsHTML = allSchools.map(s => `
+    <div data-value="${escapeHTML(s.id)}">${escapeHTML(s.schoolName)}</div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="selected-option">${escapeHTML(selectedSchool.schoolName)}</div>
+    <div class="dropdown-options">${optionsHTML}</div>
+  `;
+
+  container.dataset.value = selectedSchoolId;
+  updateSchoolPreview(selectedSchool);
+}
+
+function initSchoolDropdown() {
+  const container = document.getElementById('school-dropdown');
+  if (!container) return;
+
+  container.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    document.querySelectorAll('.custom-dropdown.open').forEach(d => {
+      if (d !== container) d.classList.remove('open');
+    });
+
+    container.classList.toggle('open');
+
+    if (e.target.dataset.value) {
+      selectedSchoolId = e.target.dataset.value;
+      container.dataset.value = selectedSchoolId;
+
+      const school = allSchools.find(s => s.id === selectedSchoolId);
+      const selectedText = container.querySelector('.selected-option');
+
+      if (selectedText && school) selectedText.textContent = school.schoolName;
+
+      container.classList.remove('open');
+      updateSchoolPreview(school);
+      container.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+}
+
+async function loadSchoolsFromFirebase() {
+  try {
+    const snap = await db.collection('schools')
+      .where('isActive', '==', true)
+      .orderBy('schoolName', 'asc')
+      .get();
+
+    allSchools = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    renderSchoolDropdown();
+  } catch (err) {
+    console.error('Error loading schools:', err);
+    alert('Error loading schools from Firebase: ' + (err.message || err));
+  }
+}
+async function deleteSelectedSchoolFromFirebase() {
+  if (!selectedSchoolId) {
+    alert('Please select a school to delete.');
+    return;
+  }
+
+  const school = allSchools.find(s => s.id === selectedSchoolId);
+  if (!school) {
+    alert('Selected school details not found.');
+    return;
+  }
+
+  const ok = confirm(`Delete "${school.schoolName}" from the school list?`);
+  if (!ok) return;
+
+  try {
+    await db.collection('schools').doc(selectedSchoolId).update({
+      isActive: false,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert('School deleted successfully.');
+
+    selectedSchoolId = '';
+    await loadSchoolsFromFirebase();
+
+  } catch (err) {
+    console.error('Error deleting school:', err);
+    alert('Error deleting school: ' + (err.message || err));
+  }
+}
+async function saveSchoolToFirebase() {
+  const nameEl = document.getElementById('modalSchoolName');
+  const subEl = document.getElementById('modalSchoolSubtitle');
+  const leftFileEl = document.getElementById('modalLeftLogo');
+  const rightFileEl = document.getElementById('modalRightLogo');
+  const colorEl = document.getElementById('modalHeaderColor');
+
+  const schoolName = (nameEl?.value || '').trim();
+  const subtitle = (subEl?.value || '').trim();
+  const headerColor = (colorEl?.value || '#0f3d6b').trim() || '#0f3d6b';
+
+  const leftFile = leftFileEl?.files?.[0] || null;
+  const rightFile = rightFileEl?.files?.[0] || null;
+
+  if (!schoolName) {
+    alert('Please enter school name.');
+    return;
+  }
+
+  const existingSchool = editingSchoolId
+    ? allSchools.find(s => s.id === editingSchoolId)
+    : null;
+
+  if (!editingSchoolId && !leftFile) {
+    alert('Please upload at least the left logo.');
+    return;
+  }
+
+  const saveBtn = document.getElementById('saveSchoolBtn');
+  const oldBtnText = saveBtn ? saveBtn.textContent : '';
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+    }
+
+    const schoolSlug = makeSafeFileName(schoolName);
+
+    let leftLogoUrl = existingSchool?.leftLogoUrl || '';
+    let rightLogoUrl = existingSchool?.rightLogoUrl || '';
+
+    if (leftFile) {
+      leftLogoUrl = await uploadSchoolLogo(leftFile, schoolSlug, 'left');
+    }
+
+    if (rightFile) {
+      rightLogoUrl = await uploadSchoolLogo(rightFile, schoolSlug, 'right');
+    }
+
+    const schoolData = {
+      schoolName,
+      subtitle,
+      leftLogoUrl,
+      rightLogoUrl,
+      headerColor,
+      isActive: true,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (editingSchoolId) {
+      await db.collection('schools').doc(editingSchoolId).update(schoolData);
+      alert('School updated successfully.');
+    } else {
+      schoolData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const docRef = await db.collection('schools').add(schoolData);
+      selectedSchoolId = docRef.id;
+      alert('School saved successfully.');
+    }
+
+    closeSchoolModal();
+    await loadSchoolsFromFirebase();
+
+  } catch (err) {
+    console.error('Error saving school:', err);
+    alert('Error saving school: ' + (err.message || err));
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = oldBtnText || 'Save School';
+    }
+  }
+}
+
+(function initSchoolManagerUI() {
+  initSchoolDropdown();
+loadSchoolsFromFirebase();
+
+  const addBtn = document.getElementById('addSchoolBtn');
+  const editBtn = document.getElementById('editSchoolBtn');
+  const deleteBtn = document.getElementById('deleteSchoolBtn');
+  const closeBtn = document.getElementById('closeSchoolModalBtn');
+  const cancelBtn = document.getElementById('cancelSchoolModalBtn');
+  const saveBtn = document.getElementById('saveSchoolBtn');
+  const overlay = document.getElementById('schoolModalOverlay');
+
+  if (addBtn) addBtn.addEventListener('click', () => openSchoolModal('add'));
+  if (editBtn) editBtn.addEventListener('click', () => openSchoolModal('edit'));
+
+  if (deleteBtn) {
+  deleteBtn.addEventListener('click', deleteSelectedSchoolFromFirebase);
+}
+
+  if (closeBtn) closeBtn.addEventListener('click', closeSchoolModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeSchoolModal);
+
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeSchoolModal();
+    });
+  }
+
+ if (saveBtn) {
+  saveBtn.addEventListener('click', saveSchoolToFirebase);
+}
+})();
+
 flatpickr("#date", {
   dateFormat: "d-m-Y",
   allowInput: false,      // disables typing, popup only
