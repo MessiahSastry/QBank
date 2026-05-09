@@ -1467,7 +1467,7 @@ function __qbGetExportChapterLabel(chapterName, idx) {
 }
 
 function renderCenteredChapterTitle(text, chapterLabel = '') {
-   const __theme = __pdfTheme;
+  const __theme = __pdfTheme;
 
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
@@ -1475,116 +1475,118 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
   t.style.cssText = `
     display:block;
     width:100%;
-    margin:${chapterLabel ? '28px' : '0'} 0 14px 0;
+    margin:${chapterLabel ? '22px' : '0'} 0 16px 0;
     page-break-inside:avoid;
     break-inside:avoid;
     page-break-after:avoid;
     break-after:avoid;
   `;
 
-  const subLine = includeWorksheet
+  const __chapterInfo = __qbSplitChapterDisplay(text);
+  const __subtopicsText = __qbExtractSubtopicsLine(text);
+
+  const __subtopicsLine = [
+    __chapterInfo.assimilationTitle || '',
+    __subtopicsText || ''
+  ].filter(Boolean).join(' | ');
+
+  const __chapterNumber = String(chapterLabel || '')
+    .replace(/^Chapter\s*/i, '')
+    .trim();
+
+  const __rightBottomLine = includeWorksheet
     ? 'WORKSHEET'
     : (includeKey ? 'QUESTIONS & ANSWERS' : '');
 
-  const __chapterInfo = __qbSplitChapterDisplay(text);
-
   t.innerHTML = `
     <div style="
-      margin:0 auto 10px auto;
-      max-width:540px;
+      width:100%;
+      max-width:700px;
+      margin:0 auto 12px auto;
+      display:grid;
+      grid-template-columns:128px 1fr;
       border:2px solid ${__theme.outerBorder};
-      border-radius:18px;
-      background:${__theme.bodyBg};
+      border-radius:6px;
+      overflow:hidden;
       box-sizing:border-box;
-      position:relative;
-      overflow:visible;
+      font-family:'Bookman Old Style', Bookman, Georgia, serif;
+      background:${__theme.bodyBg};
+      page-break-inside:avoid;
+      break-inside:avoid;
     ">
-      ${chapterLabel ? `
       <div style="
-        position:absolute;
-        left:50%;
-        top:-16px;
-        transform:translateX(-50%);
-        min-width:170px;
-        text-align:center;
-        background:${__theme.pillBg};
+        background:${__theme.dark};
         color:#ffffff;
-        font-family:'Times New Roman', Times, serif;
-        font-size:0.98em;
-        font-weight:800;
-        letter-spacing:0.04em;
-        text-transform:uppercase;
-        padding:10px 18px;
-        border-radius:10px;
-        border:2px solid ${__theme.pillBorder};
-        white-space:nowrap;
-        line-height:1;
-        z-index:20;
+        min-height:112px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        padding:10px 8px;
         box-sizing:border-box;
       ">
-        ${__qbEscapeHtml(String(chapterLabel))}
-      </div>` : ''}
+        <div style="
+          font-size:12pt;
+          font-weight:800;
+          letter-spacing:0.08em;
+          line-height:1.1;
+        ">
+          CHAPTER
+        </div>
+
+        <div style="
+          font-size:36pt;
+          font-weight:900;
+          line-height:1;
+          margin-top:6px;
+        ">
+          ${__qbEscapeHtml(__chapterNumber || '')}
+        </div>
+      </div>
 
       <div style="
-        margin:14px;
-        border:1.5px solid ${__theme.innerBorder};
-        border-radius:12px;
-        padding:34px 20px 16px 20px;
-        text-align:center;
-        background:${__theme.bodyBg};
-        position:relative;
-        z-index:1;
+        background:${__theme.pale || __theme.bodyBg};
+        padding:14px 18px 12px 18px;
+        box-sizing:border-box;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        border-left:2px solid ${__theme.outerBorder};
       ">
         <div style="
-          font-size:1.34em;
+          font-size:22pt;
           font-weight:900;
-          letter-spacing:0.03em;
-          text-align:center;
-          text-transform:uppercase;
-          margin-bottom:${__chapterInfo.assimilationTitle ? '4px' : '6px'};
           line-height:1.15;
-          font-family:'Times New Roman', Times, serif;
           color:${__theme.titleFill};
-          -webkit-text-fill-color:${__theme.titleFill};
-          -webkit-text-stroke:1px ${__theme.titleStroke};
-          text-shadow:0 0 0 ${__theme.titleStroke};
+          margin-bottom:6px;
         ">
           ${__qbEscapeHtml(
             String(__chapterInfo.mainTitle || 'Unspecified')
               .replace(/\s*:\s*$/,'')
-              .toUpperCase()
           )}
         </div>
 
-        ${__chapterInfo.assimilationTitle ? `
+        ${__subtopicsLine ? `
         <div style="
-          display:inline-block;
-          font-size:0.82em;
-          font-weight:800;
-          letter-spacing:0.05em;
-          text-align:center;
-          text-transform:uppercase;
-          margin:0 auto 8px auto;
-          line-height:1.05;
-          color:${__theme.assimText};
-          background:${__theme.assimBg};
-          padding:4px 12px;
-          border-radius:6px;
-          font-family:'Times New Roman', Times, serif;
+          font-size:12pt;
+          font-weight:600;
+          line-height:1.35;
+          color:${__theme.normalHeadingColor || __theme.dark};
+          margin-bottom:8px;
         ">
-          ${__qbEscapeHtml(String(__chapterInfo.assimilationTitle).toUpperCase())}
+          ${__qbEscapeHtml(__subtopicsLine)}
         </div>` : ''}
 
-        ${subLine ? `
+        ${__rightBottomLine ? `
         <div style="
-          font-size:1em;
-          font-weight:800;
+          font-size:16pt;
+          font-weight:900;
           letter-spacing:0.08em;
-          text-align:center;
-          color:${__theme.subText};
-          font-family:'Times New Roman', Times, serif;
+          line-height:1.15;
+          color:${__theme.sectionColor || __theme.dark};
         ">
-          ${subLine}
+          ${__qbEscapeHtml(__rightBottomLine)}
         </div>` : ''}
       </div>
     </div>
@@ -2603,10 +2605,11 @@ await __waitForImages(printable);
           const exportFileName = `Question_Bank_${(finalSchoolName || 'SciMentra').replace(/ /g, "_")}_${(classVal || '').replace(/ /g, "_")}_${(subjectVal || '').replace(/ /g, "_")}_${((orderedSelectedChapters.join('_')) || 'All').replace(/ /g, "_")}.pdf`;
 
       try {
-              await __qbOpenPrintWindowForPDF({
+             await __qbOpenPrintWindowForPDF({
   title: exportFileName.replace(/\.pdf$/i, ''),
   contentHtml: printable.innerHTML,
   headerText: `${classVal} / ${subjectVal}`,
+  headerRightText: includeWorksheet ? 'WORKSHEET' : 'QUESTIONS & ANSWERS',
   pageStartNumber: __pageStartNumber,
   pdfTheme: __pdfTheme
 });
@@ -2764,7 +2767,7 @@ await __waitForImages(printable);
       }, 50);
     }
 
-async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', pageStartNumber = 1, pdfTheme = null }) {
+async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', headerRightText = 'WORKSHEET', pageStartNumber = 1, pdfTheme = null }) {
   const __themeForPdf = pdfTheme || __qbGetSubjectTheme('');
   const printWin = window.open('', '_blank');
   if (!printWin) {
@@ -2968,9 +2971,30 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 
 .a4-running-header.even{
   margin-right:auto;
-  justify-content:flex-start;
+  justify-content:space-between;
   text-align:left;
+  gap:12px;
   background:linear-gradient(to right, ${__themeForPdf.dark} 0%, ${__themeForPdf.dark} 34%, ${__themeForPdf.light} 70%, rgba(255,255,255,0) 100%);
+}
+
+.a4-running-header .chapter-label{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#ffffff;
+  font-weight:700;
+}
+
+.a4-running-header .worksheet-label{
+  flex:0 0 auto;
+  margin-left:auto;
+  color:${__themeForPdf.dark};
+  font-weight:900;
+  letter-spacing:0.08em;
+  white-space:nowrap;
+  text-align:right;
 }
 
 .a4-running-header.hide{
@@ -3286,6 +3310,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
    const __CONTENT = ${contentJson};
 const __TITLE = ${JSON.stringify(String(title || 'Question_Bank'))};
 const __HEADER_TEXT = ${JSON.stringify('' + (headerText || ''))};
+const __HEADER_RIGHT_TEXT = ${JSON.stringify('' + (headerRightText || 'WORKSHEET'))};
 const __PAGE_START = ${JSON.stringify(Number(pageStartNumber || 1))};
 const __PDF_THEME = ${JSON.stringify(__themeForPdf)};
 
@@ -3920,11 +3945,22 @@ if (node.classList.contains('worksheet-flow-block')) {
     headerEl.classList.remove('hide');
     headerEl.classList.remove('odd');
     headerEl.classList.add('even');
-    headerEl.textContent = pageChapterName || '';
+   headerEl.innerHTML = '';
 
-    if (!(pageChapterName || '').trim()) {
-      headerEl.classList.add('hide');
-    }
+const chapterSpan = document.createElement('span');
+chapterSpan.className = 'chapter-label';
+chapterSpan.textContent = pageChapterName || '';
+
+const worksheetSpan = document.createElement('span');
+worksheetSpan.className = 'worksheet-label';
+worksheetSpan.textContent = __HEADER_RIGHT_TEXT || 'WORKSHEET';
+
+headerEl.appendChild(chapterSpan);
+headerEl.appendChild(worksheetSpan);
+
+if (!(pageChapterName || '').trim()) {
+  headerEl.classList.add('hide');
+}
   }
 }
 
@@ -6369,6 +6405,30 @@ async function __qbEnsureWorkbookShuffleForQuestionNodes(questionNodes = []) {
     savedCount: savedEntries.length,
     newlySavedCount: saveTasks.length
   };
+}
+
+function __qbExtractSubtopicsLine(raw) {
+  const src = String(raw || '').replace(/\r/g, '').trim();
+
+  let match = src.match(/\(\s*SUBTOPICS?\s*:\s*([\s\S]*?)\)\s*$/i);
+
+  if (!match) {
+    match = src.match(/\bSUBTOPICS?\s*:\s*([\s\S]*)$/i);
+  }
+
+  let subtopics = match ? String(match[1] || '') : '';
+
+  subtopics = subtopics
+    .replace(/[•*]/g, '')
+    .replace(/\n+/g, ' | ')
+    .replace(/\s*[,;]\s*/g, ' | ')
+    .replace(/\s*\|\s*/g, ' | ')
+    .replace(/\s+/g, ' ')
+    .replace(/\|\s*\|/g, '|')
+    .replace(/^(\||-|:)+|(\||-|:)+$/g, '')
+    .trim();
+
+  return subtopics;
 }
 
 function __qbSplitChapterDisplay(raw) {
