@@ -3935,6 +3935,47 @@ if (node.classList.contains('worksheet-flow-block')) {
         if (headerEl) {
   const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
 
+  // Chapter heading page:
+  // Hide only running header. Footer/page number will still remain.
+  if (isChapterTitlePage) {
+    headerEl.classList.add('hide');
+    headerEl.innerHTML = '';
+  }
+
+  // Normal pages:
+  // Keep your existing even-page running header style.
+  // Left side = chapter name, right side = WORKSHEET.
+  else if (actualPageNumber % 2 !== 0) {
+    headerEl.classList.add('hide');
+    headerEl.innerHTML = '';
+  }
+
+  else {
+    headerEl.classList.remove('hide');
+    headerEl.classList.remove('odd');
+    headerEl.classList.add('even');
+
+    headerEl.innerHTML = '';
+
+    const chapterSpan = document.createElement('span');
+    chapterSpan.className = 'chapter-label';
+    chapterSpan.textContent = pageChapterName || '';
+
+    const worksheetSpan = document.createElement('span');
+    worksheetSpan.className = 'worksheet-label';
+    worksheetSpan.textContent = __HEADER_RIGHT_TEXT || 'WORKSHEET';
+
+    headerEl.appendChild(chapterSpan);
+    headerEl.appendChild(worksheetSpan);
+
+    if (!(pageChapterName || '').trim()) {
+      headerEl.classList.add('hide');
+      headerEl.innerHTML = '';
+    }
+  }
+}
+  const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
+
   if (isChapterTitlePage) {
     headerEl.classList.add('hide');
     headerEl.textContent = '';
