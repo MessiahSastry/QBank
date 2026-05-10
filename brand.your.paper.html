@@ -1640,14 +1640,20 @@ async function saveSchoolToFirebase() {
   initSchoolDropdown();
 
   auth.onAuthStateChanged(async (user) => {
-    if (!user) {
-      alert('Please login first.');
-      window.location.href = 'login.html';
-      return;
-    }
+    try {
+      if (!user) {
+        console.warn('No saved login found on this page. Using temporary Firebase login.');
+        const cred = await auth.signInAnonymously();
+        user = cred.user;
+      }
 
-    console.log('Logged in user:', user.uid);
-    await loadSchoolsFromFirebase();
+      console.log('Firebase user ready:', user.uid);
+      await loadSchoolsFromFirebase();
+
+    } catch (err) {
+      console.error('Firebase auth/load error:', err);
+      alert('Firebase auth/load error: ' + (err.message || err));
+    }
   });
 
   const addBtn = document.getElementById('addSchoolBtn');
