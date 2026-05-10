@@ -3929,7 +3929,7 @@ if (node.classList.contains('worksheet-flow-block')) {
         finalShell.content.innerHTML = measureShell.content.innerHTML;
         normalizeBlockSpacing(finalShell.page, settings);
 
-       const headerEl = finalShell.page.querySelector('.a4-running-header');
+      const headerEl = finalShell.page.querySelector('.a4-running-header');
 const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
 
 if (headerEl) {
@@ -3941,8 +3941,8 @@ if (headerEl) {
     headerEl.innerHTML = '';
   }
 
-  // Odd page numbers only: show running header.
-  else if (actualPageNumber % 2 !== 0) {
+  // Even page numbers: show lesson/chapter name on the left.
+  else if (actualPageNumber % 2 === 0) {
     headerEl.classList.remove('hide');
     headerEl.classList.remove('odd');
     headerEl.classList.add('even');
@@ -3953,12 +3953,7 @@ if (headerEl) {
     chapterSpan.className = 'chapter-label';
     chapterSpan.textContent = pageChapterName || '';
 
-    const worksheetSpan = document.createElement('span');
-    worksheetSpan.className = 'worksheet-label';
-    worksheetSpan.textContent = __HEADER_RIGHT_TEXT || '';
-
     headerEl.appendChild(chapterSpan);
-    headerEl.appendChild(worksheetSpan);
 
     if (!(pageChapterName || '').trim()) {
       headerEl.classList.add('hide');
@@ -3966,10 +3961,24 @@ if (headerEl) {
     }
   }
 
-  // Even page numbers: no running header, but footer/page number remains.
+  // Odd page numbers: show WORKSHEET / QUESTIONS & ANSWERS on the right.
   else {
-    headerEl.classList.add('hide');
+    headerEl.classList.remove('hide');
+    headerEl.classList.remove('odd');
+    headerEl.classList.add('even');
+
     headerEl.innerHTML = '';
+
+    const worksheetSpan = document.createElement('span');
+    worksheetSpan.className = 'worksheet-label';
+    worksheetSpan.textContent = __HEADER_RIGHT_TEXT || '';
+
+    headerEl.appendChild(worksheetSpan);
+
+    if (!(__HEADER_RIGHT_TEXT || '').trim()) {
+      headerEl.classList.add('hide');
+      headerEl.innerHTML = '';
+    }
   }
 }
 
