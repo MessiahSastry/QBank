@@ -3433,10 +3433,13 @@ if (actualPageNo % 2 === 1) {
   pageNo.style.textAlign = 'left';
 }
 
-// Footer/page numbers disabled in master worksheet PDF.
-// Use pdf-page-number-editor.html after final alignment.
+// Keep footer line, but remove page number text.
+// Page numbers will be added later using pdf-page-number-editor.html.
+footerWrap.appendChild(footerLine);
+
 inner.appendChild(content);
 page.appendChild(inner);
+page.appendChild(footerWrap);
 
       return { page, inner, content };
     }
