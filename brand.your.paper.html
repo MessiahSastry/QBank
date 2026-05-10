@@ -1638,7 +1638,17 @@ async function saveSchoolToFirebase() {
 
 (function initSchoolManagerUI() {
   initSchoolDropdown();
-loadSchoolsFromFirebase();
+
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      alert('Please login first.');
+      window.location.href = 'login.html';
+      return;
+    }
+
+    console.log('Logged in user:', user.uid);
+    await loadSchoolsFromFirebase();
+  });
 
   const addBtn = document.getElementById('addSchoolBtn');
   const editBtn = document.getElementById('editSchoolBtn');
