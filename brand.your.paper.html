@@ -844,11 +844,9 @@ function drawSectionRibbon(outPage, pageW, pageH, yAnchor, letter, cfg, fontBold
 }
 // Apply ribbons to one page based on detected anchors
 function applySectionRibbonsToPage(outPage, pageIndex, pageW, pageH, anchors, cfg, fontBold, scaleFactor = 1) {
-  const list = (anchors || []).filter(a => a.pageIndex === pageIndex);
-  for (const a of list) {
-    const yScaled = (a.y || 0) * scaleFactor;   // IMPORTANT: page-1 is scaled
-    drawSectionRibbon(outPage, pageW, pageH, yScaled, a.letter, cfg, fontBold);
-  }
+  // Section capsule/ribbon disabled.
+  // Leave original PDF section headings exactly as they are.
+  return;
 }
 
 async function process(mode = 'download', schoolOverride = null, keepSpinner = false) {
