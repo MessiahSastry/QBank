@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PDF Page Number Editor | SciMentra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f4f8fc;
+      color: #123;
+    }
+
+    .header {
+      background: linear-gradient(90deg, #1762a7, #0f3d6b);
+      color: #fff;
+      text-align: center;
+      padding: 22px 12px;
+      border-bottom-left-radius: 26px;
+      border-bottom-right-radius: 26px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .header p {
+      margin: 5px 0 0;
+      opacity: 0.95;
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 24px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 18px;
+      box-shadow: 0 6px 22px rgba(0, 27, 68, 0.12);
+      box-sizing: border-box;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      color: #0f3d6b;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 12px;
+      border: 1.4px solid #bcd6ef;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: #f9fcff;
+      color: #123;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 620px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 14px;
+      background: #1762a7;
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .btn:hover {
+      background: #0f3d6b;
+    }
+
+    .btn.secondary {
+      background: #0f8b6d;
+    }
+
+    .note {
+      background: #eef6ff;
+      border-left: 5px solid #1762a7;
+      padding: 12px 14px;
+      border-radius: 10px;
+      line-height: 1.5;
+      color: #234;
+      margin-bottom: 18px;
+    }
+
+    #status {
+      margin-top: 14px;
+      font-weight: 700;
+      color: #0f3d6b;
+      text-align: center;
+    }
+
+    iframe {
+      width: 100%;
+      height: 520px;
+      border: 1.5px solid #d6e6f5;
+      border-radius: 12px;
+      margin-top: 18px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>SciMentra</h1>
+    <p>PDF Page Number Editor</p>
+  </div>
+
+  <div class="container">
+    <div class="note">
+      Upload your already aligned PDF here. This tool will only add page numbers.
+      It will not disturb your worksheet alignment.
+    </div>
+
+    <div class="form-group">
+      <label>Select PDF</label>
+      <input type="file" id="pdfFile" accept="application/pdf">
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>Starting Page Number</label>
+        <input type="number" id="startPage" value="1" min="1">
+      </div>
+
+      <div class="form-group">
+        <label>Page Number Style</label>
+        <select id="numberStyle">
+          <option value="pageText">1 | P a g e</option>
+          <option value="simple">1</option>
+          <option value="pageWord">Page 1</option>
+          <option value="dash">- 1 -</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>Position</label>
+        <select id="position">
+          <option value="mirrorBottom">Mirror Bottom: odd right, even left</option>
+          <option value="bottomCenter">Bottom Center</option>
+          <option value="bottomRight">Bottom Right</option>
+          <option value="bottomLeft">Bottom Left</option>
+          <option value="topRight">Top Right</option>
+          <option value="topCenter">Top Center</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Font Size</label>
+        <input type="number" id="fontSize" value="11" min="8" max="24">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="form-group">
+        <label>Bottom Margin</label>
+        <input type="number" id="bottomMargin" value="22" min="5" max="80">
+      </div>
+
+      <div class="form-group">
+        <label>Side Margin</label>
+        <input type="number" id="sideMargin" value="42" min="10" max="100">
+      </div>
+    </div>
+
+    <button class="btn" onclick="addPageNumbers()">Add Page Numbers & Preview</button>
+    <button class="btn secondary" onclick="downloadPdf()">Download Numbered PDF</button>
+
+    <div id="status"></div>
+
+    <iframe id="preview" style="display:none;"></iframe>
+  </div>
+
+  <script>
+    let finalPdfBytes = null;
+    let originalFileName = "numbered-pdf.pdf";
+
+    function formatPageNumber(num, style) {
+      if (style === "simple") return String(num);
+      if (style === "pageWord") return "Page " + num;
+      if (style === "dash") return "- " + num + " -";
+      return num + " | P a g e";
+    }
+
+    function getXPosition(position, pageWidth, textWidth, sideMargin, actualPageNo) {
+      if (position === "bottomCenter" || position === "topCenter") {
+        return (pageWidth - textWidth) / 2;
+      }
+
+      if (position === "bottomLeft") {
+        return sideMargin;
+      }
+
+      if (position === "bottomRight" || position === "topRight") {
+        return pageWidth - sideMargin - textWidth;
+      }
+
+      if (position === "mirrorBottom") {
+        if (actualPageNo % 2 === 1) {
+          return pageWidth - sideMargin - textWidth;
+        } else {
+          return sideMargin;
+        }
+      }
+
+      return pageWidth - sideMargin - textWidth;
+    }
+
+    function getYPosition(position, pageHeight, fontSize, bottomMargin) {
+      if (position === "topRight" || position === "topCenter") {
+        return pageHeight - 32;
+      }
+
+      return bottomMargin;
+    }
+
+    async function addPageNumbers() {
+      const fileInput = document.getElementById("pdfFile");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please select a PDF first.");
+        return;
+      }
+
+      originalFileName = file.name.replace(/\.pdf$/i, "") + "_numbered.pdf";
+
+      const startPage = Math.max(1, parseInt(document.getElementById("startPage").value, 10) || 1);
+      const style = document.getElementById("numberStyle").value;
+      const position = document.getElementById("position").value;
+      const fontSize = Math.max(8, parseInt(document.getElementById("fontSize").value, 10) || 11);
+      const bottomMargin = Math.max(5, parseInt(document.getElementById("bottomMargin").value, 10) || 22);
+      const sideMargin = Math.max(10, parseInt(document.getElementById("sideMargin").value, 10) || 42);
+
+      document.getElementById("status").textContent = "Adding page numbers...";
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+      const font = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+
+      const pages = pdfDoc.getPages();
+
+      pages.forEach((page, index) => {
+        const actualPageNo = startPage + index;
+        const pageText = formatPageNumber(actualPageNo, style);
+
+        const { width, height } = page.getSize();
+        const textWidth = font.widthOfTextAtSize(pageText, fontSize);
+
+        const x = getXPosition(position, width, textWidth, sideMargin, actualPageNo);
+        const y = getYPosition(position, height, fontSize, bottomMargin);
+
+        page.drawText(pageText, {
+          x,
+          y,
+          size: fontSize,
+          font,
+          color: PDFLib.rgb(0.20, 0.18, 0.18)
+        });
+      });
+
+      finalPdfBytes = await pdfDoc.save();
+
+      const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+
+      const preview = document.getElementById("preview");
+      preview.src = url;
+      preview.style.display = "block";
+
+      document.getElementById("status").textContent = "Page numbers added. Check preview and download.";
+    }
+
+    function downloadPdf() {
+      if (!finalPdfBytes) {
+        alert("Please add page numbers first.");
+        return;
+      }
+
+      const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = originalFileName;
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }, 100);
+    }
+  </script>
+
+</body>
+</html>
