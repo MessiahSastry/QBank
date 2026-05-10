@@ -4172,13 +4172,21 @@ gapSlider.addEventListener('change', queueRepaginate);
 marginSlider.addEventListener('change', queueRepaginate);
 lineSlider.addEventListener('change', queueRepaginate);
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      if (window.MathJax?.startup?.promise) {
-        await window.MathJax.startup.promise;
-      }
+    window.addEventListener('DOMContentLoaded', function () {
+  const mathReady =
+    (window.MathJax && window.MathJax.startup && window.MathJax.startup.promise)
+      ? window.MathJax.startup.promise
+      : Promise.resolve();
 
-      await renderAndPaginate();
+  mathReady
+    .then(function () {
+      return renderAndPaginate();
+    })
+    .catch(function (err) {
+      console.error('Preview render failed:', err);
+      alert('Preview render failed: ' + err.message);
     });
+});
   <\/script>
 </body>
 </html>`);
