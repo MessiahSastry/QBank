@@ -3408,30 +3408,6 @@ footerLine.style.top = '0';
 footerLine.style.height = '1px';
 footerLine.style.background = '#d4d4d4';
 
-const pageNo = document.createElement('div');
-const actualPageNo = (Number(__PAGE_START) || 1) + pageIndex;
-
-pageNo.textContent = String(actualPageNo) + ' | P a g e';
-pageNo.style.position = 'absolute';
-pageNo.style.top = '4mm';
-pageNo.style.background = 'transparent';
-pageNo.style.paddingLeft = '0';
-pageNo.style.color = (__PDF_THEME && __PDF_THEME.dark) ? __PDF_THEME.dark : '#6b2b2b';
-pageNo.style.fontSize = '11pt';
-pageNo.style.fontWeight = '400';
-pageNo.style.lineHeight = '1';
-pageNo.style.letterSpacing = '0.08em';
-pageNo.style.fontFamily = "'Times New Roman', Times, serif";
-
-if (actualPageNo % 2 === 1) {
-  pageNo.style.right = '0';
-  pageNo.style.left = 'auto';
-  pageNo.style.textAlign = 'right';
-} else {
-  pageNo.style.left = '0';
-  pageNo.style.right = 'auto';
-  pageNo.style.textAlign = 'left';
-}
 
 // Keep footer line, but remove page number text.
 // Page numbers will be added later using pdf-page-number-editor.html.
@@ -3924,62 +3900,14 @@ if (node.classList.contains('worksheet-flow-block')) {
         finalShell.content.innerHTML = measureShell.content.innerHTML;
         normalizeBlockSpacing(finalShell.page, settings);
 
-      const headerEl = finalShell.page.querySelector('.a4-running-header');
-const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-block');
+      // Running headers are disabled in clean master worksheet PDF.
+// Final headers will be added later in pdf-page-number-editor.html.
+const headerEl = finalShell.page.querySelector('.a4-running-header');
 
 if (headerEl) {
-  const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
-
-  // Chapter heading page:
-  // No running header. Footer/page number remains.
-  if (isChapterTitlePage) {
-    headerEl.classList.add('hide');
-    headerEl.innerHTML = '';
-  }
-
-  // EVEN page number:
-  // Lesson / chapter name on LEFT side only.
-  else if (actualPageNumber % 2 === 0) {
-    headerEl.classList.remove('hide');
-    headerEl.classList.remove('odd');
-    headerEl.classList.add('even');
-
-    headerEl.innerHTML = '';
-
-    const chapterSpan = document.createElement('span');
-    chapterSpan.className = 'chapter-label';
-    chapterSpan.textContent = pageChapterName || '';
-
-    headerEl.appendChild(chapterSpan);
-
-    if (!(pageChapterName || '').trim()) {
-      headerEl.classList.add('hide');
-      headerEl.innerHTML = '';
-    }
-  }
-
-  // ODD page number:
-  // WORKSHEET / QUESTIONS & ANSWERS on RIGHT side only.
-  else {
-    headerEl.classList.remove('hide');
-    headerEl.classList.remove('odd');
-    headerEl.classList.add('even');
-
-    headerEl.innerHTML = '';
-
-    const worksheetSpan = document.createElement('span');
-    worksheetSpan.className = 'worksheet-label';
-    worksheetSpan.textContent = __HEADER_RIGHT_TEXT || '';
-
-    headerEl.appendChild(worksheetSpan);
-
-    if (!(__HEADER_RIGHT_TEXT || '').trim()) {
-      headerEl.classList.add('hide');
-      headerEl.innerHTML = '';
-    }
-  }
+  headerEl.classList.add('hide');
+  headerEl.innerHTML = '';
 }
-
 pagesHost.appendChild(finalShell.page);
 
         measureShell.page.remove();
