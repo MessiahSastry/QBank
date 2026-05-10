@@ -1494,9 +1494,9 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
     .replace(/^Chapter\s*/i, '')
     .trim();
 
-  const __rightBottomLine = includeWorksheet
-    ? 'WORKSHEET'
-    : (includeKey ? 'QUESTIONS & ANSWERS' : '');
+  const __rightBottomLine = includeKey
+  ? 'QUESTIONS & ANSWERS'
+  : (includeWorksheet ? 'WORKSHEET' : '');
 
   t.innerHTML = `
     <div style="
@@ -2609,7 +2609,7 @@ await __waitForImages(printable);
   title: exportFileName.replace(/\.pdf$/i, ''),
   contentHtml: printable.innerHTML,
   headerText: `${classVal} / ${subjectVal}`,
-  headerRightText: includeWorksheet ? 'WORKSHEET' : 'QUESTIONS & ANSWERS',
+  headerRightText: includeKey ? 'QUESTIONS & ANSWERS' : 'WORKSHEET',
   pageStartNumber: __pageStartNumber,
   pdfTheme: __pdfTheme
 });
@@ -3963,7 +3963,7 @@ if (node.classList.contains('worksheet-flow-block')) {
 
     const worksheetSpan = document.createElement('span');
     worksheetSpan.className = 'worksheet-label';
-    worksheetSpan.textContent = __HEADER_RIGHT_TEXT || 'WORKSHEET';
+   worksheetSpan.textContent = __HEADER_RIGHT_TEXT || '';
 
     headerEl.appendChild(chapterSpan);
     headerEl.appendChild(worksheetSpan);
