@@ -290,6 +290,25 @@
     .dropdown-options div[data-value] {
       padding: 10px;
     }
+    .school-check-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #12416c;
+}
+
+.school-check-option:hover {
+  background: #e0eaff;
+}
+
+.school-check-option input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
     .dropdown-options div[data-value]:hover {
       background: #e0eaff;
     }
@@ -1192,9 +1211,11 @@ async function downloadZipForAllSchools() {
     return alert("Please select a PDF first!");
   }
 
-  if (!allSchools || !allSchools.length) {
-    return alert("No active schools found. Please add schools first.");
-  }
+ const schoolsToDownload = allSchools.filter(s => selectedSchoolIds.includes(s.id));
+
+if (!schoolsToDownload.length) {
+  return alert("Please select at least one school.");
+}
 
   if (typeof JSZip === 'undefined') {
     return alert("JSZip library not loaded. Please check internet connection.");
@@ -1205,11 +1226,10 @@ async function downloadZipForAllSchools() {
   try {
     const zip = new JSZip();
 
-    for (let i = 0; i < allSchools.length; i++) {
-      const school = allSchools[i];
+    for (let i = 0; i < schoolsToDownload.length; i++) {
+  const school = schoolsToDownload[i];
 
-      setSpinnerText(`Preparing ${i + 1}/${allSchools.length}: ${school.schoolName}`);
-
+  setSpinnerText(`Preparing ${i + 1}/${schoolsToDownload.length}: ${school.schoolName}`);
       const result = await process('bytes', school, true);
 
       if (result && result.bytes && result.fileName) {
@@ -1308,6 +1328,7 @@ if (zipBtn) {
 // ===== SCHOOL MANAGER POPUP LOGIC =====
 let allSchools = [];
 let selectedSchoolId = '';
+let selectedSchoolIds = [];
 let editingSchoolId = '';
 
 function resetSchoolModal() {
@@ -1464,26 +1485,47 @@ function renderSchoolDropdown() {
     `;
     container.dataset.value = '';
     selectedSchoolId = '';
+    selectedSchoolIds = [];
     updateSchoolPreview(null);
     return;
   }
 
-  const selectedSchool = allSchools.find(s => s.id === selectedSchoolId) || allSchools[0];
-  selectedSchoolId = selectedSchool.id;
+  // Select first school by default only when nothing is selected
+  if (!selectedSchoolIds.length) {
+    selectedSchoolIds = [allSchools[0].id];
+  }
 
-  const optionsHTML = allSchools.map(s => `
-    <div data-value="${escapeHTML(s.id)}">${escapeHTML(s.schoolName)}</div>
-  `).join('');
+  selectedSchoolId = selectedSchoolIds[0] || '';
+
+  const selectedNames = allSchools
+    .filter(s => selectedSchoolIds.includes(s.id))
+    .map(s => s.schoolName);
+
+  const selectedText = selectedNames.length
+    ? selectedNames.join(', ')
+    : 'Select schools';
+
+  const optionsHTML = allSchools.map(s => {
+    const checked = selectedSchoolIds.includes(s.id) ? 'checked' : '';
+
+    return `
+      <label class="school-check-option">
+        <input type="checkbox" value="${escapeHTML(s.id)}" ${checked}>
+        <span>${escapeHTML(s.schoolName)}</span>
+      </label>
+    `;
+  }).join('');
 
   container.innerHTML = `
-    <div class="selected-option">${escapeHTML(selectedSchool.schoolName)}</div>
+    <div class="selected-option">${escapeHTML(selectedText)}</div>
     <div class="dropdown-options">${optionsHTML}</div>
   `;
 
   container.dataset.value = selectedSchoolId;
-  updateSchoolPreview(selectedSchool);
-}
 
+  const firstSelectedSchool = allSchools.find(s => s.id === selectedSchoolId);
+  updateSchoolPreview(firstSelectedSchool || null);
+}
 function initSchoolDropdown() {
   const container = document.getElementById('school-dropdown');
   if (!container) return;
@@ -1495,24 +1537,42 @@ function initSchoolDropdown() {
       if (d !== container) d.classList.remove('open');
     });
 
-    container.classList.toggle('open');
+    // Checkbox selection
+    if (e.target && e.target.type === 'checkbox') {
+      const id = e.target.value;
 
-    if (e.target.dataset.value) {
-      selectedSchoolId = e.target.dataset.value;
+      if (e.target.checked) {
+        if (!selectedSchoolIds.includes(id)) {
+          selectedSchoolIds.push(id);
+        }
+      } else {
+        selectedSchoolIds = selectedSchoolIds.filter(x => x !== id);
+      }
+
+      selectedSchoolId = selectedSchoolIds[0] || '';
       container.dataset.value = selectedSchoolId;
 
-      const school = allSchools.find(s => s.id === selectedSchoolId);
+      const selectedNames = allSchools
+        .filter(s => selectedSchoolIds.includes(s.id))
+        .map(s => s.schoolName);
+
       const selectedText = container.querySelector('.selected-option');
+      if (selectedText) {
+        selectedText.textContent = selectedNames.length
+          ? selectedNames.join(', ')
+          : 'Select schools';
+      }
 
-      if (selectedText && school) selectedText.textContent = school.schoolName;
+      const firstSelectedSchool = allSchools.find(s => s.id === selectedSchoolId);
+      updateSchoolPreview(firstSelectedSchool || null);
 
-      container.classList.remove('open');
-      updateSchoolPreview(school);
-      container.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
     }
+
+    // Open / close dropdown
+    container.classList.toggle('open');
   });
 }
-
 async function loadSchoolsFromFirebase() {
   try {
     const snap = await db.collection('schools')
