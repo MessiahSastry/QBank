@@ -3935,13 +3935,14 @@ const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-bl
 if (headerEl) {
   const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
 
+  // Chapter heading page: no running header, but footer/page number remains.
   if (isChapterTitlePage) {
     headerEl.classList.add('hide');
     headerEl.innerHTML = '';
-  } else if (actualPageNumber % 2 !== 0) {
-    headerEl.classList.add('hide');
-    headerEl.innerHTML = '';
-  } else {
+  }
+
+  // Odd page numbers only: show running header.
+  else if (actualPageNumber % 2 !== 0) {
     headerEl.classList.remove('hide');
     headerEl.classList.remove('odd');
     headerEl.classList.add('even');
@@ -3963,6 +3964,12 @@ if (headerEl) {
       headerEl.classList.add('hide');
       headerEl.innerHTML = '';
     }
+  }
+
+  // Even page numbers: no running header, but footer/page number remains.
+  else {
+    headerEl.classList.add('hide');
+    headerEl.innerHTML = '';
   }
 }
 
