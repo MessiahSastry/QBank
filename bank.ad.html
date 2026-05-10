@@ -2777,8 +2777,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
   const safeTitle = __qbEscapeHtml(String(title || 'Question_Bank'));
   const contentJson = JSON.stringify(String(contentHtml || ''));
 
-  printWin.document.open();
-  printWin.document.write(`<!DOCTYPE html>
+    const previewHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -3935,13 +3934,15 @@ const isChapterTitlePage = !!finalShell.content.querySelector('.chapter-start-bl
 if (headerEl) {
   const actualPageNumber = (Number(__PAGE_START) || 1) + pageIndex;
 
-  // Chapter heading page: no running header, but footer/page number remains.
+  // Chapter heading page:
+  // No running header. Footer/page number remains.
   if (isChapterTitlePage) {
     headerEl.classList.add('hide');
     headerEl.innerHTML = '';
   }
 
-  // Even page numbers: show lesson/chapter name on the left.
+  // EVEN page number:
+  // Lesson / chapter name on LEFT side only.
   else if (actualPageNumber % 2 === 0) {
     headerEl.classList.remove('hide');
     headerEl.classList.remove('odd');
@@ -3961,7 +3962,8 @@ if (headerEl) {
     }
   }
 
-  // Odd page numbers: show WORKSHEET / QUESTIONS & ANSWERS on the right.
+  // ODD page number:
+  // WORKSHEET / QUESTIONS & ANSWERS on RIGHT side only.
   else {
     headerEl.classList.remove('hide');
     headerEl.classList.remove('odd');
@@ -4166,8 +4168,18 @@ lineSlider.addEventListener('change', queueRepaginate);
 });
   <\/script>
 </body>
-</html>`);
-  printWin.document.close();
+</html>`;
+
+  const previewBlob = new Blob([previewHtml], {
+    type: 'text/html;charset=utf-8'
+  });
+
+  const previewUrl = URL.createObjectURL(previewBlob);
+  printWin.location.href = previewUrl;
+
+  setTimeout(() => {
+    URL.revokeObjectURL(previewUrl);
+  }, 60000);
 }
     // Dropdown HTML
     function createDropdownHTML(id, options, defaultValueText = 'All') {
