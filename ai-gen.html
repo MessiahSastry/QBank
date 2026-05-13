@@ -2520,7 +2520,19 @@ async function saveSessionQuestions(sessionParams) {
   const saveButton = document.getElementById('ai-save-all-btn');
   if (saveButton.disabled) return;
 
-  if (!currentUserProfile || currentSessionQuestions.length === 0) {
+ if (!currentUserProfile) {
+    alert("Please login again before saving.");
+    return;
+  }
+
+  if (!Array.isArray(currentSessionQuestions) || currentSessionQuestions.length === 0) {
+    const cachedQuestions = JSON.parse(sessionStorage.getItem('currentSessionQuestions') || '[]');
+    if (Array.isArray(cachedQuestions) && cachedQuestions.length > 0) {
+      currentSessionQuestions = cachedQuestions;
+    }
+  }
+
+  if (!currentSessionQuestions.length) {
     alert("No new questions in this session to save.");
     return;
   }
@@ -3673,8 +3685,9 @@ questionData.parsedBody = [
     }
 
     currentSessionQuestions.push(questionData);
-    const questionEl = createQuestionElement(questionData, currentSessionQuestions.length - 1);
-    fragment.appendChild(questionEl);
+sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+const questionEl = createQuestionElement(questionData, currentSessionQuestions.length - 1);
+fragment.appendChild(questionEl);
   });
 
   messagesArea.appendChild(fragment);
