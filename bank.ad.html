@@ -2781,6 +2781,7 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
 <script>
   window.MathJax = {
     tex: { inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]], processEscapes: true },
@@ -3478,22 +3479,25 @@ async function exportPagesAsPdf() {
 
       const scale = 2; // reduced from 3
 
-      const imgData = await domtoimage.toJpeg(page, {
-        quality: 0.92,
-        bgcolor: '#ffffff',
-        width: Math.round(pageWidthPx * scale),
-        height: Math.round(pageHeightPx * scale),
-        style: {
-          transform: 'scale(' + scale + ')',
-          transformOrigin: 'top left',
-          width: pageWidthPx + 'px',
-          height: pageHeightPx + 'px'
-        }
-      });
+     if (typeof html2canvas === 'undefined') {
+  throw new Error('html2canvas library not loaded. Please check internet/CDN connection.');
+}
 
-      if (i > 0) pdf.addPage();
+const canvas = await html2canvas(page, {
+  scale: 2,
+  backgroundColor: '#ffffff',
+  useCORS: true,
+  allowTaint: false,
+  logging: false,
+  windowWidth: document.documentElement.scrollWidth,
+  windowHeight: document.documentElement.scrollHeight
+});
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+if (i > 0) pdf.addPage();
+
+pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
 
       const qrNodes = Array.from(page.querySelectorAll('[data-qr-link]'));
 
@@ -3515,9 +3519,25 @@ async function exportPagesAsPdf() {
     }
 
     pdf.save((__TITLE || 'Question_Bank') + '.pdf');
-  } catch (err) {
-    alert('PDF export failed: ' + err.message);
+ } catch (err) {
+  console.error('PDF EXPORT ERROR:', err);
+
+  let msg = 'Unknown error';
+
+  if (err && err.message) {
+    msg = err.message;
+  } else if (typeof err === 'string') {
+    msg = err;
+  } else {
+    try {
+      msg = JSON.stringify(err);
+    } catch (e) {
+      msg = String(err);
+    }
   }
+
+  alert('PDF export failed: ' + msg);
+}
 
   btn.disabled = false;
   btn.innerHTML = oldHtml;
