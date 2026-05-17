@@ -396,7 +396,7 @@
     const boldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold);
 
     const themeColor = hexToRgb(getSubjectThemeColor(subjectTheme));
-    const pageNumberColor = PDFLib.rgb(0.20, 0.18, 0.18);
+const pageNumberColor = themeColor;
 
     const pages = pdfDoc.getPages();
 
