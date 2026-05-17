@@ -4399,6 +4399,48 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     displayArea.innerHTML = '<p class="no-questions-message">Failed to load chapters.</p>';
   }
 }
+    function __qbGetRawQuestionType(data = {}) {
+      return String(
+        data.mcqType ||
+        data.type ||
+        (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
+      ).trim();
+    }
+
+    function __qbNormalizeQuestionType(data = {}) {
+      const rawType = __qbGetRawQuestionType(data);
+      const lowerType = rawType.toLowerCase();
+
+      if (lowerType.includes('assertion') && lowerType.includes('reason')) {
+        return 'Assertion and Reason (MCQ Single)';
+      }
+      if (lowerType.includes('fill') && lowerType.includes('blank')) {
+        return 'Fill in the Blanks';
+      }
+      if (lowerType.includes('multiple')) {
+        return 'MCQ (Multiple)';
+      }
+      if (lowerType.includes('single') || lowerType === 'mcq') {
+        return 'MCQ (Single)';
+      }
+      if (lowerType === 'descriptive') {
+        return 'Descriptive';
+      }
+
+      return Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive';
+    }
+
+    function __qbIsTextbookQuestion(data = {}, rawType = '') {
+      const typeText = String(rawType || __qbGetRawQuestionType(data)).toLowerCase();
+      return (
+        typeText.includes('text') ||
+        typeText.includes('book') ||
+        /textbook|text book|book/.test(String(data.source || data.tag || data.origin || '').toLowerCase()) ||
+        data.isTextbook === true ||
+        data.textbook === true
+      );
+    }
+
     async function fetchAndDisplayQuestions() {
       if (!currentUser) return;
 
@@ -4479,19 +4521,8 @@ if (Array.isArray(data.options)) {
 }
 
 // --- normalize type & detect textbook flag (used later) ---
-const __rawType = String(
-  data.mcqType ||
-  data.type ||
-  (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
-).trim();
-
-const __rtl = __rawType.toLowerCase();
-const __normType =
-  __rtl === 'mcq (multiple)' ? 'MCQ (Multiple)' :
-  __rtl === 'mcq (single)' ? 'MCQ (Single)' :
-  __rtl === 'fill in the blanks' ? 'Fill in the Blanks' :
-  __rtl === 'assertion and reason (mcq single)' ? 'Assertion and Reason (MCQ Single)' :
-  'Descriptive';
+const __rawType = __qbGetRawQuestionType(data);
+const __normType = __qbNormalizeQuestionType(data);
 
 window.__pdfQuestionDataMap[doc.id] = {
   ...data,
@@ -4500,12 +4531,7 @@ window.__pdfQuestionDataMap[doc.id] = {
   questionNumber: data.questionNumber || null
 };
 
-const __isTextbook =
-  __rtl.includes('text') || __rtl.includes('book') ||
-  String(data.source || data.tag || data.origin || '')
-    .toLowerCase()
-    .match(/textbook|text book|book/) ||
-  data.isTextbook === true || data.textbook === true;
+const __isTextbook = __qbIsTextbookQuestion(data, __rawType);
 
           /* --- Client-side filters for multi-select --- */
 
@@ -4917,10 +4943,9 @@ function autoLatexAll(str) {
   document.querySelectorAll('.edit-popup').forEach(p => p.remove());
 
   const isMCQInitial = Array.isArray(data.options) && data.options.length === 4;
-  const initialType =
-    data.mcqType && (data.mcqType === 'MCQ (Single)' || data.mcqType === 'MCQ (Multiple)')
-      ? data.mcqType
-      : (isMCQInitial ? 'MCQ (Single)' : 'Descriptive');
+  const initialRawType = __qbGetRawQuestionType(data);
+  const initialType = __qbNormalizeQuestionType(data);
+  const wasTextbookQuestion = __qbIsTextbookQuestion(data, initialRawType);
 
   const initMarks = (typeof data.marks === 'number' || /^[0-9]+$/.test(String(data.marks))) ? data.marks : '';
   const initLevel = data.difficulty || '';
@@ -5157,6 +5182,10 @@ function autoLatexAll(str) {
       updateObj.mcqType = qType;
       updateObj.options = [optA, optB, optC, optD];
       updateObj.parsedAnswer = ans;
+      if (wasTextbookQuestion) {
+        updateObj.isTextbook = true;
+        updateObj.textbook = true;
+      }
     }
 
     try {
@@ -5884,11 +5913,7 @@ if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Sectio
 }
 
 function __qbGetSectionKey(data = {}) {
-  const rawType = String(
-    data.mcqType ||
-    data.type ||
-    (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
-  ).trim();
+  const rawType = __qbNormalizeQuestionType(data);
 
   const level = String(data.difficulty || data.level || '').trim() || 'Level 1';
   const levelKey = level.replace(/\s+/g, '_').toUpperCase();
