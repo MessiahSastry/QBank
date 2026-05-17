@@ -1884,34 +1884,34 @@ function __qbMakeSubjectTheme(key, dark, mid, light, pale) {
 function __qbGetSubjectTheme(subject) {
   const s = String(subject || '').toLowerCase().trim();
 
-  if (__qbIsMathSubject(s)) {
-    return {
-      key: 'math',
-      dark: '#0f6b5b',
-      mid: '#5d6c67',
-      light: '#bfcfc9',
-      pale: '#fbfcfb',
+ if (__qbIsMathSubject(s)) {
+  return {
+    key: 'math',
+    dark: '#4B3F72',
+    mid: '#6A5AA3',
+    light: '#E6E1F3',
+    pale: '#F6F4FB',
 
-      outerBorder: '#8ea49d',
-      innerBorder: '#bfcfc9',
-      pillBg: '#0f6b5b',
-      pillBorder: '#0f6b5b',
-      titleFill: '#0f6b5b',
-      titleStroke: '#0f6b5b',
-      subText: '#0f6b5b',
-      assimBg: '#0f6b5b',
-      assimText: '#ffffff',
-      bodyBg: '#fbfcfb',
+    outerBorder: '#4B3F72',
+    innerBorder: '#6A5AA3',
+    pillBg: '#4B3F72',
+    pillBorder: '#6A5AA3',
+    titleFill: '#4B3F72',
+    titleStroke: '#4B3F72',
+    subText: '#6A5AA3',
+    assimBg: '#4B3F72',
+    assimText: '#ffffff',
+    bodyBg: '#F6F4FB',
 
-      levelBg: '#f3f6f4',
-      levelText: '#0f6b5b',
-      levelBorder: '#5d6c67',
+    levelBg: '#F6F4FB',
+    levelText: '#4B3F72',
+    levelBorder: '#6A5AA3',
 
-      sectionColor: '#0f6b5b',
-      normalHeadingColor: '#0f6b5b',
-      questionColor: '#0f6b5b'
-    };
-  }
+    sectionColor: '#4B3F72',
+    normalHeadingColor: '#4B3F72',
+    questionColor: '#4B3F72'
+  };
+}
 
   if (s.includes('physics')) {
     return __qbMakeSubjectTheme(
