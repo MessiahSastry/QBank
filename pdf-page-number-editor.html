@@ -290,9 +290,10 @@
     );
   }
 
-  function drawFadingHeaderBar(page, x, y, barWidth, barHeight, themeRgbParts, direction) {
-    const steps = 80;
+   function drawFadingHeaderBar(page, x, y, barWidth, barHeight, themeRgbParts, direction) {
+    const steps = 160;
     const stepWidth = barWidth / steps;
+    const radius = Math.min(10, barHeight / 2);
 
     for (let i = 0; i < steps; i++) {
       let strength;
@@ -303,17 +304,34 @@
         strength = i / (steps - 1);
       }
 
-      page.drawRectangle({
-        x: x + (i * stepWidth),
-        y,
-        width: stepWidth + 0.5,
-        height: barHeight,
-        color: mixWithWhite(themeRgbParts, strength),
-        opacity: 1
-      });
+      const stripX = x + (i * stepWidth);
+      const centerX = (i * stepWidth) + (stepWidth / 2);
+
+      let inset = 0;
+
+      if (centerX < radius) {
+        const dx = radius - centerX;
+        inset = radius - Math.sqrt(Math.max(0, (radius * radius) - (dx * dx)));
+      } else if (centerX > (barWidth - radius)) {
+        const dx = centerX - (barWidth - radius);
+        inset = radius - Math.sqrt(Math.max(0, (radius * radius) - (dx * dx)));
+      }
+
+      const stripY = y + inset;
+      const stripHeight = Math.max(0, barHeight - (2 * inset));
+
+      if (stripHeight > 0) {
+        page.drawRectangle({
+          x: stripX,
+          y: stripY,
+          width: stepWidth + 0.6,
+          height: stripHeight,
+          color: mixWithWhite(themeRgbParts, strength),
+          opacity: 1
+        });
+      }
     }
   }
-
   function getSubjectThemeColor(themeKey) {
   if (themeKey === "math") return "#4B3F72";
   if (themeKey === "physics") return "#7A2230";
@@ -429,24 +447,14 @@
       const chapterText = String(chapterHeaderText || "").trim();
       if (!chapterText) return;
 
-      const barX = sideMargin;
-      const textMaxWidth = barWidth - 22;
+          const barX = sideMargin;
+      const textMaxWidth = barWidth - 24;
       const fitted = fitTextToWidth(chapterText, boldFont, headerFontSize, textMaxWidth, 7);
 
       drawFadingHeaderBar(page, barX, barY, barWidth, barHeight, themeRgbParts, "leftToRight");
 
-      page.drawRectangle({
-        x: barX,
-        y: barY,
-        width: barWidth,
-        height: barHeight,
-        borderColor: themeColor,
-        borderWidth: 0.3,
-        opacity: 1
-      });
-
       page.drawText(fitted.text, {
-        x: barX + 12,
+        x: barX + 14,
         y: barY + ((barHeight - fitted.size) / 2) + 1,
         size: fitted.size,
         font: boldFont,
@@ -456,24 +464,14 @@
       const rightText = String(rightHeaderText || "").trim();
       if (!rightText) return;
 
-      const barX = width - sideMargin - barWidth;
-      const textMaxWidth = barWidth - 22;
+            const barX = width - sideMargin - barWidth;
+      const textMaxWidth = barWidth - 24;
       const fitted = fitTextToWidth(rightText, boldFont, headerFontSize, textMaxWidth, 7);
 
       drawFadingHeaderBar(page, barX, barY, barWidth, barHeight, themeRgbParts, "rightToLeft");
 
-      page.drawRectangle({
-        x: barX,
-        y: barY,
-        width: barWidth,
-        height: barHeight,
-        borderColor: themeColor,
-        borderWidth: 0.3,
-        opacity: 1
-      });
-
       page.drawText(fitted.text, {
-        x: barX + barWidth - fitted.width - 12,
+        x: barX + barWidth - fitted.width - 14,
         y: barY + ((barHeight - fitted.size) / 2) + 1,
         size: fitted.size,
         font: boldFont,
