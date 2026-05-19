@@ -438,9 +438,10 @@
       return;
     }
 
-       const barHeight = Math.max(24, headerFontSize + 12);
+          const barHeight = Math.max(24, headerFontSize + 12);
     const barWidth = Math.min(width * 0.66, 430);
-    const barY = height - headerTopMargin - barHeight;
+    const headerDownShift = 16;
+    const barY = height - headerTopMargin - barHeight - headerDownShift;
 
     if (actualPageNo % 2 === 0) {
       const chapterText = String(chapterHeaderText || "").trim();
