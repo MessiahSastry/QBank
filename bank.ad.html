@@ -1871,7 +1871,7 @@ function __qbDarkenHexColor(hex, factor = 0.28) {
   return `#${toHex(dr)}${toHex(dg)}${toHex(db)}`;
 }
 
-function __qbMakeSubjectTheme(key, dark, mid, light, pale) {
+function __qbMakeSubjectTheme(key, dark, mid, light, pale, questionColor) {
   return {
     key,
     dark,
@@ -1896,7 +1896,7 @@ function __qbMakeSubjectTheme(key, dark, mid, light, pale) {
 
     sectionColor: dark,
     normalHeadingColor: dark,
-    questionColor: __qbDarkenHexColor(dark, 0.22)
+    questionColor: questionColor || dark
   };
 }
 
@@ -1928,7 +1928,7 @@ function __qbGetSubjectTheme(subject) {
 
     sectionColor: '#4B3F72',
     normalHeadingColor: '#4B3F72',
-    questionColor: __qbDarkenHexColor('#4B3F72', 0.22)
+    questionColor: '#2B2350'
   };
 }
 
@@ -1938,7 +1938,8 @@ function __qbGetSubjectTheme(subject) {
       '#6B1E2D',
       '#9A3A4A',
       '#F3DDE2',
-      '#FBF3F5'
+      '#FBF3F5',
+      '#3F101B'
     );
   }
 
@@ -1948,7 +1949,8 @@ function __qbGetSubjectTheme(subject) {
       '#2E5A3A',
       '#4F7F52',
       '#DFEFDF',
-      '#F3FAF3'
+      '#F3FAF3',
+      '#14351F'
     );
   }
 
@@ -1958,7 +1960,8 @@ function __qbGetSubjectTheme(subject) {
       '#1F3A5F',
       '#2F5D8C',
       '#DCEAF7',
-      '#F2F7FC'
+      '#F2F7FC',
+      '#102845'
     );
   }
 
@@ -1986,7 +1989,7 @@ function __qbGetSubjectTheme(subject) {
 
     sectionColor: '#7A2230',
     normalHeadingColor: '#000000',
-    questionColor: __qbDarkenHexColor('#5A2E1B', 0.22)
+    questionColor: '#2B170F'
   };
 }
 
