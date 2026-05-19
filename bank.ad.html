@@ -1852,6 +1852,25 @@ function __qbIsMathSubject(subject) {
   );
 }
 
+
+function __qbDarkenHexColor(hex, factor = 0.28) {
+  const clean = String(hex || '').trim().replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return hex;
+
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const toHex = (v) => clamp(v).toString(16).padStart(2, '0');
+
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+
+  const dr = Math.round(r * (1 - factor));
+  const dg = Math.round(g * (1 - factor));
+  const db = Math.round(b * (1 - factor));
+
+  return `#${toHex(dr)}${toHex(dg)}${toHex(db)}`;
+}
+
 function __qbMakeSubjectTheme(key, dark, mid, light, pale) {
   return {
     key,
@@ -1877,7 +1896,7 @@ function __qbMakeSubjectTheme(key, dark, mid, light, pale) {
 
     sectionColor: dark,
     normalHeadingColor: dark,
-    questionColor: dark
+    questionColor: __qbDarkenHexColor(dark, 0.22)
   };
 }
 
@@ -1909,7 +1928,7 @@ function __qbGetSubjectTheme(subject) {
 
     sectionColor: '#4B3F72',
     normalHeadingColor: '#4B3F72',
-    questionColor: '#4B3F72'
+    questionColor: __qbDarkenHexColor('#4B3F72', 0.22)
   };
 }
 
@@ -1967,7 +1986,7 @@ function __qbGetSubjectTheme(subject) {
 
     sectionColor: '#7A2230',
     normalHeadingColor: '#000000',
-    questionColor: '#5A2E1B'
+    questionColor: __qbDarkenHexColor('#5A2E1B', 0.22)
   };
 }
 
