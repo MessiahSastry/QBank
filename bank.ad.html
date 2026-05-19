@@ -3072,11 +3072,11 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
       box-sizing:border-box !important;
       line-height:1.25 !important;
       font-size:var(--qb-question-font) !important;
-           color:${__themeForPdf.questionColor} !important;
-      font-weight:400 !important;
+      color:${__themeForPdf.questionColor} !important;
+      -webkit-text-fill-color:${__themeForPdf.questionColor} !important;
+      font-weight:800 !important;
       flex:0 0 auto !important;
     }
-
     .a4-page .question-body{
       flex:1;
       page-break-inside:auto !important;
@@ -3085,8 +3085,9 @@ async function __qbOpenPrintWindowForPDF({ title, contentHtml, headerText = '', 
 
     .a4-page .question-text{
       font-size:var(--qb-question-font) !important;
-           color:${__themeForPdf.questionColor} !important;
-      font-weight:400 !important;
+      color:${__themeForPdf.questionColor} !important;
+      -webkit-text-fill-color:${__themeForPdf.questionColor} !important;
+      font-weight:800 !important;
       word-break:normal !important;
       overflow-wrap:normal !important;
     }
