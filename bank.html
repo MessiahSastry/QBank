@@ -637,6 +637,7 @@ const auth = firebase.auth();
         "MCQ (Multiple)",
         "Fill in the Blanks",
         "Assertion and Reason (MCQ Single)",
+        "Matching Matrix",
         "Descriptive"
       ],
       marks: Array.from({ length: 10 }, (_, i) => i + 1),
@@ -709,7 +710,7 @@ const chapterTitleForBox =
 
 // Use actual selected types to drive layout later
 const selectedQtypes = getMultiSelected('qtype'); // [] means All
-const __typesOrderHdr = ['MCQ (Single)','MCQ (Multiple)','Descriptive'];
+const __typesOrderHdr = ['MCQ (Single)','MCQ (Multiple)','Matching Matrix','Descriptive'];
 const __chosenTypes = (selectedQtypes.length === 0)
   ? __typesOrderHdr
   : __typesOrderHdr.filter(t => selectedQtypes.includes(t));
@@ -890,7 +891,7 @@ function __cleanupMount(){
 
 const levelsOrder = ['Level 1', 'Level 2', 'Level 3'];
 const marksOrder  = [2, 4, 8];
-const typesOrder  = ['MCQ (Single)', 'MCQ (Multiple)', 'Descriptive'];
+const typesOrder  = ['MCQ (Single)', 'MCQ (Multiple)', 'Matching Matrix', 'Descriptive'];
 
 let qCounter = 1;
 
@@ -2840,7 +2841,8 @@ const __rt  = data.mcqType
 
 const __rtl = __rt.toLowerCase();
 const __normType =
-  __rtl.includes('multiple') ? 'MCQ (Multiple)'
+  (__rtl.includes('matching') && __rtl.includes('matrix')) ? 'Matching Matrix'
+  : __rtl.includes('multiple') ? 'MCQ (Multiple)'
   : __rtl.includes('single') ? 'MCQ (Single)'
   : __rt;
 
@@ -3351,6 +3353,7 @@ function autoLatexAll(str) {
               <option value="MCQ (Multiple)">MCQ (Multiple)</option>
               <option value="Fill in the Blanks">Fill in the Blanks</option>
               <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
+              <option value="Matching Matrix">Matching Matrix</option>
             </select>
             </div>
             <div>
@@ -3443,7 +3446,8 @@ function autoLatexAll(str) {
        mcqBlock.style.display = (
   selType.value === 'MCQ (Single)' ||
   selType.value === 'MCQ (Multiple)' ||
-  selType.value === 'Assertion and Reason (MCQ Single)'
+  selType.value === 'Assertion and Reason (MCQ Single)' ||
+  selType.value === 'Matching Matrix'
 ) ? 'block' : 'none';
       };
       selType.addEventListener('change', toggleMCQBlock);
