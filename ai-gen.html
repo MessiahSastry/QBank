@@ -835,6 +835,7 @@ questionTypes: [
   "MCQ (Multiple)",
   "Fill in the Blanks",
   "Assertion and Reason (MCQ Single)",
+  "Matching Matrix",
   "Descriptive"
 ],
 
@@ -2896,13 +2897,16 @@ const isTextbook = /Text Book/i.test(rawType);
 const isMultiple = /Multiple/i.test(rawType);
 const isFillBlank = rawType === 'Fill in the Blanks';
 const isAssertionReason = rawType === 'Assertion and Reason (MCQ Single)';
+const isMatchingMatrix = rawType === 'Matching Matrix';
 
 // Meta tag label used in the example block
 const qtypeForFormat = isFillBlank
   ? 'Fill in the Blanks'
   : isAssertionReason
     ? 'Assertion and Reason (MCQ Single)'
-    : isTextbook
+    : isMatchingMatrix
+      ? 'Matching Matrix'
+      : isTextbook
       ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
       : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
 
@@ -3186,6 +3190,40 @@ ${numberingNote}
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
 ${strictAccuracy}
 `;
+
+const matchingMatrixFormat = `
+Generate EXACTLY ${count} questions. Format each question EXACTLY as:
+Q<num>: Level <1/2/3>, 1 Mark [Matching Matrix]
+
+Column I                    Column II
+A) <Item A>                 P) <Item P>
+B) <Item B>                 Q) <Item Q>
+C) <Item C>                 R) <Item R>
+D) <Item D>                 S) <Item S>
+
+Options:
+A) A-P, B-Q, C-R, D-S
+B) A-Q, B-P, C-S, D-R
+C) A-R, B-S, C-P, D-Q
+D) A-S, B-R, C-Q, D-P
+
+Ans: <A) or B) or C) or D)>
+Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
+But non-math-related should give a point-wise (each point in a new line, use a number for each point)
+Answer: <Final answer>
+
+Rules:
+${numberingNote}
+• Keep Column I labels exactly A), B), C), D).
+• Keep Column II labels exactly P), Q), R), S).
+• Present Column I and Column II side-by-side exactly as shown.
+• Give exactly 4 options (A–D) and keep only ONE correct option.
+• Use ONLY content from the selected class/subject/chapter.
+• If Any Subtopics for the chapter are mentioned, give questions only from those topics.
+• No headings, introductions, comments, or extra text.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
   // MCQ Multiple additional distribution rule (per 10)
   const multiBlockRule = `
 Additional rules for MCQ (Multiple):
@@ -3275,6 +3313,15 @@ ${fillBlankFormat}`.trim()
 ${levelBlock}
 ${transcribeNote}
 ${assertionReasonFormat}`.trim()
+);
+  }
+
+  if (isMatchingMatrix) {
+    return (
+`${header}
+${levelBlock}
+${transcribeNote}
+${matchingMatrixFormat}`.trim()
 );
   }
 
