@@ -5184,12 +5184,13 @@ function autoLatexAll(str) {
         <div>
           <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question Type</label>
           <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-            <option value="Descriptive">Descriptive</option>
-            <option value="MCQ (Single)">MCQ (Single)</option>
-            <option value="MCQ (Multiple)">MCQ (Multiple)</option>
-            <option value="Fill in the Blanks">Fill in the Blanks</option>
-            <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
-          </select>
+  <option value="Descriptive">Descriptive</option>
+  <option value="MCQ (Single)">MCQ (Single)</option>
+  <option value="MCQ (Multiple)">MCQ (Multiple)</option>
+  <option value="Fill in the Blanks">Fill in the Blanks</option>
+  <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
+  <option value="Matching Matrix">Matching Matrix</option>
+</select>
         </div>
         <div>
           <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
@@ -5300,7 +5301,8 @@ function autoLatexAll(str) {
     mcqBlock.style.display = (
       selType.value === 'MCQ (Single)' ||
       selType.value === 'MCQ (Multiple)' ||
-      selType.value === 'Assertion and Reason (MCQ Single)'
+      selType.value === 'Assertion and Reason (MCQ Single)' ||
+      selType.value === 'Matching Matrix'
     ) ? 'block' : 'none';
   };
   selType.addEventListener('change', toggleMCQBlock);
@@ -5391,7 +5393,7 @@ function autoLatexAll(str) {
       const optD = popup.querySelector('#edit-q-optD').value.trim();
       const ans = popup.querySelector('#edit-q-answer').value.trim();
       if (!optA || !optB || !optC || !optD || !ans) {
-        alert("For MCQ, all four options and the answer are required.");
+        alert("For MCQ or Matching Matrix, all four options and the answer are required.");
         return;
       }
       updateObj.type = qType;
