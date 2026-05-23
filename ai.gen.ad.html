@@ -783,8 +783,9 @@ function __qbGetSectionKeyForSave({ rawType = '', marks = 0, level = '' } = {}) 
 
   if (type === 'MCQ (Single)') return `MCQ_SINGLE_${levelKey}`;
   if (type === 'MCQ (Multiple)') return `MCQ_MULTIPLE_${levelKey}`;
-  if (type === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
+    if (type === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
   if (type === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
+  if (type === 'Matching Matrix') return `MATCHING_MATRIX_${levelKey}`;
   if (type === 'Comprehensive') return `COMPREHENSIVE_${levelKey}`;
 
   return `DESCRIPTIVE_${Number(marks || 0)}_${levelKey}`;
@@ -2884,7 +2885,12 @@ async function saveSessionQuestions(sessionParams) {
         createdBy: currentUserProfile.uid,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
-         if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
+              if (
+           sessionParams.questionType.startsWith('MCQ') ||
+           sessionParams.questionType.startsWith('Text Book') ||
+           sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
+           sessionParams.questionType === 'Matching Matrix'
+         ) {
         toSave.type = sessionParams.questionType;
         toSave.question = wrappedQuestion;
         toSave.options  = wrappedOptions;
@@ -3692,11 +3698,18 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
 
   const out = [];
 
+  const isMatchingMatrix = sessionParams.questionType === 'Matching Matrix';
+
+  const isMcqStyle =
+    sessionParams.questionType.startsWith('MCQ') ||
+    sessionParams.questionType.startsWith('Text Book') ||
+    sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
+    isMatchingMatrix;
+
   for (const b of blocks) {
     const { meta, body } = __splitMetaAndBody(b);
 
-    // Build base qData
-        const qData = {
+    const qData = {
       fullText: b,
       class: sessionParams.class,
       board: sessionParams.board,
@@ -3710,63 +3723,142 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       explanation: ''
     };
 
-     if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
+    if (isMatchingMatrix) {
       const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+
       const bodyWithoutExplanation = explanationMatch
         ? body.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
         : body;
 
       const ansMatch = bodyWithoutExplanation.match(/Ans\s*:\s*.*$/im);
       const ansLine = ansMatch ? ansMatch[0].trim() : null;
-      const withoutAns = ansMatch ? bodyWithoutExplanation.replace(ansMatch[0], '').trim() : bodyWithoutExplanation.trim();
 
-      const lines = withoutAns.split('\n').map(l => l.trim()).filter(Boolean);
+      const withoutAns = ansMatch
+        ? bodyWithoutExplanation.replace(ansMatch[0], '').trim()
+        : bodyWithoutExplanation.trim();
 
-const optionStartIndex = lines.findIndex(l => /^[A-D]\)/i.test(l));
-const stemLines = optionStartIndex >= 0 ? lines.slice(0, optionStartIndex) : lines.slice(0, 1);
-const optionLinesRaw = optionStartIndex >= 0 ? lines.slice(optionStartIndex) : lines.slice(1);
+      const matrixParts = withoutAns.split(/\n\s*Options\s*:\s*\n?/i);
+      const matrixStem = (matrixParts.shift() || '').trim();
 
-const qText = stemLines.join('\n').trim();
+      let optBlock = matrixParts.join('\n').trim();
+      optBlock = __forceOptionLines(optBlock);
 
-let optBlock = optionLinesRaw.join('\n');
-optBlock = __forceOptionLines(optBlock);
+      const optLines = optBlock
+        .split('\n')
+        .map(x => x.trim())
+        .filter(x => /^[A-D]\)/i.test(x));
 
-const optLines = optBlock.split('\n').map(x => x.trim()).filter(Boolean);
+      const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
+      const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
+      const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
+      const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
 
-const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
-const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
-const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
-const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
+      qData.question = matrixStem ? `${matrixStem}\n\nOptions:` : 'Options:';
 
-qData.question = qText;
-qData.options = [A, B, C, D].map(s => s.replace(/^[A-D]\)\s*/, '').trim());
+      qData.options = [A, B, C, D].map(s =>
+        s.replace(/^[A-D]\)\s*/i, '').trim()
+      );
 
-qData.parsedAnswer = ansLine
-  ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
-  : null;
+      qData.parsedAnswer = ansLine
+        ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
+        : null;
 
-qData.explanation = explanationText;
+      qData.explanation = explanationText;
 
-qData.parsedBody = [
-  qText,
-  `A) ${qData.options[0]}`,
-  `B) ${qData.options[1]}`,
-  `C) ${qData.options[2]}`,
-  `D) ${qData.options[3]}`
-].join('\n');
+      qData.parsedBody = [
+        qData.question,
+        `A) ${qData.options[0]}`,
+        `B) ${qData.options[1]}`,
+        `C) ${qData.options[2]}`,
+        `D) ${qData.options[3]}`
+      ].join('\n');
 
-      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
+      qData.fullText =
+        `${qData.parsedMeta}\n${qData.parsedBody}` +
+        `${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}` +
+        `${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
+
+    } else if (isMcqStyle) {
+      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+
+      const bodyWithoutExplanation = explanationMatch
+        ? body.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
+        : body;
+
+      const ansMatch = bodyWithoutExplanation.match(/Ans\s*:\s*.*$/im);
+      const ansLine = ansMatch ? ansMatch[0].trim() : null;
+
+      const withoutAns = ansMatch
+        ? bodyWithoutExplanation.replace(ansMatch[0], '').trim()
+        : bodyWithoutExplanation.trim();
+
+      const lines = withoutAns
+        .split('\n')
+        .map(l => l.trim())
+        .filter(Boolean);
+
+      const optionStartIndex = lines.findIndex(l => /^[A-D]\)/i.test(l));
+      const stemLines = optionStartIndex >= 0
+        ? lines.slice(0, optionStartIndex)
+        : lines.slice(0, 1);
+
+      const optionLinesRaw = optionStartIndex >= 0
+        ? lines.slice(optionStartIndex)
+        : lines.slice(1);
+
+      const qText = stemLines.join('\n').trim();
+
+      let optBlock = optionLinesRaw.join('\n');
+      optBlock = __forceOptionLines(optBlock);
+
+      const optLines = optBlock
+        .split('\n')
+        .map(x => x.trim())
+        .filter(Boolean);
+
+      const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
+      const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
+      const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
+      const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
+
+      qData.question = qText;
+
+      qData.options = [A, B, C, D].map(s =>
+        s.replace(/^[A-D]\)\s*/i, '').trim()
+      );
+
+      qData.parsedAnswer = ansLine
+        ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
+        : null;
+
+      qData.explanation = explanationText;
+
+      qData.parsedBody = [
+        qText,
+        `A) ${qData.options[0]}`,
+        `B) ${qData.options[1]}`,
+        `C) ${qData.options[2]}`,
+        `D) ${qData.options[3]}`
+      ].join('\n');
+
+      qData.fullText =
+        `${qData.parsedMeta}\n${qData.parsedBody}` +
+        `${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}` +
+        `${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
 
     } else {
       const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+
       const bodyWithoutExplanation = explanationMatch
         ? body.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
         : body;
 
       const finalAnswerMatch = bodyWithoutExplanation.match(/Answer\s*:\s*([\s\S]*)$/i);
       const finalAnswerText = finalAnswerMatch ? finalAnswerMatch[1].trim() : '';
+
       const bodyWithoutAnswer = finalAnswerMatch
         ? bodyWithoutExplanation.replace(/Answer\s*:\s*[\s\S]*$/i, '').trim()
         : bodyWithoutExplanation;
@@ -3776,97 +3868,176 @@ qData.parsedBody = [
       qData.parsedAnswer = finalAnswerText ? `Answer: ${finalAnswerText}` : null;
       qData.parsedBody = bodyWithoutAnswer;
       qData.explanation = explanationText;
-      qData.fullText = `${qData.parsedMeta}\n${qData.parsedBody}${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
+
+      qData.fullText =
+        `${qData.parsedMeta}\n${qData.parsedBody}` +
+        `${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}` +
+        `${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
     }
 
     out.push(qData);
   }
 
-  // Normalize meta to our UI style (Level, Marks, Type); renumber later in rerender
- let TYPE = sessionParams.questionType;
-if (TYPE === 'Text Book (MCQ Single)')   TYPE = 'Text (Single)';
-if (TYPE === 'Text Book (MCQ Multiple)') TYPE = 'Text (Multiple)';
+  let TYPE = sessionParams.questionType;
+
+  if (TYPE === 'Text Book (MCQ Single)') TYPE = 'Text (Single)';
+  if (TYPE === 'Text Book (MCQ Multiple)') TYPE = 'Text (Multiple)';
 
   for (let i = 0; i < out.length; i++) {
     const m = out[i].parsedMeta;
-
-    // Level
     const lvl = (m.match(/Level\s*([1-3])/i) || [, '?'])[1];
 
-    // Marks
     const mkMatch = m.match(/(\d+)\s*Mark/i);
-    const marks = mkMatch ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}` : ((TYPE.startsWith('MCQ') || TYPE === 'Assertion and Reason (MCQ Single)') ? '1 Mark' : '');
+
+    const marks = mkMatch
+      ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}`
+      : (
+          TYPE.startsWith('MCQ') ||
+          TYPE === 'Assertion and Reason (MCQ Single)' ||
+          TYPE === 'Matching Matrix'
+        )
+        ? '1 Mark'
+        : '';
 
     out[i].parsedMeta = `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
 
-    // Rebuild fullText using normalized meta
-    out[i].fullText = `${out[i].parsedMeta}\n${out[i].parsedBody}${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}`;
+    out[i].fullText =
+      `${out[i].parsedMeta}\n${out[i].parsedBody}` +
+      `${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}` +
+      `${out[i].explanation ? `\nExplanation: ${out[i].explanation}` : ''}`;
   }
 
   return out;
 }
-
 /* ========== END FINAL SET parser ========== */
 
 function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
-  // The original logic (leave as-is for MCQ/Descriptive):
   const questionBlocks = responseText
     .split(/\n(?=Q\s*\d+:)/g)
     .map(q => q.trim())
     .filter(q => q.match(/^Q\s*\d+:/));
 
   if (questionBlocks.length === 0 && responseText) {
-    // fallback: show as plain text ONLY if parsing failed
     appendChatMessage(responseText, 'ai', messagesArea);
     return;
   }
 
   const fragment = document.createDocumentFragment();
 
+  const isMatchingMatrix = sessionParams.questionType === 'Matching Matrix';
+
+  const isMcqStyle =
+    sessionParams.questionType.startsWith('MCQ') ||
+    sessionParams.questionType.startsWith('Text Book') ||
+    sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
+    isMatchingMatrix;
+
   questionBlocks.forEach((qText) => {
     const questionData = {
-  fullText: qText,
-  class: sessionParams.class,
-  board: sessionParams.board,
-  subject: sessionParams.subject,
-  chapter: sessionParams.chapter,
-  explanation: ''
-};
+      fullText: qText,
+      class: sessionParams.class,
+      board: sessionParams.board,
+      subject: sessionParams.subject,
+      chapter: sessionParams.chapter,
+      explanation: ''
+    };
 
     const metaMatch = qText.match(/^(Q\s*\d+:.*)/);
+
     if (!metaMatch) {
-      console.warn("Skipping a block that is not a valid question:", qText);
+      console.warn('Skipping a block that is not a valid question:', qText);
       return;
     }
 
-    let originalMeta = metaMatch[1];
-    let level = "";
-    let marks = "";
+    const originalMeta = metaMatch[1];
 
-    let levelMatch = originalMeta.match(/Level\s*([1-3])/i);
-    if (levelMatch) {
-      level = `Level ${levelMatch[1]}`;
-    } else {
-      level = "Level ?";
-    }
+    const levelMatch = originalMeta.match(/Level\s*([1-3])/i);
+    const level = levelMatch ? `Level ${levelMatch[1]}` : 'Level ?';
 
     const marksMatch = originalMeta.match(/(\d+)\s*Mark/i);
-    if (marksMatch) {
-      marks = `${marksMatch[1]} Mark${marksMatch[1] === "1" ? "" : "s"}`;
-    } else {
-            marks = (sessionParams.questionType.startsWith("MCQ") || sessionParams.questionType === "Assertion and Reason (MCQ Single)") ? "1 Mark" : "";
-    }
 
-   const metaType = (sessionParams.questionType === 'Text Book (MCQ Single)') ? 'Text (Single)'
-  : (sessionParams.questionType === 'Text Book (MCQ Multiple)') ? 'Text (Multiple)'
-  : sessionParams.questionType;
-questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${marks} [${metaType}]`;
+    const marks = marksMatch
+      ? `${marksMatch[1]} Mark${marksMatch[1] === '1' ? '' : 's'}`
+      : isMcqStyle
+        ? '1 Mark'
+        : '';
 
-       let rawBody = qText.substring(originalMeta.length).trim();
+    const metaType =
+      sessionParams.questionType === 'Text Book (MCQ Single)'
+        ? 'Text (Single)'
+        : sessionParams.questionType === 'Text Book (MCQ Multiple)'
+          ? 'Text (Multiple)'
+          : sessionParams.questionType;
 
-    if (sessionParams.questionType.startsWith('MCQ') || sessionParams.questionType.startsWith('Text Book') || sessionParams.questionType === 'Assertion and Reason (MCQ Single)') {
+    questionData.parsedMeta =
+      `Q${currentSessionQuestions.length + 1}: ${level}, ${marks} [${metaType}]`;
+
+    const rawBody = qText.substring(originalMeta.length).trim();
+
+    if (isMatchingMatrix) {
       const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+
+      const bodyWithoutExplanation = explanationMatch
+        ? rawBody.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
+        : rawBody;
+
+      const ansMatch = bodyWithoutExplanation.match(/Ans\s*:\s*.*$/im);
+      const ansLine = ansMatch ? ansMatch[0].trim() : null;
+
+      const withoutAns = ansMatch
+        ? bodyWithoutExplanation.replace(ansMatch[0], '').trim()
+        : bodyWithoutExplanation.trim();
+
+      const matrixParts = withoutAns.split(/\n\s*Options\s*:\s*\n?/i);
+      const matrixStem = (matrixParts.shift() || '').trim();
+
+      let optBlock = matrixParts.join('\n').trim();
+      optBlock = __forceOptionLines(optBlock);
+
+      const optLines = optBlock
+        .split('\n')
+        .map(x => x.trim())
+        .filter(x => /^[A-D]\)/i.test(x));
+
+      const A = optLines.find(l => /^A\)/i.test(l)) || 'A) ';
+      const B = optLines.find(l => /^B\)/i.test(l)) || 'B) ';
+      const C = optLines.find(l => /^C\)/i.test(l)) || 'C) ';
+      const D = optLines.find(l => /^D\)/i.test(l)) || 'D) ';
+
+      questionData.question = matrixStem ? `${matrixStem}\n\nOptions:` : 'Options:';
+
+      questionData.options = [A, B, C, D].map(s =>
+        s.replace(/^[A-D]\)\s*/i, '').trim()
+      );
+
+      questionData.parsedAnswer = ansLine
+        ? `Ans: ${__extractAnswerLetters(ansLine).map(L => `${L})`).join(', ')}`
+        : null;
+
+      questionData.parsedBody = [
+        questionData.question,
+        `A) ${questionData.options[0]}`,
+        `B) ${questionData.options[1]}`,
+        `C) ${questionData.options[2]}`,
+        `D) ${questionData.options[3]}`
+      ].join('\n');
+
+      questionData.explanation = explanationText;
+
+      questionData.parsedBody = questionData.parsedBody || '';
+      questionData.parsedAnswer = questionData.parsedAnswer || '';
+      questionData.parsedMeta = questionData.parsedMeta || '';
+      questionData.explanation = questionData.explanation || '';
+
+      // Shuffle only the four matching answer choices.
+      // Column I and Column II remain unchanged.
+      shuffleOptionsForQuestion(questionData);
+
+    } else if (isMcqStyle) {
+      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+
       const bodyWithoutExplanation = explanationMatch
         ? rawBody.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
         : rawBody;
@@ -3875,49 +4046,61 @@ questionData.parsedMeta = `Q${currentSessionQuestions.length + 1}: ${level}, ${m
 
       if (answerMatch) {
         const questionAndOptions = answerMatch[1].trim();
+
         const lines = questionAndOptions
-  .split('\n')
-  .map(x => x.trim())
-  .filter(x => x && x !== '<br>' && x !== '');
+          .split('\n')
+          .map(x => x.trim())
+          .filter(x => x && x !== '<br>' && x !== '');
 
-const optionStartIndex = lines.findIndex(l => /^[A-D]\)/i.test(l));
-const stemLines = optionStartIndex >= 0 ? lines.slice(0, optionStartIndex) : lines.slice(0, 1);
-const optionLines = optionStartIndex >= 0 ? lines.slice(optionStartIndex, optionStartIndex + 4) : lines.slice(1, 5);
+        const optionStartIndex = lines.findIndex(l => /^[A-D]\)/i.test(l));
 
-questionData.question = stemLines.join('\n').trim();
-questionData.options = optionLines.map(x => x || '');
-questionData.parsedAnswer = answerMatch[2].trim();
-questionData.parsedBody = [
-  questionData.question,
-  ...questionData.options
-].join('\n');
+        const stemLines = optionStartIndex >= 0
+          ? lines.slice(0, optionStartIndex)
+          : lines.slice(0, 1);
+
+        const optionLines = optionStartIndex >= 0
+          ? lines.slice(optionStartIndex, optionStartIndex + 4)
+          : lines.slice(1, 5);
+
+        questionData.question = stemLines.join('\n').trim();
+        questionData.options = optionLines.map(x => x || '');
+        questionData.parsedAnswer = answerMatch[2].trim();
+
+        questionData.parsedBody = [
+          questionData.question,
+          ...questionData.options
+        ].join('\n');
       } else {
         questionData.question = bodyWithoutExplanation.split('\n')[0].trim();
-        questionData.options = bodyWithoutExplanation.split('\n').slice(1, 5).map(x => x.trim());
+        questionData.options = bodyWithoutExplanation
+          .split('\n')
+          .slice(1, 5)
+          .map(x => x.trim());
+
         questionData.parsedAnswer = null;
         questionData.parsedBody = bodyWithoutExplanation;
       }
 
       questionData.explanation = explanationText;
 
-      // Normalize LaTeX delimiters before any option shuffling
       questionData.parsedBody = questionData.parsedBody || '';
       questionData.parsedAnswer = questionData.parsedAnswer || '';
       questionData.parsedMeta = questionData.parsedMeta || '';
       questionData.explanation = questionData.explanation || '';
 
-      // Randomize A/B/C/D and remap the Ans: letters accordingly
       shuffleOptionsForQuestion(questionData);
+
     } else {
-      // DESCRIPTIVE
       const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
+
       const bodyWithoutExplanation = explanationMatch
         ? rawBody.replace(/Explanation\s*:\s*[\s\S]*$/i, '').trim()
         : rawBody;
 
       const finalAnswerMatch = bodyWithoutExplanation.match(/Answer\s*:\s*([\s\S]*)$/i);
       const finalAnswerText = finalAnswerMatch ? finalAnswerMatch[1].trim() : '';
+
       const bodyWithoutAnswer = finalAnswerMatch
         ? bodyWithoutExplanation.replace(/Answer\s*:\s*[\s\S]*$/i, '').trim()
         : bodyWithoutExplanation;
@@ -3929,14 +4112,26 @@ questionData.parsedBody = [
       questionData.explanation = explanationText;
     }
 
-   currentSessionQuestions.push(questionData);
-sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
-const questionEl = createQuestionElement(questionData, currentSessionQuestions.length - 1);
-fragment.appendChild(questionEl);
+    currentSessionQuestions.push(questionData);
+    sessionStorage.setItem(
+      'currentSessionQuestions',
+      JSON.stringify(currentSessionQuestions)
+    );
+
+    const questionEl = createQuestionElement(
+      questionData,
+      currentSessionQuestions.length - 1
+    );
+
+    fragment.appendChild(questionEl);
   });
 
   messagesArea.appendChild(fragment);
-  if (window.MathJax) MathJax.typesetPromise([messagesArea]);
+
+  if (window.MathJax) {
+    MathJax.typesetPromise([messagesArea]);
+  }
+
   messagesArea.scrollTop = messagesArea.scrollHeight;
 }
 
