@@ -6463,7 +6463,7 @@ function __qbChooseSmartCombo(history = [], counts = {}, size = 2) {
 }
 
 function __qbStripOptionLabel(opt) {
-  return String(opt || '').replace(/^[A-D][).\-]\s*/, '').trim();
+  return String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
 }
 
 function __qbShuffleQuestionToTargets(data, targetLetters) {
