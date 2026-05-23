@@ -1153,6 +1153,8 @@ const __typesOrderHdr = [
   'MCQ (Single)',
   'MCQ (Multiple)',
   'Assertion and Reason (MCQ Single)',
+  'Fill in the Blanks',
+  'Matching Matrix',
   'Descriptive'
 ];
 const __chosenTypes = (selectedQtypes.length === 0)
@@ -1306,6 +1308,160 @@ const typesOrder  = ['MCQ (Single)', 'MCQ (Multiple)', 'Descriptive'];
 
 let qCounter = 1;
 
+/* ===== MATCHING MATRIX PDF / KEY PRINT HELPERS ===== */
+function __qbIsMatchingMatrixData(source = {}) {
+  return !!source && __qbNormalizeQuestionType(source) === 'Matching Matrix';
+}
+
+function __qbRenderMatchingMatrixTable(rawQuestion, theme) {
+  const cleaned = String(rawQuestion || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/\r/g, '')
+    .replace(/\n?\s*Options\s*:?\s*$/i, '')
+    .trim();
+
+  let lines = cleaned
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const headingIndex = lines.findIndex(line =>
+    /Column\s*I/i.test(line) && /Column\s*II/i.test(line)
+  );
+
+  const introLines = headingIndex > 0 ? lines.slice(0, headingIndex) : [];
+  const possibleRows = headingIndex >= 0 ? lines.slice(headingIndex + 1) : lines;
+
+  let rows = possibleRows
+    .map(line => {
+      const match = line.match(/^\s*([A-D]\)\s*.*?)\s+([P-S]\)\s*.*)\s*$/i);
+      return match ? [match[1].trim(), match[2].trim()] : null;
+    })
+    .filter(Boolean);
+
+  // Fallback for old saved questions where all matrix rows are in one line.
+  if (!rows.length) {
+    const oneLine = cleaned
+      .replace(/Column\s*I\s+Column\s*II/i, '')
+      .trim();
+
+    const rowPattern = /([A-D]\)\s*.*?\s+[P-S]\)\s*.*?)(?=\s+[A-D]\)|$)/gi;
+    const foundRows = oneLine.match(rowPattern) || [];
+
+    rows = foundRows
+      .map(line => {
+        const match = line.match(/^\s*([A-D]\)\s*.*?)\s+([P-S]\)\s*.*)\s*$/i);
+        return match ? [match[1].trim(), match[2].trim()] : null;
+      })
+      .filter(Boolean);
+  }
+
+  const introHTML = introLines.length
+    ? `
+      <div style="
+        line-height:1.35;
+        font-size:12pt;
+        color:${theme.questionColor};
+        font-weight:700;
+        margin-bottom:8px;">
+        ${introLines.map(line => __qbEscapeHtml(line)).join('<br>')}
+      </div>
+    `
+    : '';
+
+  if (!rows.length) {
+    return `
+      ${introHTML}
+      <div class="question-text" style="
+        line-height:1.35;
+        font-size:12pt;
+        color:${theme.questionColor};
+        font-weight:700;
+        margin-bottom:8px;
+        white-space:pre-wrap;
+        word-break:normal;
+        overflow-wrap:normal;">
+        ${__qbEscapeHtml(cleaned).replace(/\n/g, '<br>')}
+      </div>
+    `;
+  }
+
+  return `
+    ${introHTML}
+    <table style="
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+      margin:2px 0 10px 0;
+      color:${theme.questionColor};
+      font-size:12pt;
+      line-height:1.35;">
+      <thead>
+        <tr>
+          <th style="
+            width:50%;
+            text-align:left;
+            padding:0 12px 5px 0;
+            font-weight:800;">
+            Column I
+          </th>
+          <th style="
+            width:50%;
+            text-align:left;
+            padding:0 0 5px 12px;
+            font-weight:800;">
+            Column II
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(row => `
+          <tr>
+            <td style="
+              width:50%;
+              vertical-align:top;
+              padding:2px 12px 2px 0;
+              font-weight:400;">
+              ${__qbEscapeHtml(row[0])}
+            </td>
+            <td style="
+              width:50%;
+              vertical-align:top;
+              padding:2px 0 2px 12px;
+              font-weight:400;">
+              ${__qbEscapeHtml(row[1])}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function __qbRenderMatchingMatrixOptions(options, availableWidth) {
+  const optionLines = (Array.isArray(options) ? options : [])
+    .slice(0, 4)
+    .map((opt, index) => {
+      const clean = String(opt || '')
+        .replace(/^[A-D][\)\.]\s*/, '')
+        .trim();
+
+      return `${String.fromCharCode(65 + index)}) ${clean}`;
+    });
+
+  if (!optionLines.length) return '';
+
+  return `
+    <div style="
+      font-weight:700;
+      margin:2px 0 5px 0;
+      color:#000000;">
+      Options:
+    </div>
+    ${__renderKeyOptionsLayout(optionLines, availableWidth)}
+  `;
+}
+
 // helper to build one question's HTML (kept from your original)
 function buildQuestionHTML(item, __parent = printable) {
   const clone = item.cloneNode(true);
@@ -1366,7 +1522,9 @@ function buildQuestionHTML(item, __parent = printable) {
       }
     }
   }
-    const isMCQ = options.length === 4;
+   const isMatchingMatrix = __qbIsMatchingMatrixData(source);
+  const isMCQ = options.length === 4 && !isMatchingMatrix;
+
   const __displayQNo = Number(source && source.questionNumber) > 0 ? Number(source.questionNumber) : qCounter;
 const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
 const __theme = __pdfTheme;
@@ -1379,41 +1537,63 @@ const __theme = __pdfTheme;
   ${__displayQNo}.
 </td>
 <td class="question-body" style="vertical-align:top;line-height:1.6;page-break-inside:auto;break-inside:auto;">
-  <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__theme.questionColor};font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">${String(questionLine || '')
-    .replace(/^\s+/, '')
-    .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}</div>
-        ${imgHtml ? imgHtml : ''}
-                <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.15;">
-          ${
-            isMCQ ? (() => {
-              let optionLinesRaw = options.slice(0, 4).map((opt) => {
-              return opt.replace(/^[A-D][\)\.\-]\s*/, '').trim();
-            });
-            
-            if (shuffleExport) {
-              for (let i = optionLinesRaw.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [optionLinesRaw[i], optionLinesRaw[j]] = [optionLinesRaw[j], optionLinesRaw[i]];
-              }
-            }
-            
-                        let optionLines = optionLinesRaw.map((text, i) => {
-              return String.fromCharCode(65 + i) + ") " + text;
-            });
-           return __renderKeyOptionsLayout(
-  optionLines,
-  Math.max(
-    260,
-    Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
-  )
-);
-            })()
-            : (options.length > 0
-                ? options.map(opt => `<div style="margin-bottom:2px;">${opt.trim().replace(/\n/g, '<br>')}</div>`).join('')
-                : '')
-          }
+  ${
+    isMatchingMatrix
+      ? __qbRenderMatchingMatrixTable(questionLine, __theme)
+      : `
+        <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__theme.questionColor};font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">
+          ${String(questionLine || '')
+            .replace(/^\s+/, '')
+            .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}
         </div>
-          </td>
+      `
+  }
+
+  ${imgHtml ? imgHtml : ''}
+
+  <div class="options-block" style="margin-top:2px;margin-bottom:2px;line-height:1.15;">
+    ${
+      isMatchingMatrix
+        ? __qbRenderMatchingMatrixOptions(
+            options,
+            Math.max(
+              260,
+              Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
+            )
+          )
+        : isMCQ
+          ? (() => {
+              let optionLinesRaw = options.slice(0, 4).map((opt) => {
+                return opt.replace(/^[A-D][\)\.\-]\s*/, '').trim();
+              });
+
+              if (shuffleExport) {
+                for (let i = optionLinesRaw.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [optionLinesRaw[i], optionLinesRaw[j]] = [optionLinesRaw[j], optionLinesRaw[i]];
+                }
+              }
+
+              let optionLines = optionLinesRaw.map((text, i) => {
+                return String.fromCharCode(65 + i) + ") " + text;
+              });
+
+              return __renderKeyOptionsLayout(
+                optionLines,
+                Math.max(
+                  260,
+                  Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
+                )
+              );
+            })()
+          : (
+              options.length > 0
+                ? options.map(opt => `<div style="margin-bottom:2px;">${opt.trim().replace(/\n/g, '<br>')}</div>`).join('')
+                : ''
+            )
+    }
+  </div>
+</td>
         </tr>
       </table>
     </div>`;
@@ -2065,6 +2245,8 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
       }
     }
   }
+   const isMatchingMatrix = __qbIsMatchingMatrixData(source);
+
   let answerText = '';
   let explanationText = '';
 
@@ -2138,7 +2320,10 @@ qNoDiv.textContent = qNoLabel;
 
 const qTextDiv = document.createElement('div');
 qTextDiv.style.cssText = `flex:1; min-width:0; color:${__theme.questionColor}; font-weight:700; line-height:inherit; white-space:pre-wrap;`;
-  qTextDiv.innerHTML = String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
+
+qTextDiv.innerHTML = isMatchingMatrix
+  ? __qbRenderMatchingMatrixTable(questionLine, __theme)
+  : String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
 
   qRow.appendChild(qNoDiv);
   qRow.appendChild(qTextDiv);
@@ -2163,7 +2348,9 @@ qTextDiv.style.cssText = `flex:1; min-width:0; color:${__theme.questionColor}; f
     Math.min((optDiv.getBoundingClientRect().width || 620), 620)
   );
 
-  optDiv.innerHTML = __renderKeyOptionsLayout(options, safeOptWidth);
+    optDiv.innerHTML = isMatchingMatrix
+    ? __qbRenderMatchingMatrixOptions(options, safeOptWidth)
+    : __renderKeyOptionsLayout(options, safeOptWidth);
 }
   const __aiUrl = __qbGetAiHelperUrl(docId);
   const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
