@@ -1123,12 +1123,24 @@ function normalizeText(s) {
 
 function makeStemKey(q) {
   let raw = String(q?.question || q?.text || '');
+
+  const isMatchingMatrix =
+    normalizeMcqType(q?.mcqType || q?.type || '') === 'Matching Matrix' ||
+    (/Column\s*I/i.test(raw) && /Column\s*II/i.test(raw));
+
   raw = raw.replace(/<[^>]+>/g, ' ');
   raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
   raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');
-  raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');
+
+  if (isMatchingMatrix) {
+    raw = raw.replace(/\s*\bOptions\s*:\s*[\s\S]*$/i, '');
+  } else {
+    raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');
+  }
+
   const stemNorm = normalizeText(raw);
   const marks = (q && q.marks != null) ? String(q.marks) : '';
+
   return stemNorm + '|m=' + String(marks ?? '');
 }
 
@@ -1190,22 +1202,41 @@ function extractAnswerLetters(ans) {
 }
 function normalizeMcqType(s) {
   const t = String(s || '').trim().toLowerCase();
+
   if (!t) return 'Descriptive';
-  if (t.includes('assertion') || t.includes('reason')) return 'MCQ (Single)';
-  if ((t.includes('fill') && t.includes('blank')) || t === 'fib') return 'Fill in the Blanks';
+
+  if (t.includes('assertion') && t.includes('reason')) {
+    return 'Assertion and Reason (MCQ Single)';
+  }
+
+  if (t.includes('matching') && t.includes('matrix')) {
+    return 'Matching Matrix';
+  }
+
+  if ((t.includes('fill') && t.includes('blank')) || t === 'fib') {
+    return 'Fill in the Blanks';
+  }
+
   if (t.includes('multiple')) return 'MCQ (Multiple)';
-  if (t.includes('single')) return 'MCQ (Single)';
+  if (t.includes('single') || t === 'mcq') return 'MCQ (Single)';
   if (t.includes('desc')) return 'Descriptive';
-  return s;
+
+  return String(s || '').trim();
 }
+
 function inferMcqType(d) {
   const norm = normalizeMcqType(d?.mcqType || d?.type || '');
+
   if (
     norm === 'MCQ (Single)' ||
     norm === 'MCQ (Multiple)' ||
     norm === 'Fill in the Blanks' ||
+    norm === 'Assertion and Reason (MCQ Single)' ||
+    norm === 'Matching Matrix' ||
     norm === 'Descriptive'
-  ) return norm;
+  ) {
+    return norm;
+  }
 
   const answerValue =
     d?.parsedAnswer ||
@@ -1220,6 +1251,7 @@ function inferMcqType(d) {
 
   if (letters.length > 1) return 'MCQ (Multiple)';
   if (Array.isArray(d?.options) && d.options.length === 4) return 'MCQ (Single)';
+
   return 'Descriptive';
 }
 function makeDeDupeKey(q) {
@@ -1385,10 +1417,31 @@ function _normDifficultyValue(s) {
 
 function _isAllowedMcqType(doc, mcqType) {
   const typ = inferMcqType(doc);
-  if (mcqType === "MCQ (Single)") return typ === "MCQ (Single)";
-  if (mcqType === "MCQ (Multiple)") return typ === "MCQ (Multiple)";
-  if (mcqType === "Fill in the Blanks") return typ === "Fill in the Blanks";
-  if (mcqType === "Descriptive") return typ === "Descriptive";
+
+  if (mcqType === "MCQ (Single)") {
+    return typ === "MCQ (Single)";
+  }
+
+  if (mcqType === "MCQ (Multiple)") {
+    return typ === "MCQ (Multiple)";
+  }
+
+  if (mcqType === "Fill in the Blanks") {
+    return typ === "Fill in the Blanks";
+  }
+
+  if (mcqType === "Assertion and Reason (MCQ Single)") {
+    return typ === "Assertion and Reason (MCQ Single)";
+  }
+
+  if (mcqType === "Matching Matrix") {
+    return typ === "Matching Matrix";
+  }
+
+  if (mcqType === "Descriptive") {
+    return typ === "Descriptive";
+  }
+
   return true;
 }
 async function getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject) {
@@ -1854,7 +1907,14 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     sectionLabelDropdown.style.width = "120px";
     sectionLabelDropdown.style.marginRight = "8px";
 
-    const mcqTypeOptions = ["MCQ (Single)", "MCQ (Multiple)", "Fill in the Blanks", "Descriptive"];
+    const mcqTypeOptions = [
+    "MCQ (Single)",
+    "MCQ (Multiple)",
+    "Fill in the Blanks",
+    "Assertion and Reason (MCQ Single)",
+    "Matching Matrix",
+    "Descriptive"
+];
     const mcqTypeDropdown = createSectionDropdown(mcqTypeOptions, "MCQ Type", mcqTypeOptions[0], null);
     mcqTypeDropdown.classList.add('mcq-type-dropdown');
     mcqTypeDropdown.style.width = "150px";
@@ -2069,28 +2129,52 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
     const norm = normalizeQuestionDoc(q);
     const stem = norm.question || '';
 
+    const isMatchingMatrix = sectionMcqType === "Matching Matrix";
+
+    const isFourOptionType = (
+        sectionMcqType === "MCQ (Single)" ||
+        sectionMcqType === "MCQ (Multiple)" ||
+        sectionMcqType === "Assertion and Reason (MCQ Single)" ||
+        sectionMcqType === "Matching Matrix"
+    );
+
     let options = [];
+
     if (Array.isArray(norm.options) && norm.options.length >= 4) {
         options = norm.options.slice(0, 4);
     } else if (
         norm.options &&
         typeof norm.options === 'object' &&
         !Array.isArray(norm.options) &&
-        norm.options.A && norm.options.B && norm.options.C && norm.options.D
+        norm.options.A &&
+        norm.options.B &&
+        norm.options.C &&
+        norm.options.D
     ) {
-        options = [norm.options.A, norm.options.B, norm.options.C, norm.options.D];
+        options = [
+            norm.options.A,
+            norm.options.B,
+            norm.options.C,
+            norm.options.D
+        ];
     } else {
         const extractedOptions = extractMCQOptions(norm);
+
         if (Array.isArray(extractedOptions) && extractedOptions.length === 4) {
             options = extractedOptions;
         }
     }
 
-    const clean = options.map(o =>
-        String(o || '').replace(/^[A-D][).:\-]\s*/i, '').trim()
-    );
+    const clean = options.map(o => {
+        const raw = String(o || '');
+
+        return isMatchingMatrix
+            ? raw.replace(/^[A-D][).:]\s*/i, '').trim()
+            : raw.replace(/^[A-D][).:\-]\s*/i, '').trim();
+    });
 
     const rawAnswer = String(norm.answer || '').trim();
+
     const answerLetters = rawAnswer
         .toUpperCase()
         .split(',')
@@ -2098,7 +2182,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         .filter(x => /^[A-D]$/.test(x))
         .join(',');
 
-    if (sectionMcqType === "MCQ (Single)" || sectionMcqType === "MCQ (Multiple)") {
+    if (isFourOptionType) {
         if (clean.length === 4) {
             if (getGlobalShuffleOptions()) {
                 const shuffled = shuffleMCQQuestion({
@@ -2108,7 +2192,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                     answer: answerLetters || rawAnswer
                 });
 
-               const letterAns = extractAnswerLetters(shuffled.answer).join(',');
+                const letterAns = extractAnswerLetters(shuffled.answer).join(',');
 
                 return {
                     number: 0,
@@ -2117,7 +2201,8 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                     options: shuffled.options || clean,
                     answer: letterAns || answerLetters || rawAnswer || '',
                     explanation: norm.explanation || '',
-                    image: norm.image || ''
+                    image: norm.image || '',
+                    mcqType: sectionMcqType
                 };
             }
 
@@ -2128,7 +2213,8 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
                 options: clean,
                 answer: answerLetters || rawAnswer || '',
                 explanation: norm.explanation || '',
-                image: norm.image || ''
+                image: norm.image || '',
+                mcqType: sectionMcqType
             };
         }
 
@@ -2139,7 +2225,8 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
             options: [],
             answer: answerLetters || rawAnswer || '',
             explanation: norm.explanation || '',
-            image: norm.image || ''
+            image: norm.image || '',
+            mcqType: sectionMcqType
         };
     }
 
@@ -2151,7 +2238,8 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
             options: [],
             answer: rawAnswer || '',
             explanation: norm.explanation || '',
-            image: norm.image || ''
+            image: norm.image || '',
+            mcqType: sectionMcqType
         };
     }
 
@@ -2162,7 +2250,8 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         options: [],
         answer: rawAnswer || '',
         explanation: norm.explanation || '',
-        image: norm.image || ''
+        image: norm.image || '',
+        mcqType: sectionMcqType
     };
 }
 function updateSubjectsForBoardAndClass() {
@@ -2224,8 +2313,110 @@ function getPaperType() {
 
 function repeatFixedPlan(basePlan, times) {
     const out = [];
-    for (let i = 0; i < times; i++) out.push(...basePlan);
+
+    for (let i = 0; i < times; i++) {
+        out.push(...basePlan);
+    }
+
     return out;
+}
+
+function __buildDynamicLevelCounts(totalQuestions, percentages) {
+    const total = Math.max(0, Number(totalQuestions || 0));
+
+    if (!total) {
+        return { L1: 0, L2: 0, L3: 0 };
+    }
+
+    const levels = ['L1', 'L2', 'L3'];
+
+    const rows = levels.map((level, index) => {
+        const raw = total * Number(percentages[level] || 0) / 100;
+
+        return {
+            level,
+            index,
+            raw,
+            count: Math.floor(raw),
+            fraction: raw - Math.floor(raw)
+        };
+    });
+
+    let used = rows.reduce((sum, row) => sum + row.count, 0);
+    let remaining = total - used;
+
+    rows
+        .slice()
+        .sort((a, b) => {
+            if (b.fraction !== a.fraction) return b.fraction - a.fraction;
+            if (Number(percentages[b.level] || 0) !== Number(percentages[a.level] || 0)) {
+                return Number(percentages[b.level] || 0) - Number(percentages[a.level] || 0);
+            }
+            return a.index - b.index;
+        })
+        .forEach(row => {
+            if (remaining > 0 && Number(percentages[row.level] || 0) > 0) {
+                rows.find(x => x.level === row.level).count++;
+                remaining--;
+            }
+        });
+
+    const counts = { L1: 0, L2: 0, L3: 0 };
+
+    rows.forEach(row => {
+        counts[row.level] = row.count;
+    });
+
+    return counts;
+}
+
+function __buildDynamicSectionLevelPlan({ paperType, mcqType, numQuestions }) {
+    const qCount = Math.max(0, Number(numQuestions || 0));
+    const type = String(mcqType || '').trim();
+
+    if (!qCount) return null;
+
+    let percentages = null;
+    let sequence = [];
+
+    if (paperType === 'Core Paper') {
+        percentages = { L1: 60, L2: 40, L3: 0 };
+        sequence = ['L1', 'L2', 'L1', 'L1', 'L2'];
+    } else if (paperType === 'Pinnacle Paper' && type === 'Fill in the Blanks') {
+        percentages = { L1: 50, L2: 50, L3: 0 };
+        sequence = ['L1', 'L2'];
+    } else if (paperType === 'Pinnacle Paper') {
+        percentages = { L1: 24, L2: 40, L3: 36 };
+        sequence = ['L1', 'L2', 'L3', 'L2', 'L3'];
+    } else {
+        return null;
+    }
+
+    const counts = __buildDynamicLevelCounts(qCount, percentages);
+    const plan = [];
+
+    while (plan.length < qCount) {
+        let addedInThisRound = false;
+
+        sequence.forEach(level => {
+            if (plan.length < qCount && counts[level] > 0) {
+                plan.push(level);
+                counts[level]--;
+                addedInThisRound = true;
+            }
+        });
+
+        if (!addedInThisRound) break;
+    }
+
+    ['L1', 'L2', 'L3'].forEach(level => {
+        while (plan.length < qCount && counts[level] > 0) {
+            plan.push(level);
+            counts[level]--;
+        }
+    });
+
+    return plan.length === qCount ? plan : null;
 }
 
 function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, marksPerQuestion }) {
@@ -2239,6 +2430,8 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
             "MCQ (Single)|5|1": ["L1", "L1", "L1", "L2", "L1"],
             "MCQ (Multiple)|4|1": ["L1", "L1", "L1", "L2"],
             "Fill in the Blanks|4|1": ["L1", "L1", "L2", "L2"],
+            "Assertion and Reason (MCQ Single)|5|1": ["L1", "L1", "L1", "L2", "L1"],
+            "Matching Matrix|4|1": ["L1", "L1", "L1", "L2"],
             "Descriptive|2|2": ["L1", "L2"],
             "Descriptive|2|4": ["L1", "L2"]
         },
@@ -2246,6 +2439,8 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
             "MCQ (Single)|5|1": ["L1", "L2", "L3", "L2", "L3"],
             "MCQ (Multiple)|4|1": ["L1", "L2", "L3", "L2"],
             "Fill in the Blanks|4|1": ["L1", "L1", "L2", "L2"],
+            "Assertion and Reason (MCQ Single)|5|1": ["L1", "L2", "L3", "L2", "L3"],
+            "Matching Matrix|4|1": ["L1", "L2", "L3", "L2"],
             "Descriptive|2|2": ["L1", "L3"],
             "Descriptive|2|4": ["L2", "L3"]
         }
@@ -2258,6 +2453,8 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
                 "MCQ (Single)|5|1": "MCQ (Single)|5|1",
                 "MCQ (Multiple)|4|1": "MCQ (Multiple)|4|1",
                 "Fill in the Blanks|4|1": "Fill in the Blanks|4|1",
+                "Assertion and Reason (MCQ Single)|5|1": "Assertion and Reason (MCQ Single)|5|1",
+                "Matching Matrix|4|1": "Matching Matrix|4|1",
                 "Descriptive|2|2": "Descriptive|2|2",
                 "Descriptive|2|4": "Descriptive|2|4"
             }
@@ -2268,6 +2465,8 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
                 "MCQ (Single)|10|1": "MCQ (Single)|5|1",
                 "MCQ (Multiple)|8|1": "MCQ (Multiple)|4|1",
                 "Fill in the Blanks|8|1": "Fill in the Blanks|4|1",
+                "Assertion and Reason (MCQ Single)|10|1": "Assertion and Reason (MCQ Single)|5|1",
+                "Matching Matrix|8|1": "Matching Matrix|4|1",
                 "Descriptive|4|2": "Descriptive|2|2",
                 "Descriptive|4|4": "Descriptive|2|4"
             }
@@ -2278,6 +2477,8 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
                 "MCQ (Single)|20|1": "MCQ (Single)|5|1",
                 "MCQ (Multiple)|16|1": "MCQ (Multiple)|4|1",
                 "Fill in the Blanks|16|1": "Fill in the Blanks|4|1",
+                "Assertion and Reason (MCQ Single)|20|1": "Assertion and Reason (MCQ Single)|5|1",
+                "Matching Matrix|16|1": "Matching Matrix|4|1",
                 "Descriptive|8|2": "Descriptive|2|2",
                 "Descriptive|8|4": "Descriptive|2|4"
             }
@@ -2286,16 +2487,25 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
 
     const paperTemplates = base25Templates[paperType];
     const scaleInfo = scaleMap[totalMarks];
-    if (!paperTemplates || !scaleInfo) return null;
 
-    const signature = `${type}|${qCount}|${mpq}`;
-    const baseSignature = scaleInfo.signatures[signature];
-    if (!baseSignature) return null;
+    if (paperTemplates && scaleInfo) {
+        const signature = `${type}|${qCount}|${mpq}`;
+        const baseSignature = scaleInfo.signatures[signature];
 
-    const basePlan = paperTemplates[baseSignature];
-    if (!Array.isArray(basePlan) || !basePlan.length) return null;
+        if (baseSignature) {
+            const basePlan = paperTemplates[baseSignature];
 
-    return repeatFixedPlan(basePlan, scaleInfo.factor);
+            if (Array.isArray(basePlan) && basePlan.length) {
+                return repeatFixedPlan(basePlan, scaleInfo.factor);
+            }
+        }
+    }
+
+    return __buildDynamicSectionLevelPlan({
+        paperType,
+        mcqType: type,
+        numQuestions: qCount
+    });
 }
 
 function buildFairChapterPlan(chapters, totalNeed) {
@@ -2827,10 +3037,12 @@ const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
     if (docMarks !== mPerQ) return false;
 
     const docType = inferMcqType(d);
-    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
+        if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
     if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
     if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
     if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
+    if (sec.mcqType === "Assertion and Reason (MCQ Single)" && docType !== "Assertion and Reason (MCQ Single)") return false;
+    if (sec.mcqType === "Matching Matrix" && docType !== "Matching Matrix") return false;
 
     const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
     return !(k && subjectSeenKeys.has(k));
@@ -3329,15 +3541,26 @@ if (cleanedErrors.length) {
                     }
                 }
 
-                function _finalStemKey(raw, marks) {
+                                function _finalStemKey(raw, marks, mcqType = '') {
                     let t = String(raw || '');
+
+                    const isMatchingMatrix =
+                        normalizeMcqType(mcqType) === 'Matching Matrix' ||
+                        (/Column\s*I/i.test(t) && /Column\s*II/i.test(t));
+
                     t = t.replace(/^\s*(?:Q\.?\s*)?\d+\s*[:.)-]?\s*/i, '');
                     t = t.replace(/<img[^>]*>/gi, ' ')
                          .replace(/<[^>]+>/g, ' ')
-                         .replace(/\s+[A-D][).:][\s\S]*$/i, '')
                          .replace(/\bAns?\s*:\s*.*$/i, '');
 
+                    if (isMatchingMatrix) {
+                        t = t.replace(/\s*\bOptions\s*:\s*[\s\S]*$/i, '');
+                    } else {
+                        t = t.replace(/\s+[A-D][).:][\s\S]*$/i, '');
+                    }
+
                     try { t = t.normalize('NFKC'); } catch (e) {}
+
                     t = t.replace(/[\u200B-\u200D\uFEFF]/g, '')
                          .replace(/[\u2010-\u2015\u2212]/g, '-')
                          .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
@@ -3347,9 +3570,9 @@ if (cleanedErrors.length) {
                          .trim()
                          .toLowerCase()
                          .replace(/[.,;:!?]+$/g, '');
+
                     return t ? (t + '||m=' + (marks ?? '')) : '';
                 }
-
                 try {
                     if (sourceTypeGlobal === 'Question Bank') {
                         (finalPaper.subjects || []).forEach(s => {
@@ -3364,7 +3587,7 @@ if (cleanedErrors.length) {
                                     if (q && 'srcId' in q) delete q.srcId;
                                     const stem  = q?.text ?? q?.question ?? '';
                                     const marks = Number(q?.marks ?? fallbackMarks);
-                                    const k = _finalStemKey(stem, marks);
+                                    const k = _finalStemKey(stem, marks, sec.mcqType);
 
                                     if (!k) {
                                         out.push(q);
