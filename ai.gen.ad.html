@@ -768,12 +768,21 @@ const auth = firebase.auth();
     let currentPage = 'form';
     let lastSessionParams = null;
 
-       function __qbNormalizeTypeForSection(rawType = '') {
+              function __qbNormalizeTypeForSection(rawType = '') {
   const t = String(rawType || '').trim();
 
   if (t === 'Text Book (MCQ Single)' || t === 'Text (Single)') return 'MCQ (Single)';
   if (t === 'Text Book (MCQ Multiple)' || t === 'Text (Multiple)') return 'MCQ (Multiple)';
   return t;
+}
+
+function __qbIsParagraphQuestionType(rawType = '') {
+  const t = String(rawType || '').trim();
+  return t === 'Paragraph-Based MCQ (Single Correct)' || t === 'Comprehensive';
+}
+
+function __qbIsParagraphMeta(metaLine = '') {
+  return /\[(?:Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i.test(String(metaLine || ''));
 }
 
 function __qbGetSectionKeyForSave({ rawType = '', marks = 0, level = '' } = {}) {
@@ -783,9 +792,10 @@ function __qbGetSectionKeyForSave({ rawType = '', marks = 0, level = '' } = {}) 
 
   if (type === 'MCQ (Single)') return `MCQ_SINGLE_${levelKey}`;
   if (type === 'MCQ (Multiple)') return `MCQ_MULTIPLE_${levelKey}`;
-    if (type === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
+  if (type === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
   if (type === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
   if (type === 'Matching Matrix') return `MATCHING_MATRIX_${levelKey}`;
+  if (type === 'Paragraph-Based MCQ (Single Correct)') return `PARAGRAPH_MCQ_SINGLE_${levelKey}`;
   if (type === 'Comprehensive') return `COMPREHENSIVE_${levelKey}`;
 
   return `DESCRIPTIVE_${Number(marks || 0)}_${levelKey}`;
@@ -795,8 +805,11 @@ function __qbBuildSeedFromQuestion(qData = {}, sessionQuestionType = '') {
   const meta = parseMetaLine(qData.parsedMeta || '');
 
   const rawType =
-    (qData.parsedMeta && /\[Comprehensive\]/i.test(qData.parsedMeta)) ? 'Comprehensive'
-    : (qData.type || qData.mcqType || sessionQuestionType || 'Descriptive');
+    (qData.parsedMeta && /\[Paragraph-Based MCQ \(Single Correct\)\]/i.test(qData.parsedMeta))
+      ? 'Paragraph-Based MCQ (Single Correct)'
+      : (qData.parsedMeta && /\[Comprehensive\]/i.test(qData.parsedMeta))
+        ? 'Comprehensive'
+        : (qData.type || qData.mcqType || sessionQuestionType || 'Descriptive');
 
   const levelText = String(
     qData.difficulty ||
@@ -1004,9 +1017,10 @@ const aiGeneratorConfig = {
 questionTypes: [
   "MCQ (Single)",
   "MCQ (Multiple)",
-  "Fill in the Blanks",
-  "Assertion and Reason (MCQ Single)",
+   "Assertion and Reason (MCQ Single)",
   "Matching Matrix",
+  "Paragraph-Based MCQ (Single Correct)",
+   "Fill in the Blanks",
   "Descriptive"
 ],
 
@@ -1197,6 +1211,15 @@ const subjectsHTML = initialSubjectsWithOther
   <div style="min-width:90px;font-weight:700;color:#0f3d6b;">Total</div>
   <input type="number" id="lvl-total-ai" value="0" readonly
     style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfd3d8;border-radius:14px;background:#f6f6f6;outline:none;font-size:18px;font-weight:800;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
+</div>
+
+<div id="paragraph-questions-wrap-ai" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding-top:10px;margin-top:4px;border-top:1px solid #e4eef9;">
+  <div>
+    <div style="font-weight:700;color:#0f3d6b;">Questions per Passage</div>
+    <div style="font-size:12px;color:#5b6b7a;margin-top:3px;">Each sub-question = 1 mark</div>
+  </div>
+  <input type="number" id="paragraph-questions-per-set-ai" min="2" value="2"
+    style="width:52px;text-align:center;padding:10px 12px;border:2px solid #cfe0f1;border-radius:14px;background:#f4fbff;outline:none;font-size:18px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.03) inset;" />
 </div>
   </div>
 
@@ -1521,13 +1544,16 @@ if (__subOpts) {
 
   const mcqWrap = document.getElementById('mcq-levels-wrap-ai');
   const descWrap = document.getElementById('desc-levels-wrap-ai');
+  const paragraphQuestionsWrap = document.getElementById('paragraph-questions-wrap-ai');
 
   function syncLevelsMode() {
     const qv = (qtypeHidden?.value || '').trim();
     const isDesc = (qv === 'Descriptive');
+    const isParagraph = (qv === 'Paragraph-Based MCQ (Single Correct)');
 
     if (mcqWrap) mcqWrap.style.display = isDesc ? 'none' : 'flex';
     if (descWrap) descWrap.style.display = isDesc ? 'flex' : 'none';
+    if (paragraphQuestionsWrap) paragraphQuestionsWrap.style.display = isParagraph ? 'flex' : 'none';
   }
 
   syncLevelsMode();
@@ -1535,7 +1561,6 @@ if (__subOpts) {
   const qtypeOpts = document.querySelector('#qtype-dropdown-ai .dropdown-options');
   if (qtypeOpts) qtypeOpts.addEventListener('click', () => setTimeout(syncLevelsMode, 0));
 })();
-
 /* NEW: Auto Total (MCQ + Descriptive) */
 const __l1 = document.getElementById('lvl1-ai');
 const __l2 = document.getElementById('lvl2-ai');
@@ -1607,7 +1632,17 @@ if (qTypeFinal === 'Descriptive') {
   const l2 = parseInt(document.getElementById('lvl2-ai')?.value || '0', 10) || 0;
   const l3 = parseInt(document.getElementById('lvl3-ai')?.value || '0', 10) || 0;
   derivedCount = l1 + l2 + l3;
-  planRaw = `L1:${l1}, L2:${l2}, L3:${l3}`;
+
+  if (qTypeFinal === 'Paragraph-Based MCQ (Single Correct)') {
+    const questionsPerPassage = Math.max(
+      2,
+      parseInt(document.getElementById('paragraph-questions-per-set-ai')?.value || '2', 10) || 2
+    );
+
+    planRaw = `Passage Sets: L1:${l1}, L2:${l2}, L3:${l3}; ${questionsPerPassage} Questions per Passage`;
+  } else {
+    planRaw = `L1:${l1}, L2:${l2}, L3:${l3}`;
+  }
 }
 
 
@@ -1628,7 +1663,10 @@ const sessionParams = {
   questionType: qTypeFinal,
     chapter: (document.getElementById('chapter-value-ai')?.value || '').trim(),
   levelPlan: planRaw,
-  numQuestions: derivedCount,
+    numQuestions: derivedCount,
+  questionsPerPassage: (qTypeFinal === 'Paragraph-Based MCQ (Single Correct)')
+    ? Math.max(2, parseInt(document.getElementById('paragraph-questions-per-set-ai')?.value || '2', 10) || 2)
+    : 0,
   marks: (qTypeFinal === 'Descriptive')
     ? (parseInt(document.getElementById('desc-marks-ai')?.value || '0', 10) || 0)
     : 0
@@ -1636,6 +1674,7 @@ const sessionParams = {
         if (!sessionParams.chapter || !sessionParams.subject) return;
 if (!sessionParams.numQuestions || sessionParams.numQuestions <= 0) return;
 if (sessionParams.questionType === 'Descriptive' && (!sessionParams.marks || sessionParams.marks <= 0)) return;
+if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)' && sessionParams.questionsPerPassage < 2) return;
 
 
         history.pushState({ page: 'chat', sessionParams: sessionParams }, 'Chat', '#chat');
@@ -2764,7 +2803,7 @@ async function saveSessionQuestions(sessionParams) {
     } else {
       // For descriptive/comprehensive
       compareText = normalizeQuestion(
-        (qData.parsedMeta && qData.parsedMeta.includes("[Comprehensive]"))
+               (__qbIsParagraphMeta(qData.parsedMeta) || __qbIsParagraphQuestionType(qData.type))
           ? qData.fullText
           : qData.parsedBody
       );
@@ -2793,11 +2832,13 @@ async function saveSessionQuestions(sessionParams) {
           (doc.data().question || '') + ' ' + (doc.data().options || []).join(' ')
         );
       } else {
-        // Descriptive/comprehensive
+               // Descriptive/paragraph-based
+        const existingData = doc.data() || {};
+
         existingText = normalizeQuestion(
-          (doc.data().metaLine && doc.data().metaLine.includes("[Comprehensive]"))
-            ? doc.data().text
-            : doc.data().body
+          (__qbIsParagraphMeta(existingData.metaLine) || __qbIsParagraphQuestionType(existingData.type))
+            ? existingData.text
+            : existingData.body
         );
       }
 
@@ -2826,23 +2867,37 @@ async function saveSessionQuestions(sessionParams) {
 
     const __wrap = __fixLatex;
 
-    if (qData.parsedMeta && qData.parsedMeta.includes("[Comprehensive]")) {
-      // Wrap passage + each MCQ body before saving
+        if (__qbIsParagraphMeta(qData.parsedMeta) || __qbIsParagraphQuestionType(qData.type)) {
+      // Save one common passage with all dependent MCQ sub-questions as one item
       const wrappedPassage = __wrap(qData.passage || '');
+
       const wrappedMcqs = (qData.mcqs || []).map(m => ({
         ...m,
-        body: __wrap(m.body || '')
+        question: __wrap(m.question || ''),
+        options: (m.options || []).map(option => __wrap(option || '')),
+        body: __wrap(m.body || ''),
+        answer: m.answer || m.parsedAnswer || '',
+        parsedAnswer: m.parsedAnswer || m.answer || '',
+        explanation: __wrap(m.explanation || ''),
+        finalAnswer: __wrap(m.finalAnswer || '')
       }));
+
       const wrappedFull = __wrap(qData.fullText || '');
 
-    console.log("ADDING COMPREHENSIVE QUESTION", i);
+      const savedType = /\[Comprehensive\]/i.test(qData.parsedMeta || '')
+        ? 'Comprehensive'
+        : 'Paragraph-Based MCQ (Single Correct)';
 
-     await Promise.race([
-                db.collection("questions").add({
-          type: "Comprehensive",
+      console.log("ADDING PARAGRAPH-BASED MCQ SET", i);
+
+      await Promise.race([
+        db.collection("questions").add({
+          type: savedType,
+          mcqType: savedType,
           text: wrappedFull,
+          body: wrappedFull,
           metaLine: qData.parsedMeta,
-          marks: meta.marks || 2,
+          marks: meta.marks || wrappedMcqs.length || sessionParams.questionsPerPassage || 2,
           difficulty: meta.difficulty || null,
           level: meta.level || null,
           sectionKey: seed.sectionKey,
@@ -2858,11 +2913,11 @@ async function saveSessionQuestions(sessionParams) {
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Firestore comprehensive add timeout after 10 seconds")), 10000)
+          setTimeout(() => reject(new Error("Firestore paragraph-based MCQ add timeout after 10 seconds")), 10000)
         )
       ]);
 
-      console.log("ADDED COMPREHENSIVE QUESTION", i);
+      console.log("ADDED PARAGRAPH-BASED MCQ SET", i);
     } else {
       // Normal question save (single, multiple, descriptive) — wrap mathy text
       const wrappedQuestion  = __wrap(qData.question || '');
@@ -3115,6 +3170,11 @@ const isMultiple = /Multiple/i.test(rawType);
 const isFillBlank = rawType === 'Fill in the Blanks';
 const isAssertionReason = rawType === 'Assertion and Reason (MCQ Single)';
 const isMatchingMatrix = rawType === 'Matching Matrix';
+const isParagraphBased = rawType === 'Paragraph-Based MCQ (Single Correct)';
+const paragraphQuestionsPerSet = Math.max(
+  2,
+  parseInt(sessionParams.questionsPerPassage || '2', 10) || 2
+);
 
 // Meta tag label used in the example block
 const qtypeForFormat = isFillBlank
@@ -3123,9 +3183,11 @@ const qtypeForFormat = isFillBlank
     ? 'Assertion and Reason (MCQ Single)'
     : isMatchingMatrix
       ? 'Matching Matrix'
-      : isTextbook
-      ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
-      : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
+      : isParagraphBased
+        ? 'Paragraph-Based MCQ (Single Correct)'
+        : isTextbook
+          ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
+          : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
 
 let qtype = rawType;
 const transcribeNote = isTextbook ? `
@@ -3157,23 +3219,25 @@ const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdva
 
   // ---- COMMON headings ----
  const requestLine =
-  isJeeMains
-    ? `Request: Generate ${count} JEE Main style questions. ${plan ? `Distribution: ${plan}` : ''}`
-    : isJeeAdvance
-      ? `Request: Generate ${count} JEE Advanced style questions. ${plan ? `Distribution: ${plan}` : ''}`
-      : isNeet
-        ? `Request: Generate ${count} NEET style questions. ${plan ? `Distribution: ${plan}` : ''}`
-        : isOlympiad
-          ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
-          : isFoundation
-            ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
-            : isCbse
-              ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
-              : isIcse
-                ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                : isApState
-                  ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                  : `Request: ${plan || (count + ' questions')}`;
+  isParagraphBased
+    ? `Request: Generate ${count} Paragraph-Based MCQ (Single Correct) passage set(s), with exactly ${paragraphQuestionsPerSet} sub-questions in each passage set. ${plan ? `Distribution: ${plan}` : ''}`
+    : isJeeMains
+      ? `Request: Generate ${count} JEE Main style questions. ${plan ? `Distribution: ${plan}` : ''}`
+      : isJeeAdvance
+        ? `Request: Generate ${count} JEE Advanced style questions. ${plan ? `Distribution: ${plan}` : ''}`
+        : isNeet
+          ? `Request: Generate ${count} NEET style questions. ${plan ? `Distribution: ${plan}` : ''}`
+          : isOlympiad
+            ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
+            : isFoundation
+              ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
+              : isCbse
+                ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                : isIcse
+                  ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                  : isApState
+                    ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                    : `Request: ${plan || (count + ' questions')}`;
 
 const header = `
 Class: ${cls}
@@ -3429,6 +3493,55 @@ ${numberingNote}
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
 ${strictAccuracy}
 `;
+
+const paragraphBasedFormat = `
+Generate EXACTLY ${count} passage set(s). Each passage set must have exactly ${paragraphQuestionsPerSet} single-correct MCQ sub-questions.
+
+Format each complete passage set EXACTLY as:
+
+Q<num>: Level <1/2/3>, ${paragraphQuestionsPerSet} Marks [Paragraph-Based MCQ (Single Correct)]
+Passage:
+<One common passage, experiment, data set, graph description, case study, or situation>
+
+Sub-question 1:
+<Question based only on the passage>
+A) <Option A>
+B) <Option B>
+C) <Option C>
+D) <Option D>
+Ans: <A) or B) or C) or D)>
+Explanation: <Step-wise explanation for Math; point-wise explanation for non-Math>
+Answer: <Final answer>
+
+Sub-question 2:
+<Question based only on the same passage>
+A) <Option A>
+B) <Option B>
+C) <Option C>
+D) <Option D>
+Ans: <A) or B) or C) or D)>
+Explanation: <Step-wise explanation for Math; point-wise explanation for non-Math>
+Answer: <Final answer>
+
+Continue the same Sub-question format until Sub-question ${paragraphQuestionsPerSet}.
+
+Rules:
+• Q1 to Q${count} are passage sets, not individual sub-questions.
+• Each passage set carries ${paragraphQuestionsPerSet} Marks because each sub-question carries 1 Mark.
+• The Level shown in the Q<num> header applies to the complete passage set.
+• Keep exactly ONE correct answer for every sub-question.
+• Do NOT write separate main Q numbers for sub-questions; use only "Sub-question 1:", "Sub-question 2:" and so on.
+• All sub-questions must require understanding or application of the common passage.
+• Use ONLY content from the selected class/subject/chapter.
+• If subtopics are mentioned in the Request, give questions only from those subtopics.
+• No headings, introductions, comments, or extra text outside the Q1–Q${count} passage sets.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+• When I ask for the final set, keep this same passage-set format and use only inline LaTeX with \\( \\).
+${isJeeAdvance ? '• Questions should reflect JEE Advanced paragraph-based analytical practice.' : ''}
+${isFoundation ? '• Questions should reflect IIT & NEET Foundation paragraph-based application practice suitable for the selected class.' : ''}
+${isNeet ? '• Use this as higher-application NEET practice while keeping the content syllabus-accurate.' : ''}
+${strictAccuracy}
+`;
   // MCQ Multiple additional distribution rule (per 10)
   const multiBlockRule = `
 Additional rules for MCQ (Multiple):
@@ -3520,12 +3633,20 @@ ${assertionReasonFormat}`.trim()
 );
   }
 
-  if (isMatchingMatrix) {
+    if (isMatchingMatrix) {
     return (
 `${header}
 ${levelBlock}
 ${transcribeNote}
 ${matchingMatrixFormat}`.trim()
+);
+  }
+
+  if (isParagraphBased) {
+    return (
+`${header}
+${levelBlock}
+${paragraphBasedFormat}`.trim()
 );
   }
 
@@ -3686,6 +3807,129 @@ function __forceOptionLines(body) {
  * Parse a pasted FINAL SET block into our session question objects.
  * Respects the current sessionParams.questionType (MCQ Single/Multiple/Descriptive)
  */
+function __qbBuildParagraphFullText(qData = {}) {
+  const lines = [
+    qData.parsedMeta || '',
+    'Passage:',
+    qData.passage || '',
+    ''
+  ];
+
+  (qData.mcqs || []).forEach((mcq, index) => {
+    lines.push(`Sub-question ${index + 1}:`);
+    lines.push(mcq.body || '');
+
+    if (mcq.answer) lines.push(mcq.answer);
+    if (mcq.explanation) lines.push(`Explanation: ${mcq.explanation}`);
+    if (mcq.finalAnswer) lines.push(`Answer: ${mcq.finalAnswer}`);
+
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+function __qbParseParagraphSetBlock(block, sessionParams) {
+  const { meta, body } = __splitMetaAndBody(block);
+
+  const passageStart = body.match(/(?:^|\n)\s*Passage\s*:\s*/i);
+  if (!passageStart) return null;
+
+  const firstSubIndex = body.search(/\n\s*Sub-question\s*1\s*:/i);
+  if (firstSubIndex < 0) return null;
+
+  const passageBegin = passageStart.index + passageStart[0].length;
+  const passage = body.slice(passageBegin, firstSubIndex).trim();
+  const subText = body.slice(firstSubIndex).trim();
+
+  const subBlocks = subText
+    .split(/\n(?=\s*Sub-question\s*\d+\s*:)/i)
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const mcqs = [];
+
+  subBlocks.forEach((subBlock) => {
+    const withoutHeading = subBlock
+      .replace(/^Sub-question\s*\d+\s*:\s*/i, '')
+      .trim();
+
+    const explanationMatch = withoutHeading.match(/\n\s*Explanation\s*:\s*([\s\S]*?)(?=\n\s*Answer\s*:|$)/i);
+    const finalAnswerMatch = withoutHeading.match(/\n\s*Answer\s*:\s*([\s\S]*)$/i);
+    const ansMatch = withoutHeading.match(/\n\s*Ans\s*:\s*([A-D]\)[^\n]*)/i);
+
+    const core = withoutHeading
+      .split(/\n\s*Ans\s*:/i)[0]
+      .trim();
+
+    const lines = core
+      .split('\n')
+      .map(x => x.trim())
+      .filter(Boolean);
+
+    const optionStartIndex = lines.findIndex(line => /^[A-D]\)/i.test(line));
+    if (optionStartIndex < 0) return;
+
+    const question = lines.slice(0, optionStartIndex).join('\n').trim();
+    const optionLines = lines.slice(optionStartIndex, optionStartIndex + 4);
+
+    if (!question || optionLines.length < 4) return;
+
+    const options = optionLines.map((line) =>
+      line.replace(/^[A-D]\)\s*/i, '').trim()
+    );
+
+    const parsedAnswer = ansMatch
+      ? `Ans: ${__extractAnswerLetters(`Ans: ${ansMatch[1]}`).map(L => `${L})`).join(', ')}`
+      : '';
+
+    mcqs.push({
+      question,
+      options,
+      body: [
+        question,
+        `A) ${options[0]}`,
+        `B) ${options[1]}`,
+        `C) ${options[2]}`,
+        `D) ${options[3]}`
+      ].join('\n'),
+      answer: parsedAnswer,
+      parsedAnswer,
+      explanation: explanationMatch ? explanationMatch[1].trim() : '',
+      finalAnswer: finalAnswerMatch ? finalAnswerMatch[1].trim() : ''
+    });
+  });
+
+  if (!passage || !mcqs.length) return null;
+
+  const rawMeta = parseMetaLine(meta);
+  const questionNo = (meta.match(/^Q\s*(\d+)/i) || [, '1'])[1];
+  const levelText = rawMeta.difficulty || 'Level 1';
+  const marks = mcqs.length;
+
+  const qData = {
+    type: 'Paragraph-Based MCQ (Single Correct)',
+    mcqType: 'Paragraph-Based MCQ (Single Correct)',
+    class: sessionParams.class,
+    board: sessionParams.board,
+    subject: sessionParams.subject,
+    chapter: sessionParams.chapter,
+    parsedMeta: `Q${questionNo}: ${levelText}, ${marks} Mark${marks === 1 ? '' : 's'} [Paragraph-Based MCQ (Single Correct)]`,
+    passage,
+    mcqs,
+    question: '',
+    options: [],
+    parsedAnswer: '',
+    parsedBody: '',
+    explanation: ''
+  };
+
+  qData.fullText = __qbBuildParagraphFullText(qData);
+  qData.parsedBody = qData.fullText.replace(`${qData.parsedMeta}\n`, '');
+
+  return qData;
+}
+
 function parseFinalSetIntoQuestions(text, sessionParams) {
   // keep only from first Qn onward (ignore any chatty intro)
   const startIdx = text.search(/\bQ\s*1\s*:/i);
@@ -3696,7 +3940,24 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
     .map(s => s.trim())
     .filter(s => /^Q\s*\d+\s*:/i.test(s));
 
-  const out = [];
+    const out = [];
+
+  const isParagraphBased = sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)';
+
+  if (isParagraphBased) {
+    blocks.forEach((block) => {
+      const paragraphSet = __qbParseParagraphSetBlock(block, sessionParams);
+      if (paragraphSet) out.push(paragraphSet);
+    });
+
+    out.forEach((qData, index) => {
+      qData.parsedMeta = qData.parsedMeta.replace(/^Q\s*\d+\s*:/i, `Q${index + 1}:`);
+      qData.fullText = __qbBuildParagraphFullText(qData);
+      qData.parsedBody = qData.fullText.replace(`${qData.parsedMeta}\n`, '');
+    });
+
+    return out;
+  }
 
   const isMatchingMatrix = sessionParams.questionType === 'Matching Matrix';
 
@@ -3912,6 +4173,20 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
 /* ========== END FINAL SET parser ========== */
 
 function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
+  if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)') {
+    const parsed = parseFinalSetIntoQuestions(responseText, sessionParams);
+
+    if (!parsed.length) {
+      appendChatMessage(responseText, 'ai', messagesArea);
+      return;
+    }
+
+    currentSessionQuestions.push(...parsed);
+    sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+    rerenderAllQuestions();
+    return;
+  }
+
   const questionBlocks = responseText
     .split(/\n(?=Q\s*\d+:)/g)
     .map(q => q.trim())
@@ -4213,6 +4488,62 @@ function createQuestionElement(qData, index) {
   return questionEl;
 }
 
+function showEditPopupForParagraph(index) {
+  const qData = currentSessionQuestions[index];
+  if (!qData) return;
+
+  document.querySelectorAll('.edit-popup').forEach(p => p.remove());
+
+  const popup = document.createElement('div');
+  popup.className = 'edit-popup';
+
+  popup.innerHTML = `
+    <h3>Edit Paragraph-Based MCQ Set</h3>
+
+    <label>Complete Passage Set:</label>
+    <textarea id="edit-paragraph-set-text" rows="18"></textarea>
+
+    <div class="popup-buttons">
+      <button id="edit-cancel">Cancel</button>
+      <button id="edit-save">Save</button>
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  const textarea = popup.querySelector('#edit-paragraph-set-text');
+  textarea.value = qData.fullText || __qbBuildParagraphFullText(qData);
+
+  popup.querySelector('#edit-cancel').onclick = () => popup.remove();
+
+  popup.querySelector('#edit-save').onclick = () => {
+    const updatedText = textarea.value.trim();
+
+    const params = {
+      ...(lastSessionParams || {}),
+      questionType: 'Paragraph-Based MCQ (Single Correct)'
+    };
+
+    const parsed = parseFinalSetIntoQuestions(updatedText, params);
+
+    if (
+      !parsed.length ||
+      !parsed[0].passage ||
+      !Array.isArray(parsed[0].mcqs) ||
+      parsed[0].mcqs.length < 2
+    ) {
+      alert('Keep one Passage and at least two Sub-question blocks in the required format.');
+      return;
+    }
+
+    currentSessionQuestions[index] = parsed[0];
+    sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+
+    popup.remove();
+    rerenderAllQuestions();
+  };
+}
+
 function rerenderAllQuestions() {
   const messagesArea = document.getElementById('chat-messages-area');
   messagesArea.querySelectorAll('.ai-question-item').forEach(item => item.remove());
@@ -4220,8 +4551,8 @@ function rerenderAllQuestions() {
   const fragment = document.createDocumentFragment();
 
   currentSessionQuestions.forEach((q, i) => {
-    // For comprehensives, we need a different renderer
-    if (q.parsedMeta && q.parsedMeta.includes("[Comprehensive]")) {
+       // For paragraph-based passage sets, use the grouped renderer
+    if (__qbIsParagraphMeta(q.parsedMeta) || __qbIsParagraphQuestionType(q.type)) {
       // Renumber meta
       const metaPartsMatch = q.parsedMeta.match(/Q\s*\d+:\s*(.*)/i);
       const details = metaPartsMatch ? metaPartsMatch[1] : '';
@@ -4273,7 +4604,7 @@ function rerenderAllQuestions() {
         blockEl.appendChild(menu);
 
         menu.querySelector('.menu-show-answer-btn').onclick = () => {
-          const q = currentSessionQuestions[i]; // comprehensive data
+                    const q = currentSessionQuestions[i]; // paragraph-based data
           const meta = q.parsedMeta || '';
           const cls  = q.class  || (lastSessionParams && lastSessionParams.class)  || '';
           const subj = q.subject|| (lastSessionParams && lastSessionParams.subject)|| '';
@@ -4309,12 +4640,12 @@ function rerenderAllQuestions() {
         };
 
         menu.querySelector('.menu-edit-btn').onclick = () => {
-          showEditPopupForComprehensive(i);
+                    showEditPopupForParagraph(i);
           menu.remove();
         };
 
         menu.querySelector('.menu-delete-btn').onclick = () => {
-          if (confirm('Are you sure you want to delete this comprehensive?')) {
+                   if (confirm('Are you sure you want to delete this paragraph-based passage set?')) {
             currentSessionQuestions.splice(i, 1);
 sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
 rerenderAllQuestions();
