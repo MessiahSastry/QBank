@@ -2098,7 +2098,7 @@ function renderLeftHeading(text, __parent = printable) {
   const t = String(text || '').trim();
 
   const isLevel = /^Level\s*[1-3]$/i.test(t);
-  const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\)|Matching Matrix)$/i.test(t);
+  const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\)|Matching Matrix|Paragraph-Based MCQ\s*\(Single Correct\))$/i.test(t);
 
     const h = document.createElement('div');
   const __theme = __pdfTheme;
