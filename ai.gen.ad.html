@@ -4563,7 +4563,7 @@ function rerenderAllQuestions() {
       blockEl.className = 'message ai-question-item';
       blockEl.dataset.sessionQuestionIndex = i;
 
-            // Build paragraph sub-question HTMLs with visible Answer and Explanation in Preview
+                 // Build paragraph sub-question HTMLs with compact visible Answer and Explanation in Preview
       const mcqHtml = (Array.isArray(q.mcqs) ? q.mcqs : []).map((mcq, k) => {
         const cleanBody = String(mcq.body || '')
           .replace(/^Q\d+:\s*/i, '')
@@ -4604,27 +4604,12 @@ function rerenderAllQuestions() {
             .replace(/>/g, "&gt;")
         );
 
-        return `
-          <div class="question-text-ai" style="margin-top:14px;text-align:left;">
-            <div style="margin-bottom:6px;">
-              <b>Q${k + 1}.</b> ${safeBody}
-            </div>
-
-            ${safeAnswer ? `
-              <div class="temp-answer answer-box" style="display:block;margin-top:8px;">
-                <b>Ans:</b> ${safeAnswer}
-              </div>
-            ` : ''}
-
-            ${safeExplanation ? `
-              <div class="temp-answer explanation-box" style="display:block;margin-top:8px;">
-                <b>Explanation:</b><br>${safeExplanation}
-              </div>
-            ` : ''}
-          </div>
-        `;
+        return `<div class="question-text-ai" style="margin-top:14px;text-align:left;white-space:normal;">
+          <div style="margin-bottom:6px;white-space:pre-wrap;"><b>Q${k + 1}.</b> ${safeBody}</div>
+          ${safeAnswer ? `<div class="temp-answer answer-box" style="display:block;margin-top:8px;padding:8px 12px;white-space:normal;"><b>Ans:</b> ${safeAnswer}</div>` : ''}
+          ${safeExplanation ? `<div class="temp-answer explanation-box" style="display:block;margin-top:8px;padding:8px 12px;white-space:normal;"><b>Explanation:</b><div style="margin-top:4px;white-space:pre-wrap;">${safeExplanation}</div></div>` : ''}
+        </div>`;
       }).join('');
-
       blockEl.innerHTML = `
         <div class="question-meta-ai">${q.parsedMeta}</div>
         <div class="question-text-ai" style="white-space:pre-line; margin-bottom:8px;"><b>Passage:</b> ${__fixLatex(q.passage || '')}</div>
