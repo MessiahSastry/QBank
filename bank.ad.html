@@ -1355,7 +1355,7 @@ function __qbRenderParagraphWorksheetBody(source = {}, theme, availableWidth) {
 
   const subQuestionsHTML = mcqs.map((mcq, index) => {
     const questionText = __qbPdfSafeText(__qbGetParagraphSubQuestionText(mcq));
-    const options = __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []);
+   const options = __qbNormalizeOptions(__qbGetWorkbookOptions(mcq));
 
     return `
       <div style="margin-top:10px;page-break-inside:avoid;break-inside:avoid;">
@@ -1390,8 +1390,8 @@ function __qbRenderParagraphKeyBody(source = {}, theme, availableWidth) {
     const questionText = __qbPdfSafeText(__qbGetParagraphSubQuestionText(mcq));
     const options = __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []);
 
-    const answer = __qbPdfSafeText(
-      String(mcq.parsedAnswer || mcq.answer || mcq.finalAnswer || '')
+       const answer = __qbPdfSafeText(
+      String(__qbGetWorkbookAnswer(mcq) || mcq.finalAnswer || '')
         .replace(/^\s*Answer\s*:\s*/i, '')
         .replace(/^\s*Ans\s*:\s*/i, '')
         .trim()
@@ -7180,131 +7180,200 @@ function __qbShuffleQuestionToTargets(data, targetLetters) {
 }
 
 async function __qbEnsureWorkbookShuffleForQuestionNodes(questionNodes = []) {
-  const rawEntries = (questionNodes || [])
+  const parentEntries = (questionNodes || [])
     .map(node => {
       const id = node.getAttribute('data-id');
-      const data = (window.__pdfQuestionDataMap && id) ? window.__pdfQuestionDataMap[id] : null;
+      const sourceData = (window.__pdfQuestionDataMap && id)
+        ? window.__pdfQuestionDataMap[id]
+        : null;
+
+      if (!id || !sourceData) return null;
+
+      const data = {
+        ...sourceData,
+        mcqs: Array.isArray(sourceData.mcqs)
+          ? sourceData.mcqs.map(mcq => ({ ...mcq }))
+          : []
+      };
+
       return { node, id, data };
     })
-    .filter(entry =>
-      entry.id &&
-      entry.data &&
-      Array.isArray(entry.data.options) &&
-      entry.data.options.length === 4
-    );
+    .filter(Boolean);
 
-  const eligibleEntries = rawEntries.filter(entry => {
-    if (__qbHasWorkbookShuffle(entry.data)) return true;
-    return __qbParseAnswerLetters(__qbGetOriginalAnswer(entry.data)).length > 0;
+  const eligibleUnits = [];
+
+  parentEntries.forEach(parent => {
+    if (__qbIsParagraphBasedQuestion(parent.data)) {
+      (parent.data.mcqs || []).forEach((mcq, index) => {
+        const hasFourOptions =
+          Array.isArray(mcq.options) &&
+          mcq.options.length === 4;
+
+        const hasValidAnswer =
+          __qbHasWorkbookShuffle(mcq) ||
+          __qbParseAnswerLetters(__qbGetOriginalAnswer(mcq)).length > 0;
+
+        if (hasFourOptions && hasValidAnswer) {
+          eligibleUnits.push({
+            parent,
+            data: mcq,
+            isParagraphSubQuestion: true,
+            subIndex: index
+          });
+        }
+      });
+
+      return;
+    }
+
+    const hasFourOptions =
+      Array.isArray(parent.data.options) &&
+      parent.data.options.length === 4;
+
+    const hasValidAnswer =
+      __qbHasWorkbookShuffle(parent.data) ||
+      __qbParseAnswerLetters(__qbGetOriginalAnswer(parent.data)).length > 0;
+
+    if (hasFourOptions && hasValidAnswer) {
+      eligibleUnits.push({
+        parent,
+        data: parent.data,
+        isParagraphSubQuestion: false,
+        subIndex: null
+      });
+    }
   });
 
-  const savedEntries = eligibleEntries.filter(entry => __qbHasWorkbookShuffle(entry.data));
-  const unsavedEntries = eligibleEntries.filter(entry => !__qbHasWorkbookShuffle(entry.data));
+  const savedUnits = eligibleUnits.filter(unit => __qbHasWorkbookShuffle(unit.data));
+  const unsavedUnits = eligibleUnits.filter(unit => !__qbHasWorkbookShuffle(unit.data));
 
-     if (!eligibleEntries.length) {
+  if (!eligibleUnits.length) {
     await appInfo('No MCQ questions with valid answer letters were found for workbook shuffle.');
     return { didSaveNew: false, savedCount: 0, newlySavedCount: 0 };
   }
 
-  if (!unsavedEntries.length) {
+  if (!unsavedUnits.length) {
     await appInfo(
       `All selected MCQ questions are already shuffled and saved.\n\n` +
-      `Eligible MCQs: ${eligibleEntries.length}\n` +
-      `Already shuffled: ${savedEntries.length}`
+      `Eligible MCQs: ${eligibleUnits.length}\n` +
+      `Already shuffled: ${savedUnits.length}`
     );
-    return { didSaveNew: false, savedCount: savedEntries.length, newlySavedCount: 0 };
+
+    return {
+      didSaveNew: false,
+      savedCount: savedUnits.length,
+      newlySavedCount: 0
+    };
   }
 
-  if (!savedEntries.length) {
+  if (!savedUnits.length) {
     await appInfo(
       `MCQ options are being shuffled and saved for this workbook.\n\n` +
-      `Eligible MCQs: ${eligibleEntries.length}\n` +
-      `To shuffle now: ${unsavedEntries.length}\n\n` +
+      `Eligible MCQs: ${eligibleUnits.length}\n` +
+      `To shuffle now: ${unsavedUnits.length}\n\n` +
       `Click OK to continue.`
     );
   } else {
     await appInfo(
       `Some questions are already shuffled.\n\n` +
-      `Already shuffled: ${savedEntries.length}\n` +
-      `Remaining to shuffle now: ${unsavedEntries.length}\n\n` +
+      `Already shuffled: ${savedUnits.length}\n` +
+      `Remaining to shuffle now: ${unsavedUnits.length}\n\n` +
       `Click OK to continue.`
     );
   }
+
   const singleHistory = [];
   const singleCounts = { A: 0, B: 0, C: 0, D: 0 };
 
   const comboHistory = [];
   const comboCounts = {};
 
-  for (const entry of eligibleEntries) {
-    const answerLetters = __qbParseAnswerLetters(__qbGetWorkbookAnswer(entry.data));
+  savedUnits.forEach(unit => {
+    const answerLetters = __qbParseAnswerLetters(__qbGetWorkbookAnswer(unit.data));
+    if (!answerLetters.length) return;
 
-    if (!answerLetters.length) continue;
-
-    if (__qbHasWorkbookShuffle(entry.data)) {
-      if (answerLetters.length === 1) {
-        const one = answerLetters[0];
-        singleHistory.push(one);
-        singleCounts[one] = Number(singleCounts[one] || 0) + 1;
-      } else {
-        const comboKey = answerLetters.join(', ');
-        comboHistory.push(comboKey);
-        comboCounts[comboKey] = Number(comboCounts[comboKey] || 0) + 1;
-      }
+    if (answerLetters.length === 1) {
+      const one = answerLetters[0];
+      singleHistory.push(one);
+      singleCounts[one] = Number(singleCounts[one] || 0) + 1;
+    } else {
+      const comboKey = answerLetters.join(', ');
+      comboHistory.push(comboKey);
+      comboCounts[comboKey] = Number(comboCounts[comboKey] || 0) + 1;
     }
-  }
+  });
 
-  const saveTasks = [];
+  const changedParents = new Map();
+  let newlySavedCount = 0;
 
-  for (const entry of eligibleEntries) {
-    if (__qbHasWorkbookShuffle(entry.data)) continue;
-
-    const originalLetters = __qbParseAnswerLetters(__qbGetOriginalAnswer(entry.data));
-    if (!originalLetters.length) continue;
+  unsavedUnits.forEach(unit => {
+    const originalLetters = __qbParseAnswerLetters(__qbGetOriginalAnswer(unit.data));
+    if (!originalLetters.length) return;
 
     let targetLetters = [];
 
     if (originalLetters.length === 1) {
       const chosen = __qbChooseSmartSingleLetter(singleHistory, singleCounts);
       targetLetters = [chosen];
+
       singleHistory.push(chosen);
       singleCounts[chosen] = Number(singleCounts[chosen] || 0) + 1;
     } else {
       const comboKey = __qbChooseSmartCombo(comboHistory, comboCounts, originalLetters.length);
       targetLetters = comboKey.split(',').map(x => x.trim()).filter(Boolean);
 
-      if (!targetLetters.length) continue;
+      if (!targetLetters.length) return;
 
       comboHistory.push(comboKey);
       comboCounts[comboKey] = Number(comboCounts[comboKey] || 0) + 1;
     }
 
-    const shuffled = __qbShuffleQuestionToTargets(entry.data, targetLetters);
-    if (!shuffled) continue;
+    const shuffled = __qbShuffleQuestionToTargets(unit.data, targetLetters);
+    if (!shuffled) return;
 
-    saveTasks.push(
-      questionsDb.collection('questions').doc(entry.id).update({
-        workbookShuffledOptions: shuffled.options,
-        workbookShuffledAnswer: shuffled.answer,
-        workbookShuffleSavedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        if (window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[entry.id]) {
-          window.__pdfQuestionDataMap[entry.id] = {
-            ...window.__pdfQuestionDataMap[entry.id],
-            workbookShuffledOptions: shuffled.options,
-            workbookShuffledAnswer: shuffled.answer
+    unit.data.workbookShuffledOptions = shuffled.options;
+    unit.data.workbookShuffledAnswer = shuffled.answer;
+
+    changedParents.set(unit.parent.id, unit.parent);
+    newlySavedCount++;
+  });
+
+  const saveTasks = Array.from(changedParents.values()).map(parent => {
+    const updateData = {
+      workbookShuffleSavedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (__qbIsParagraphBasedQuestion(parent.data)) {
+      updateData.mcqs = parent.data.mcqs;
+    } else {
+      updateData.workbookShuffledOptions = parent.data.workbookShuffledOptions;
+      updateData.workbookShuffledAnswer = parent.data.workbookShuffledAnswer;
+    }
+
+    return questionsDb.collection('questions').doc(parent.id).update(updateData).then(() => {
+      if (window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[parent.id]) {
+        if (__qbIsParagraphBasedQuestion(parent.data)) {
+          window.__pdfQuestionDataMap[parent.id] = {
+            ...window.__pdfQuestionDataMap[parent.id],
+            mcqs: parent.data.mcqs.map(mcq => ({ ...mcq }))
+          };
+        } else {
+          window.__pdfQuestionDataMap[parent.id] = {
+            ...window.__pdfQuestionDataMap[parent.id],
+            workbookShuffledOptions: parent.data.workbookShuffledOptions,
+            workbookShuffledAnswer: parent.data.workbookShuffledAnswer
           };
         }
-      })
-    );
-  }
+      }
+    });
+  });
 
   await Promise.all(saveTasks);
 
   return {
     didSaveNew: saveTasks.length > 0,
-    savedCount: savedEntries.length,
-    newlySavedCount: saveTasks.length
+    savedCount: savedUnits.length,
+    newlySavedCount
   };
 }
 
