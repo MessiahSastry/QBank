@@ -4563,17 +4563,64 @@ function rerenderAllQuestions() {
       blockEl.className = 'message ai-question-item';
       blockEl.dataset.sessionQuestionIndex = i;
 
-      // Build MCQ HTMLs
-      const mcqHtml = q.mcqs.map((mcq, k) => {
-        // Remove leading Qn: from mcq.body if present (Q1:, Q2:, etc.)
-        let cleanBody = mcq.body.replace(/^Q\d+:\s*/i, '').replace(/Ans:.*/, '').trim();
+            // Build paragraph sub-question HTMLs with visible Answer and Explanation in Preview
+      const mcqHtml = (Array.isArray(q.mcqs) ? q.mcqs : []).map((mcq, k) => {
+        const cleanBody = String(mcq.body || '')
+          .replace(/^Q\d+:\s*/i, '')
+          .replace(/\n?\s*Ans\s*:[\s\S]*$/i, '')
+          .trim();
+
+        const safeBody = __fixLatex(
+          cleanBody
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+        );
+
+        const rawAnswer = String(
+          mcq.parsedAnswer ||
+          mcq.answer ||
+          mcq.finalAnswer ||
+          ''
+        ).trim();
+
+        const answerOnly = rawAnswer
+          .replace(/^\s*Ans\s*:\s*/i, '')
+          .replace(/^\s*Answer\s*:\s*/i, '')
+          .trim();
+
+        const explanationOnly = String(mcq.explanation || '')
+          .replace(/^\s*Explanation\s*:\s*/i, '')
+          .trim();
+
+        const safeAnswer = __fixLatex(
+          answerOnly
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+        );
+
+        const safeExplanation = __fixLatex(
+          explanationOnly
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+        );
 
         return `
-          <div class="question-text-ai" style="margin-top:8px; text-align:left;">
-            <b>Q${k+1}.</b> ${__fixLatex(cleanBody.replace(/</g,"&lt;").replace(/>/g,"&gt;"))}
-            <div class="temp-answer" style="display:none; margin-top:3px; color:#5d4037;">
-              ${mcq.answer ? mcq.answer : ''}
+          <div class="question-text-ai" style="margin-top:14px;text-align:left;">
+            <div style="margin-bottom:6px;">
+              <b>Q${k + 1}.</b> ${safeBody}
             </div>
+
+            ${safeAnswer ? `
+              <div class="temp-answer answer-box" style="display:block;margin-top:8px;">
+                <b>Ans:</b> ${safeAnswer}
+              </div>
+            ` : ''}
+
+            ${safeExplanation ? `
+              <div class="temp-answer explanation-box" style="display:block;margin-top:8px;">
+                <b>Explanation:</b><br>${safeExplanation}
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -4595,8 +4642,8 @@ function rerenderAllQuestions() {
 
         const menu = document.createElement('div');
         menu.className = 'actions-menu';
-        menu.innerHTML = `
-          <button class="menu-show-answer-btn">Show Answer</button>
+               menu.innerHTML = `
+          <button class="menu-show-answer-btn">Explain It</button>
           <button class="menu-edit-btn">Edit</button>
           <button class="menu-delete-btn">Delete</button>
         `;
