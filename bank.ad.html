@@ -812,12 +812,13 @@ const questionsDb = stpatricksApp.firestore();
           "Other"
         ]
       },
-      questionTypes: [
+            questionTypes: [
         "MCQ (Single)",
         "MCQ (Multiple)",
-        "Fill in the Blanks",
         "Assertion and Reason (MCQ Single)",
         "Matching Matrix",
+        "Paragraph-Based MCQ (Single Correct)",
+        "Fill in the Blanks",
         "Descriptive"
       ],
       marks: Array.from({ length: 10 }, (_, i) => i + 1),
@@ -860,6 +861,35 @@ function __qbAiCleanText(value) {
 }
 
 function __qbBuildAiPromptFromQuestionData(data) {
+  if (__qbIsParagraphBasedQuestion(data)) {
+    const passage = __qbAiCleanText(data.passage || '');
+    const mcqs = Array.isArray(data.mcqs) ? data.mcqs : [];
+
+    const subQuestionsText = mcqs.map((mcq, index) => {
+      const questionText = __qbAiCleanText(
+        mcq.question ||
+        String(mcq.body || '').split('\n')[0] ||
+        ''
+      );
+
+      const optionsText = Array.isArray(mcq.options)
+        ? mcq.options.map((opt, i) => {
+            const cleanOpt = __qbAiCleanText(opt).replace(/^[A-D][).]\s*/i, '');
+            return String.fromCharCode(65 + i) + ') ' + cleanOpt;
+          }).join('\n')
+        : '';
+
+      return `Sub-question ${index + 1}:\n${questionText}${optionsText ? '\n' + optionsText : ''}`;
+    }).join('\n\n');
+
+    return (
+      __qbGetAiInstruction() +
+      '\n\nParagraph-Based MCQ Set:\n' +
+      'Passage:\n' + passage +
+      (subQuestionsText ? '\n\n' + subQuestionsText : '')
+    );
+  }
+
   const qText = __qbAiCleanText(data.question || data.body || data.text || '');
 
   const optionsText = Array.isArray(data.options)
@@ -873,7 +903,6 @@ function __qbBuildAiPromptFromQuestionData(data) {
 
   return __qbGetAiInstruction() + '\n\nQuestion:\n' + qText + (optionsText ? '\n' + optionsText : '');
 }
-
 const __QB_PUBLIC_AI_HELPER_BASE = 'https://messiahsastry.github.io/QBank/bank.ad.html';
 
 function __qbGetAiHelperUrl(questionId) {
@@ -1153,8 +1182,9 @@ const __typesOrderHdr = [
   'MCQ (Single)',
   'MCQ (Multiple)',
   'Assertion and Reason (MCQ Single)',
-  'Fill in the Blanks',
   'Matching Matrix',
+  'Paragraph-Based MCQ (Single Correct)',
+  'Fill in the Blanks',
   'Descriptive'
 ];
 const __chosenTypes = (selectedQtypes.length === 0)
@@ -1311,6 +1341,106 @@ let qCounter = 1;
 /* ===== MATCHING MATRIX PDF / KEY PRINT HELPERS ===== */
 function __qbIsMatchingMatrixData(source = {}) {
   return !!source && __qbNormalizeQuestionType(source) === 'Matching Matrix';
+}
+
+function __qbPdfSafeText(value) {
+  return __qbEscapeHtml(String(value || ''))
+    .replace(/\r/g, '')
+    .replace(/\n/g, '<br>');
+}
+
+function __qbRenderParagraphWorksheetBody(source = {}, theme, availableWidth) {
+  const passage = __qbPdfSafeText(source.passage || '');
+  const mcqs = __qbGetParagraphMcqs(source);
+
+  const subQuestionsHTML = mcqs.map((mcq, index) => {
+    const questionText = __qbPdfSafeText(__qbGetParagraphSubQuestionText(mcq));
+    const options = __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []);
+
+    return `
+      <div style="margin-top:10px;page-break-inside:avoid;break-inside:avoid;">
+        <div style="font-size:12pt;font-weight:700;color:${theme.questionColor};line-height:1.35;margin-bottom:4px;">
+          (${index + 1}) ${questionText}
+        </div>
+
+        <div style="margin-left:14px;color:#000000;line-height:1.2;">
+          ${__renderKeyOptionsLayout(options, availableWidth)}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="color:${theme.questionColor};font-size:12pt;line-height:1.4;">
+      <div style="font-weight:800;margin-bottom:4px;">Read the following passage and answer the questions:</div>
+      <div style="font-weight:600;margin-bottom:5px;">Passage:</div>
+      <div style="font-weight:400;color:#000000;margin-bottom:8px;">
+        ${passage}
+      </div>
+      ${subQuestionsHTML}
+    </div>
+  `;
+}
+
+function __qbRenderParagraphKeyBody(source = {}, theme, availableWidth) {
+  const passage = __qbPdfSafeText(source.passage || '');
+  const mcqs = __qbGetParagraphMcqs(source);
+
+  const subQuestionsHTML = mcqs.map((mcq, index) => {
+    const questionText = __qbPdfSafeText(__qbGetParagraphSubQuestionText(mcq));
+    const options = __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []);
+
+    const answer = __qbPdfSafeText(
+      String(mcq.parsedAnswer || mcq.answer || mcq.finalAnswer || '')
+        .replace(/^\s*Answer\s*:\s*/i, '')
+        .replace(/^\s*Ans\s*:\s*/i, '')
+        .trim()
+    );
+
+    const explanation = __qbPdfSafeText(
+      String(mcq.explanation || '')
+        .replace(/^\s*Explanation\s*:\s*/i, '')
+        .trim()
+    );
+
+    return `
+      <div style="margin-top:12px;page-break-inside:avoid;break-inside:avoid;">
+        <div style="font-size:12pt;font-weight:700;color:${theme.questionColor};line-height:1.35;margin-bottom:4px;">
+          (${index + 1}) ${questionText}
+        </div>
+
+        <div style="margin-left:14px;color:#000000;line-height:1.2;">
+          ${__renderKeyOptionsLayout(options, availableWidth)}
+        </div>
+
+        <div style="margin-left:14px;margin-top:6px;line-height:1.4;">
+          <span style="color:#7A2230;font-weight:700;">Answer:</span>
+          <span style="color:#111111;"> ${answer || 'No answer available.'}</span>
+        </div>
+
+        ${
+          explanation
+            ? `
+              <div style="margin-left:14px;margin-top:4px;line-height:1.4;">
+                <span style="color:#7A2230;font-weight:700;">Explanation:</span>
+                <span style="color:#111111;"> ${explanation}</span>
+              </div>
+            `
+            : ''
+        }
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="color:${theme.questionColor};font-size:12pt;line-height:1.4;">
+      <div style="font-weight:600;margin-bottom:5px;">Passage:</div>
+      <div style="font-weight:400;color:#000000;margin-bottom:8px;">
+        ${passage}
+      </div>
+      ${subQuestionsHTML}
+    </div>
+  `;
 }
 
 function __qbRenderMatchingMatrixTable(rawQuestion, theme) {
@@ -1477,8 +1607,46 @@ function buildQuestionHTML(item, __parent = printable) {
       </div>`;
   }
 
-    const docId = item.getAttribute('data-id');
+       const docId = item.getAttribute('data-id');
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
+
+  if (source && __qbIsParagraphBasedQuestion(source)) {
+    const __displayQNo = Number(source.questionNumber) > 0 ? Number(source.questionNumber) : qCounter;
+    const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
+    const __theme = __pdfTheme;
+
+    const wrap = document.createElement('div');
+    wrap.className = includeKey ? 'no-split' : 'worksheet-flow-block';
+    wrap.style.cssText = includeKey
+      ? 'page-break-inside:avoid;break-inside:avoid;display:block;margin-bottom:12px;'
+      : 'page-break-inside:auto;break-inside:auto;display:block;margin-bottom:12px;';
+
+    wrap.innerHTML = `
+      <div class="question-container" style="width:100%;box-sizing:border-box;">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+          <tr>
+            <td style="width:${__qNoWidth}px;min-width:${__qNoWidth}px;vertical-align:top;padding-right:8px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:${__theme.questionColor};font-weight:700;">
+              ${__displayQNo}.
+            </td>
+            <td style="vertical-align:top;">
+              ${__qbRenderParagraphWorksheetBody(
+                source,
+                __theme,
+                Math.max(
+                  260,
+                  Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
+                )
+              )}
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    __parent.appendChild(wrap);
+    qCounter++;
+    return wrap;
+  }
 
   let questionLine = '';
   let options = [];
@@ -2203,9 +2371,51 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const docId = item.getAttribute('data-id');
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
+  if (source && __qbIsParagraphBasedQuestion(source)) {
+    const subjectText = String(source.subject || '').trim();
+    const __theme = __qbGetSubjectTheme(subjectText || subjectVal);
+    const __displayQNo = Number(source.questionNumber) > 0 ? Number(source.questionNumber) : qNum;
+    const qNoLabel = 'Q' + __displayQNo + '.';
+    const qNoWidth = __qbQuestionNumberWidth(qNoLabel);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'page-flow-block';
+    wrap.style.cssText = 'margin-bottom:14px;page-break-inside:auto;break-inside:auto;color:#000;';
+
+    const __aiUrl = __qbGetAiHelperUrl(docId);
+    const __qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=' + encodeURIComponent(__aiUrl);
+
+    wrap.innerHTML = `
+      <div style="display:flex;align-items:flex-start;width:100%;">
+        <div style="min-width:${qNoWidth}px;max-width:${qNoWidth}px;flex:0 0 ${qNoWidth}px;padding-right:8px;box-sizing:border-box;font-weight:700;color:${__theme.questionColor};line-height:1.4;">
+          ${qNoLabel}
+        </div>
+
+        <div style="flex:1;min-width:0;">
+          ${__qbRenderParagraphKeyBody(
+            source,
+            __theme,
+            Math.max(
+              260,
+              Math.min((printable.getBoundingClientRect().width || 820), 680) - qNoWidth - 12
+            )
+          )}
+
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <div data-qr-link="${__qbEscapeHtml(__aiUrl)}" style="width:58px;height:58px;display:block;">
+              <img src="${__qrUrl}" alt="QR" style="width:58px;height:58px;display:block;border:none;box-shadow:none;margin:0;padding:0;border-radius:0;background:transparent;">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    __parent.appendChild(wrap);
+    return;
+  }
+
   let questionLine = '';
   let options = [];
-
   // ✅ FIRST use clean source data
   if (source) {
     questionLine = String(source.question || source.body || source.text || '').trim();
@@ -2472,15 +2682,15 @@ if (includeWorksheet) {
   // Level 2 -> all selected question types
   // Level 3 -> all selected question types
 
-  const __worksheetTypesOrder = [
+    const __worksheetTypesOrder = [
     'MCQ (Single)',
     'MCQ (Multiple)',
     'Assertion and Reason (MCQ Single)',
-    'Fill in the Blanks',
     'Matching Matrix',
+    'Paragraph-Based MCQ (Single Correct)',
+    'Fill in the Blanks',
     'Descriptive'
   ];
-
   const __wantedWorksheetTypes = (selectedQtypes.length === 0)
     ? __worksheetTypesOrder
     : __worksheetTypesOrder.filter(t => selectedQtypes.includes(t));
@@ -2667,12 +2877,13 @@ if (includeKey) {
   // Level 2 -> all selected question types
   // Level 3 -> all selected question types
 
-  const __keyTypesOrder = [
+    const __keyTypesOrder = [
     'MCQ (Single)',
     'MCQ (Multiple)',
     'Assertion and Reason (MCQ Single)',
-    'Fill in the Blanks',
     'Matching Matrix',
+    'Paragraph-Based MCQ (Single Correct)',
+    'Fill in the Blanks',
     'Descriptive'
   ];
 
@@ -4620,10 +4831,16 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       ).trim();
     }
 
-    function __qbNormalizeQuestionType(data = {}) {
+        function __qbNormalizeQuestionType(data = {}) {
       const rawType = __qbGetRawQuestionType(data);
       const lowerType = rawType.toLowerCase();
 
+      if (
+        lowerType === 'comprehensive' ||
+        (lowerType.includes('paragraph') && lowerType.includes('mcq'))
+      ) {
+        return 'Paragraph-Based MCQ (Single Correct)';
+      }
       if (lowerType.includes('assertion') && lowerType.includes('reason')) {
         return 'Assertion and Reason (MCQ Single)';
       }
@@ -4644,6 +4861,100 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       }
 
       return Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive';
+    }
+
+    function __qbIsParagraphBasedQuestion(data = {}) {
+      return __qbNormalizeQuestionType(data) === 'Paragraph-Based MCQ (Single Correct)';
+    }
+
+    function __qbGetParagraphMcqs(data = {}) {
+      return Array.isArray(data.mcqs) ? data.mcqs : [];
+    }
+
+    function __qbGetParagraphSubQuestionText(mcq = {}) {
+      return String(
+        mcq.question ||
+        String(mcq.body || '').split('\n')[0] ||
+        ''
+      ).trim();
+    }
+
+    function __qbRenderParagraphScreen(data = {}) {
+      const passage = String(data.passage || '').trim();
+      const mcqs = __qbGetParagraphMcqs(data);
+
+      const passageHtml = autoLatexAll(passage).replace(/\n/g, '<br>');
+
+      const subQuestionsHtml = mcqs.map((mcq, index) => {
+        const questionText = autoLatexAll(__qbGetParagraphSubQuestionText(mcq));
+        const options = Array.isArray(mcq.options) ? mcq.options : [];
+
+        const optionsHtml = options.map((option, optionIndex) => {
+          const cleanOption = String(option || '').replace(/^[A-D][).]\s*/i, '').trim();
+          const letter = String.fromCharCode(65 + optionIndex);
+
+          return `
+            <div style="margin-top:3px;">
+              <span style="font-weight:700;">${letter})</span>
+              ${autoLatexAll(cleanOption)}
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div style="margin-top:14px;">
+            <div style="font-weight:700;color:#0f3d6b;margin-bottom:5px;">
+              Sub-question ${index + 1}:
+            </div>
+            <div style="font-weight:600;margin-bottom:4px;">
+              ${questionText}
+            </div>
+            <div style="margin-left:16px;">
+              ${optionsHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div style="margin-top:5px;">
+          <div style="font-weight:700;color:#0f3d6b;margin-bottom:5px;">Passage:</div>
+          <div style="font-weight:500;line-height:1.65;white-space:normal;">
+            ${passageHtml}
+          </div>
+          ${subQuestionsHtml}
+        </div>
+      `;
+    }
+
+    function __qbBuildParagraphAnswerText(data = {}, includeExplanation = true) {
+      const mcqs = __qbGetParagraphMcqs(data);
+
+      if (!mcqs.length) return 'No answer available.';
+
+      return mcqs.map((mcq, index) => {
+        const answer = String(
+          mcq.parsedAnswer ||
+          mcq.answer ||
+          mcq.finalAnswer ||
+          ''
+        )
+          .replace(/^\s*Answer\s*:\s*/i, '')
+          .replace(/^\s*Ans\s*:\s*/i, '')
+          .trim();
+
+        const explanation = String(mcq.explanation || '')
+          .replace(/^\s*Explanation\s*:\s*/i, '')
+          .trim();
+
+        let text = `Sub-question ${index + 1}: ${answer || 'No answer available.'}`;
+
+        if (includeExplanation && explanation) {
+          text += `\nExplanation: ${explanation}`;
+        }
+
+        return text;
+      }).join('\n\n');
     }
 
     function __qbIsTextbookQuestion(data = {}, rawType = '') {
@@ -4805,22 +5116,24 @@ questionsHTML += `
                 <input type="checkbox" class="quiz-question-checkbox" data-id="${doc.id}">
               </div>
 
-              <div class="question-meta">
-                Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
+                            <div class="question-meta">
+                Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s) [${__normType}]
               </div>
               <div class="question-text">
                                ${
-                  Array.isArray(__displayOptions) && __displayOptions.length === 4
-                    ? `
-                        <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${autoLatexAll(String(data.question || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): '))}</div>
-                        <div style="margin-left:18px;">
-                          <div>${autoLatexAll(__displayOptions[0].replace(/^[A-D][).]\s*/, ''))}</div>
-                          <div>${autoLatexAll(__displayOptions[1].replace(/^[A-D][).]\s*/, ''))}</div>
-                          <div>${autoLatexAll(__displayOptions[2].replace(/^[A-D][).]\s*/, ''))}</div>
-                          <div>${autoLatexAll(__displayOptions[3].replace(/^[A-D][).]\s*/, ''))}</div>
-                        </div>
-                      `
-                    : (data.body || data.text || data.question || '')
+                  __qbIsParagraphBasedQuestion(data)
+                    ? __qbRenderParagraphScreen(data)
+                    : Array.isArray(__displayOptions) && __displayOptions.length === 4
+                      ? `
+                          <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${autoLatexAll(String(data.question || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): '))}</div>
+                          <div style="margin-left:18px;">
+                            <div><b>A)</b> ${autoLatexAll(__displayOptions[0].replace(/^[A-D][).]\s*/, ''))}</div>
+                            <div><b>B)</b> ${autoLatexAll(__displayOptions[1].replace(/^[A-D][).]\s*/, ''))}</div>
+                            <div><b>C)</b> ${autoLatexAll(__displayOptions[2].replace(/^[A-D][).]\s*/, ''))}</div>
+                            <div><b>D)</b> ${autoLatexAll(__displayOptions[3].replace(/^[A-D][).]\s*/, ''))}</div>
+                          </div>
+                        `
+                      : (data.body || data.text || data.question || '')
                 }
                 ${
                   data.image
@@ -4876,15 +5189,24 @@ if (!window.__explainItBound) {
 
     try {
       const snap = await questionsDb.collection('questions').doc(docId).get();
-      const data = snap.data() || {};
-      const explanation = String(data.explanation || '')
-  .replace(/^\s*Explanation\s*:\s*/i, '')
-  .trim();
+           const data = snap.data() || {};
 
-const answer = String(__qbGetWorkbookAnswer(data) || '')
-  .replace(/^\s*Answer\s*:\s*/i, '')
-  .replace(/^\s*Ans\s*:\s*/i, '')
-  .trim();
+      let explanation = '';
+      let answer = '';
+
+      if (__qbIsParagraphBasedQuestion(data)) {
+        explanation = __qbBuildParagraphAnswerText(data, true);
+        answer = __qbBuildParagraphAnswerText(data, false);
+      } else {
+        explanation = String(data.explanation || '')
+          .replace(/^\s*Explanation\s*:\s*/i, '')
+          .trim();
+
+        answer = String(__qbGetWorkbookAnswer(data) || '')
+          .replace(/^\s*Answer\s*:\s*/i, '')
+          .replace(/^\s*Ans\s*:\s*/i, '')
+          .trim();
+      }
 
 const popupTitle = explanation ? 'Explanation' : 'Answer';
 const popupContent = explanation || answer || 'No explanation or answer available.';
@@ -5106,8 +5428,11 @@ function autoLatexAll(str) {
             let answer = '';
             try {
               const docSnap = await questionsDb.collection('questions').doc(docId).get();
-              const data = docSnap.data();
-              answer = __qbGetWorkbookAnswer(data) || 'No answer available.';
+                           const data = docSnap.data() || {};
+
+              answer = __qbIsParagraphBasedQuestion(data)
+                ? __qbBuildParagraphAnswerText(data, true)
+                : (__qbGetWorkbookAnswer(data) || 'No answer available.');
             } catch (e) {
               answer = 'No answer found.';
             }
@@ -5155,7 +5480,247 @@ function autoLatexAll(str) {
 
     if (typeof setupQuestionActionMenus === "function") setupQuestionActionMenus();
 
+  function showEditParagraphPopupForBank(docId, data) {
+  document.querySelectorAll('.edit-popup').forEach(p => p.remove());
+
+  const paragraphMcqs = __qbGetParagraphMcqs(data);
+  const initMarks = Number(data.marks || paragraphMcqs.length || 0);
+  const initLevel = data.difficulty || data.level || 'Level 1';
+  const initBoard = data.board || '';
+  const initChapter = data.chapter || '';
+  const initQNo = Number(data.questionNumber || 1);
+
+  const popup = document.createElement('div');
+  popup.className = 'edit-popup';
+
+  const subQuestionsHTML = paragraphMcqs.map((mcq, index) => {
+    const options = Array.isArray(mcq.options) ? mcq.options : ['', '', '', ''];
+    const answer = String(mcq.parsedAnswer || mcq.answer || '')
+      .replace(/^\s*Ans\s*:\s*/i, '')
+      .trim();
+
+    return `
+      <div class="paragraph-edit-row" data-index="${index}" style="border:1px solid #d8e8f7;border-radius:12px;padding:12px;margin-top:12px;background:#f9fcff;">
+        <div style="font-weight:700;color:#0f3d6b;margin-bottom:8px;">Sub-question ${index + 1}</div>
+
+        <textarea class="paragraph-q-text" rows="3" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;margin-bottom:8px;">${__qbEscapeHtml(__qbGetParagraphSubQuestionText(mcq))}</textarea>
+
+        <input class="paragraph-opt-a" type="text" value="${__qbEscapeHtml(String(options[0] || '').replace(/^[A-D][).]\s*/i, ''))}" placeholder="Option A" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;margin-bottom:6px;">
+        <input class="paragraph-opt-b" type="text" value="${__qbEscapeHtml(String(options[1] || '').replace(/^[A-D][).]\s*/i, ''))}" placeholder="Option B" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;margin-bottom:6px;">
+        <input class="paragraph-opt-c" type="text" value="${__qbEscapeHtml(String(options[2] || '').replace(/^[A-D][).]\s*/i, ''))}" placeholder="Option C" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;margin-bottom:6px;">
+        <input class="paragraph-opt-d" type="text" value="${__qbEscapeHtml(String(options[3] || '').replace(/^[A-D][).]\s*/i, ''))}" placeholder="Option D" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;margin-bottom:6px;">
+
+        <input class="paragraph-answer" type="text" value="${__qbEscapeHtml(answer)}" placeholder="Answer, example: B)" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;margin-bottom:6px;">
+
+        <textarea class="paragraph-explanation" rows="3" placeholder="Explanation" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">${__qbEscapeHtml(mcq.explanation || '')}</textarea>
+      </div>
+    `;
+  }).join('');
+
+  popup.innerHTML = `
+    <div style="background:#fff;border-radius:18px;box-shadow:0 6px 24px rgba(23,98,167,0.20);padding:24px 18px 20px 18px;max-width:98vw;width:700px;margin:0 auto;">
+
+      <div style="font-weight:bold;font-size:1.22em;margin-bottom:14px;text-align:center;color:#0f3d6b;">
+        Edit Paragraph-Based MCQ Set
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
+          <input id="paragraph-edit-marks" type="number" min="1" value="${initMarks}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Level</label>
+          <select id="paragraph-edit-level" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+            <option value="Level 1">Level 1</option>
+            <option value="Level 2">Level 2</option>
+            <option value="Level 3">Level 3</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Board</label>
+          <input id="paragraph-edit-board" type="text" value="${__qbEscapeHtml(initBoard)}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question No.</label>
+          <input id="paragraph-edit-number" type="number" min="1" value="${initQNo}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+        <div style="grid-column:1 / -1;">
+          <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Chapter</label>
+          <input id="paragraph-edit-chapter" type="text" value="${__qbEscapeHtml(initChapter)}" style="width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+        </div>
+      </div>
+
+      <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Passage</label>
+      <textarea id="paragraph-edit-passage" rows="6" style="width:100%;box-sizing:border-box;padding:12px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.02em;">${__qbEscapeHtml(data.passage || '')}</textarea>
+
+      ${subQuestionsHTML}
+
+      <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
+        <button id="paragraph-edit-cancel" style="background:#eee;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#346799;cursor:pointer;">Cancel</button>
+        <button id="paragraph-edit-save" style="background:#1762a7;border:none;border-radius:8px;padding:10px 22px;font-weight:600;color:#fff;cursor:pointer;">Save</button>
+      </div>
+    </div>
+  `;
+
+  Object.assign(popup.style, {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    background: 'rgba(12,29,68,0.12)',
+    zIndex: 5000,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    padding: '20px 10px',
+    overflowY: 'auto',
+    boxSizing: 'border-box'
+  });
+
+  document.body.appendChild(popup);
+  popup.querySelector('#paragraph-edit-level').value = initLevel;
+
+  popup.querySelector('#paragraph-edit-cancel').onclick = () => popup.remove();
+
+  popup.querySelector('#paragraph-edit-save').onclick = async () => {
+    const passage = popup.querySelector('#paragraph-edit-passage').value.trim();
+    const marks = Number(popup.querySelector('#paragraph-edit-marks').value || 0);
+    const level = popup.querySelector('#paragraph-edit-level').value || 'Level 1';
+    const board = popup.querySelector('#paragraph-edit-board').value.trim();
+    const chapter = popup.querySelector('#paragraph-edit-chapter').value.trim();
+    const questionNumber = Number(popup.querySelector('#paragraph-edit-number').value || 0);
+
+    if (!passage) {
+      alert('Passage is required.');
+      return;
+    }
+
+    if (!Number.isInteger(marks) || marks < 1) {
+      alert('Marks must be a positive integer.');
+      return;
+    }
+
+    if (!Number.isInteger(questionNumber) || questionNumber < 1) {
+      alert('Question No. must be a positive integer.');
+      return;
+    }
+
+    const updatedMcqs = [];
+    const rows = Array.from(popup.querySelectorAll('.paragraph-edit-row'));
+
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index];
+      const question = row.querySelector('.paragraph-q-text').value.trim();
+      const options = [
+        row.querySelector('.paragraph-opt-a').value.trim(),
+        row.querySelector('.paragraph-opt-b').value.trim(),
+        row.querySelector('.paragraph-opt-c').value.trim(),
+        row.querySelector('.paragraph-opt-d').value.trim()
+      ];
+      const rawAnswer = row.querySelector('.paragraph-answer').value.trim();
+      const explanation = row.querySelector('.paragraph-explanation').value.trim();
+
+      if (!question || options.some(option => !option) || !rawAnswer) {
+        alert(`Complete all fields in Sub-question ${index + 1}.`);
+        return;
+      }
+
+      const savedAnswer = /^Ans\s*:/i.test(rawAnswer)
+        ? rawAnswer
+        : `Ans: ${rawAnswer}`;
+
+      updatedMcqs.push({
+        ...(paragraphMcqs[index] || {}),
+        question,
+        options,
+        body: [
+          question,
+          `A) ${options[0]}`,
+          `B) ${options[1]}`,
+          `C) ${options[2]}`,
+          `D) ${options[3]}`
+        ].join('\n'),
+        answer: savedAnswer,
+        parsedAnswer: savedAnswer,
+        explanation
+      });
+    }
+
+    const metaLine = `Q${questionNumber}: ${level}, ${marks} Mark${marks === 1 ? '' : 's'} [Paragraph-Based MCQ (Single Correct)]`;
+
+    const fullText = [
+      metaLine,
+      `Passage:\n${passage}`,
+      ...updatedMcqs.map((mcq, index) => [
+        `Sub-question ${index + 1}:`,
+        mcq.question,
+        `A) ${mcq.options[0]}`,
+        `B) ${mcq.options[1]}`,
+        `C) ${mcq.options[2]}`,
+        `D) ${mcq.options[3]}`,
+        mcq.parsedAnswer,
+        mcq.explanation ? `Explanation: ${mcq.explanation}` : ''
+      ].filter(Boolean).join('\n'))
+    ].join('\n\n');
+
+    const oldSeed = __qbBuildNumberSeed(data);
+
+    const newData = {
+      ...data,
+      type: 'Paragraph-Based MCQ (Single Correct)',
+      mcqType: 'Paragraph-Based MCQ (Single Correct)',
+      difficulty: level,
+      level,
+      marks,
+      board,
+      chapter,
+      questionNumber
+    };
+
+    const updateObj = {
+      type: 'Paragraph-Based MCQ (Single Correct)',
+      mcqType: 'Paragraph-Based MCQ (Single Correct)',
+      passage,
+      mcqs: updatedMcqs,
+      text: fullText,
+      body: fullText,
+      metaLine,
+      marks,
+      difficulty: level,
+      level,
+      board,
+      chapter,
+      questionNumber,
+      sectionKey: __qbGetSectionKey(newData),
+      question: firebase.firestore.FieldValue.delete(),
+      options: firebase.firestore.FieldValue.delete(),
+      answer: firebase.firestore.FieldValue.delete(),
+      parsedAnswer: firebase.firestore.FieldValue.delete(),
+      workbookShuffledOptions: firebase.firestore.FieldValue.delete(),
+      workbookShuffledAnswer: firebase.firestore.FieldValue.delete(),
+      workbookShuffleSavedAt: firebase.firestore.FieldValue.delete()
+    };
+
+    try {
+      await questionsDb.collection('questions').doc(docId).update(updateObj);
+      await __qbRenumberSectionQuestions(oldSeed);
+      await __qbRenumberSectionQuestions(newData);
+
+      popup.remove();
+      fetchAndDisplayQuestions();
+    } catch (err) {
+      alert('Failed to save: ' + err.message);
+    }
+  };
+}
+
    function showEditPopupForBank(docId, data) {
+  if (__qbIsParagraphBasedQuestion(data)) {
+    showEditParagraphPopupForBank(docId, data);
+    return;
+  }
   document.querySelectorAll('.edit-popup').forEach(p => p.remove());
 
   const isMCQInitial = Array.isArray(data.options) && data.options.length === 4;
@@ -6141,6 +6706,7 @@ function __qbGetSectionKey(data = {}) {
   if (rawType === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
   if (rawType === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
   if (rawType === 'Matching Matrix') return `MATCHING_MATRIX_${levelKey}`;
+  if (rawType === 'Paragraph-Based MCQ (Single Correct)') return `PARAGRAPH_MCQ_SINGLE_${levelKey}`;
 
   const marks = Number(data.marks || 0);
   return `DESCRIPTIVE_${marks}_${levelKey}`;
@@ -7299,22 +7865,43 @@ document.getElementById('create-quiz-btn').addEventListener('click', async funct
       const snap = await questionsDb.collection('questions').doc(docId).get();
       const data = snap.data() || {};
 
-                 let qObj = {
+                     const __isParagraphQuizQuestion = __qbIsParagraphBasedQuestion(data);
+
+      let qObj = {
         questionId: docId,
-        question: data.question || data.body || data.text || '',
-        options: __qbNormalizeOptions(__qbGetWorkbookOptions(data)),
-        answer: __qbGetWorkbookAnswer(data),
-        explanation: data.explanation || data.solution || data.explain || '',
+        question: __isParagraphQuizQuestion
+          ? (data.passage || '')
+          : (data.question || data.body || data.text || ''),
+        passage: __isParagraphQuizQuestion ? (data.passage || '') : '',
+        mcqs: __isParagraphQuizQuestion
+          ? __qbGetParagraphMcqs(data).map(mcq => ({
+              ...mcq,
+              question: __qbGetParagraphSubQuestionText(mcq),
+              options: __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []),
+              answer: mcq.parsedAnswer || mcq.answer || '',
+              explanation: mcq.explanation || ''
+            }))
+          : [],
+        options: __isParagraphQuizQuestion
+          ? []
+          : __qbNormalizeOptions(__qbGetWorkbookOptions(data)),
+        answer: __isParagraphQuizQuestion
+          ? ''
+          : __qbGetWorkbookAnswer(data),
+        explanation: __isParagraphQuizQuestion
+          ? ''
+          : (data.explanation || data.solution || data.explain || ''),
         level: data.difficulty || data.level || '',
         marks: Number(data.marks || 0),
         chapter: data.chapter || '',
-        type: data.mcqType || data.type || (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive'),
+        type: __qbNormalizeQuestionType(data),
         board: data.board || '',
         subject: data.subject || '',
         image: data.image || '',
         originalQuestionNumber: data.questionNumber ?? null
       };
-      if (window.__quizShuffleOptions) {
+
+      if (window.__quizShuffleOptions && !__isParagraphQuizQuestion) {
         qObj = __qbShuffleQuestionOptions(qObj);
       }
 
