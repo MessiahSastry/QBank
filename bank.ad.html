@@ -1624,23 +1624,58 @@ function buildQuestionHTML(item, __parent = printable) {
       Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
     );
 
-    function __renderParagraphWorksheetSubQuestion(mcq, index) {
+       function __renderParagraphWorksheetSubQuestion(mcq, index) {
       const questionText = __qbPdfSafeText(__qbGetParagraphSubQuestionText(mcq));
       const options = __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []);
+      const __subNoWidth = 38;
 
       return `
-        <div style="margin-top:10px;page-break-inside:avoid;break-inside:avoid;">
+        <div style="
+          margin-top:10px;
+          page-break-inside:avoid;
+          break-inside:avoid;
+          display:flex;
+          align-items:flex-start;
+          width:100%;
+          box-sizing:border-box;
+        ">
           <div style="
+            width:${__subNoWidth}px;
+            min-width:${__subNoWidth}px;
+            flex:0 0 ${__subNoWidth}px;
+            box-sizing:border-box;
             font-size:12pt;
             font-weight:700;
             color:${__theme.questionColor};
             line-height:1.35;
-            margin-bottom:4px;">
-            (${index + 1}) ${questionText}
+          ">
+            (${index + 1})
           </div>
 
-          <div style="margin-left:14px;color:#000000;line-height:1.2;">
-            ${__renderKeyOptionsLayout(options, __availableWidth)}
+          <div style="
+            flex:1;
+            min-width:0;
+            box-sizing:border-box;
+          ">
+            <div style="
+              font-size:12pt;
+              font-weight:700;
+              color:${__theme.questionColor};
+              line-height:1.35;
+              margin-bottom:4px;
+            ">
+              ${questionText}
+            </div>
+
+            <div style="
+              color:#000000;
+              line-height:1.2;
+            ">
+              ${__renderKeyOptionsLayout(
+                options,
+                Math.max(220, __availableWidth - __subNoWidth)
+              )}
+            </div>
           </div>
         </div>
       `;
