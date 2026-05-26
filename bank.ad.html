@@ -1610,38 +1610,112 @@ function buildQuestionHTML(item, __parent = printable) {
        const docId = item.getAttribute('data-id');
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
-  if (source && __qbIsParagraphBasedQuestion(source)) {
-    const __displayQNo = Number(source.questionNumber) > 0 ? Number(source.questionNumber) : qCounter;
+    if (source && __qbIsParagraphBasedQuestion(source)) {
+    const __displayQNo = Number(source.questionNumber) > 0
+      ? Number(source.questionNumber)
+      : qCounter;
+
     const __qNoWidth = __qbQuestionNumberWidth(__displayQNo);
     const __theme = __pdfTheme;
+    const __mcqs = __qbGetParagraphMcqs(source);
+
+    const __availableWidth = Math.max(
+      260,
+      Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
+    );
+
+    function __renderParagraphWorksheetSubQuestion(mcq, index) {
+      const questionText = __qbPdfSafeText(__qbGetParagraphSubQuestionText(mcq));
+      const options = __qbNormalizeOptions(Array.isArray(mcq.options) ? mcq.options : []);
+
+      return `
+        <div style="margin-top:10px;page-break-inside:avoid;break-inside:avoid;">
+          <div style="
+            font-size:12pt;
+            font-weight:700;
+            color:${__theme.questionColor};
+            line-height:1.35;
+            margin-bottom:4px;">
+            (${index + 1}) ${questionText}
+          </div>
+
+          <div style="margin-left:14px;color:#000000;line-height:1.2;">
+            ${__renderKeyOptionsLayout(options, __availableWidth)}
+          </div>
+        </div>
+      `;
+    }
 
     const wrap = document.createElement('div');
-    wrap.className = includeKey ? 'no-split' : 'worksheet-flow-block';
-    wrap.style.cssText = includeKey
-      ? 'page-break-inside:avoid;break-inside:avoid;display:block;margin-bottom:12px;'
-      : 'page-break-inside:auto;break-inside:auto;display:block;margin-bottom:12px;';
+    wrap.className = 'worksheet-flow-block';
+    wrap.style.cssText = 'display:block;margin-bottom:12px;page-break-inside:auto;break-inside:auto;';
 
-    wrap.innerHTML = `
-      <div class="question-container" style="width:100%;box-sizing:border-box;">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-          <tr>
-            <td style="width:${__qNoWidth}px;min-width:${__qNoWidth}px;vertical-align:top;padding-right:8px;box-sizing:border-box;line-height:1.25;font-size:12pt;color:${__theme.questionColor};font-weight:700;">
-              ${__displayQNo}.
-            </td>
-            <td style="vertical-align:top;">
-              ${__qbRenderParagraphWorksheetBody(
-                source,
-                __theme,
-                Math.max(
-                  260,
-                  Math.min((printable.getBoundingClientRect().width || 820), 680) - __qNoWidth - 12
-                )
-              )}
-            </td>
-          </tr>
-        </table>
+    const firstPart = document.createElement('div');
+    firstPart.className = 'paragraph-first-part';
+    firstPart.style.cssText = 'display:block;page-break-inside:avoid;break-inside:avoid;margin-bottom:10px;';
+
+    firstPart.innerHTML = `
+      <div style="display:flex;align-items:flex-start;width:100%;box-sizing:border-box;">
+        <div style="
+          width:${__qNoWidth}px;
+          min-width:${__qNoWidth}px;
+          flex:0 0 ${__qNoWidth}px;
+          vertical-align:top;
+          padding-right:8px;
+          box-sizing:border-box;
+          line-height:1.25;
+          font-size:12pt;
+          color:${__theme.questionColor};
+          font-weight:700;">
+          ${__displayQNo}.
+        </div>
+
+        <div style="flex:1;min-width:0;color:${__theme.questionColor};font-size:12pt;line-height:1.4;">
+          <div style="font-weight:800;margin-bottom:4px;">
+            Read the following passage and answer the questions:
+          </div>
+
+          <div style="font-weight:600;margin-bottom:5px;">
+            Passage:
+          </div>
+
+          <div style="font-weight:400;color:#000000;margin-bottom:8px;">
+            ${__qbPdfSafeText(source.passage || '')}
+          </div>
+
+          ${__mcqs.length ? __renderParagraphWorksheetSubQuestion(__mcqs[0], 0) : ''}
+        </div>
       </div>
     `;
+
+    wrap.appendChild(firstPart);
+
+    __mcqs.slice(1).forEach((mcq, index) => {
+      const continuationPart = document.createElement('div');
+
+      continuationPart.className = index === __mcqs.length - 2
+        ? 'paragraph-continuation-part question-gap-block'
+        : 'paragraph-continuation-part';
+
+      continuationPart.style.cssText = `
+        display:block;
+        margin-left:${__qNoWidth}px;
+        padding-left:8px;
+        box-sizing:border-box;
+        page-break-inside:avoid;
+        break-inside:avoid;
+        color:${__theme.questionColor};
+        font-size:12pt;
+        line-height:1.4;
+      `;
+
+      continuationPart.innerHTML = __renderParagraphWorksheetSubQuestion(mcq, index + 1);
+      wrap.appendChild(continuationPart);
+    });
+
+    if (__mcqs.length <= 1) {
+      firstPart.classList.add('question-gap-block');
+    }
 
     __parent.appendChild(wrap);
     qCounter++;
