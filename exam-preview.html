@@ -574,6 +574,99 @@ mjx-container svg {
 .question-text small{
   font-size: inherit !important;
 }
+
+/* ===== Paragraph-Based MCQ Preview Layout ===== */
+.paragraph-set-preview {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  page-break-inside: auto;
+  break-inside: auto;
+}
+
+.paragraph-first-part {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.paragraph-continuation-part {
+  display: block;
+  margin-left: 28px;
+  padding-left: 4px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.paragraph-passage-text {
+  color: #111111;
+  font-weight: 400;
+  line-height: 1.35;
+  margin: 4px 0 8px 0;
+}
+
+.paragraph-sub-block {
+  margin-top: 9px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.paragraph-sub-head {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  column-gap: 4px;
+  align-items: start;
+  color: #163A63;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.paragraph-sub-number {
+  font-weight: 700;
+}
+
+.paragraph-sub-text {
+  font-weight: 400;
+}
+
+.paragraph-sub-options {
+  margin-left: 38px;
+}
+
+/* ===== Matching Matrix Preview Layout ===== */
+.matching-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 4px 0 8px 0;
+  color: #163A63;
+  font-size: 1.04em;
+  line-height: 1.3;
+}
+
+.matching-matrix-table th {
+  width: 50%;
+  text-align: left;
+  font-weight: 700;
+  padding: 2px 12px 5px 0;
+}
+
+.matching-matrix-table td {
+  width: 50%;
+  vertical-align: top;
+  padding: 2px 12px 2px 0;
+  font-weight: 400;
+}
+
+.matching-matrix-intro {
+  color: #163A63;
+  font-weight: 400;
+  line-height: 1.3;
+  margin-bottom: 5px;
+}
+
 /* ✅ Prevent right-side clipping of options in print */
 @media print {
 
@@ -790,6 +883,367 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function __epGetQuestionType(q = {}) {
+  return String(q.mcqType || q.questionType || q.type || '').trim().toLowerCase();
+}
+
+function __epIsParagraphBasedQuestion(q = {}) {
+  const type = __epGetQuestionType(q);
+
+  return (
+    type === 'paragraph-based mcq (single correct)' ||
+    type === 'comprehensive' ||
+    (Array.isArray(q.mcqs) && q.mcqs.length > 0 && String(q.passage || '').trim())
+  );
+}
+
+function __epIsMatchingMatrixQuestion(q = {}) {
+  const type = __epGetQuestionType(q);
+  const rawText = String(q.question || q.text || q.body || '');
+
+  return (
+    (type.includes('matching') && type.includes('matrix')) ||
+    (/Column\s*I/i.test(rawText) && /Column\s*II/i.test(rawText))
+  );
+}
+
+function __epGetParagraphMcqs(q = {}) {
+  return Array.isArray(q.mcqs) ? q.mcqs : [];
+}
+
+function __epGetParagraphSubQuestionText(mcq = {}) {
+  return String(
+    mcq.question ||
+    mcq.text ||
+    String(mcq.body || '').split('\n')[0] ||
+    ''
+  ).trim();
+}
+
+function __epCleanOption(option) {
+  return String(option || '')
+    .replace(/^[A-D][).:\-]\s*/i, '')
+    .trim();
+}
+
+function __epSafeText(value) {
+  return autoLatexAll(escapeHtml(String(value || '')))
+    .replace(/\r/g, '')
+    .replace(/\n/g, '<br>');
+}
+
+function __epBuildOptionLines(options = []) {
+  return (Array.isArray(options) ? options.slice(0, 4) : []).map((option, index) =>
+    `${String.fromCharCode(65 + index)}) ${__epCleanOption(option)}`
+  );
+}
+
+function __epGetPlainQuestionText(q = {}) {
+  return String(q.question || q.text || q.body || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p\s*>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<\/div\s*>/gi, '\n')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function __epParseMatchingMatrix(q = {}) {
+  const cleaned = __epGetPlainQuestionText(q)
+    .replace(/\n?\s*Options\s*:?\s*$/i, '')
+    .trim();
+
+  const lines = cleaned
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const headingIndex = lines.findIndex(line =>
+    /Column\s*I/i.test(line) && /Column\s*II/i.test(line)
+  );
+
+  const introLines = headingIndex > 0
+    ? lines.slice(0, headingIndex)
+    : [];
+
+  const possibleRows = headingIndex >= 0
+    ? lines.slice(headingIndex + 1)
+    : lines;
+
+  let rows = possibleRows
+    .map(line => {
+      const match =
+        line.match(/^\s*([A-D]\)\s*.*?)\s{2,}([P-S]\)\s*.*)\s*$/i) ||
+        line.match(/^\s*([A-D]\)\s*.*?)\s+([P-S]\)\s*.*)\s*$/i);
+
+      return match ? [match[1].trim(), match[2].trim()] : null;
+    })
+    .filter(Boolean);
+
+  if (!rows.length) {
+    const oneLine = cleaned
+      .replace(/Column\s*I\s+Column\s*II/i, '')
+      .trim();
+
+    const foundRows = oneLine.match(
+      /([A-D]\)\s*.*?\s+[P-S]\)\s*.*?)(?=\s+[A-D]\)|$)/gi
+    ) || [];
+
+    rows = foundRows
+      .map(line => {
+        const match =
+          line.match(/^\s*([A-D]\)\s*.*?)\s{2,}([P-S]\)\s*.*)\s*$/i) ||
+          line.match(/^\s*([A-D]\)\s*.*?)\s+([P-S]\)\s*.*)\s*$/i);
+
+        return match ? [match[1].trim(), match[2].trim()] : null;
+      })
+      .filter(Boolean);
+  }
+
+  return {
+    intro: introLines.join('\n').trim(),
+    rows,
+    raw: cleaned
+  };
+}
+
+function __epRenderMatchingMatrixBody(q = {}) {
+  const parsed = __epParseMatchingMatrix(q);
+
+  if (!parsed.rows.length) {
+    return `
+      <div class="matching-matrix-intro">
+        ${__epSafeText(parsed.raw)}
+      </div>
+    `;
+  }
+
+  return `
+    ${
+      parsed.intro
+        ? `<div class="matching-matrix-intro">${__epSafeText(parsed.intro)}</div>`
+        : ''
+    }
+
+    <table class="matching-matrix-table">
+      <thead>
+        <tr>
+          <th>Column I</th>
+          <th>Column II</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${parsed.rows.map(row => `
+          <tr>
+            <td>${__epSafeText(row[0])}</td>
+            <td>${__epSafeText(row[1])}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function __epRenderParagraphSubBlock(mcq = {}, index = 0, includeAnswers = false, subjectName = '') {
+  const optionLines = __epBuildOptionLines(mcq.options);
+  const answerHTML = includeAnswers
+    ? formatAnswerKeyAnswerHtml(mcq.answer || mcq.parsedAnswer || mcq.finalAnswer || '', subjectName)
+    : '';
+
+  const explanationHTML = includeAnswers
+    ? formatAnswerKeyExplanationHtml(mcq.explanation || '', mcq.answer || mcq.parsedAnswer || '', subjectName)
+    : '';
+
+  return `
+    <div class="paragraph-sub-block">
+      <div class="paragraph-sub-head">
+        <span class="paragraph-sub-number">(${index + 1})</span>
+        <span class="paragraph-sub-text">${__epSafeText(__epGetParagraphSubQuestionText(mcq))}</span>
+      </div>
+
+      ${
+        optionLines.length
+          ? `<div class="paragraph-sub-options">${renderOptionsLayout(optionLines)}</div>`
+          : ''
+      }
+
+      ${
+        answerHTML
+          ? `
+            <div style="margin:6px 0 0 38px;color:#7A2230;font-weight:700;font-size:1.04em;">
+              Answer: <span style="color:#111111;font-weight:400;">${answerHTML}</span>
+            </div>
+          `
+          : ''
+      }
+
+      ${
+        explanationHTML
+          ? `
+            <div style="margin:6px 0 0 38px;color:#7A2230;font-weight:700;font-size:1.04em;">
+              Explanation:
+            </div>
+            <div style="margin:2px 0 0 60px;line-height:1.35;color:#111111;">
+              ${explanationHTML}
+            </div>
+          `
+          : ''
+      }
+    </div>
+  `;
+}
+
+function __epBuildParagraphPreviewQuestionHtml(q = {}, currentQNum = '') {
+  const mcqs = __epGetParagraphMcqs(q);
+  const imageHTML = q.image
+    ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>`
+    : '';
+
+  return `
+    <div class="paragraph-set-preview">
+      <div class="paragraph-first-part">
+        <div class="question-number">${currentQNum}.</div>
+
+        <div class="question-body">
+          <div style="color:#163A63;font-weight:400;line-height:1.3;margin-bottom:5px;">
+            Read the following passage and answer the questions:
+          </div>
+
+          <div style="color:#163A63;font-weight:700;line-height:1.3;margin-bottom:3px;">
+            Passage:
+          </div>
+
+          <div class="paragraph-passage-text">
+            ${__epSafeText(q.passage || '')}
+          </div>
+
+          ${mcqs.length ? __epRenderParagraphSubBlock(mcqs[0], 0, false, '') : ''}
+          ${imageHTML}
+        </div>
+      </div>
+
+      ${mcqs.slice(1).map((mcq, index) => `
+        <div class="paragraph-continuation-part">
+          ${__epRenderParagraphSubBlock(mcq, index + 1, false, '')}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function __epBuildMatchingMatrixPreviewQuestionHtml(q = {}, currentQNum = '') {
+  const optionLines = __epBuildOptionLines(q.options);
+  const imageHTML = q.image
+    ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>`
+    : '';
+
+  return `
+    <div class="question-container">
+      <div class="question-number">${currentQNum}.</div>
+      <div class="question-body">
+        ${__epRenderMatchingMatrixBody(q)}
+        ${imageHTML}
+        ${
+          optionLines.length
+            ? `
+              <div style="font-weight:700;color:#163A63;margin:4px 0 3px 0;">Options:</div>
+              <div class="options-block">${renderOptionsLayout(optionLines)}</div>
+            `
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
+function __epBuildParagraphAnswerKeyHtml(q = {}, subjectName = '') {
+  const qNo = String(q.number || '').replace(/\.$/, '');
+  const mcqs = __epGetParagraphMcqs(q);
+
+  return `
+    <div class="paragraph-set-preview" style="margin-bottom:16px;">
+      <div class="paragraph-first-part">
+        <div class="question-number">${qNo ? qNo + '.' : ''}</div>
+
+        <div class="question-body">
+          <div style="color:#163A63;font-weight:400;line-height:1.3;margin-bottom:5px;">
+            Read the following passage and answer the questions:
+          </div>
+
+          <div style="color:#163A63;font-weight:700;line-height:1.3;margin-bottom:3px;">
+            Passage:
+          </div>
+
+          <div class="paragraph-passage-text">
+            ${__epSafeText(q.passage || '')}
+          </div>
+
+          ${mcqs.length ? __epRenderParagraphSubBlock(mcqs[0], 0, true, subjectName) : ''}
+        </div>
+      </div>
+
+      ${mcqs.slice(1).map((mcq, index) => `
+        <div class="paragraph-continuation-part">
+          ${__epRenderParagraphSubBlock(mcq, index + 1, true, subjectName)}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function __epBuildMatchingMatrixAnswerKeyHtml(q = {}, subjectName = '') {
+  const qNo = String(q.number || '').replace(/\.$/, '');
+  const optionLines = __epBuildOptionLines(q.options);
+  const answerHTML = formatAnswerKeyAnswerHtml(q.answer, subjectName);
+  const explanationHTML = formatAnswerKeyExplanationHtml(q.explanation, q.answer, subjectName);
+
+  return `
+    <div class="question-container" style="margin-bottom:16px;">
+      <div class="question-number">${qNo ? qNo + '.' : ''}</div>
+
+      <div class="question-body">
+        ${__epRenderMatchingMatrixBody(q)}
+
+        ${
+          optionLines.length
+            ? `
+              <div style="font-weight:700;color:#163A63;margin:4px 0 3px 0;">Options:</div>
+              <div class="options-block">${renderOptionsLayout(optionLines)}</div>
+            `
+            : ''
+        }
+
+        ${
+          answerHTML
+            ? `
+              <div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">
+                Answer: <span style="color:#111111;font-weight:400;">${answerHTML}</span>
+              </div>
+            `
+            : ''
+        }
+
+        ${
+          explanationHTML
+            ? `
+              <div style="margin-top:6px;color:#7A2230;font-weight:700;font-size:1.04em;">
+                Explanation:
+              </div>
+              <div style="margin-top:2px;line-height:1.35;color:#111111;padding-left:22px;">
+                ${explanationHTML}
+              </div>
+            `
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
 const stpatricksConfig = {
   apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
   authDomain: "stpatricks-questionbank.firebaseapp.com",
@@ -896,7 +1350,7 @@ function buildAnswerKeyDoc(examData) {
         attemptAny: section.attemptAny || 0,
         numPairs: section.numPairs || 0,
         marksPerQuestion: section.marksPerQuestion || 0,
-        questions: (section.questions || []).map((q, idx) => ({
+                questions: (section.questions || []).map((q, idx) => ({
           number: q.number || (idx + 1),
           question: q.question || q.text || '',
           text: q.text || '',
@@ -905,7 +1359,22 @@ function buildAnswerKeyDoc(examData) {
           image: q.image || '',
           answer: q.answer || '',
           explanation: q.explanation || '',
-          questionType: q.questionType || q.type || '',
+          questionType: q.questionType || q.type || q.mcqType || '',
+          type: q.type || q.mcqType || q.questionType || '',
+          mcqType: q.mcqType || q.type || q.questionType || '',
+          passage: q.passage || '',
+          mcqs: Array.isArray(q.mcqs)
+            ? q.mcqs.map(mcq => ({
+                question: mcq.question || mcq.text || '',
+                text: mcq.text || mcq.question || '',
+                body: mcq.body || '',
+                options: Array.isArray(mcq.options) ? mcq.options : [],
+                answer: mcq.answer || mcq.parsedAnswer || '',
+                parsedAnswer: mcq.parsedAnswer || mcq.answer || '',
+                finalAnswer: mcq.finalAnswer || '',
+                explanation: mcq.explanation || ''
+              }))
+            : [],
           marks: q.marks || section.marksPerQuestion || ''
         }))
       }))
@@ -1192,6 +1661,14 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = 
   return lines.map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`).join('');
 }
 function buildAnswerKeyQuestionHtml(q, subjectName = '') {
+  if (__epIsParagraphBasedQuestion(q)) {
+    return __epBuildParagraphAnswerKeyHtml(q, subjectName);
+  }
+
+  if (__epIsMatchingMatrixQuestion(q)) {
+    return __epBuildMatchingMatrixAnswerKeyHtml(q, subjectName);
+  }
+
   const qNo = String(q.number || '').replace(/\.$/, '');
   const questionHTML = formatAnswerKeyQuestionHtml(q);
   const optionLines = getAnswerKeyOptionLines(q);
@@ -1716,8 +2193,17 @@ function renderPrintPreview() {
         `;
 
       if (section.questions && section.questions.length > 0) {
-  const questionsHTML = section.questions.map(q => {
+   const questionsHTML = section.questions.map(q => {
     const currentQNum = q.number || (qNum++);
+
+    if (__epIsParagraphBasedQuestion(q)) {
+      return __epBuildParagraphPreviewQuestionHtml(q, currentQNum);
+    }
+
+    if (__epIsMatchingMatrixQuestion(q)) {
+      return __epBuildMatchingMatrixPreviewQuestionHtml(q, currentQNum);
+    }
+
     let questionContentHTML = '';
     let optionLines = [];
     const hasShuffledOptions = Array.isArray(q.options) && q.options.length === 4;
