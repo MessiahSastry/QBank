@@ -543,8 +543,11 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
 
         listBox.innerHTML = '';
 
-               questions.forEach((q, idx) => {
-            const stem = getQuestionTextFromDoc(q);
+                      questions.forEach((q, idx) => {
+            const isParagraphBased =
+                normalizeMcqType(q?.mcqType || q?.type || '') === 'Paragraph-Based MCQ (Single Correct)' ||
+                (Array.isArray(q?.mcqs) && q.mcqs.length > 0 && String(q?.passage || '').trim());
+
             const card = document.createElement('label');
             card.style.display = 'block';
             card.style.background = '#fff';
@@ -554,29 +557,87 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
             card.style.marginBottom = '12px';
             card.style.cursor = 'pointer';
 
-            const extracted = Array.isArray(q.options) && q.options.length === 4 ? q.options : (extractMCQOptions(q) || []);
-            const optionsHtml = (mcqType !== 'Descriptive' && extracted.length === 4)
-                ? `<div style="margin-top:8px;color:#54656f;line-height:1.6;">
-                    A) ${escapeHtml(extracted[0])}<br>
-                    B) ${escapeHtml(extracted[1])}<br>
-                    C) ${escapeHtml(extracted[2])}<br>
-                    D) ${escapeHtml(extracted[3])}
-                   </div>`
-                : '';
+            let questionContent = '';
+
+            if (isParagraphBased) {
+                const subQuestionsHtml = (Array.isArray(q.mcqs) ? q.mcqs : []).map((mcq, subIndex) => {
+                    const subQuestion = String(
+                        mcq.question ||
+                        String(mcq.body || '').split('\n')[0] ||
+                        ''
+                    ).trim();
+
+                    const subOptions = Array.isArray(mcq.options)
+                        ? mcq.options.slice(0, 4)
+                        : [];
+
+                    const optionsHtml = subOptions.length === 4
+                        ? `
+                            <div style="margin-top:5px;color:#54656f;line-height:1.55;margin-left:12px;">
+                                A) ${escapeHtml(String(subOptions[0] || '').replace(/^[A-D][).:\-]\s*/i, ''))}<br>
+                                B) ${escapeHtml(String(subOptions[1] || '').replace(/^[A-D][).:\-]\s*/i, ''))}<br>
+                                C) ${escapeHtml(String(subOptions[2] || '').replace(/^[A-D][).:\-]\s*/i, ''))}<br>
+                                D) ${escapeHtml(String(subOptions[3] || '').replace(/^[A-D][).:\-]\s*/i, ''))}
+                            </div>
+                          `
+                        : '';
+
+                    return `
+                        <div style="margin-top:12px;">
+                            <div style="font-weight:700;color:#0f3d6b;">
+                                Sub-question ${subIndex + 1}:
+                            </div>
+                            <div style="margin-top:3px;color:#12416c;line-height:1.5;">
+                                ${escapeHtml(subQuestion)}
+                            </div>
+                            ${optionsHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                questionContent = `
+                    <div style="margin-top:6px;color:#12416c;line-height:1.55;">
+                        <div style="font-weight:700;color:#0f3d6b;">Passage:</div>
+                        <div style="margin-top:4px;">${escapeHtml(q.passage || '')}</div>
+                        ${subQuestionsHtml}
+                    </div>
+                `;
+            } else {
+                const stem = getQuestionTextFromDoc(q);
+                const extracted = Array.isArray(q.options) && q.options.length === 4
+                    ? q.options
+                    : (extractMCQOptions(q) || []);
+
+                const optionsHtml = (mcqType !== 'Descriptive' && extracted.length === 4)
+                    ? `<div style="margin-top:8px;color:#54656f;line-height:1.6;">
+                        A) ${escapeHtml(extracted[0])}<br>
+                        B) ${escapeHtml(extracted[1])}<br>
+                        C) ${escapeHtml(extracted[2])}<br>
+                        D) ${escapeHtml(extracted[3])}
+                       </div>`
+                    : '';
+
+                questionContent = `
+                    <div style="margin-top:4px;color:#12416c;line-height:1.55;">
+                        ${stem}
+                    </div>
+                    ${optionsHtml}
+                `;
+            }
 
             card.innerHTML = `
                 <div style="display:flex;align-items:flex-start;gap:10px;">
                     <input type="checkbox" class="manual-pick-check" data-idx="${idx}" style="margin-top:4px;">
                     <div style="flex:1;">
                         <div style="font-weight:700;color:#0f3d6b;">Q${idx + 1}</div>
-                        <div style="margin-top:4px;color:#12416c;line-height:1.55;">${stem}</div>
-                        ${optionsHtml}
+                        ${questionContent}
                         <div style="margin-top:8px;font-size:.92em;color:#5d6d7e;">
                             Marks: ${Number(marksPerQuestion || q.marks || 0)}
                         </div>
                     </div>
                 </div>
             `;
+
             listBox.appendChild(card);
         });
 
@@ -1205,6 +1266,13 @@ function normalizeMcqType(s) {
 
   if (!t) return 'Descriptive';
 
+  if (
+    t === 'comprehensive' ||
+    (t.includes('paragraph') && t.includes('mcq'))
+  ) {
+    return 'Paragraph-Based MCQ (Single Correct)';
+  }
+
   if (t.includes('assertion') && t.includes('reason')) {
     return 'Assertion and Reason (MCQ Single)';
   }
@@ -1233,9 +1301,18 @@ function inferMcqType(d) {
     norm === 'Fill in the Blanks' ||
     norm === 'Assertion and Reason (MCQ Single)' ||
     norm === 'Matching Matrix' ||
+    norm === 'Paragraph-Based MCQ (Single Correct)' ||
     norm === 'Descriptive'
   ) {
     return norm;
+  }
+
+  if (
+    Array.isArray(d?.mcqs) &&
+    d.mcqs.length > 0 &&
+    String(d?.passage || '').trim()
+  ) {
+    return 'Paragraph-Based MCQ (Single Correct)';
   }
 
   const answerValue =
@@ -1426,16 +1503,20 @@ function _isAllowedMcqType(doc, mcqType) {
     return typ === "MCQ (Multiple)";
   }
 
-  if (mcqType === "Fill in the Blanks") {
-    return typ === "Fill in the Blanks";
-  }
-
   if (mcqType === "Assertion and Reason (MCQ Single)") {
     return typ === "Assertion and Reason (MCQ Single)";
   }
 
   if (mcqType === "Matching Matrix") {
     return typ === "Matching Matrix";
+  }
+
+  if (mcqType === "Paragraph-Based MCQ (Single Correct)") {
+    return typ === "Paragraph-Based MCQ (Single Correct)";
+  }
+
+  if (mcqType === "Fill in the Blanks") {
+    return typ === "Fill in the Blanks";
   }
 
   if (mcqType === "Descriptive") {
@@ -1907,17 +1988,19 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     sectionLabelDropdown.style.width = "120px";
     sectionLabelDropdown.style.marginRight = "8px";
 
-    const mcqTypeOptions = [
-    "MCQ (Single)",
-    "MCQ (Multiple)",
-    "Fill in the Blanks",
-    "Assertion and Reason (MCQ Single)",
-    "Matching Matrix",
-    "Descriptive"
-];
+      const mcqTypeOptions = [
+        "MCQ (Single)",
+        "MCQ (Multiple)",
+        "Assertion and Reason (MCQ Single)",
+        "Matching Matrix",
+        "Paragraph-Based MCQ (Single Correct)",
+        "Fill in the Blanks",
+        "Descriptive"
+    ];
+
     const mcqTypeDropdown = createSectionDropdown(mcqTypeOptions, "MCQ Type", mcqTypeOptions[0], null);
     mcqTypeDropdown.classList.add('mcq-type-dropdown');
-    mcqTypeDropdown.style.width = "150px";
+    mcqTypeDropdown.style.width = "245px";
     mcqTypeDropdown.style.marginRight = "10px";
 
     const sectionTypeDropdown = createSectionDropdown(
@@ -2077,9 +2160,60 @@ function buildSectionInstructions(sec) {
     return "";
 }
 
+function __ebIsParagraphBasedQuestion(data = {}) {
+    return (
+        normalizeMcqType(data?.mcqType || data?.type || '') === 'Paragraph-Based MCQ (Single Correct)' ||
+        (Array.isArray(data?.mcqs) && data.mcqs.length > 0 && String(data?.passage || '').trim())
+    );
+}
+
+function __ebGetParagraphSubQuestionText(mcq = {}) {
+    return String(
+        mcq.question ||
+        String(mcq.body || '').split('\n')[0] ||
+        ''
+    ).trim();
+}
+
+function __ebCleanOptionText(option) {
+    return String(option || '')
+        .replace(/^[A-D][).:\-]\s*/i, '')
+        .trim();
+}
+
+function __ebBuildParagraphPlainText(data = {}) {
+    const passage = String(data.passage || '').trim();
+    const mcqs = Array.isArray(data.mcqs) ? data.mcqs : [];
+
+    const blocks = [
+        'Read the following passage and answer the questions:',
+        'Passage:',
+        passage
+    ];
+
+    mcqs.forEach((mcq, index) => {
+        const question = __ebGetParagraphSubQuestionText(mcq);
+        const options = Array.isArray(mcq.options) ? mcq.options.slice(0, 4) : [];
+
+        blocks.push('');
+        blocks.push(`(${index + 1}) ${question}`);
+
+        options.forEach((option, optionIndex) => {
+            blocks.push(`${String.fromCharCode(65 + optionIndex)}) ${__ebCleanOptionText(option)}`);
+        });
+    });
+
+    return blocks.join('\n').trim();
+}
+
 function getQuestionTextFromDoc(data) {
+    if (__ebIsParagraphBasedQuestion(data)) {
+        return __ebBuildParagraphPlainText(data);
+    }
+
     return data.question || data.body || data.text || '';
 }
+
 function getQuestionAnswerFromDoc(data) {
     const candidates = [
         data.parsedAnswer,
@@ -2110,25 +2244,95 @@ function getQuestionAnswerFromDoc(data) {
 
     return '';
 }
+
 function getQuestionExplanationFromDoc(data) {
     return data.explanation || data.solution || data.explain || '';
 }
 
 function normalizeQuestionDoc(doc) {
     const q = { ...(doc || {}) };
+
     q.question = getQuestionTextFromDoc(q);
     q.answer = getQuestionAnswerFromDoc(q);
     q.explanation = getQuestionExplanationFromDoc(q);
     q.mcqType = normalizeMcqType(q.mcqType || q.type || '');
     q.difficulty = q.difficulty || q.level || '';
     q.options = Array.isArray(q.options) ? q.options : [];
+    q.mcqs = Array.isArray(q.mcqs) ? q.mcqs.map(mcq => ({ ...mcq })) : [];
+
     return q;
 }
 
 function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
     const norm = normalizeQuestionDoc(q);
-    const stem = norm.question || '';
 
+    if (
+        sectionMcqType === "Paragraph-Based MCQ (Single Correct)" ||
+        __ebIsParagraphBasedQuestion(norm)
+    ) {
+        const passage = String(norm.passage || '').trim();
+
+        const mappedMcqs = (Array.isArray(norm.mcqs) ? norm.mcqs : []).map((mcq) => {
+            const subQuestion = __ebGetParagraphSubQuestionText(mcq);
+
+            let subOptions = Array.isArray(mcq.options)
+                ? mcq.options.slice(0, 4).map(__ebCleanOptionText)
+                : [];
+
+            let subAnswer = getQuestionAnswerFromDoc(mcq);
+
+            if (subOptions.length === 4 && getGlobalShuffleOptions()) {
+                const shuffled = shuffleMCQQuestion({
+                    question: subQuestion,
+                    options: subOptions,
+                    answer: subAnswer
+                });
+
+                subOptions = Array.isArray(shuffled.options)
+                    ? shuffled.options.slice(0, 4)
+                    : subOptions;
+
+                subAnswer = extractAnswerLetters(shuffled.answer).join(',') || subAnswer;
+            }
+
+            return {
+                question: subQuestion,
+                text: subQuestion,
+                body: [
+                    subQuestion,
+                    ...subOptions.map((option, optionIndex) =>
+                        `${String.fromCharCode(65 + optionIndex)}) ${option}`
+                    )
+                ].join('\n'),
+                options: subOptions,
+                answer: subAnswer || '',
+                parsedAnswer: subAnswer || '',
+                explanation: mcq.explanation || mcq.solution || mcq.explain || '',
+                finalAnswer: mcq.finalAnswer || ''
+            };
+        });
+
+        const paragraphRecord = {
+            passage,
+            mcqs: mappedMcqs
+        };
+
+        return {
+            number: 0,
+            text: __ebBuildParagraphPlainText(paragraphRecord),
+            passage,
+            mcqs: mappedMcqs,
+            marks: Number(marksPerQuestion || norm.marks || mappedMcqs.length || 0),
+            options: [],
+            answer: '',
+            explanation: '',
+            image: norm.image || '',
+            type: 'Paragraph-Based MCQ (Single Correct)',
+            mcqType: 'Paragraph-Based MCQ (Single Correct)'
+        };
+    }
+
+    const stem = norm.question || '';
     const isMatchingMatrix = sectionMcqType === "Matching Matrix";
 
     const isFourOptionType = (
@@ -3036,13 +3240,15 @@ const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
     const docMarks = Number(d?.marks || 0);
     if (docMarks !== mPerQ) return false;
 
-    const docType = inferMcqType(d);
-        if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
+       const docType = inferMcqType(d);
+
+    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
     if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
     if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
-    if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
     if (sec.mcqType === "Assertion and Reason (MCQ Single)" && docType !== "Assertion and Reason (MCQ Single)") return false;
     if (sec.mcqType === "Matching Matrix" && docType !== "Matching Matrix") return false;
+    if (sec.mcqType === "Paragraph-Based MCQ (Single Correct)" && docType !== "Paragraph-Based MCQ (Single Correct)") return false;
+    if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
 
     const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
     return !(k && subjectSeenKeys.has(k));
