@@ -417,6 +417,229 @@ function __erBuildParagraphReviewHtml(q = {}) {
   `;
 }
 
+function __erEscapeReviewHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function __erIsMatchingMatrixQuestion(q = {}) {
+  const type = String(q.mcqType || q.type || '').trim().toLowerCase();
+  const rawText = String(q.text || q.body || q.question || '');
+
+  return (
+    (type.includes('matching') && type.includes('matrix')) ||
+    (/Column\s*I/i.test(rawText) && /Column\s*II/i.test(rawText))
+  );
+}
+
+function __erGetMatchingMatrixRawText(q = {}) {
+  return stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''))
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/div\s*>/gi, '\n')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function __erParseMatchingMatrix(q = {}) {
+  const raw = __erGetMatchingMatrixRawText(q)
+    .replace(/\n?\s*Options\s*:?\s*$/i, '')
+    .trim();
+
+  const lines = raw
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const headingIndex = lines.findIndex(line =>
+    /Column\s*I/i.test(line) && /Column\s*II/i.test(line)
+  );
+
+  const rowPattern = /^\s*([A-D])[\)\.]\s*(.*?)\s+([P-S])[\)\.]\s*(.*?)\s*$/i;
+
+  const possibleRows = headingIndex >= 0
+    ? lines.slice(headingIndex + 1)
+    : lines;
+
+  let rows = possibleRows
+    .map(line => {
+      const match = line.match(rowPattern);
+
+      return match
+        ? {
+            leftLabel: match[1].toUpperCase(),
+            leftText: match[2].trim(),
+            rightLabel: match[3].toUpperCase(),
+            rightText: match[4].trim()
+          }
+        : null;
+    })
+    .filter(Boolean);
+
+  let introLines = headingIndex > 0
+    ? lines.slice(0, headingIndex)
+    : lines.filter(line => !rowPattern.test(line) && !(/Column\s*I/i.test(line) && /Column\s*II/i.test(line)));
+
+  if (!rows.length) {
+    const oneLine = raw
+      .replace(/Column\s*I\s+Column\s*II/i, '')
+      .trim();
+
+    const rowMatches = Array.from(
+      oneLine.matchAll(/([A-D])[\)\.]\s*(.*?)\s+([P-S])[\)\.]\s*(.*?)(?=\s+[A-D][\)\.]|$)/gi)
+    );
+
+    rows = rowMatches.map(match => ({
+      leftLabel: match[1].toUpperCase(),
+      leftText: match[2].trim(),
+      rightLabel: match[3].toUpperCase(),
+      rightText: match[4].trim()
+    }));
+  }
+
+  return {
+    raw,
+    intro: introLines.join('\n').trim(),
+    rows
+  };
+}
+
+function __erBuildMatchingMatrixReviewHtml(q = {}) {
+  const parsed = __erParseMatchingMatrix(q);
+
+  if (!parsed.rows.length) {
+    return `
+      <span class="question-text" contenteditable="true">
+        ${__erEscapeReviewHtml(parsed.raw)}
+      </span>
+    `;
+  }
+
+  return `
+    <div class="matching-matrix-review">
+      <div class="matching-intro-text no-mjx" contenteditable="true" style="
+        border:1px dashed #bcd6ef;
+        border-radius:6px;
+        padding:5px 8px;
+        margin-bottom:10px;
+        white-space:pre-wrap;
+        color:#12416c;
+        font-weight:600;
+      ">${__erEscapeReviewHtml(parsed.intro)}</div>
+
+      <table style="
+        width:100%;
+        border-collapse:collapse;
+        table-layout:fixed;
+        margin:4px 0 12px 0;
+        color:#12416c;
+      ">
+        <thead>
+          <tr>
+            <th style="
+              width:50%;
+              text-align:left;
+              padding:6px 10px 7px 6px;
+              border-bottom:1.5px solid #bcd6ef;
+              color:#0f3d6b;
+            ">Column I</th>
+
+            <th style="
+              width:50%;
+              text-align:left;
+              padding:6px 6px 7px 10px;
+              border-bottom:1.5px solid #bcd6ef;
+              color:#0f3d6b;
+            ">Column II</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${parsed.rows.map((row, index) => `
+            <tr class="matching-matrix-row" data-row="${index}">
+              <td style="vertical-align:top;padding:7px 10px 7px 6px;">
+                <div style="display:flex;align-items:flex-start;gap:6px;">
+                  <span style="font-weight:700;color:#185496;min-width:20px;">
+                    ${row.leftLabel})
+                  </span>
+                  <span class="matching-col-i no-mjx" contenteditable="true" style="
+                    flex:1;
+                    border:1px dashed #bcd6ef;
+                    border-radius:6px;
+                    padding:3px 6px;
+                    min-height:22px;
+                  ">${__erEscapeReviewHtml(row.leftText)}</span>
+                </div>
+              </td>
+
+              <td style="vertical-align:top;padding:7px 6px 7px 10px;">
+                <div style="display:flex;align-items:flex-start;gap:6px;">
+                  <span style="font-weight:700;color:#185496;min-width:20px;">
+                    ${row.rightLabel})
+                  </span>
+                  <span class="matching-col-ii no-mjx" contenteditable="true" style="
+                    flex:1;
+                    border:1px dashed #bcd6ef;
+                    border-radius:6px;
+                    padding:3px 6px;
+                    min-height:22px;
+                  ">${__erEscapeReviewHtml(row.rightText)}</span>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function __erReadMatchingValue(el) {
+  if (!el) return '';
+
+  return String(
+    el.dataset?.raw ||
+    el.innerHTML ||
+    el.innerText ||
+    ''
+  ).trim();
+}
+
+function __erBuildMatchingMatrixTextFromEditor(questionRow) {
+  const intro = __erReadMatchingValue(
+    questionRow.querySelector('.matching-intro-text')
+  );
+
+  const rows = Array.from(
+    questionRow.querySelectorAll('.matching-matrix-row')
+  ).map((row, index) => {
+    const leftLabel = String.fromCharCode(65 + index);
+    const rightLabel = String.fromCharCode(80 + index);
+
+    const leftText = __erReadMatchingValue(
+      row.querySelector('.matching-col-i')
+    );
+
+    const rightText = __erReadMatchingValue(
+      row.querySelector('.matching-col-ii')
+    );
+
+    return `${leftLabel}) ${leftText}    ${rightLabel}) ${rightText}`;
+  });
+
+  return [
+    intro,
+    'Column I    Column II',
+    ...rows
+  ].filter(Boolean).join('\n').trim();
+}
+
 // --------- Robust parser for AI output ---------
 function parseAIBlocks(text, expectedCount) {
   if (!text) return [];
@@ -686,14 +909,17 @@ if (paper.instructions) {
 `;
                 (section.questions || []).forEach((q, qIdx) => {
         {
-       const __isParagraph = __erIsParagraphBasedQuestion(q);
+           const __isParagraph = __erIsParagraphBasedQuestion(q);
+    const __isMatchingMatrix = !__isParagraph && __erIsMatchingMatrixQuestion(q);
     const fullRaw = stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''));
 
     const bodyHtml = __isParagraph
       ? __erBuildParagraphReviewHtml(q)
-      : `
-          <span class="question-text" contenteditable="true">${fullRaw}</span>
-        `;
+      : __isMatchingMatrix
+        ? __erBuildMatchingMatrixReviewHtml(q)
+        : `
+            <span class="question-text" contenteditable="true">${fullRaw}</span>
+          `;
 
   html += `<div class="question-row" data-subject="${subjIdx}" data-section="${sIdx}" data-question="${qIdx}">
     <span class="question-number">${(++qCounter)}.</span>
@@ -813,9 +1039,10 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
   }
   if (!window.__attachMathEditors) {
     window.__attachMathEditors = function (root) {
-          const targets = root.querySelectorAll(
+               const targets = root.querySelectorAll(
         '.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer, .explanation-box.rich-explanation, ' +
-        '.paragraph-passage-text, .paragraph-sub-text, .paragraph-mcq-opt, .paragraph-answer-box, .paragraph-explanation-box'
+        '.paragraph-passage-text, .paragraph-sub-text, .paragraph-mcq-opt, .paragraph-answer-box, .paragraph-explanation-box, ' +
+        '.matching-intro-text, .matching-col-i, .matching-col-ii'
       );
       targets.forEach(el => {
         window.__makePreview(el);
@@ -1118,22 +1345,32 @@ function saveEdits(showAlert = true) {
       return;
     }
 
-   // Text (prefer stored raw TeX/plain text)
-const aNode = qr.querySelector('.subpart .sub-text');            // first sub-text (A)
-const bNode = qr.querySelectorAll('.subpart .sub-text')[1];      // second sub-text (B)
+      // Text: preserve special structures before ordinary question text
+const aNode = qr.querySelector('.subpart .sub-text');
+const bNode = qr.querySelectorAll('.subpart .sub-text')[1];
 let newText = '';
 
-if (aNode && bNode) {
+if (__erIsMatchingMatrixQuestion(currentQuestion)) {
+  newText = __erBuildMatchingMatrixTextFromEditor(qr);
+} else if (aNode && bNode) {
   const aRaw = (aNode.dataset?.raw || aNode.innerHTML || '').trim();
   const bRaw = (bNode.dataset?.raw || bNode.innerHTML || '').trim();
   newText = `(A) ${aRaw}\n\n(B) ${bRaw}`;
 } else {
   const qt = qr.querySelector('.question-text');
-  if (qt) newText = (qt.dataset?.raw || '').trim() || (qt.innerHTML || '').trim(); // keep HTML (images)
+  if (qt) {
+    newText = (qt.dataset?.raw || '').trim() || (qt.innerHTML || '').trim();
+  }
 }
 
 if (newText) {
-  paper.subjects[subjIdx].sections[secIdx].questions[qIdx].text = newText;
+  currentQuestion.text = newText;
+
+  if (__erIsMatchingMatrixQuestion(currentQuestion)) {
+    currentQuestion.body = newText;
+    currentQuestion.type = 'Matching Matrix';
+    currentQuestion.mcqType = 'Matching Matrix';
+  }
 }
     const optNodes = qr.querySelectorAll('.mcq-opt');
 if (optNodes && optNodes.length === 4) {
@@ -1424,7 +1661,7 @@ document.getElementById('randomize-numbers-btn').onclick = async function() {
   paper.subjects.forEach((subjectBlock, subjIdx) => {
     (subjectBlock.sections || []).forEach((section, sIdx) => {
             (section.questions || []).forEach((q, qIdx) => {
-        if (__erIsParagraphBasedQuestion(q)) return;
+               if (__erIsParagraphBasedQuestion(q) || __erIsMatchingMatrixQuestion(q)) return;
 
         const isProbSubject = ["math", "math 1", "math 2", "physics", "chemistry"].some(
           s => (subjectBlock.subject || '').toLowerCase().includes(s)
