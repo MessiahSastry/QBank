@@ -228,9 +228,195 @@
       return null;
     }
   }
-  function setExamPaper(paper) {
+   function setExamPaper(paper) {
     sessionStorage.setItem("examPaper", JSON.stringify(paper));
   }
+
+function __erIsParagraphBasedQuestion(q = {}) {
+  const type = String(q.mcqType || q.type || '').trim().toLowerCase();
+
+  return (
+    type === 'paragraph-based mcq (single correct)' ||
+    type === 'comprehensive' ||
+    (Array.isArray(q.mcqs) && q.mcqs.length > 0 && String(q.passage || '').trim())
+  );
+}
+
+function __erGetParagraphMcqs(q = {}) {
+  return Array.isArray(q.mcqs) ? q.mcqs : [];
+}
+
+function __erGetParagraphSubQuestionText(mcq = {}) {
+  return String(
+    mcq.question ||
+    mcq.text ||
+    String(mcq.body || '').split('\n')[0] ||
+    ''
+  ).trim();
+}
+
+function __erCleanParagraphOption(option) {
+  return String(option || '')
+    .replace(/^[A-D][).:\-]\s*/i, '')
+    .trim();
+}
+
+function __erCleanParagraphAnswer(answer) {
+  return String(answer || '')
+    .replace(/^\s*(?:Ans|Answer)\s*:\s*/i, '')
+    .trim();
+}
+
+function __erGetEditableValue(el) {
+  if (!el) return '';
+
+  if (el.getAttribute('contenteditable') === 'false') {
+    return String(el.dataset.raw || el.innerHTML || '').trim();
+  }
+
+  return String(el.innerHTML || el.innerText || '').trim();
+}
+
+function __erNormalizeMcqAnswer(answer) {
+  let raw = String(answer || '').trim().toUpperCase();
+
+  const named = raw.match(/\b(?:ANS?|ANSWER)\s*[:\-]?\s*(.+)$/);
+  if (named) raw = named[1].trim();
+
+  const seen = new Set();
+  const letters = [];
+
+  (raw.match(/[A-D]/g) || []).forEach(letter => {
+    if (!seen.has(letter)) {
+      seen.add(letter);
+      letters.push(letter);
+    }
+  });
+
+  return letters.join(',');
+}
+
+function __erBuildParagraphPlainText(q = {}) {
+  const blocks = [
+    'Read the following passage and answer the questions:',
+    'Passage:',
+    String(q.passage || '').trim()
+  ];
+
+  __erGetParagraphMcqs(q).forEach((mcq, index) => {
+    const question = __erGetParagraphSubQuestionText(mcq);
+    const options = Array.isArray(mcq.options) ? mcq.options.slice(0, 4) : [];
+
+    blocks.push('');
+    blocks.push(`(${index + 1}) ${question}`);
+
+    options.forEach((option, optionIndex) => {
+      blocks.push(`${String.fromCharCode(65 + optionIndex)}) ${__erCleanParagraphOption(option)}`);
+    });
+  });
+
+  return blocks.join('\n').trim();
+}
+
+function __erBuildParagraphReviewHtml(q = {}) {
+  const passage = String(q.passage || '').trim();
+  const mcqs = __erGetParagraphMcqs(q);
+
+  const subQuestionsHtml = mcqs.map((mcq, subIndex) => {
+    const question = __erGetParagraphSubQuestionText(mcq);
+    const options = Array.isArray(mcq.options) ? mcq.options.slice(0, 4) : [];
+    const answer = __erCleanParagraphAnswer(mcq.answer || mcq.parsedAnswer || mcq.finalAnswer || '');
+    const explanation = String(mcq.explanation || '').trim();
+
+    return `
+      <div class="paragraph-subquestion" data-subquestion="${subIndex}" style="
+        margin-top:14px;
+        border-top:1px solid #d9e8f7;
+        padding-top:12px;
+      ">
+        <div style="
+          display:grid;
+          grid-template-columns:2.2em 1fr;
+          column-gap:8px;
+          align-items:start;
+          margin-bottom:7px;
+        ">
+          <span style="font-weight:700;color:#185496;">(${subIndex + 1})</span>
+          <span class="paragraph-sub-text no-mjx" contenteditable="true" style="
+            border:1px dashed #bcd6ef;
+            border-radius:6px;
+            padding:3px 8px;
+            white-space:pre-wrap;
+          ">${question}</span>
+        </div>
+
+        <div class="paragraph-mcq-block" style="
+          display:flex;
+          flex-direction:column;
+          gap:6px;
+          margin-left:2.2em;
+        ">
+          ${['A', 'B', 'C', 'D'].map((letter, optionIndex) => `
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:700;color:#185496;min-width:18px;">${letter})</span>
+              <span class="paragraph-mcq-opt no-mjx" contenteditable="plaintext-only" tabindex="0" style="
+                flex:1 1 auto;
+                border:1px dashed #bcd6ef;
+                border-radius:6px;
+                padding:3px 8px;
+              ">${__erCleanParagraphOption(options[optionIndex] || '')}</span>
+            </div>
+          `).join('')}
+
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <span class="marks-label" style="min-width:62px;">Answer</span>
+            <span class="paragraph-answer-box no-mjx" contenteditable="plaintext-only" tabindex="0" style="
+              border:1px solid #bcd6ef;
+              border-radius:6px;
+              padding:3px 8px;
+              min-width:80px;
+            ">${answer}</span>
+            <span class="marks-label" style="opacity:.8;">(use letters like A or A,C)</span>
+          </div>
+
+          <div style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
+            <span class="marks-label" style="min-width:62px;">Explanation</span>
+            <div class="paragraph-explanation-box no-mjx" contenteditable="true" style="
+              flex:1 1 auto;
+              border:1px dashed #bcd6ef;
+              border-radius:6px;
+              padding:6px 8px;
+              min-height:26px;
+            ">${explanation}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="paragraph-review-set">
+      <div style="font-weight:700;color:#185496;margin-bottom:8px;">
+        Read the following passage and answer the questions:
+      </div>
+
+      <div style="font-weight:700;color:#185496;margin-bottom:5px;">
+        Passage:
+      </div>
+
+      <div class="paragraph-passage-text no-mjx" contenteditable="true" style="
+        border:1px dashed #bcd6ef;
+        border-radius:6px;
+        padding:6px 8px;
+        min-height:30px;
+        white-space:pre-wrap;
+      ">${passage}</div>
+
+      ${subQuestionsHtml}
+    </div>
+  `;
+}
+
 // --------- Robust parser for AI output ---------
 function parseAIBlocks(text, expectedCount) {
   if (!text) return [];
@@ -500,17 +686,23 @@ if (paper.instructions) {
 `;
                 (section.questions || []).forEach((q, qIdx) => {
         {
+       const __isParagraph = __erIsParagraphBasedQuestion(q);
     const fullRaw = stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''));
-  const bodyHtml = `
-      <span class="question-text" contenteditable="true">${fullRaw}</span>
-    `;
+
+    const bodyHtml = __isParagraph
+      ? __erBuildParagraphReviewHtml(q)
+      : `
+          <span class="question-text" contenteditable="true">${fullRaw}</span>
+        `;
 
   html += `<div class="question-row" data-subject="${subjIdx}" data-section="${sIdx}" data-question="${qIdx}">
     <span class="question-number">${(++qCounter)}.</span>
     <div class="q-body">
       ${bodyHtml}
 
-    ${ (q.options && q.options.length === 4)
+        ${ __isParagraph
+        ? ``
+        : (q.options && q.options.length === 4)
         ? `
           <div class="mcq-block" style="display:flex;flex-direction:column;gap:6px;margin-left:8px;flex:1 1 100%;">
             ${['A','B','C','D'].map((L, i) => `
@@ -549,7 +741,8 @@ if (paper.instructions) {
               ${(q.explanation || '').toString()}
             </div>
           </div>
-        `
+               `
+        )
       }
       <span class="marks-box no-mjx" contenteditable="plaintext-only" tabindex="0">${q.marks || section.marksPerQuestion || ''}</span>
       <span class="marks-label">Marks</span>
@@ -620,7 +813,10 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
   }
   if (!window.__attachMathEditors) {
     window.__attachMathEditors = function (root) {
-      const targets = root.querySelectorAll('.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer, .explanation-box.rich-explanation');
+          const targets = root.querySelectorAll(
+        '.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer, .explanation-box.rich-explanation, ' +
+        '.paragraph-passage-text, .paragraph-sub-text, .paragraph-mcq-opt, .paragraph-answer-box, .paragraph-explanation-box'
+      );
       targets.forEach(el => {
         window.__makePreview(el);
         el.addEventListener('click', () => {
@@ -849,9 +1045,78 @@ function saveEdits(showAlert = true) {
   document.querySelectorAll('.question-row').forEach(qr => {
     const subjIdx = +qr.dataset.subject, secIdx = +qr.dataset.section, qIdx = +qr.dataset.question;
 
-    // Marks
+        // Marks
     const newMarks = qr.querySelector('.marks-box')?.innerText?.trim() ?? '';
-    paper.subjects[subjIdx].sections[secIdx].questions[qIdx].marks = newMarks;
+    const currentQuestion = paper.subjects[subjIdx].sections[secIdx].questions[qIdx];
+    currentQuestion.marks = newMarks;
+
+    if (__erIsParagraphBasedQuestion(currentQuestion)) {
+      const passageNode = qr.querySelector('.paragraph-passage-text');
+      const passage = __erGetEditableValue(passageNode);
+
+      const subQuestionNodes = Array.from(qr.querySelectorAll('.paragraph-subquestion'));
+
+      const updatedMcqs = subQuestionNodes.map((subNode, subIndex) => {
+        const oldMcq = Array.isArray(currentQuestion.mcqs)
+          ? (currentQuestion.mcqs[subIndex] || {})
+          : {};
+
+        const question = __erGetEditableValue(
+          subNode.querySelector('.paragraph-sub-text')
+        );
+
+        const options = Array.from(
+          subNode.querySelectorAll('.paragraph-mcq-opt')
+        ).map(optionNode => __erGetEditableValue(optionNode));
+
+        const answer = __erNormalizeMcqAnswer(
+          __erGetEditableValue(subNode.querySelector('.paragraph-answer-box'))
+        );
+
+        const explanation = __erGetEditableValue(
+          subNode.querySelector('.paragraph-explanation-box')
+        );
+
+        return {
+          ...oldMcq,
+          question,
+          text: question,
+          body: [
+            question,
+            ...options.map((option, optionIndex) =>
+              `${String.fromCharCode(65 + optionIndex)}) ${option}`
+            )
+          ].join('\n'),
+          options,
+          answer,
+          parsedAnswer: answer,
+          explanation
+        };
+      });
+
+      currentQuestion.type = 'Paragraph-Based MCQ (Single Correct)';
+      currentQuestion.mcqType = 'Paragraph-Based MCQ (Single Correct)';
+      currentQuestion.passage = passage;
+      currentQuestion.mcqs = updatedMcqs;
+      currentQuestion.text = __erBuildParagraphPlainText(currentQuestion);
+      currentQuestion.body = currentQuestion.text;
+      currentQuestion.options = [];
+      currentQuestion.answer = '';
+      currentQuestion.explanation = '';
+
+      const paragraphImgWrap = qr.querySelector('.q-imgwrap');
+      if (paragraphImgWrap) {
+        const paragraphImg = paragraphImgWrap.querySelector('.q-imgbox img');
+
+        if (paragraphImg && paragraphImg.src) {
+          currentQuestion.image = paragraphImg.src;
+        } else {
+          delete currentQuestion.image;
+        }
+      }
+
+      return;
+    }
 
    // Text (prefer stored raw TeX/plain text)
 const aNode = qr.querySelector('.subpart .sub-text');            // first sub-text (A)
@@ -971,37 +1236,63 @@ async function shuffleMcqOptionsInExamPaper() {
     return;
   }
 
-  let changed = 0;
+   let changed = 0;
+
+  function shuffleOneMcqTarget(target) {
+    if (!target || !Array.isArray(target.options) || target.options.length !== 4) {
+      return false;
+    }
+
+    const originalOptions = target.options.map(opt => String(opt ?? ''));
+    const map = shuffledIndexMap(originalOptions.length);
+    const shuffledOptions = map.map(oldIdx => originalOptions[oldIdx]);
+
+    const correctOldIndexes = getUniqueAnswerLetters(target.answer || target.parsedAnswer)
+      .map(letter => letter.charCodeAt(0) - 65)
+      .filter(idx => idx >= 0 && idx < originalOptions.length);
+
+    if (correctOldIndexes.length) {
+      const newLetters = [];
+
+      map.forEach((oldIdx, newIdx) => {
+        if (correctOldIndexes.includes(oldIdx)) {
+          newLetters.push(String.fromCharCode(65 + newIdx));
+        }
+      });
+
+      target.answer = newLetters.join(',');
+      target.parsedAnswer = target.answer;
+    }
+
+    target.options = shuffledOptions;
+    target.body = [
+      __erGetParagraphSubQuestionText(target),
+      ...shuffledOptions.map((option, optionIndex) =>
+        `${String.fromCharCode(65 + optionIndex)}) ${option}`
+      )
+    ].join('\n');
+
+    changed++;
+    return true;
+  }
 
   (paper.subjects || []).forEach(subjectBlock => {
     (subjectBlock.sections || []).forEach(section => {
       (section.questions || []).forEach(q => {
-        if (!Array.isArray(q.options) || q.options.length !== 4) return;
-
-        const originalOptions = q.options.map(opt => String(opt ?? ''));
-        const map = shuffledIndexMap(originalOptions.length);
-        const shuffledOptions = map.map(oldIdx => originalOptions[oldIdx]);
-
-        const correctOldIndexes = getUniqueAnswerLetters(q.answer)
-          .map(letter => letter.charCodeAt(0) - 65)
-          .filter(idx => idx >= 0 && idx < originalOptions.length);
-
-        if (correctOldIndexes.length) {
-          const newLetters = [];
-          map.forEach((oldIdx, newIdx) => {
-            if (correctOldIndexes.includes(oldIdx)) {
-              newLetters.push(String.fromCharCode(65 + newIdx));
-            }
+        if (__erIsParagraphBasedQuestion(q)) {
+          __erGetParagraphMcqs(q).forEach(mcq => {
+            shuffleOneMcqTarget(mcq);
           });
-          q.answer = newLetters.join(',');
+
+          q.text = __erBuildParagraphPlainText(q);
+          q.body = q.text;
+          return;
         }
 
-        q.options = shuffledOptions;
-        changed++;
+        shuffleOneMcqTarget(q);
       });
     });
   });
-
   setExamPaper(paper);
   renderExam();
 
@@ -1132,7 +1423,9 @@ document.getElementById('randomize-numbers-btn').onclick = async function() {
   const all = [];
   paper.subjects.forEach((subjectBlock, subjIdx) => {
     (subjectBlock.sections || []).forEach((section, sIdx) => {
-      (section.questions || []).forEach((q, qIdx) => {
+            (section.questions || []).forEach((q, qIdx) => {
+        if (__erIsParagraphBasedQuestion(q)) return;
+
         const isProbSubject = ["math", "math 1", "math 2", "physics", "chemistry"].some(
           s => (subjectBlock.subject || '').toLowerCase().includes(s)
         );
