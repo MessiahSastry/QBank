@@ -521,7 +521,7 @@ function showToast(message, type = 'info') {
         .replace(/'/g, '&#39;');
 }
 
-function openManualPickModal({ title, questions, requiredCount, marksPerQuestion, mcqType }) {
+function openManualPickModal({ title, questions, requiredCount, marksPerQuestion, mcqType, requiredLevelPlan = null }) {
     return new Promise(resolve => {
         const modal = document.getElementById('manual-pick-modal');
         const titleBox = document.getElementById('manual-pick-title');
@@ -681,7 +681,48 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
                 return;
             }
 
-            const picked = checked.map(i => questions[i]);
+                        const picked = checked.map(i => questions[i]);
+
+            if (Array.isArray(requiredLevelPlan) && requiredLevelPlan.length === requiredCount) {
+                const requiredCounts = { L1: 0, L2: 0, L3: 0 };
+                const pickedCounts = { L1: 0, L2: 0, L3: 0 };
+
+                requiredLevelPlan.forEach(level => {
+                    if (requiredCounts[level] != null) {
+                        requiredCounts[level]++;
+                    }
+                });
+
+                picked.forEach(question => {
+                    const rawLevel = String(question?.difficulty || question?.level || '')
+                        .replace(/\s+/g, '')
+                        .toLowerCase();
+
+                    const level =
+                        rawLevel.includes('1') ? 'L1' :
+                        rawLevel.includes('2') ? 'L2' :
+                        rawLevel.includes('3') ? 'L3' :
+                        '';
+
+                    if (level && pickedCounts[level] != null) {
+                        pickedCounts[level]++;
+                    }
+                });
+
+                const isCorrectDistribution =
+                    requiredCounts.L1 === pickedCounts.L1 &&
+                    requiredCounts.L2 === pickedCounts.L2 &&
+                    requiredCounts.L3 === pickedCounts.L3;
+
+                if (!isCorrectDistribution) {
+                    showToast(
+                        `Select exactly L1: ${requiredCounts.L1}, L2: ${requiredCounts.L2}, L3: ${requiredCounts.L3}.`,
+                        'error'
+                    );
+                    return;
+                }
+            }
+
             cleanup(picked);
         };
     });
@@ -816,7 +857,7 @@ const config = {
             "Other"
         ]
     },
-       sectionLabels: ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G"],
+       sectionLabels: ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F", "Section G", "Section H"],
     sectionTypes: ["Answer all", "Answer any", "Internal choice"],
     sectionTypeKeys: ["all", "any", "internal"]
 };
@@ -1914,6 +1955,75 @@ function createMultiSelectDropdown(containerId, options, placeholder, onChange) 
     updateDisplay();
 }
 
+function getFixedPaperSectionPreset() {
+    const paperType = getPaperType();
+    const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
+
+    if (maxMarks !== 50) return null;
+
+    const fixedModels = {
+        "Pinnacle Paper": [
+            { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 15, marksPerQuestion: 1 },
+            { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 10, marksPerQuestion: 1 },
+            { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
+            { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+            { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 2, marksPerQuestion: 2 },
+            { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 3, marksPerQuestion: 1 },
+            { label: "Section G", mcqType: "Descriptive", numQuestions: 3, marksPerQuestion: 2 },
+            { label: "Section H", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 4 }
+        ],
+
+        "Core Paper": [
+            { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 20, marksPerQuestion: 1 },
+            { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 5, marksPerQuestion: 1 },
+            { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
+            { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
+            { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 },
+            { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 4, marksPerQuestion: 1 },
+            { label: "Section G", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 2 },
+            { label: "Section H", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 4 }
+        ]
+    };
+
+    const preset = fixedModels[paperType];
+    return Array.isArray(preset)
+        ? preset.map(section => ({ ...section }))
+        : null;
+}
+
+function setSubjectSectionsFromCurrentPaper(sIdx) {
+    const list = document.getElementById(`sections-list-${sIdx}`);
+    if (!list) return;
+
+    const preset = getFixedPaperSectionPreset();
+    const subjectBlock = list.closest('.subject-block');
+    const addButton = subjectBlock?.querySelector('.add-section-btn');
+
+    list.innerHTML = '';
+
+    if (Array.isArray(preset) && preset.length) {
+        preset.forEach(section => addSectionForSubject(sIdx, section));
+        if (addButton) addButton.style.display = 'none';
+    } else {
+        addSectionForSubject(sIdx);
+        if (addButton) addButton.style.display = '';
+    }
+}
+
+function rebuildFixedPaperSectionsIfChanged() {
+    const preset = getFixedPaperSectionPreset();
+    const nextKey = preset ? `${getPaperType()}|50` : '';
+    const previousKey = window._fixedPaperPresetKey || '';
+
+    if (nextKey === previousKey) return;
+
+    window._fixedPaperPresetKey = nextKey;
+
+    document.querySelectorAll('.subject-block').forEach((subjectBlock, sIdx) => {
+        setSubjectSectionsFromCurrentPaper(sIdx);
+    });
+}
+
 function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     const area = document.getElementById('subjects-sections-area');
     area.innerHTML = '';
@@ -1967,28 +2077,37 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
             });
         })();
 
-        setTimeout(() => addSectionForSubject(sIdx), 100);
-        subjectDiv.querySelector('.add-section-btn').onclick = () => addSectionForSubject(sIdx);
+               setTimeout(() => setSubjectSectionsFromCurrentPaper(sIdx), 100);
+
+        subjectDiv.querySelector('.add-section-btn').onclick = () => {
+            if (!getFixedPaperSectionPreset()) {
+                addSectionForSubject(sIdx);
+            }
+        };
     });
 }
-    function addSectionForSubject(sIdx) {
+    function addSectionForSubject(sIdx, preset = null) {
     const list = document.getElementById(`sections-list-${sIdx}`);
+    if (!list) return;
+
     const sectionCount = list.children.length;
 
     const newItem = document.createElement('div');
     newItem.className = 'section-item';
 
+    const selectedLabel = preset?.label || config.sectionLabels[sectionCount % config.sectionLabels.length];
+
     const sectionLabelDropdown = createSectionDropdown(
         config.sectionLabels,
         "Select Section",
-        config.sectionLabels[sectionCount % config.sectionLabels.length],
+        selectedLabel,
         null
     );
     sectionLabelDropdown.classList.add('section-label-dropdown');
     sectionLabelDropdown.style.width = "120px";
     sectionLabelDropdown.style.marginRight = "8px";
 
-      const mcqTypeOptions = [
+    const mcqTypeOptions = [
         "MCQ (Single)",
         "MCQ (Multiple)",
         "Assertion and Reason (MCQ Single)",
@@ -1998,16 +2117,28 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
         "Descriptive"
     ];
 
-    const mcqTypeDropdown = createSectionDropdown(mcqTypeOptions, "MCQ Type", mcqTypeOptions[0], null);
+    const selectedMcqType = preset?.mcqType || mcqTypeOptions[0];
+
+    const mcqTypeDropdown = createSectionDropdown(
+        mcqTypeOptions,
+        "Select Question Type",
+        selectedMcqType,
+        null
+    );
     mcqTypeDropdown.classList.add('mcq-type-dropdown');
     mcqTypeDropdown.style.width = "245px";
     mcqTypeDropdown.style.marginRight = "10px";
 
+    const selectedSectionType = config.sectionTypes[0];
+
     const sectionTypeDropdown = createSectionDropdown(
         config.sectionTypes,
         "Select Type",
-        config.sectionTypes[0],
-        (val) => updateSectionLogicFields(newItem, config.sectionTypeKeys[config.sectionTypes.indexOf(val)])
+        selectedSectionType,
+        (val) => updateSectionLogicFields(
+            newItem,
+            config.sectionTypeKeys[config.sectionTypes.indexOf(val)]
+        )
     );
     sectionTypeDropdown.classList.add('section-type-dropdown');
     sectionTypeDropdown.style.width = "140px";
@@ -2034,10 +2165,41 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     newItem.appendChild(logicFields);
     newItem.appendChild(removeBtn);
 
-    updateSectionLogicFields(newItem, config.sectionTypeKeys[0]);
+    updateSectionLogicFields(newItem, 'all');
+
+    if (preset) {
+        const numQuestionsInput = newItem.querySelector('.num-questions-input');
+        const marksInput = newItem.querySelector('.marks-per-question-input');
+
+        if (numQuestionsInput) {
+            numQuestionsInput.value = String(preset.numQuestions);
+            numQuestionsInput.disabled = true;
+        }
+
+        if (marksInput) {
+            marksInput.value = String(preset.marksPerQuestion);
+            marksInput.disabled = true;
+        }
+
+        sectionLabelDropdown.style.pointerEvents = 'none';
+        mcqTypeDropdown.style.pointerEvents = 'none';
+        sectionTypeDropdown.style.pointerEvents = 'none';
+
+        sectionLabelDropdown.style.opacity = '0.78';
+        mcqTypeDropdown.style.opacity = '0.78';
+        sectionTypeDropdown.style.opacity = '0.78';
+
+        dragHandle.style.visibility = 'hidden';
+        removeBtn.style.display = 'none';
+
+        newItem.dataset.fixedSection = 'true';
+    }
+
     list.appendChild(newItem);
 
-    if (window.Sortable) new Sortable(list, { animation: 150, handle: '.drag-handle' });
+    if (window.Sortable && !preset) {
+        new Sortable(list, { animation: 150, handle: '.drag-handle' });
+    }
 }
 
 function createSectionDropdown(options, placeholder, defaultValue, onChange) {
@@ -2515,16 +2677,6 @@ function getPaperType() {
     return (document.getElementById('paper-type-dropdown')?.dataset?.value) || '';
 }
 
-function repeatFixedPlan(basePlan, times) {
-    const out = [];
-
-    for (let i = 0; i < times; i++) {
-        out.push(...basePlan);
-    }
-
-    return out;
-}
-
 function __buildDynamicLevelCounts(totalQuestions, percentages) {
     const total = Math.max(0, Number(totalQuestions || 0));
 
@@ -2629,79 +2781,75 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
     const mpq = Number(marksPerQuestion || 0);
     const type = String(mcqType || '').trim();
 
-    const base25Templates = {
-        "Core Paper": {
-            "MCQ (Single)|5|1": ["L1", "L1", "L1", "L2", "L1"],
-            "MCQ (Multiple)|4|1": ["L1", "L1", "L1", "L2"],
-            "Fill in the Blanks|4|1": ["L1", "L1", "L2", "L2"],
-            "Assertion and Reason (MCQ Single)|5|1": ["L1", "L1", "L1", "L2", "L1"],
-            "Matching Matrix|4|1": ["L1", "L1", "L1", "L2"],
-            "Descriptive|2|2": ["L1", "L2"],
-            "Descriptive|2|4": ["L1", "L2"]
-        },
+    const fixed50Plans = {
         "Pinnacle Paper": {
-            "MCQ (Single)|5|1": ["L1", "L2", "L3", "L2", "L3"],
-            "MCQ (Multiple)|4|1": ["L1", "L2", "L3", "L2"],
-            "Fill in the Blanks|4|1": ["L1", "L1", "L2", "L2"],
-            "Assertion and Reason (MCQ Single)|5|1": ["L1", "L2", "L3", "L2", "L3"],
-            "Matching Matrix|4|1": ["L1", "L2", "L3", "L2"],
-            "Descriptive|2|2": ["L1", "L3"],
-            "Descriptive|2|4": ["L2", "L3"]
+            "MCQ (Single)|15|1": [
+                "L1", "L1", "L1", "L1", "L1",
+                "L2", "L2", "L2", "L2", "L2",
+                "L3", "L3", "L3", "L3", "L3"
+            ],
+            "MCQ (Multiple)|10|1": [
+                "L1", "L1",
+                "L2", "L2", "L2", "L2", "L2",
+                "L3", "L3", "L3"
+            ],
+            "Assertion and Reason (MCQ Single)|2|1": [
+                "L2", "L3"
+            ],
+            "Matching Matrix|2|1": [
+                "L2", "L3"
+            ],
+            "Paragraph-Based MCQ (Single Correct)|2|2": [
+                "L2", "L3"
+            ],
+            "Fill in the Blanks|3|1": [
+                "L1", "L2", "L3"
+            ],
+            "Descriptive|3|2": [
+                "L1", "L2", "L3"
+            ],
+            "Descriptive|2|4": [
+                "L2", "L3"
+            ]
+        },
+
+        "Core Paper": {
+            "MCQ (Single)|20|1": [
+                "L1", "L1", "L1", "L1", "L1", "L1",
+                "L1", "L1", "L1", "L1", "L1", "L1",
+                "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+            ],
+            "MCQ (Multiple)|5|1": [
+                "L1", "L1",
+                "L2", "L2", "L2"
+            ],
+            "Assertion and Reason (MCQ Single)|2|1": [
+                "L1", "L2"
+            ],
+            "Matching Matrix|1|1": [
+                "L2"
+            ],
+            "Paragraph-Based MCQ (Single Correct)|1|2": [
+                "L2"
+            ],
+            "Fill in the Blanks|4|1": [
+                "L1", "L1", "L1", "L1"
+            ],
+            "Descriptive|4|2": [
+                "L1", "L1", "L1", "L2"
+            ],
+            "Descriptive|2|4": [
+                "L1", "L2"
+            ]
         }
     };
 
-    const scaleMap = {
-        25: {
-            factor: 1,
-            signatures: {
-                "MCQ (Single)|5|1": "MCQ (Single)|5|1",
-                "MCQ (Multiple)|4|1": "MCQ (Multiple)|4|1",
-                "Fill in the Blanks|4|1": "Fill in the Blanks|4|1",
-                "Assertion and Reason (MCQ Single)|5|1": "Assertion and Reason (MCQ Single)|5|1",
-                "Matching Matrix|4|1": "Matching Matrix|4|1",
-                "Descriptive|2|2": "Descriptive|2|2",
-                "Descriptive|2|4": "Descriptive|2|4"
-            }
-        },
-        50: {
-            factor: 2,
-            signatures: {
-                "MCQ (Single)|10|1": "MCQ (Single)|5|1",
-                "MCQ (Multiple)|8|1": "MCQ (Multiple)|4|1",
-                "Fill in the Blanks|8|1": "Fill in the Blanks|4|1",
-                "Assertion and Reason (MCQ Single)|10|1": "Assertion and Reason (MCQ Single)|5|1",
-                "Matching Matrix|8|1": "Matching Matrix|4|1",
-                "Descriptive|4|2": "Descriptive|2|2",
-                "Descriptive|4|4": "Descriptive|2|4"
-            }
-        },
-        100: {
-            factor: 4,
-            signatures: {
-                "MCQ (Single)|20|1": "MCQ (Single)|5|1",
-                "MCQ (Multiple)|16|1": "MCQ (Multiple)|4|1",
-                "Fill in the Blanks|16|1": "Fill in the Blanks|4|1",
-                "Assertion and Reason (MCQ Single)|20|1": "Assertion and Reason (MCQ Single)|5|1",
-                "Matching Matrix|16|1": "Matching Matrix|4|1",
-                "Descriptive|8|2": "Descriptive|2|2",
-                "Descriptive|8|4": "Descriptive|2|4"
-            }
-        }
-    };
-
-    const paperTemplates = base25Templates[paperType];
-    const scaleInfo = scaleMap[totalMarks];
-
-    if (paperTemplates && scaleInfo) {
+    if (totalMarks === 50) {
         const signature = `${type}|${qCount}|${mpq}`;
-        const baseSignature = scaleInfo.signatures[signature];
+        const plan = fixed50Plans[paperType]?.[signature];
 
-        if (baseSignature) {
-            const basePlan = paperTemplates[baseSignature];
-
-            if (Array.isArray(basePlan) && basePlan.length) {
-                return repeatFixedPlan(basePlan, scaleInfo.factor);
-            }
+        if (Array.isArray(plan) && plan.length === qCount) {
+            return plan.slice();
         }
     }
 
@@ -2711,6 +2859,7 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
         numQuestions: qCount
     });
 }
+
 
 function buildFairChapterPlan(chapters, totalNeed) {
     const chs = Array.isArray(chapters) ? chapters.filter(Boolean) : [];
@@ -2738,6 +2887,9 @@ function buildFairChapterPlan(chapters, totalNeed) {
 }
 function applyPaperTypePreset() {
     const paperType = getPaperType();
+    const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
+    const isFixed50 = maxMarks === 50 &&
+        (paperType === 'Pinnacle Paper' || paperType === 'Core Paper');
 
     const l1Check = document.getElementById('diff-l1-check');
     const l2Check = document.getElementById('diff-l2-check');
@@ -2749,25 +2901,53 @@ function applyPaperTypePreset() {
 
     if (!l1Check || !l2Check || !l3Check || !l1Percent || !l2Percent || !l3Percent) return;
 
-   if (paperType === 'Pinnacle Paper') {
-    l1Check.checked = true;
-    l2Check.checked = true;
-    l3Check.checked = true;
+    if (paperType === 'Pinnacle Paper') {
+        l1Check.checked = true;
+        l2Check.checked = true;
+        l3Check.checked = true;
 
-    l1Percent.value = 24;
-    l2Percent.value = 40;
-    l3Percent.value = 36;
-} else if (paperType === 'Core Paper') {
-    l1Check.checked = true;
-    l2Check.checked = true;
-    l3Check.checked = false;
+        if (isFixed50) {
+            l1Percent.value = 20;
+            l2Percent.value = 42;
+            l3Percent.value = 38;
+        } else {
+            l1Percent.value = 24;
+            l2Percent.value = 40;
+            l3Percent.value = 36;
+        }
+    } else if (paperType === 'Core Paper') {
+        l1Check.checked = true;
+        l2Check.checked = true;
+        l3Check.checked = false;
 
-    l1Percent.value = 60;
-    l2Percent.value = 40;
-    l3Percent.value = 0;
-}
+        if (isFixed50) {
+            l1Percent.value = 56;
+            l2Percent.value = 44;
+            l3Percent.value = 0;
+        } else {
+            l1Percent.value = 60;
+            l2Percent.value = 40;
+            l3Percent.value = 0;
+        }
+    }
+
+    l1Check.disabled = isFixed50;
+    l2Check.disabled = isFixed50;
+    l3Check.disabled = isFixed50;
+
     refreshDifficultyTotalNote();
+
+    if (isFixed50) {
+        l1Percent.disabled = true;
+        l2Percent.disabled = true;
+        l3Percent.disabled = true;
+    } else {
+        l1Percent.disabled = !l1Check.checked;
+        l2Percent.disabled = !l2Check.checked;
+        l3Percent.disabled = !l3Check.checked;
+    }
 }
+
 
 function getGlobalShuffleQuestions() {
     return !!window._shuffleQuestions;
@@ -2813,9 +2993,15 @@ refreshDifficultyTotalNote();
     updateSubjectsForBoardAndClass();
 });
 
-document.getElementById('paper-type-dropdown').addEventListener('change', function () {
+function handleFixedPaperPresetChange() {
     applyPaperTypePreset();
-});
+    rebuildFixedPaperSectionsIfChanged();
+}
+
+document.getElementById('paper-type-dropdown').addEventListener('change', handleFixedPaperPresetChange);
+
+document.getElementById('max-marks-input').addEventListener('input', handleFixedPaperPresetChange);
+document.getElementById('max-marks-input').addEventListener('change', handleFixedPaperPresetChange);
 
         (function wireGlobalSourceUI(){
             const dd = document.getElementById('exam-source-dropdown');
@@ -3260,12 +3446,21 @@ const cleanPool = manualPool;
         `${subjData.subject} - ${sec.label}: Only ${cleanPool.length} question(s) available for ${mPerQ} mark ${sec.mcqType}.`
     );
 } else {
+                        const requiredManualLevelPlan = getFixedSectionLevelPlan({
+                paperType: getPaperType(),
+                maxMarks: Number(maxMarks || 0),
+                mcqType: sec.mcqType,
+                numQuestions: requestedCount,
+                marksPerQuestion: mPerQ
+            });
+
             const pickedManual = await openManualPickModal({
                 title: `${subjData.subject} - ${sec.label}`,
                 questions: cleanPool,
                 requiredCount: requestedCount,
                 marksPerQuestion: mPerQ,
-                mcqType: sec.mcqType
+                mcqType: sec.mcqType,
+                requiredLevelPlan: requiredManualLevelPlan
             });
 
             if (!pickedManual) {
