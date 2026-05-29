@@ -1959,37 +1959,174 @@ function getFixedPaperSectionPreset() {
     const paperType = getPaperType();
     const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
 
-    if (maxMarks !== 50) return null;
+    const fixedModelsByMarks = {
+        25: {
+            "Pinnacle Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 5, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 1, marksPerQuestion: 4 }
+            ],
 
-    const fixedModels = {
-        "Pinnacle Paper": [
-            { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 15, marksPerQuestion: 1 },
-            { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 10, marksPerQuestion: 1 },
-            { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
-            { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
-            { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 2, marksPerQuestion: 2 },
-            { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 3, marksPerQuestion: 1 },
-            { label: "Section G", mcqType: "Descriptive", numQuestions: 3, marksPerQuestion: 2 },
-            { label: "Section H", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 4 }
-        ],
+                       "Core Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 8, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 3, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 1, marksPerQuestion: 4 }
+            ],
 
-        "Core Paper": [
-            { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 20, marksPerQuestion: 1 },
-            { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 5, marksPerQuestion: 1 },
-            { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
-            { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
-            { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 },
-            { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 4, marksPerQuestion: 1 },
-            { label: "Section G", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 2 },
-            { label: "Section H", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 4 }
-        ]
+            "Pinnacle Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 10, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 10, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 }
+            ],
+
+            "Core Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 13, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 7, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 }
+            ]
+        },
+
+        50: {
+            "Pinnacle Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 15, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 10, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 2, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 3, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 3, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 4 }
+            ],
+
+            "Core Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 20, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 5, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 1, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 1, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 2, marksPerQuestion: 4 }
+            ],
+
+            "Pinnacle Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 20, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 20, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 2, marksPerQuestion: 2 }
+            ],
+
+                       "Core Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 25, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 15, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 2, marksPerQuestion: 2 }
+            ]
+        },
+
+        80: {
+            "Pinnacle Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 20, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 14, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 3, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 6, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 4 }
+            ],
+
+                        "Core Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 20, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 14, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 3, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 6, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 4 }
+            ],
+
+            "Pinnacle Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 32, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 32, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 3, marksPerQuestion: 2 }
+            ],
+
+                       "Core Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 32, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 32, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 3, marksPerQuestion: 2 }
+            ]
+        },
+
+        100: {
+            "Pinnacle Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 30, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 20, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 4, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 6, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 4 }
+            ],
+
+                      "Core Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 40, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 10, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 4, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 2, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 2, marksPerQuestion: 2 },
+                { label: "Section F", mcqType: "Fill in the Blanks", numQuestions: 8, marksPerQuestion: 1 },
+                { label: "Section G", mcqType: "Descriptive", numQuestions: 8, marksPerQuestion: 2 },
+                { label: "Section H", mcqType: "Descriptive", numQuestions: 4, marksPerQuestion: 4 }
+            ],
+
+            "Pinnacle Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 40, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 40, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 8, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 3, marksPerQuestion: 2 }
+            ],
+
+            "Core Objective Paper": [
+                { label: "Section A", mcqType: "MCQ (Single)", numQuestions: 40, marksPerQuestion: 1 },
+                { label: "Section B", mcqType: "MCQ (Multiple)", numQuestions: 40, marksPerQuestion: 1 },
+                { label: "Section C", mcqType: "Assertion and Reason (MCQ Single)", numQuestions: 8, marksPerQuestion: 1 },
+                { label: "Section D", mcqType: "Matching Matrix", numQuestions: 6, marksPerQuestion: 1 },
+                { label: "Section E", mcqType: "Paragraph-Based MCQ (Single Correct)", numQuestions: 3, marksPerQuestion: 2 }
+            ]
+        }
     };
+    const preset = fixedModelsByMarks[maxMarks]?.[paperType];
 
-    const preset = fixedModels[paperType];
     return Array.isArray(preset)
         ? preset.map(section => ({ ...section }))
         : null;
 }
+
 
 function setSubjectSectionsFromCurrentPaper(sIdx) {
     const list = document.getElementById(`sections-list-${sIdx}`);
@@ -2012,7 +2149,8 @@ function setSubjectSectionsFromCurrentPaper(sIdx) {
 
 function rebuildFixedPaperSectionsIfChanged() {
     const preset = getFixedPaperSectionPreset();
-    const nextKey = preset ? `${getPaperType()}|50` : '';
+    const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
+    const nextKey = preset ? `${getPaperType()}|${maxMarks}` : '';
     const previousKey = window._fixedPaperPresetKey || '';
 
     if (nextKey === previousKey) return;
@@ -2023,7 +2161,6 @@ function rebuildFixedPaperSectionsIfChanged() {
         setSubjectSectionsFromCurrentPaper(sIdx);
     });
 }
-
 function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     const area = document.getElementById('subjects-sections-area');
     area.innerHTML = '';
@@ -2781,76 +2918,578 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
     const mpq = Number(marksPerQuestion || 0);
     const type = String(mcqType || '').trim();
 
-    const fixed50Plans = {
-        "Pinnacle Paper": {
-            "MCQ (Single)|15|1": [
-                "L1", "L1", "L1", "L1", "L1",
-                "L2", "L2", "L2", "L2", "L2",
-                "L3", "L3", "L3", "L3", "L3"
-            ],
-            "MCQ (Multiple)|10|1": [
-                "L1", "L1",
-                "L2", "L2", "L2", "L2", "L2",
-                "L3", "L3", "L3"
-            ],
-            "Assertion and Reason (MCQ Single)|2|1": [
-                "L2", "L3"
-            ],
-            "Matching Matrix|2|1": [
-                "L2", "L3"
-            ],
-            "Paragraph-Based MCQ (Single Correct)|2|2": [
-                "L2", "L3"
-            ],
-            "Fill in the Blanks|3|1": [
-                "L1", "L2", "L3"
-            ],
-            "Descriptive|3|2": [
-                "L1", "L2", "L3"
-            ],
-            "Descriptive|2|4": [
-                "L2", "L3"
-            ]
+    const fixedPlansByMarks = {
+        25: {
+            "Pinnacle Paper": {
+                "MCQ (Single)|6|1": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|5|1": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|1|1": [
+                    "L2"
+                ],
+
+                "Matching Matrix|1|1": [
+                    "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|1|2": [
+                    "L2"
+                ],
+
+                "Fill in the Blanks|2|1": [
+                    "L1", "L2"
+                ],
+
+                "Descriptive|2|2": [
+                    "L2", "L3"
+                ],
+
+                "Descriptive|1|4": [
+                    "L3"
+                ]
+            },
+
+                       "Core Paper": {
+                "MCQ (Single)|8|1": [
+                    "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|3|1": [
+                    "L1", "L1",
+                    "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|1|1": [
+                    "L1"
+                ],
+
+                "Matching Matrix|1|1": [
+                    "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|1|2": [
+                    "L2"
+                ],
+
+                "Fill in the Blanks|2|1": [
+                    "L1", "L1"
+                ],
+
+                "Descriptive|2|2": [
+                    "L1", "L2"
+                ],
+
+                "Descriptive|1|4": [
+                    "L1"
+                ]
+            },
+
+            "Pinnacle Objective Paper": {
+                "MCQ (Single)|10|1": [
+                    "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|10|1": [
+                    "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|2|1": [
+                    "L2", "L3"
+                ],
+
+                "Matching Matrix|1|1": [
+                    "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|1|2": [
+                    "L3"
+                ]
+            },
+
+            "Core Objective Paper": {
+                "MCQ (Single)|13|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|7|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|2|1": [
+                    "L1", "L2"
+                ],
+
+                "Matching Matrix|1|1": [
+                    "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|1|2": [
+                    "L2"
+                ]
+            }
         },
 
-        "Core Paper": {
-            "MCQ (Single)|20|1": [
-                "L1", "L1", "L1", "L1", "L1", "L1",
-                "L1", "L1", "L1", "L1", "L1", "L1",
-                "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
-            ],
-            "MCQ (Multiple)|5|1": [
-                "L1", "L1",
-                "L2", "L2", "L2"
-            ],
-            "Assertion and Reason (MCQ Single)|2|1": [
-                "L1", "L2"
-            ],
-            "Matching Matrix|1|1": [
-                "L2"
-            ],
-            "Paragraph-Based MCQ (Single Correct)|1|2": [
-                "L2"
-            ],
-            "Fill in the Blanks|4|1": [
-                "L1", "L1", "L1", "L1"
-            ],
-            "Descriptive|4|2": [
-                "L1", "L1", "L1", "L2"
-            ],
-            "Descriptive|2|4": [
-                "L1", "L2"
-            ]
+        50: {
+            "Pinnacle Paper": {
+                "MCQ (Single)|15|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|10|1": [
+                    "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|2|1": [
+                    "L2", "L3"
+                ],
+
+                "Matching Matrix|2|1": [
+                    "L2", "L3"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|2|2": [
+                    "L2", "L3"
+                ],
+
+                "Fill in the Blanks|3|1": [
+                    "L1", "L2", "L3"
+                ],
+
+                "Descriptive|3|2": [
+                    "L1", "L2", "L3"
+                ],
+
+                "Descriptive|2|4": [
+                    "L2", "L3"
+                ]
+            },
+
+            "Core Paper": {
+                "MCQ (Single)|20|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|5|1": [
+                    "L1", "L1",
+                    "L2", "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|2|1": [
+                    "L1", "L2"
+                ],
+
+                "Matching Matrix|1|1": [
+                    "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|1|2": [
+                    "L2"
+                ],
+
+                "Fill in the Blanks|4|1": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ],
+
+                "Descriptive|4|2": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ],
+
+                "Descriptive|2|4": [
+                    "L1", "L2"
+                ]
+            },
+
+            "Pinnacle Objective Paper": {
+                "MCQ (Single)|20|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|20|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|4|1": [
+                    "L2", "L2", "L3", "L3"
+                ],
+
+                "Matching Matrix|2|1": [
+                    "L2", "L3"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|2|2": [
+                    "L2", "L3"
+                ]
+            },
+
+                       "Core Objective Paper": {
+                "MCQ (Single)|25|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|15|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|4|1": [
+                    "L1", "L2", "L2", "L2"
+                ],
+
+                "Matching Matrix|2|1": [
+                    "L2", "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|2|2": [
+                    "L1", "L2"
+                ]
+            }
+        },
+
+        80: {
+                        "Pinnacle Paper": {
+                "MCQ (Single)|20|1": [
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|14|1": [
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|4|1": [
+                    "L1",
+                    "L2", "L2",
+                    "L3"
+                ],
+
+                "Matching Matrix|2|1": [
+                    "L2", "L3"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|3|2": [
+                    "L1", "L2", "L3"
+                ],
+
+                "Fill in the Blanks|6|1": [
+                    "L1", "L1", "L1", "L1",
+                    "L2",
+                    "L3"
+                ],
+
+                "Descriptive|6|2": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Descriptive|4|4": [
+                    "L1",
+                    "L2",
+                    "L3", "L3"
+                ]
+            },
+
+                                   "Core Paper": {
+                "MCQ (Single)|20|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|14|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|4|1": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ],
+
+                "Matching Matrix|2|1": [
+                    "L1", "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|3|2": [
+                    "L1",
+                    "L2", "L2"
+                ],
+
+                "Fill in the Blanks|6|1": [
+                    "L1", "L1", "L1",
+                    "L2", "L2", "L2"
+                ],
+
+                "Descriptive|6|2": [
+                    "L1", "L1", "L1",
+                    "L2", "L2", "L2"
+                ],
+
+                "Descriptive|4|4": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ]
+            },
+
+            "Pinnacle Objective Paper": {
+                "MCQ (Single)|32|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|32|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|6|1": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Matching Matrix|4|1": [
+                    "L1",
+                    "L2",
+                    "L3", "L3"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|3|2": [
+                    "L1", "L2", "L3"
+                ]
+            },
+
+                       "Core Objective Paper": {
+                "MCQ (Single)|32|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|32|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|6|1": [
+                    "L1", "L1", "L1",
+                    "L2", "L2", "L2"
+                ],
+
+                "Matching Matrix|4|1": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|3|2": [
+                    "L1",
+                    "L2", "L2"
+                ]
+            }
+        },
+
+        100: {
+            "Pinnacle Paper": {
+                "MCQ (Single)|30|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|20|1": [
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|4|1": [
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Matching Matrix|4|1": [
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|4|2": [
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Fill in the Blanks|6|1": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Descriptive|6|2": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Descriptive|4|4": [
+                    "L2", "L2",
+                    "L3", "L3"
+                ]
+            },
+
+                       "Core Paper": {
+                "MCQ (Single)|40|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|10|1": [
+                    "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|4|1": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ],
+
+                "Matching Matrix|2|1": [
+                    "L1", "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|2|2": [
+                    "L1", "L2"
+                ],
+
+                "Fill in the Blanks|8|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1"
+                ],
+
+                "Descriptive|8|2": [
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2"
+                ],
+
+                "Descriptive|4|4": [
+                    "L1", "L1",
+                    "L2", "L2"
+                ]
+            },
+
+            "Pinnacle Objective Paper": {
+                "MCQ (Single)|40|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3",
+                    "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "MCQ (Multiple)|40|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2",
+                    "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3", "L3",
+                    "L3", "L3", "L3", "L3", "L3"
+                ],
+
+                "Assertion and Reason (MCQ Single)|8|1": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3", "L3", "L3"
+                ],
+
+                "Matching Matrix|6|1": [
+                    "L1", "L1",
+                    "L2", "L2",
+                    "L3", "L3"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|3|2": [
+                    "L1", "L2", "L3"
+                ]
+            },
+
+            "Core Objective Paper": {
+                "MCQ (Single)|40|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "MCQ (Multiple)|40|1": [
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1", "L1",
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2",
+                    "L2", "L2", "L2", "L2", "L2", "L2", "L2", "L2"
+                ],
+
+                "Assertion and Reason (MCQ Single)|8|1": [
+                    "L1", "L1", "L1", "L1",
+                    "L2", "L2", "L2", "L2"
+                ],
+
+                "Matching Matrix|6|1": [
+                    "L1", "L1",
+                    "L2", "L2", "L2", "L2"
+                ],
+
+                "Paragraph-Based MCQ (Single Correct)|3|2": [
+                    "L1",
+                    "L2", "L2"
+                ]
+            }
         }
     };
+    const signature = `${type}|${qCount}|${mpq}`;
+    const plan = fixedPlansByMarks[totalMarks]?.[paperType]?.[signature];
 
-    if (totalMarks === 50) {
-        const signature = `${type}|${qCount}|${mpq}`;
-        const plan = fixed50Plans[paperType]?.[signature];
-
-        if (Array.isArray(plan) && plan.length === qCount) {
-            return plan.slice();
-        }
+    if (Array.isArray(plan) && plan.length === qCount) {
+        return plan.slice();
     }
 
     return __buildDynamicSectionLevelPlan({
@@ -2859,6 +3498,8 @@ function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, 
         numQuestions: qCount
     });
 }
+
+
 
 
 function buildFairChapterPlan(chapters, totalNeed) {
@@ -2888,8 +3529,20 @@ function buildFairChapterPlan(chapters, totalNeed) {
 function applyPaperTypePreset() {
     const paperType = getPaperType();
     const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
-    const isFixed50 = maxMarks === 50 &&
-        (paperType === 'Pinnacle Paper' || paperType === 'Core Paper');
+
+    const pinnacleTypes = [
+        'Pinnacle Paper',
+        'Pinnacle Objective Paper'
+    ];
+
+    const coreTypes = [
+        'Core Paper',
+        'Core Objective Paper'
+    ];
+
+    const isPinnacle = pinnacleTypes.includes(paperType);
+    const isCore = coreTypes.includes(paperType);
+    const isFixedPaper = !!getFixedPaperSectionPreset();
 
     const l1Check = document.getElementById('diff-l1-check');
     const l2Check = document.getElementById('diff-l2-check');
@@ -2901,26 +3554,98 @@ function applyPaperTypePreset() {
 
     if (!l1Check || !l2Check || !l3Check || !l1Percent || !l2Percent || !l3Percent) return;
 
-    if (paperType === 'Pinnacle Paper') {
+    if (isPinnacle) {
         l1Check.checked = true;
         l2Check.checked = true;
         l3Check.checked = true;
 
-        if (isFixed50) {
+               if (
+            isFixedPaper &&
+            maxMarks === 25 &&
+            (paperType === 'Pinnacle Paper' || paperType === 'Pinnacle Objective Paper')
+        ) {
+            l1Percent.value = 20;
+            l2Percent.value = 44;
+            l3Percent.value = 36;
+               } else if (isFixedPaper && maxMarks === 50) {
             l1Percent.value = 20;
             l2Percent.value = 42;
+            l3Percent.value = 38;
+                      } else if (
+            isFixedPaper &&
+            maxMarks === 80 &&
+            paperType === 'Pinnacle Paper'
+        ) {
+            l1Percent.value = 28.75;
+            l2Percent.value = 35;
+            l3Percent.value = 36.25;
+                } else if (
+            isFixedPaper &&
+            maxMarks === 80 &&
+            paperType === 'Pinnacle Objective Paper'
+        ) {
+            l1Percent.value = 26.25;
+            l2Percent.value = 36.25;
+            l3Percent.value = 37.5;
+                } else if (
+            isFixedPaper &&
+            maxMarks === 100 &&
+            paperType === 'Pinnacle Paper'
+        ) {
+            l1Percent.value = 20;
+            l2Percent.value = 42;
+            l3Percent.value = 38;
+        } else if (
+            isFixedPaper &&
+            maxMarks === 100 &&
+            paperType === 'Pinnacle Objective Paper'
+        ) {
+            l1Percent.value = 26;
+            l2Percent.value = 36;
             l3Percent.value = 38;
         } else {
             l1Percent.value = 24;
             l2Percent.value = 40;
             l3Percent.value = 36;
         }
-    } else if (paperType === 'Core Paper') {
+    } else if (isCore) {
         l1Check.checked = true;
         l2Check.checked = true;
         l3Check.checked = false;
 
-        if (isFixed50) {
+                                    if (
+            isFixedPaper &&
+            maxMarks === 80 &&
+            paperType === 'Core Paper'
+        ) {
+            l1Percent.value = 48.75;
+            l2Percent.value = 51.25;
+            l3Percent.value = 0;
+        } else if (
+            isFixedPaper &&
+            maxMarks === 80 &&
+            paperType === 'Core Objective Paper'
+        ) {
+            l1Percent.value = 56.25;
+            l2Percent.value = 43.75;
+            l3Percent.value = 0;
+                      } else if (
+            isFixedPaper &&
+            maxMarks === 100 &&
+            (paperType === 'Core Paper' || paperType === 'Core Objective Paper')
+        ) {
+            l1Percent.value = 56;
+            l2Percent.value = 44;
+            l3Percent.value = 0;
+        } else if (
+            isFixedPaper &&
+            maxMarks === 50 &&
+            paperType === 'Core Paper'
+        ) {
+            l1Percent.value = 50;
+            l2Percent.value = 50;
+            l3Percent.value = 0;
+        } else if (isFixedPaper) {
             l1Percent.value = 56;
             l2Percent.value = 44;
             l3Percent.value = 0;
@@ -2931,13 +3656,13 @@ function applyPaperTypePreset() {
         }
     }
 
-    l1Check.disabled = isFixed50;
-    l2Check.disabled = isFixed50;
-    l3Check.disabled = isFixed50;
+    l1Check.disabled = isFixedPaper;
+    l2Check.disabled = isFixedPaper;
+    l3Check.disabled = isFixedPaper;
 
     refreshDifficultyTotalNote();
 
-    if (isFixed50) {
+    if (isFixedPaper) {
         l1Percent.disabled = true;
         l2Percent.disabled = true;
         l3Percent.disabled = true;
@@ -2947,7 +3672,6 @@ function applyPaperTypePreset() {
         l3Percent.disabled = !l3Check.checked;
     }
 }
-
 
 function getGlobalShuffleQuestions() {
     return !!window._shuffleQuestions;
@@ -2970,7 +3694,16 @@ document.addEventListener('DOMContentLoaded', () => {
         createDropdown('board-dropdown', config.boards, 'Select Board');
         createDropdown('exam-source-dropdown', ["Question Bank", "Paste", "Upload .docx"], 'Question Bank');
 createDropdown('selection-mode-dropdown', ["Auto Select", "Manual Select"], 'Auto Select');
-createDropdown('paper-type-dropdown', ["Pinnacle Paper", "Core Paper"], 'Select Paper Type');
+createDropdown(
+    'paper-type-dropdown',
+    [
+        "Pinnacle Paper",
+        "Core Paper",
+        "Pinnacle Objective Paper",
+        "Core Objective Paper"
+    ],
+    'Select Paper Type'
+);
 refreshDifficultyTotalNote();
 
 [
