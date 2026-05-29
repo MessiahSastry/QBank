@@ -21,6 +21,9 @@
   <title>Exam Review | St. Patrick's School</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
   <style>
     body { margin:0; padding:0; font-family:'Segoe UI', Arial, sans-serif; background:#f4f8fc;}
     .page-wrapper { min-height:100vh; }
@@ -203,8 +206,12 @@
   <button class="save-btn" id="save-review-btn">
     <i class="fas fa-save"></i> Save Changes
   </button>
-  <button class="preview-btn" id="preview-btn">
+   <button class="preview-btn" id="preview-btn">
     <i class="fas fa-eye"></i> Preview Question Paper
+  </button>
+
+  <button type="button" class="save-btn" id="download-blueprint-btn" style="background:#0f3d6b;">
+    <i class="fas fa-file-pdf"></i> Download Blueprint PDF
   </button>
 </div>
     </div>
@@ -1567,6 +1574,609 @@ window.addEventListener('load', function () {
     console.error('renderExam failed:', err);
   }
 });
+function __bpCleanChapterName(chapter) {
+  return String(chapter || '')
+    .replace(/\s*\(\s*Subtopics?\s*:[\s\S]*?\)\s*$/i, '')
+    .replace(/\s*(?:[-–—]\s*)?Subtopics?\s*:[\s\S]*$/i, '')
+    .trim();
+}
+
+function __bpFormatDate(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  }
+
+  return raw || '-';
+}
+
+function __bpSafeText(value) {
+  return String(value == null ? '' : value).trim();
+}
+
+function __bpFileSafe(value) {
+  return String(value || 'Question Paper')
+    .replace(/[\\/:*?"<>|]+/g, '')
+    .replace(/\s+/g, '_')
+    .trim() || 'Question_Paper';
+}
+
+function __bpSectionLetter(label) {
+  const raw = String(label || '').trim();
+  const match = raw.match(/Section\s+([A-Z])/i);
+
+  if (match) return match[1].toUpperCase();
+
+  return raw || '-';
+}
+
+function __bpQuestionType(section) {
+  const raw = String(section.mcqType || '').trim();
+  const low = raw.toLowerCase();
+  const marks = Number(section.marksPerQuestion || 0);
+
+  if (low.includes('paragraph')) return 'Paragraph-Based MCQ';
+  if (low.includes('assertion') && low.includes('reason')) return 'Assertion and Reason';
+  if (low.includes('matching') && low.includes('matrix')) return 'Matching Matrix';
+  if (low.includes('fill') && low.includes('blank')) return 'Fill in the Blanks';
+  if (low.includes('multiple')) return 'MCQ (Multiple Correct)';
+  if (low.includes('single')) return 'MCQ (Single Correct)';
+
+  if (low.includes('descriptive') || !raw) {
+    return marks >= 4
+      ? 'Descriptive - Long Answer'
+      : 'Descriptive - Short Answer';
+  }
+
+  return raw;
+}
+
+function __bpSectionAttemptCount(section) {
+  if (section.type === 'internal') {
+    return Number(section.numPairs || 0);
+  }
+
+  if (section.type === 'any') {
+    return Number(section.attemptAny || section.numQuestions || 0);
+  }
+
+  return Number(section.numQuestions || 0);
+}
+
+function __bpSectionPattern(section) {
+  const count = __bpSectionAttemptCount(section);
+  const availableCount = Number(section.numQuestions || 0);
+  const marks = Number(section.marksPerQuestion || 0);
+  const type = String(section.mcqType || '').toLowerCase();
+
+  if (type.includes('paragraph')) {
+    return `${count} set x ${marks}`;
+  }
+
+  if (section.type === 'internal') {
+    return `${count} x ${marks}`;
+  }
+
+  if (section.type === 'any' && availableCount > count) {
+    return `${count} of ${availableCount} x ${marks}`;
+  }
+
+  return `${count} x ${marks}`;
+}
+
+function __bpSectionMarks(section) {
+  return __bpSectionAttemptCount(section) * Number(section.marksPerQuestion || 0);
+}
+
+function __bpLevelKey(question) {
+  const raw = String(
+    question?._assignedLevel ||
+    question?.difficulty ||
+    question?.level ||
+    ''
+  ).replace(/\s+/g, '').toUpperCase();
+
+  if (raw === 'L1' || raw === 'LEVEL1' || raw === '1') return 'L1';
+  if (raw === 'L2' || raw === 'LEVEL2' || raw === '2') return 'L2';
+  if (raw === 'L3' || raw === 'LEVEL3' || raw === '3') return 'L3';
+
+  return '';
+}
+
+function __bpSectionLevelMarks(section) {
+  const result = { L1: 0, L2: 0, L3: 0, known: false };
+  const questions = Array.isArray(section.questions) ? section.questions : [];
+
+  questions.forEach(question => {
+    const key = __bpLevelKey(question);
+
+    if (!key) return;
+
+    result[key] += Number(question.marks || section.marksPerQuestion || 0);
+    result.known = true;
+  });
+
+  return result;
+}
+
+function __bpGetChapters(paper) {
+  const subjectBlocks = Array.isArray(paper.subjects) ? paper.subjects : [];
+  const multipleSubjects = subjectBlocks.length > 1;
+  const lines = [];
+  let chapterNumber = 1;
+
+  subjectBlocks.forEach(subjectBlock => {
+    const chapters = Array.from(
+      new Set(
+        (Array.isArray(subjectBlock.chapters) ? subjectBlock.chapters : [])
+          .map(__bpCleanChapterName)
+          .filter(Boolean)
+      )
+    );
+
+    if (!chapters.length) return;
+
+    if (multipleSubjects) {
+      lines.push({
+        text: __bpSafeText(subjectBlock.subject),
+        isSubject: true
+      });
+    }
+
+    chapters.forEach(chapter => {
+      lines.push({
+        text: `${chapterNumber}. ${chapter}`,
+        isSubject: false
+      });
+      chapterNumber++;
+    });
+  });
+
+  return lines;
+}
+
+function __bpGetOverallLevelSummary(paper, totalMarks, actualLevels, hasActualLevels) {
+  if (hasActualLevels) {
+    return {
+      L1: actualLevels.L1,
+      L2: actualLevels.L2,
+      L3: actualLevels.L3
+    };
+  }
+
+  const distribution = paper.difficultyDistribution || {};
+  const hasStoredDistribution = ['L1', 'L2', 'L3'].some(level =>
+    Number.isFinite(Number(distribution[level]))
+  );
+
+  if (!hasStoredDistribution) {
+    return null;
+  }
+
+  return {
+    L1: totalMarks * (Number(distribution.L1 || 0) / 100),
+    L2: totalMarks * (Number(distribution.L2 || 0) / 100),
+    L3: totalMarks * (Number(distribution.L3 || 0) / 100)
+  };
+}
+
+function __bpNumber(value) {
+  const number = Number(value || 0);
+
+  return Number.isInteger(number)
+    ? String(number)
+    : number.toFixed(1);
+}
+
+function downloadBlueprintPdf() {
+  saveEdits(false);
+
+  const paper = getExamPaper();
+
+  if (!paper) {
+    alert('No exam paper found!');
+    return;
+  }
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library not loaded. Please refresh the page and try again.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const C = {
+    primary: [15, 61, 107],
+    secondary: [23, 98, 167],
+    lightBlue: [234, 244, 253],
+    veryLight: [247, 250, 253],
+    border: [188, 214, 239],
+    text: [18, 59, 97],
+    grey: [91, 110, 126]
+  };
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 16;
+  const contentWidth = pageWidth - (margin * 2);
+
+  const subjectBlocks = Array.isArray(paper.subjects) ? paper.subjects : [];
+  const subjectNames = subjectBlocks
+    .map(subjectBlock => __bpSafeText(subjectBlock.subject))
+    .filter(Boolean)
+    .join(', ') || '-';
+
+  const multipleSubjects = subjectBlocks.length > 1;
+  const chapterLines = __bpGetChapters(paper);
+
+  let totalMarks = 0;
+  let objectiveMarks = 0;
+  let descriptiveMarks = 0;
+  let hasActualLevels = false;
+
+  const actualLevels = {
+    L1: 0,
+    L2: 0,
+    L3: 0
+  };
+
+  const sectionRows = [];
+
+  subjectBlocks.forEach(subjectBlock => {
+    (subjectBlock.sections || []).forEach(section => {
+      const sectionMarks = __bpSectionMarks(section);
+      const typeText = __bpQuestionType(section);
+      const levelMarks = __bpSectionLevelMarks(section);
+
+      totalMarks += sectionMarks;
+
+      if (String(typeText).toLowerCase().includes('descriptive')) {
+        descriptiveMarks += sectionMarks;
+      } else {
+        objectiveMarks += sectionMarks;
+      }
+
+      if (levelMarks.known) {
+        hasActualLevels = true;
+        actualLevels.L1 += levelMarks.L1;
+        actualLevels.L2 += levelMarks.L2;
+        actualLevels.L3 += levelMarks.L3;
+      }
+
+      const row = [];
+
+      if (multipleSubjects) {
+        row.push(__bpSafeText(subjectBlock.subject));
+      }
+
+      row.push(__bpSectionLetter(section.label));
+      row.push(typeText);
+      row.push(__bpSectionPattern(section));
+      row.push(__bpNumber(sectionMarks));
+      row.push(levelMarks.known ? __bpNumber(levelMarks.L1) : '-');
+      row.push(levelMarks.known ? __bpNumber(levelMarks.L2) : '-');
+      row.push(levelMarks.known ? __bpNumber(levelMarks.L3) : '-');
+
+      sectionRows.push(row);
+    });
+  });
+
+  const displayedTotalMarks = totalMarks || Number(paper.maxMarks || 0);
+  const levelSummary = __bpGetOverallLevelSummary(
+    paper,
+    displayedTotalMarks,
+    actualLevels,
+    hasActualLevels
+  );
+
+  function drawFooter() {
+    const pages = doc.getNumberOfPages();
+
+    for (let pageNo = 1; pageNo <= pages; pageNo++) {
+      doc.setPage(pageNo);
+      doc.setDrawColor(...C.border);
+      doc.setLineWidth(0.25);
+      doc.line(margin, 286, pageWidth - margin, 286);
+
+      doc.setTextColor(...C.grey);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text('SciMentra Foundation | Question Paper Blueprint', margin, 291);
+      doc.text(`Page ${pageNo} of ${pages}`, pageWidth - margin, 291, { align: 'right' });
+    }
+  }
+
+  doc.setFillColor(...C.primary);
+  doc.roundedRect(margin, 11, contentWidth, 25, 3, 3, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(19);
+  doc.text('SciMentra', pageWidth / 2, 21, { align: 'center' });
+
+  doc.setFontSize(8.8);
+  doc.text('IIT & NEET FOUNDATION', pageWidth / 2, 28, { align: 'center' });
+
+  doc.setTextColor(...C.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text('QUESTION PAPER BLUEPRINT', pageWidth / 2, 46, { align: 'center' });
+
+  doc.setTextColor(...C.grey);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(`${__bpSafeText(paper.paperType || 'Question Paper')} Pattern`, pageWidth / 2, 51, { align: 'center' });
+
+  doc.autoTable({
+    startY: 56,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    tableWidth: contentWidth,
+    body: [
+      [
+        { content: `Class: ${__bpSafeText(paper.class || '-')}` },
+        { content: `Subject: ${subjectNames}` },
+        { content: `Board: ${__bpSafeText(paper.board || '-')}` }
+      ],
+      [
+        { content: `Exam: ${__bpSafeText(paper.examName || '-')}` },
+        { content: `Paper Type: ${__bpSafeText(paper.paperType || '-')}` },
+        { content: `Maximum Marks: ${__bpNumber(paper.maxMarks || displayedTotalMarks)}` }
+      ],
+      [
+        { content: `Time: ${__bpSafeText(paper.time || '-')} Minutes` },
+        { content: `Date: ${__bpFormatDate(paper.date)}` },
+        { content: `Difficulty: ${levelSummary ? 'As per distribution' : '-'}` }
+      ]
+    ],
+    styles: {
+      font: 'helvetica',
+      fontSize: 8.2,
+      textColor: C.text,
+      cellPadding: 2.8,
+      lineColor: C.border,
+      lineWidth: 0.25,
+      fillColor: C.veryLight
+    },
+    columnStyles: {
+      0: { cellWidth: contentWidth / 3 },
+      1: { cellWidth: contentWidth / 3 },
+      2: { cellWidth: contentWidth / 3 }
+    }
+  });
+
+  let y = doc.lastAutoTable.finalY + 4;
+
+  const chapterBody = chapterLines.length
+    ? chapterLines.map(item => [{
+        content: item.text,
+        styles: item.isSubject
+          ? {
+              fontStyle: 'bold',
+              textColor: C.primary,
+              fillColor: C.veryLight
+            }
+          : {
+              fontStyle: 'normal',
+              textColor: C.text,
+              fillColor: C.lightBlue
+            }
+      }])
+    : [[{
+        content: 'No chapter selected',
+        styles: {
+          textColor: C.grey,
+          fillColor: C.lightBlue
+        }
+      }]];
+
+  doc.autoTable({
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    tableWidth: contentWidth,
+    head: [['CHAPTERS COVERED']],
+    body: chapterBody,
+    headStyles: {
+      fillColor: C.lightBlue,
+      textColor: C.primary,
+      fontStyle: 'bold',
+      fontSize: 8.8,
+      halign: 'left',
+      cellPadding: 3
+    },
+    styles: {
+      font: 'helvetica',
+      fontSize: 8.5,
+      textColor: C.text,
+      cellPadding: 2.4,
+      lineColor: C.border,
+      lineWidth: 0.25
+    }
+  });
+
+  y = doc.lastAutoTable.finalY + 6;
+
+  doc.setTextColor(...C.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.8);
+  doc.text('A. SECTION-WISE PAPER PATTERN AND DIFFICULTY WEIGHTAGE', margin, y);
+
+  const sectionHead = multipleSubjects
+    ? [['Subject', 'Sec.', 'Question Type', 'Pattern', 'Marks', 'L1', 'L2', 'L3']]
+    : [['Sec.', 'Question Type', 'Pattern', 'Marks', 'L1', 'L2', 'L3']];
+
+  const totalRow = multipleSubjects
+    ? ['', '', 'TOTAL', '', __bpNumber(displayedTotalMarks),
+       hasActualLevels ? __bpNumber(actualLevels.L1) : '-',
+       hasActualLevels ? __bpNumber(actualLevels.L2) : '-',
+       hasActualLevels ? __bpNumber(actualLevels.L3) : '-']
+    : ['', 'TOTAL', '', __bpNumber(displayedTotalMarks),
+       hasActualLevels ? __bpNumber(actualLevels.L1) : '-',
+       hasActualLevels ? __bpNumber(actualLevels.L2) : '-',
+       hasActualLevels ? __bpNumber(actualLevels.L3) : '-'];
+
+  const sectionColumnStyles = multipleSubjects
+    ? {
+        0: { cellWidth: 27 },
+        1: { cellWidth: 11, halign: 'center' },
+        2: { cellWidth: 49 },
+        3: { cellWidth: 28, halign: 'center' },
+        4: { cellWidth: 17, halign: 'center' },
+        5: { cellWidth: 15, halign: 'center' },
+        6: { cellWidth: 15, halign: 'center' },
+        7: { cellWidth: 15, halign: 'center' }
+      }
+    : {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 61 },
+        2: { cellWidth: 30, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 19, halign: 'center' },
+        5: { cellWidth: 19, halign: 'center' },
+        6: { cellWidth: 19, halign: 'center' }
+      };
+
+  doc.autoTable({
+    startY: y + 3,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    tableWidth: contentWidth,
+    head: sectionHead,
+    body: [...sectionRows, totalRow],
+    headStyles: {
+      fillColor: C.secondary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.2,
+      halign: 'center',
+      cellPadding: 2.6
+    },
+    styles: {
+      font: 'helvetica',
+      fontSize: 7.3,
+      textColor: C.text,
+      cellPadding: 2.3,
+      lineColor: C.border,
+      lineWidth: 0.25,
+      valign: 'middle'
+    },
+    alternateRowStyles: {
+      fillColor: C.veryLight
+    },
+    columnStyles: sectionColumnStyles,
+    didParseCell: function(data) {
+      const lastRowIndex = sectionRows.length;
+
+      if (data.section === 'body' && data.row.index === lastRowIndex) {
+        data.cell.styles.fillColor = C.lightBlue;
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  y = doc.lastAutoTable.finalY + 6;
+
+  doc.setTextColor(...C.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.8);
+  doc.text('B. MARKS SUMMARY', margin, y);
+
+  doc.autoTable({
+    startY: y + 3,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    tableWidth: contentWidth,
+    head: [['Objective Component', 'Descriptive Component', 'Total Marks']],
+    body: [[
+      `${__bpNumber(objectiveMarks)} Marks\nSections with Objective Questions`,
+      `${__bpNumber(descriptiveMarks)} Marks\nSections with Descriptive Questions`,
+      `${__bpNumber(displayedTotalMarks)} Marks\nComplete Paper`
+    ]],
+    headStyles: {
+      fillColor: C.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.5,
+      halign: 'center',
+      cellPadding: 2.7
+    },
+    bodyStyles: {
+      fillColor: C.veryLight,
+      textColor: C.text,
+      halign: 'center',
+      fontSize: 8,
+      fontStyle: 'bold',
+      cellPadding: 3.4
+    },
+    styles: {
+      lineColor: C.border,
+      lineWidth: 0.25
+    },
+    columnStyles: {
+      0: { cellWidth: contentWidth / 3 },
+      1: { cellWidth: contentWidth / 3 },
+      2: { cellWidth: contentWidth / 3 }
+    }
+  });
+
+  y = doc.lastAutoTable.finalY + 6;
+
+  doc.setTextColor(...C.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.8);
+  doc.text('C. DIFFICULTY DISTRIBUTION', margin, y);
+
+  const levelBody = levelSummary
+    ? [[
+        `LEVEL 1\n${__bpNumber(levelSummary.L1)} Marks\n${displayedTotalMarks ? __bpNumber((levelSummary.L1 / displayedTotalMarks) * 100) : 0}%`,
+        `LEVEL 2\n${__bpNumber(levelSummary.L2)} Marks\n${displayedTotalMarks ? __bpNumber((levelSummary.L2 / displayedTotalMarks) * 100) : 0}%`,
+        `LEVEL 3\n${__bpNumber(levelSummary.L3)} Marks\n${displayedTotalMarks ? __bpNumber((levelSummary.L3 / displayedTotalMarks) * 100) : 0}%`
+      ]]
+    : [['LEVEL 1\n-', 'LEVEL 2\n-', 'LEVEL 3\n-']];
+
+  doc.autoTable({
+    startY: y + 3,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    tableWidth: contentWidth,
+    body: levelBody,
+    styles: {
+      font: 'helvetica',
+      fontSize: 8.5,
+      fontStyle: 'bold',
+      textColor: C.primary,
+      fillColor: C.lightBlue,
+      halign: 'center',
+      cellPadding: 4,
+      lineColor: C.border,
+      lineWidth: 0.25
+    },
+    columnStyles: {
+      0: { cellWidth: contentWidth / 3 },
+      1: { cellWidth: contentWidth / 3 },
+      2: { cellWidth: contentWidth / 3 }
+    }
+  });
+
+  drawFooter();
+
+  const fileName = `${__bpFileSafe(paper.examName || paper.paperType || 'Question_Paper')}_Blueprint.pdf`;
+  doc.save(fileName);
+}
+
+document.getElementById('download-blueprint-btn').onclick = function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  downloadBlueprintPdf();
+};
+
 document.getElementById('preview-btn').onclick = async function() {
   saveEdits();
   const paper = getExamPaper();
