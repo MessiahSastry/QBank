@@ -1692,11 +1692,8 @@ function filterQuestionsFromPool(pool, {
     const want = _normDifficultyValue(forceDifficulty);
     rows = rows.filter(d => _normDifficultyValue(getQuestionDifficultyLabel(d)) === want);
   } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
-    const wants = Array.from(new Set(allowedDifficulties.map(_normDifficultyValue).filter(Boolean)));
-    const allowsEveryLevel = ['level1', 'level2', 'level3'].every(level => wants.includes(level));
-    if (!allowsEveryLevel) {
-      rows = rows.filter(d => wants.includes(_normDifficultyValue(getQuestionDifficultyLabel(d))));
-    }
+    const wants = allowedDifficulties.map(_normDifficultyValue);
+    rows = rows.filter(d => wants.includes(_normDifficultyValue(getQuestionDifficultyLabel(d))));
   }
 
   return uniqueByIdOrText(rows);
@@ -4345,7 +4342,7 @@ const cleanPool = manualPool;
                 marksPerQuestion: mPerQ,
                 mcqType: sec.mcqType,
                 forceDifficulty: levelKey ? levelMap[levelKey] : undefined,
-                allowedDifficulties: levelKey ? undefined : allowed.map(k => levelMap[k])
+                allowedDifficulties: levelKey || allowed.length === 3 ? undefined : allowed.map(k => levelMap[k])
             });
 
             rows = uniqueByIdOrText(rows);
