@@ -79,8 +79,10 @@
       color:#163A63;
       font-weight:700;
     }
-    .question-body {
+       .question-body {
       flex: 1;
+      min-width: 0;
+      overflow: visible;
     }
    .a4-page {
   width: 210mm;
@@ -314,11 +316,14 @@
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
-   .options-block {
+      .options-block {
       margin-left: 0;
+      padding-left: 6px;
+      box-sizing: border-box;
       margin-top: 2px;
       margin-bottom: 2px;
       line-height: 1.22;
+      overflow: visible;
     }
 .question-text{
       line-height: 1.25;
@@ -946,7 +951,16 @@ function __epIsParagraphBasedQuestion(q = {}) {
 
 function __epIsMatchingMatrixQuestion(q = {}) {
   const type = __epGetQuestionType(q);
-  const rawText = String(q.question || q.text || q.body || '');
+  const rawText = String(
+    q.question ||
+    q.text ||
+    q.body ||
+    q.html ||
+    q.renderedHTML ||
+    q.finalHTML ||
+    q.formattedHTML ||
+    ''
+  );
 
   return (
     (type.includes('matching') && type.includes('matrix')) ||
@@ -1183,9 +1197,21 @@ function __epParseMatchingMatrix(q = {}) {
     ? lines.slice(0, headingIndex)
     : [];
 
-  const matrixLines = headingIndex >= 0
+    let matrixLines = headingIndex >= 0
     ? lines.slice(headingIndex + 1)
     : lines.slice();
+
+  // Fix: sometimes preview receives "Column I Column II A) ... P) ..." in one single line
+  if (headingIndex >= 0) {
+    const headingLine = lines[headingIndex] || '';
+    const afterHeading = headingLine
+      .replace(/^\s*Column\s*I\s+Column\s*II\s*/i, '')
+      .trim();
+
+    if (afterHeading && /[A-D][\)\.:\-]\s*/i.test(afterHeading)) {
+      matrixLines.unshift(afterHeading);
+    }
+  }
 
   const rowPattern =
     /^\s*([A-D])[\)\.:\-]\s*(.*?)\s{2,}([P-S])[\)\.:\-]\s*(.*?)\s*$/i;
@@ -1382,7 +1408,7 @@ function __epBuildMatchingMatrixPreviewQuestionHtml(q = {}, currentQNum = '') {
           optionLines.length
             ? `
               <div style="font-weight:700;color:#163A63;margin:4px 0 3px 0;">Options:</div>
-              <div class="options-block">${renderOptionsLayout(optionLines)}</div>
+                           <div class="options-block" data-options="${encodeURIComponent(JSON.stringify(optionLines))}">${renderOptionsLayout(optionLines)}</div>
             `
             : ''
         }
@@ -2563,10 +2589,24 @@ function renderPrintPreview() {
           </div>
         `;
 
-       // ------- Single-subject branch -------
+              // ------- Single-subject branch -------
 if (section.questions && section.questions.length > 0) {
   const questionsHTML = section.questions.map(q => {
     const currentQNum = q.number || (qNum++);
+
+    const qForPreviewRender = {
+      ...q,
+      mcqType: q.mcqType || q.type || q.questionType || section.mcqType || section.questionType || ''
+    };
+
+    if (__epIsParagraphBasedQuestion(qForPreviewRender)) {
+      return __epBuildParagraphPreviewQuestionHtml(qForPreviewRender, currentQNum);
+    }
+
+    if (__epIsMatchingMatrixQuestion(qForPreviewRender)) {
+      return __epBuildMatchingMatrixPreviewQuestionHtml(qForPreviewRender, currentQNum);
+    }
+
     let questionContentHTML = '';
     let optionLines = [];
     const hasShuffledOptions = Array.isArray(q.options) && q.options.length === 4;
