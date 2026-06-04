@@ -1333,14 +1333,51 @@ function normalizeMcqType(s) {
   return String(s || '').trim();
 }
 
+function looksLikeAssertionReasonQuestion(d) {
+  const raw = [
+    d?.metaLine,
+    d?.parsedMeta,
+    d?.metadata,
+    d?.question,
+    d?.text,
+    d?.body
+  ].map(v => String(v || '')).join(' ');
+
+  const text = raw
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00A0/g, ' ');
+
+  if (/\[\s*assertion\s+and\s+reason/i.test(text)) return true;
+
+  const hasAssertion = /\bassertion\b/i.test(text);
+  const hasReason = /\breason\b/i.test(text);
+  const hasAssertionLabel = /\bassertion\s*\(?\s*a\s*\)?\s*[:.)-]?/i.test(text);
+  const hasReasonLabel = /\breason\s*\(?\s*r\s*\)?\s*[:.)-]?/i.test(text);
+
+  return hasAssertion && hasReason && (hasAssertionLabel || hasReasonLabel);
+}
+
 function inferMcqType(d) {
   const norm = normalizeMcqType(d?.mcqType || d?.type || '');
+
+  if (
+    norm === 'Assertion and Reason (MCQ Single)' ||
+    (
+      looksLikeAssertionReasonQuestion(d) &&
+      norm !== 'MCQ (Multiple)' &&
+      norm !== 'Matching Matrix' &&
+      norm !== 'Paragraph-Based MCQ (Single Correct)' &&
+      norm !== 'Fill in the Blanks'
+    )
+  ) {
+    return 'Assertion and Reason (MCQ Single)';
+  }
 
   if (
     norm === 'MCQ (Single)' ||
     norm === 'MCQ (Multiple)' ||
     norm === 'Fill in the Blanks' ||
-    norm === 'Assertion and Reason (MCQ Single)' ||
     norm === 'Matching Matrix' ||
     norm === 'Paragraph-Based MCQ (Single Correct)' ||
     norm === 'Descriptive'
