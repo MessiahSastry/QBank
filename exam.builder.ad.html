@@ -4331,28 +4331,87 @@ const cleanPool = manualPool;
     const poolCache = new Map();
     const poolIndex = new Map();
 
-    function getPool(chapterName, levelKey) {
+   function getPool(chapterName, levelKey) {
         const poolKey = `${chapterName || '__ALL__'}|${levelKey || '__ANY__'}`;
 
-        if (!poolCache.has(poolKey)) {
-            let rows = filterQuestionsFromPool(fullPool, {
-                chapters: chapterName
-                    ? [chapterName]
-                    : (selectedChapters.length ? selectedChapters : undefined),
-                marksPerQuestion: mPerQ,
-                mcqType: sec.mcqType,
-                forceDifficulty: levelKey ? levelMap[levelKey] : undefined,
-                allowedDifficulties: levelKey || allowed.length === 3 ? undefined : allowed.map(k => levelMap[k])
-            });
+       if (!poolCache.has(poolKey)) {
+    const wantedChapters = chapterName
+        ? [chapterName]
+        : (selectedChapters.length ? selectedChapters : undefined);
 
-            rows = uniqueByIdOrText(rows);
-            shuffleArray(rows);
-            poolCache.set(poolKey, rows);
-        }
+    const wantedLevel = levelKey ? levelMap[levelKey] : undefined;
+    const wantedAllowedLevels = levelKey || allowed.length === 3
+        ? undefined
+        : allowed.map(k => levelMap[k]);
+
+    let step0_all = Array.isArray(fullPool) ? fullPool.slice() : [];
+
+    let step1_chapter = step0_all.slice();
+    if (wantedChapters && wantedChapters.length) {
+        const chapterSet = new Set(wantedChapters.map(x => String(x || '').trim()));
+        step1_chapter = step1_chapter.filter(d => chapterSet.has(String(d.chapter || '').trim()));
+    }
+
+    let step2_marks = step1_chapter.slice();
+    if (mPerQ != null && mPerQ !== '') {
+        step2_marks = step2_marks.filter(d => Number(d.marks) === Number(mPerQ));
+    }
+
+    let step3_type = step2_marks.filter(d => _isAllowedMcqType(d, sec.mcqType));
+
+    let step4_level = step3_type.slice();
+    if (wantedLevel) {
+        const want = _normDifficultyValue(wantedLevel);
+        step4_level = step4_level.filter(d => _normDifficultyValue(getQuestionDifficultyLabel(d)) === want);
+    } else if (Array.isArray(wantedAllowedLevels) && wantedAllowedLevels.length) {
+        const wants = wantedAllowedLevels.map(_normDifficultyValue);
+        step4_level = step4_level.filter(d => wants.includes(_normDifficultyValue(getQuestionDifficultyLabel(d))));
+    }
+
+    let rows = uniqueByIdOrText(step4_level);
+
+    if (
+        rows.length === 0 ||
+        String(subjData.subject || '').toLowerCase().includes('math')
+    ) {
+        console.group(`DEBUG QUESTION FILTER: ${subjData.subject} - ${sec.label}`);
+        console.log({
+            subject: subjData.subject,
+            section: sec.label,
+            requiredType: sec.mcqType,
+            requiredMarks: mPerQ,
+            preferredChapter: chapterName || '__ANY_SELECTED_CHAPTER__',
+            preferredLevel: levelKey || '__ANY_ALLOWED_LEVEL__',
+            selectedChapters,
+            allowedLevels: allowed,
+            totalSubjectPool: step0_all.length,
+            afterChapterFilter: step1_chapter.length,
+            afterMarksFilter: step2_marks.length,
+            afterTypeFilter: step3_type.length,
+            afterLevelFilter: step4_level.length,
+            finalAfterDuplicateRemove: rows.length
+        });
+
+        console.table(step1_chapter.slice(0, 20).map(d => ({
+            chapter: d.chapter,
+            marks: d.marks,
+            mcqType: d.mcqType,
+            type: d.type,
+            inferredType: inferMcqType(d),
+            difficulty: d.difficulty,
+            level: d.level
+        })));
+
+        console.groupEnd();
+    }
+
+    rows = uniqueByIdOrText(rows);
+    shuffleArray(rows);
+    poolCache.set(poolKey, rows);
+}
 
         return poolCache.get(poolKey) || [];
     }
-
     function takeFromPool(chapterName, levelKey, sectionSeen) {
         const poolKey = `${chapterName || '__ALL__'}|${levelKey || '__ANY__'}`;
         const pool = getPool(chapterName, levelKey);
