@@ -790,7 +790,6 @@ mjx-container svg {
   }
 }
 </style>
-</style>
 </head>
 <body>
     <div id="page-container">
@@ -1961,18 +1960,18 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = 
   return lines.map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`).join('');
 }
 function buildAnswerKeyQuestionHtml(q, subjectName = '') {
- const qForRender = {
-      ...q,
-      mcqType: q.mcqType || q.type || q.questionType || section.mcqType || section.questionType || ''
-    };
+  const qForRender = {
+    ...q,
+    mcqType: q.mcqType || q.type || q.questionType || ''
+  };
 
-    if (__epIsParagraphBasedQuestion(qForRender)) {
-      return __epBuildParagraphPreviewQuestionHtml(qForRender, currentQNum);
-    }
+  if (__epIsParagraphBasedQuestion(qForRender)) {
+    return __epBuildParagraphAnswerKeyHtml(qForRender, subjectName);
+  }
 
-    if (__epIsMatchingMatrixQuestion(qForRender)) {
-      return __epBuildMatchingMatrixPreviewQuestionHtml(qForRender, currentQNum);
-    }
+  if (__epIsMatchingMatrixQuestion(qForRender)) {
+    return __epBuildMatchingMatrixAnswerKeyHtml(qForRender, subjectName);
+  }
 
   const qNo = String(q.number || '').replace(/\.$/, '');
   const questionHTML = formatAnswerKeyQuestionHtml(q);
