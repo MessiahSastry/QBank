@@ -695,9 +695,24 @@ mjx-container svg {
 }
 
 @media print {
+  /* ✅ Allow Matching Matrix questions to continue on next page.
+     This prevents large blank space at page ending. */
   .matching-matrix-table {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .matching-matrix-table thead {
+    display: table-header-group !important;
+  }
+
+  .matching-matrix-table tbody {
+    display: table-row-group !important;
+  }
+
+  .matching-matrix-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .matching-matrix-table th,
@@ -750,7 +765,31 @@ mjx-container svg {
     word-break: normal !important;
   }
 }
+@media print {
+  /* ✅ Do not force full matching question to move to next page */
+  .question-container:has(.matching-matrix-table) {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
 
+  .question-body:has(.matching-matrix-table) {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .matching-matrix-intro {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .matching-matrix-table {
+    page-break-before: auto !important;
+    break-before: auto !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+}
+</style>
 </style>
 </head>
 <body>
