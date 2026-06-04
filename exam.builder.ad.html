@@ -1223,12 +1223,33 @@ function normalizeText(s) {
   return t;
 }
 
-function makeStemKey(q) {
-  let raw = String(q?.question || q?.text || '');
+function stripRealOptionBlockForKey(rawText) {
+  let s = String(rawText || '');
+
+  const aMatch = s.match(/(?:^|\n|\s)A[\)\.]\s+/i);
+  if (!aMatch) return s;
+
+  const start = aMatch.index;
+  const tail = s.slice(start);
+
+  const hasFullOptions =
+    /(?:^|\n|\s)A[\)\.]\s+[\s\S]*?(?:^|\n|\s)B[\)\.]\s+[\s\S]*?(?:^|\n|\s)C[\)\.]\s+[\s\S]*?(?:^|\n|\s)D[\)\.]\s+/i.test(tail);
+
+  if (!hasFullOptions) return s;
+
+  return s.slice(0, start).trim();
+}
+
+function prepareQuestionStemForKey(q) {
+  let raw = String(q?.question || q?.text || q?.body || '');
 
   const isMatchingMatrix =
-    normalizeMcqType(q?.mcqType || q?.type || '') === 'Matching Matrix' ||
+    normalizeMcqType(getRawQuestionType(q)) === 'Matching Matrix' ||
     (/Column\s*I/i.test(raw) && /Column\s*II/i.test(raw));
+
+  const isAssertionReason =
+    normalizeMcqType(getRawQuestionType(q)) === 'Assertion and Reason (MCQ Single)' ||
+    looksLikeAssertionReasonQuestion(q);
 
   raw = raw.replace(/<[^>]+>/g, ' ');
   raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
@@ -1236,13 +1257,16 @@ function makeStemKey(q) {
 
   if (isMatchingMatrix) {
     raw = raw.replace(/\s*\bOptions\s*:\s*[\s\S]*$/i, '');
-  } else {
-    raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');
+  } else if (!isAssertionReason) {
+    raw = stripRealOptionBlockForKey(raw);
   }
 
-  const stemNorm = normalizeText(raw);
-  const marks = (q && q.marks != null) ? String(q.marks) : '';
+  return raw;
+}
 
+function makeStemKey(q) {
+  const stemNorm = normalizeText(prepareQuestionStemForKey(q));
+  const marks = (q && q.marks != null) ? String(q.marks) : '';
   return stemNorm + '|m=' + String(marks ?? '');
 }
 
@@ -1302,19 +1326,58 @@ function extractAnswerLetters(ans) {
 
   return parseLetters(ans);
 }
-function normalizeMcqType(s) {
-  const t = String(s || '').trim().toLowerCase();
+function getRawQuestionType(d) {
+  if (typeof d === 'string') return d;
 
-  if (!t) return 'Descriptive';
+  const candidates = [
+    d?.mcqType,
+    d?.type,
+    d?.questionType,
+    d?.qType,
+    d?.question_type,
+    d?.format,
+    d?.category,
+    d?.metaLine,
+    d?.parsedMeta,
+    d?.metadata
+  ];
+
+  for (const val of candidates) {
+    const s = String(val || '').trim();
+    if (s) return s;
+  }
+
+  return '';
+}
+
+function normalizeMcqType(s) {
+  let t = String(s || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  if (!t) return '';
 
   if (
     t === 'comprehensive' ||
+    t.includes('comprehension') ||
+    t.includes('paragraph based') ||
     (t.includes('paragraph') && t.includes('mcq'))
   ) {
     return 'Paragraph-Based MCQ (Single Correct)';
   }
 
-  if (t.includes('assertion') && t.includes('reason')) {
+  if (
+    (t.includes('assertion') && t.includes('reason')) ||
+    t.includes('assertion-reason') ||
+    t.includes('assertion reason') ||
+    t.includes('assertion & reason') ||
+    t.includes('assertion and reason') ||
+    t.includes('a & r') ||
+    t.includes('a/r')
+  ) {
     return 'Assertion and Reason (MCQ Single)';
   }
 
@@ -1327,14 +1390,24 @@ function normalizeMcqType(s) {
   }
 
   if (t.includes('multiple')) return 'MCQ (Multiple)';
-  if (t.includes('single') || t === 'mcq') return 'MCQ (Single)';
-  if (t.includes('desc')) return 'Descriptive';
+
+  if (
+    t.includes('single correct') ||
+    t.includes('single') ||
+    t === 'mcq' ||
+    t.includes('mcq single') ||
+    t.includes('objective')
+  ) {
+    return 'MCQ (Single)';
+  }
+
+  if (t.includes('desc') || t.includes('descriptive')) return 'Descriptive';
 
   return String(s || '').trim();
 }
-
 function looksLikeAssertionReasonQuestion(d) {
   const raw = [
+    getRawQuestionType(d),
     d?.metaLine,
     d?.parsedMeta,
     d?.metadata,
@@ -1346,20 +1419,33 @@ function looksLikeAssertionReasonQuestion(d) {
   const text = raw
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
-    .replace(/\u00A0/g, ' ');
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  if (/\[\s*assertion\s+and\s+reason/i.test(text)) return true;
+  if (normalizeMcqType(getRawQuestionType(d)) === 'Assertion and Reason (MCQ Single)') return true;
+
+  if (/\[\s*assertion\s*(?:and|&|-)?\s*reason/i.test(text)) return true;
+  if (/\bassertion\s*(?:and|&|-)\s*reason\b/i.test(text)) return true;
 
   const hasAssertion = /\bassertion\b/i.test(text);
   const hasReason = /\breason\b/i.test(text);
-  const hasAssertionLabel = /\bassertion\s*\(?\s*a\s*\)?\s*[:.)-]?/i.test(text);
-  const hasReasonLabel = /\breason\s*\(?\s*r\s*\)?\s*[:.)-]?/i.test(text);
 
-  return hasAssertion && hasReason && (hasAssertionLabel || hasReasonLabel);
+  const hasAssertionLabel =
+    /\bassertion\s*\(\s*a\s*\)\s*[:.)-]?/i.test(text) ||
+    /\bassertion\s+a\s*[:.)-]/i.test(text) ||
+    /\bassertion\s*[:.)-]/i.test(text);
+
+  const hasReasonLabel =
+    /\breason\s*\(\s*r\s*\)\s*[:.)-]?/i.test(text) ||
+    /\breason\s+r\s*[:.)-]/i.test(text) ||
+    /\breason\s*[:.)-]/i.test(text);
+
+  return hasAssertion && hasReason && hasAssertionLabel && hasReasonLabel;
 }
 
 function inferMcqType(d) {
-  const norm = normalizeMcqType(d?.mcqType || d?.type || '');
+  const norm = normalizeMcqType(getRawQuestionType(d));
 
   if (
     norm === 'Assertion and Reason (MCQ Single)' ||
@@ -1406,18 +1492,14 @@ function inferMcqType(d) {
 
   if (letters.length > 1) return 'MCQ (Multiple)';
   if (Array.isArray(d?.options) && d.options.length === 4) return 'MCQ (Single)';
+  if (extractMCQOptions(d)?.length === 4) return 'MCQ (Single)';
 
   return 'Descriptive';
 }
 function makeDeDupeKey(q) {
-  let raw = String(q?.question || q?.text || '');
-  raw = raw.replace(/<[^>]+>/g, ' ');
-  raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
-  raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');
-  raw = raw.replace(/\s*(?:\(?\s*A\s*[\)\.])[\s\S]*$/i, '');
-  const stemNorm = normalizeText(raw);
+  const stemNorm = normalizeText(prepareQuestionStemForKey(q));
 
-  const typeNorm = normalizeMcqType(q?.mcqType || q?.type || '');
+  const typeNorm = inferMcqType(q);
   const rawOpts = Array.isArray(q?.options) ? q.options.slice(0, 4) : (extractMCQOptions(q) || []);
   const optNormsInOrder = rawOpts.map(o => normalizeChoice(o)).filter(Boolean);
 
