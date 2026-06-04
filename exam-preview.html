@@ -751,6 +751,47 @@ mjx-container svg {
   }
 }
 
+/* ✅ Fix: separate option label A) from answer text P, Q, R, S */
+.preview-option-wrap {
+  display: inline-grid !important;
+  grid-template-columns: 28px max-content !important;
+  align-items: start !important;
+  column-gap: 4px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+.preview-option-label {
+  display: inline-block !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  color: #7A2230 !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+.preview-option-text {
+  display: inline-block !important;
+  color: #111111 !important;
+  font-weight: 400 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+.options-block {
+  overflow: visible !important;
+}
+
+@media print {
+  .preview-option-label,
+  .preview-option-text {
+    color: #000 !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -2229,8 +2270,8 @@ function fitsInLine(option1, option2, maxWidth = 700) {
  function renderOptionsLayout(optionLines, hostNode) {
   if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
 
-  const stackHTML = optionLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`)
+    const stackHTML = optionLines
+    .map(opt => `<div style="margin-bottom:2px;margin-left:0;padding-left:4px;overflow:visible;box-sizing:border-box;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`)
     .join('');
 
   // Non-4 options -> always stacked
@@ -2344,8 +2385,17 @@ function stripLeadingLabel(s) {
 function formatPreviewOption(opt) {
   const s = String(opt || '').trim();
   const m = s.match(/^([A-D]\))\s*(.*)$/);
-  if (!m) return s;
-  return `<span style="color:#7A2230;font-weight:700;">${m[1]}</span> <span style="color:#111111;">${m[2]}</span>`;
+
+  if (!m) {
+    return `<span class="preview-option-wrap"><span class="preview-option-text">${s}</span></span>`;
+  }
+
+  return `
+    <span class="preview-option-wrap">
+      <span class="preview-option-label">${m[1]}</span>
+      <span class="preview-option-text">${m[2]}</span>
+    </span>
+  `;
 }
   function stripABPrefix(html) {
   if (html == null) return '';
