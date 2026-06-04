@@ -636,35 +636,75 @@ mjx-container svg {
 }
 
 /* ===== Matching Matrix Preview Layout ===== */
+.matching-matrix-intro {
+  color: #163A63;
+  font-weight: 400;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
 .matching-matrix-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  margin: 4px 0 8px 0;
+  margin: 5px 0 8px 0;
   color: #163A63;
   font-size: 1.04em;
-  line-height: 1.3;
+  line-height: 1.32;
 }
 
 .matching-matrix-table th {
   width: 50%;
   text-align: left;
   font-weight: 700;
-  padding: 2px 12px 5px 0;
+  color: #7A2230;
+  padding: 3px 10px 5px 0;
+  border-bottom: 1px solid #b8c9da;
 }
 
 .matching-matrix-table td {
   width: 50%;
   vertical-align: top;
-  padding: 2px 12px 2px 0;
+  padding: 4px 12px 3px 0;
   font-weight: 400;
 }
 
-.matching-matrix-intro {
+.matching-matrix-cell {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+}
+
+.matching-matrix-label {
+  font-weight: 700;
   color: #163A63;
-  font-weight: 400;
-  line-height: 1.3;
-  margin-bottom: 5px;
+  white-space: nowrap;
+}
+
+.matching-matrix-text {
+  min-width: 0;
+  color: #163A63;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+@media print {
+  .matching-matrix-table {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .matching-matrix-table th,
+  .matching-matrix-table td {
+    color: #000 !important;
+  }
+
+  .matching-matrix-label,
+  .matching-matrix-text,
+  .matching-matrix-intro {
+    color: #000 !important;
+  }
 }
 
 /* ✅ Prevent right-side clipping of options in print */
@@ -889,11 +929,18 @@ function __epGetQuestionType(q = {}) {
 
 function __epIsParagraphBasedQuestion(q = {}) {
   const type = __epGetQuestionType(q);
+  const rawText = String(q.question || q.text || q.body || q.html || '');
 
   return (
     type === 'paragraph-based mcq (single correct)' ||
     type === 'comprehensive' ||
-    (Array.isArray(q.mcqs) && q.mcqs.length > 0 && String(q.passage || '').trim())
+    type.includes('paragraph') ||
+    type.includes('comprehension') ||
+    (Array.isArray(q.mcqs) && q.mcqs.length > 0 && String(q.passage || '').trim()) ||
+    (
+      /read\s+the\s+following\s+passage/i.test(rawText) &&
+      /\bpassage\s*:/i.test(rawText)
+    )
   );
 }
 
@@ -907,8 +954,173 @@ function __epIsMatchingMatrixQuestion(q = {}) {
   );
 }
 
+function __epParseOptionRegion(regionText = '') {
+  const text = String(regionText || '').replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+
+  const optionRegex = /([A-D])[\)\.:\-]\s*/gi;
+  const matches = Array.from(text.matchAll(optionRegex));
+
+  if (!matches.length) return [];
+
+  const options = [];
+
+  matches.forEach((match, index) => {
+    const start = match.index + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index : text.length;
+
+    options.push(
+      text.slice(start, end)
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
+  });
+
+  return options.slice(0, 4);
+}
+
+function __epParseParagraphQuestionFromText(q = {}) {
+  const raw = __epGetPlainQuestionText(q)
+    .replace(/\r/g, '')
+    .replace(/\s*\bAns(?:wer)?\s*:\s*[\s\S]*$/i, '')
+    .trim();
+
+  if (!raw) {
+    return {
+      passage: String(q.passage || '').trim(),
+      mcqs: Array.isArray(q.mcqs) ? q.mcqs : []
+    };
+  }
+
+  let cleaned = raw
+    .replace(/Read\s+the\s+following\s+passage\s+and\s+answer\s+the\s+questions\s*:?\s*/i, '')
+    .trim();
+
+  const passageMatch = cleaned.match(/\bPassage\s*:\s*/i);
+  let afterPassage = cleaned;
+
+  if (passageMatch) {
+    afterPassage = cleaned.slice(passageMatch.index + passageMatch[0].length).trim();
+  }
+
+  const subRegex = /\(\s*(\d+)\s*\)\s*/g;
+  const subMatches = Array.from(afterPassage.matchAll(subRegex));
+
+  if (!subMatches.length) {
+    return {
+      passage: String(q.passage || afterPassage || '').trim(),
+      mcqs: Array.isArray(q.mcqs) ? q.mcqs : []
+    };
+  }
+
+  const firstSubStart = subMatches[0].index;
+  const passage = afterPassage.slice(0, firstSubStart).trim();
+
+  const subArea = afterPassage.slice(firstSubStart).trim();
+  const subMarkers = Array.from(subArea.matchAll(subRegex));
+
+  const mcqs = subMarkers.map((marker, index) => {
+    const qStart = marker.index + marker[0].length;
+    const nextQStart = index + 1 < subMarkers.length ? subMarkers[index + 1].index : subArea.length;
+    const block = subArea.slice(qStart, nextQStart).trim();
+
+    const firstOption = block.search(/\bA[\)\.:\-]\s+/i);
+
+    let questionText = block;
+    let options = [];
+
+    if (firstOption !== -1) {
+      questionText = block.slice(0, firstOption).trim();
+      options = __epParseOptionRegion(block.slice(firstOption));
+    }
+
+    return {
+      question: questionText,
+      text: questionText,
+      body: questionText,
+      options,
+      answer: '',
+      parsedAnswer: '',
+      explanation: ''
+    };
+  });
+
+  const emptyOptionCount = mcqs.filter(mcq => !Array.isArray(mcq.options) || mcq.options.length !== 4).length;
+
+  if (emptyOptionCount > 0) {
+    const firstOptionInAll = subArea.search(/\bA[\)\.:\-]\s+/i);
+
+    if (firstOptionInAll !== -1) {
+      const optionsText = subArea.slice(firstOptionInAll);
+      const allOptions = [];
+
+      const optionRegex = /([A-D])[\)\.:\-]\s*/gi;
+      const matches = Array.from(optionsText.matchAll(optionRegex));
+
+      matches.forEach((match, index) => {
+        const start = match.index + match[0].length;
+        const end = index + 1 < matches.length ? matches[index + 1].index : optionsText.length;
+
+        allOptions.push(
+          optionsText.slice(start, end)
+            .replace(/\s+/g, ' ')
+            .trim()
+        );
+      });
+
+      if (allOptions.length >= mcqs.length * 4) {
+        mcqs.forEach((mcq, index) => {
+          mcq.options = allOptions.slice(index * 4, index * 4 + 4);
+        });
+
+        const questionOnlyPart = subArea.slice(0, firstOptionInAll).trim();
+        const questionMarkers = Array.from(questionOnlyPart.matchAll(subRegex));
+
+        if (questionMarkers.length === mcqs.length) {
+          questionMarkers.forEach((marker, index) => {
+            const qStart = marker.index + marker[0].length;
+            const nextQStart = index + 1 < questionMarkers.length ? questionMarkers[index + 1].index : questionOnlyPart.length;
+            const cleanQ = questionOnlyPart.slice(qStart, nextQStart).trim();
+
+            if (cleanQ) {
+              mcqs[index].question = cleanQ;
+              mcqs[index].text = cleanQ;
+              mcqs[index].body = cleanQ;
+            }
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    passage,
+    mcqs
+  };
+}
+
+function __epNormalizeParagraphQuestion(q = {}) {
+  const existingMcqs = Array.isArray(q.mcqs) ? q.mcqs : [];
+  const existingPassage = String(q.passage || '').trim();
+
+  if (existingPassage && existingMcqs.length) {
+    return q;
+  }
+
+  const parsed = __epParseParagraphQuestionFromText(q);
+
+  return {
+    ...q,
+    passage: existingPassage || parsed.passage || '',
+    mcqs: existingMcqs.length ? existingMcqs : parsed.mcqs,
+    type: 'Paragraph-Based MCQ (Single Correct)',
+    mcqType: 'Paragraph-Based MCQ (Single Correct)'
+  };
+}
+
 function __epGetParagraphMcqs(q = {}) {
-  return Array.isArray(q.mcqs) ? q.mcqs : [];
+  const normalized = __epNormalizeParagraphQuestion(q);
+  return Array.isArray(normalized.mcqs) ? normalized.mcqs : [];
 }
 
 function __epGetParagraphSubQuestionText(mcq = {}) {
@@ -954,7 +1166,8 @@ function __epGetPlainQuestionText(q = {}) {
 
 function __epParseMatchingMatrix(q = {}) {
   const cleaned = __epGetPlainQuestionText(q)
-    .replace(/\n?\s*Options\s*:?\s*$/i, '')
+    .replace(/\s*\bOptions\s*:?\s*[\s\S]*$/i, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   const lines = cleaned
@@ -970,38 +1183,50 @@ function __epParseMatchingMatrix(q = {}) {
     ? lines.slice(0, headingIndex)
     : [];
 
-  const possibleRows = headingIndex >= 0
+  const matrixLines = headingIndex >= 0
     ? lines.slice(headingIndex + 1)
-    : lines;
+    : lines.slice();
 
-  let rows = possibleRows
+  const rowPattern =
+    /^\s*([A-D])[\)\.:\-]\s*(.*?)\s{2,}([P-S])[\)\.:\-]\s*(.*?)\s*$/i;
+
+  const rowPatternLoose =
+    /^\s*([A-D])[\)\.:\-]\s*(.*?)\s+([P-S])[\)\.:\-]\s*(.*?)\s*$/i;
+
+  let rows = matrixLines
     .map(line => {
-      const match =
-        line.match(/^\s*([A-D]\)\s*.*?)\s{2,}([P-S]\)\s*.*)\s*$/i) ||
-        line.match(/^\s*([A-D]\)\s*.*?)\s+([P-S]\)\s*.*)\s*$/i);
+      const match = line.match(rowPattern) || line.match(rowPatternLoose);
 
-      return match ? [match[1].trim(), match[2].trim()] : null;
+      return match
+        ? {
+            leftLabel: match[1].toUpperCase(),
+            leftText: match[2].trim(),
+            rightLabel: match[3].toUpperCase(),
+            rightText: match[4].trim()
+          }
+        : null;
     })
     .filter(Boolean);
 
   if (!rows.length) {
-    const oneLine = cleaned
-      .replace(/Column\s*I\s+Column\s*II/i, '')
+    const oneLine = matrixLines
+      .join(' ')
+      .replace(/Column\s*I\s+Column\s*II/gi, '')
+      .replace(/\s+/g, ' ')
       .trim();
 
-    const foundRows = oneLine.match(
-      /([A-D]\)\s*.*?\s+[P-S]\)\s*.*?)(?=\s+[A-D]\)|$)/gi
-    ) || [];
+    const foundRows = Array.from(
+      oneLine.matchAll(
+        /([A-D])[\)\.:\-]\s*([\s\S]*?)\s+([P-S])[\)\.:\-]\s*([\s\S]*?)(?=\s+[A-D][\)\.:\-]\s+|$)/gi
+      )
+    );
 
-    rows = foundRows
-      .map(line => {
-        const match =
-          line.match(/^\s*([A-D]\)\s*.*?)\s{2,}([P-S]\)\s*.*)\s*$/i) ||
-          line.match(/^\s*([A-D]\)\s*.*?)\s+([P-S]\)\s*.*)\s*$/i);
-
-        return match ? [match[1].trim(), match[2].trim()] : null;
-      })
-      .filter(Boolean);
+    rows = foundRows.map(match => ({
+      leftLabel: match[1].toUpperCase(),
+      leftText: match[2].trim(),
+      rightLabel: match[3].toUpperCase(),
+      rightText: match[4].trim()
+    }));
   }
 
   return {
@@ -1039,8 +1264,18 @@ function __epRenderMatchingMatrixBody(q = {}) {
       <tbody>
         ${parsed.rows.map(row => `
           <tr>
-            <td>${__epSafeText(row[0])}</td>
-            <td>${__epSafeText(row[1])}</td>
+            <td>
+              <div class="matching-matrix-cell">
+                <span class="matching-matrix-label">${escapeHtml(row.leftLabel)})</span>
+                <span class="matching-matrix-text">${__epSafeText(row.leftText)}</span>
+              </div>
+            </td>
+            <td>
+              <div class="matching-matrix-cell">
+                <span class="matching-matrix-label">${escapeHtml(row.rightLabel)})</span>
+                <span class="matching-matrix-text">${__epSafeText(row.rightText)}</span>
+              </div>
+            </td>
           </tr>
         `).join('')}
       </tbody>
@@ -1098,9 +1333,11 @@ function __epRenderParagraphSubBlock(mcq = {}, index = 0, includeAnswers = false
 }
 
 function __epBuildParagraphPreviewQuestionHtml(q = {}, currentQNum = '') {
-  const mcqs = __epGetParagraphMcqs(q);
-  const imageHTML = q.image
-    ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>`
+  const normalized = __epNormalizeParagraphQuestion(q);
+  const mcqs = __epGetParagraphMcqs(normalized);
+
+  const imageHTML = normalized.image
+    ? `<div class="question-img-block"><img class="question-img" src="${normalized.image}" alt="Question Image" /></div>`
     : '';
 
   return `
@@ -1118,19 +1355,13 @@ function __epBuildParagraphPreviewQuestionHtml(q = {}, currentQNum = '') {
           </div>
 
           <div class="paragraph-passage-text">
-            ${__epSafeText(q.passage || '')}
+            ${__epSafeText(normalized.passage || '')}
           </div>
 
-          ${mcqs.length ? __epRenderParagraphSubBlock(mcqs[0], 0, false, '') : ''}
+          ${mcqs.map((mcq, index) => __epRenderParagraphSubBlock(mcq, index, false, '')).join('')}
           ${imageHTML}
         </div>
       </div>
-
-      ${mcqs.slice(1).map((mcq, index) => `
-        <div class="paragraph-continuation-part">
-          ${__epRenderParagraphSubBlock(mcq, index + 1, false, '')}
-        </div>
-      `).join('')}
     </div>
   `;
 }
@@ -1661,13 +1892,18 @@ function formatAnswerKeyExplanationHtml(explanation, answerValue, subjectName = 
   return lines.map(line => `<div style="margin-bottom:2px;">${escapeHtml(line)}</div>`).join('');
 }
 function buildAnswerKeyQuestionHtml(q, subjectName = '') {
-  if (__epIsParagraphBasedQuestion(q)) {
-    return __epBuildParagraphAnswerKeyHtml(q, subjectName);
-  }
+ const qForRender = {
+      ...q,
+      mcqType: q.mcqType || q.type || q.questionType || section.mcqType || section.questionType || ''
+    };
 
-  if (__epIsMatchingMatrixQuestion(q)) {
-    return __epBuildMatchingMatrixAnswerKeyHtml(q, subjectName);
-  }
+    if (__epIsParagraphBasedQuestion(qForRender)) {
+      return __epBuildParagraphPreviewQuestionHtml(qForRender, currentQNum);
+    }
+
+    if (__epIsMatchingMatrixQuestion(qForRender)) {
+      return __epBuildMatchingMatrixPreviewQuestionHtml(qForRender, currentQNum);
+    }
 
   const qNo = String(q.number || '').replace(/\.$/, '');
   const questionHTML = formatAnswerKeyQuestionHtml(q);
