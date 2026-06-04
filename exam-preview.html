@@ -1311,8 +1311,10 @@ function __epRenderMatchingMatrixBody(q = {}) {
   `;
 }
 
-function __epRenderParagraphSubBlock(mcq = {}, index = 0, includeAnswers = false, subjectName = '') {
+function __epRenderParagraphSubBlock(mcq = {}, indexOrNumber = 0, includeAnswers = false, subjectName = '', useExactNumber = false) {
   const optionLines = __epBuildOptionLines(mcq.options);
+  const displayLabel = useExactNumber ? `${indexOrNumber}.` : `(${indexOrNumber + 1})`;
+
   const answerHTML = includeAnswers
     ? formatAnswerKeyAnswerHtml(mcq.answer || mcq.parsedAnswer || mcq.finalAnswer || '', subjectName)
     : '';
@@ -1324,7 +1326,7 @@ function __epRenderParagraphSubBlock(mcq = {}, index = 0, includeAnswers = false
   return `
     <div class="paragraph-sub-block">
       <div class="paragraph-sub-head">
-        <span class="paragraph-sub-number">(${index + 1})</span>
+        <span class="paragraph-sub-number">${displayLabel}</span>
         <span class="paragraph-sub-text">${__epSafeText(__epGetParagraphSubQuestionText(mcq))}</span>
       </div>
 
@@ -1364,6 +1366,11 @@ function __epBuildParagraphPreviewQuestionHtml(q = {}, currentQNum = '') {
   const normalized = __epNormalizeParagraphQuestion(q);
   const mcqs = __epGetParagraphMcqs(normalized);
 
+  const startNo = Number(currentQNum) || 1;
+  const totalSubQuestions = Math.max(mcqs.length, 1);
+  const endNo = startNo + totalSubQuestions - 1;
+  const rangeLabel = totalSubQuestions > 1 ? `(${startNo}-${endNo})` : `(${startNo})`;
+
   const imageHTML = normalized.image
     ? `<div class="question-img-block"><img class="question-img" src="${normalized.image}" alt="Question Image" /></div>`
     : '';
@@ -1371,29 +1378,24 @@ function __epBuildParagraphPreviewQuestionHtml(q = {}, currentQNum = '') {
   return `
     <div class="paragraph-set-preview">
       <div class="paragraph-first-part">
-        <div class="question-number">${currentQNum}.</div>
+        <div class="question-number" style="min-width:70px;">${rangeLabel}</div>
 
         <div class="question-body">
-          <div style="color:#163A63;font-weight:400;line-height:1.3;margin-bottom:5px;">
+          <div style="color:#163A63;font-weight:400;line-height:1.3;margin-bottom:7px;">
             Read the following passage and answer the questions:
-          </div>
-
-          <div style="color:#163A63;font-weight:700;line-height:1.3;margin-bottom:3px;">
-            Passage:
           </div>
 
           <div class="paragraph-passage-text">
             ${__epSafeText(normalized.passage || '')}
           </div>
 
-          ${mcqs.map((mcq, index) => __epRenderParagraphSubBlock(mcq, index, false, '')).join('')}
+          ${mcqs.map((mcq, index) => __epRenderParagraphSubBlock(mcq, startNo + index, false, '', true)).join('')}
           ${imageHTML}
         </div>
       </div>
     </div>
   `;
 }
-
 function __epBuildMatchingMatrixPreviewQuestionHtml(q = {}, currentQNum = '') {
   const optionLines = __epBuildOptionLines(q.options);
   const imageHTML = q.image
@@ -2460,16 +2462,23 @@ function renderPrintPreview() {
         `;
 
       if (section.questions && section.questions.length > 0) {
-   const questionsHTML = section.questions.map(q => {
-    const currentQNum = q.number || (qNum++);
+     const questionsHTML = section.questions.map(q => {
+    const currentQNum = Math.max(qNum, Number(q.number || qNum));
 
     if (__epIsParagraphBasedQuestion(q)) {
-      return __epBuildParagraphPreviewQuestionHtml(q, currentQNum);
+      const normalizedParagraph = __epNormalizeParagraphQuestion(q);
+      const paragraphCount = Math.max(__epGetParagraphMcqs(normalizedParagraph).length, 1);
+      const html = __epBuildParagraphPreviewQuestionHtml(normalizedParagraph, currentQNum);
+      qNum = currentQNum + paragraphCount;
+      return html;
     }
 
     if (__epIsMatchingMatrixQuestion(q)) {
+      qNum = currentQNum + 1;
       return __epBuildMatchingMatrixPreviewQuestionHtml(q, currentQNum);
     }
+
+    qNum = currentQNum + 1;
 
     let questionContentHTML = '';
     let optionLines = [];
@@ -2596,8 +2605,8 @@ function renderPrintPreview() {
 
               // ------- Single-subject branch -------
 if (section.questions && section.questions.length > 0) {
-  const questionsHTML = section.questions.map(q => {
-    const currentQNum = q.number || (qNum++);
+    const questionsHTML = section.questions.map(q => {
+    const currentQNum = Math.max(qNum, Number(q.number || qNum));
 
     const qForPreviewRender = {
       ...q,
@@ -2605,12 +2614,19 @@ if (section.questions && section.questions.length > 0) {
     };
 
     if (__epIsParagraphBasedQuestion(qForPreviewRender)) {
-      return __epBuildParagraphPreviewQuestionHtml(qForPreviewRender, currentQNum);
+      const normalizedParagraph = __epNormalizeParagraphQuestion(qForPreviewRender);
+      const paragraphCount = Math.max(__epGetParagraphMcqs(normalizedParagraph).length, 1);
+      const html = __epBuildParagraphPreviewQuestionHtml(normalizedParagraph, currentQNum);
+      qNum = currentQNum + paragraphCount;
+      return html;
     }
 
     if (__epIsMatchingMatrixQuestion(qForPreviewRender)) {
+      qNum = currentQNum + 1;
       return __epBuildMatchingMatrixPreviewQuestionHtml(qForPreviewRender, currentQNum);
     }
+
+    qNum = currentQNum + 1;
 
     let questionContentHTML = '';
     let optionLines = [];
