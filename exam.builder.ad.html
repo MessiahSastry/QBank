@@ -1533,6 +1533,45 @@ function _normDifficultyValue(s) {
   return t;
 }
 
+function getQuestionDifficultyLevelKey(d) {
+  const directCandidates = [
+    d?.difficulty,
+    d?.level,
+    d?.difficultyLevel,
+    d?.levelKey
+  ];
+
+  for (const val of directCandidates) {
+    const norm = _normDifficultyValue(val);
+    if (norm === 'level1') return 'L1';
+    if (norm === 'level2') return 'L2';
+    if (norm === 'level3') return 'L3';
+  }
+
+  const textCandidates = [
+    d?.metaLine,
+    d?.parsedMeta,
+    d?.metadata,
+    d?.question,
+    d?.text,
+    d?.body
+  ];
+
+  for (const val of textCandidates) {
+    const raw = String(val || '');
+    const compact = raw.replace(/<[^>]+>/g, ' ').replace(/\u00A0/g, ' ');
+    const match = compact.match(/\b(?:level|lvl|l)\s*[-:]?\s*([123])\b/i);
+    if (match) return `L${match[1]}`;
+  }
+
+  return '';
+}
+
+function getQuestionDifficultyLabel(d) {
+  const key = getQuestionDifficultyLevelKey(d);
+  return key === 'L1' ? 'Level 1' : key === 'L2' ? 'Level 2' : key === 'L3' ? 'Level 3' : '';
+}
+
 function _isAllowedMcqType(doc, mcqType) {
   const typ = inferMcqType(doc);
 
@@ -1614,10 +1653,10 @@ function filterQuestionsFromPool(pool, {
 
   if (forceDifficulty) {
     const want = _normDifficultyValue(forceDifficulty);
-    rows = rows.filter(d => _normDifficultyValue(d.difficulty || d.level) === want);
+    rows = rows.filter(d => _normDifficultyValue(getQuestionDifficultyLabel(d)) === want);
   } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
     const wants = allowedDifficulties.map(_normDifficultyValue);
-    rows = rows.filter(d => wants.includes(_normDifficultyValue(d.difficulty || d.level)));
+    rows = rows.filter(d => wants.includes(_normDifficultyValue(getQuestionDifficultyLabel(d))));
   }
 
   return uniqueByIdOrText(rows);
@@ -4204,10 +4243,7 @@ const cleanPool = manualPool;
 
             questions = pickedManual.map((picked, i) => {
                 const out = mapBankQuestionToBuilderQuestion(picked, sec.mcqType, mPerQ);
-                const diffRaw = String(picked.difficulty || picked.level || '').trim().toLowerCase();
-                out._assignedLevel =
-                    diffRaw.includes('1') ? 'L1' :
-                    diffRaw.includes('2') ? 'L2' : 'L3';
+                out._assignedLevel = getQuestionDifficultyLevelKey(picked) || 'L1';
 
                 const k = makeStemKey({ text: out.text, marks: mPerQ });
                 if (k) subjectSeenKeys.add(k);
@@ -4406,11 +4442,7 @@ const cleanPool = manualPool;
         if (!picked && preferredChapter) {
             picked = takeFromPool(preferredChapter, null, sectionSeen);
             if (picked) {
-                const diffRaw = String(picked.difficulty || picked.level || '').toLowerCase();
-                pickedLevel =
-                    diffRaw.includes('1') ? 'L1' :
-                    diffRaw.includes('2') ? 'L2' :
-                    'L3';
+                pickedLevel = getQuestionDifficultyLevelKey(picked) || pickedLevel || preferredLevel;
             }
         }
 
@@ -4431,11 +4463,7 @@ const cleanPool = manualPool;
             for (const ch of otherChapters) {
                 picked = takeFromPool(ch, null, sectionSeen);
                 if (picked) {
-                    const diffRaw = String(picked.difficulty || picked.level || '').toLowerCase();
-                    pickedLevel =
-                        diffRaw.includes('1') ? 'L1' :
-                        diffRaw.includes('2') ? 'L2' :
-                        'L3';
+                    pickedLevel = getQuestionDifficultyLevelKey(picked) || pickedLevel || preferredLevel;
                     break;
                 }
             }
@@ -4453,11 +4481,7 @@ const cleanPool = manualPool;
             if (!picked) {
                 picked = takeFromPool(null, null, sectionSeen);
                 if (picked) {
-                    const diffRaw = String(picked.difficulty || picked.level || '').toLowerCase();
-                    pickedLevel =
-                        diffRaw.includes('1') ? 'L1' :
-                        diffRaw.includes('2') ? 'L2' :
-                        'L3';
+                    pickedLevel = getQuestionDifficultyLevelKey(picked) || pickedLevel || preferredLevel;
                 }
             }
         }
