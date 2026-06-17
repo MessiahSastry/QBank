@@ -1938,6 +1938,28 @@ function __qbGetExportChapterLabel(chapterName, idx) {
   return 'Chapter ' + (explicitNo || (idx + 1));
 }
 
+function __qbFormatChapterTitleForBox(rawTitle) {
+  const title = String(rawTitle || 'Unspecified')
+    .replace(/\s*:\s*$/,'')
+    .trim();
+
+  const parts = title.split(/\s+[-–—]\s+/);
+
+  if (parts.length >= 2) {
+    const firstLine = parts.shift().trim();
+    const secondLine = parts.join(' - ').trim();
+
+    return `
+      ${__qbEscapeHtml(firstLine)}<br>
+      <span style="display:inline-block;margin-top:2px;">
+        ${__qbEscapeHtml(secondLine)}
+      </span>
+    `;
+  }
+
+  return __qbEscapeHtml(title);
+}
+
 function renderCenteredChapterTitle(text, chapterLabel = '') {
   const __theme = __pdfTheme;
 
@@ -2033,10 +2055,7 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
           color:${__theme.titleFill};
           margin-bottom:6px;
         ">
-          ${__qbEscapeHtml(
-            String(__chapterInfo.mainTitle || 'Unspecified')
-              .replace(/\s*:\s*$/,'')
-          )}
+        ${__qbFormatChapterTitleForBox(__chapterInfo.mainTitle || 'Unspecified')}
         </div>
 
         ${__subtopicsLine ? `
