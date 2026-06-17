@@ -1122,14 +1122,21 @@ if (!exportMode) {
   return;
 }
 
-const schoolNameInput = await appPrompt('Enter School Name', '');
+const schoolNameInput = await appPrompt('Enter School Name', "St. Patrick's School");
 if (schoolNameInput === null) {
   pdfBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Worksheet';
   pdfBtn.disabled = false;
   return;
 }
 
-const finalSchoolName = (schoolNameInput || '').trim();
+function __qbFormatSchoolNameForHeader(name) {
+  const clean = String(name || "St. Patrick's School").trim() || "St. Patrick's School";
+  return clean
+    .replace(/\bST[.,]\s*/gi, 'St. ')
+    .replace(/\bSt[.,]\s*/g, 'St. ');
+}
+
+const finalSchoolName = __qbFormatSchoolNameForHeader(schoolNameInput);
 
 const includeWorksheet = exportMode === 'worksheet';
 const includeKey = exportMode === 'key';
@@ -1214,43 +1221,43 @@ printable.prepend(avoidCSS);
       printable.style.margin = "0 auto";
       printable.style.padding = "0";
       printable.style.lineHeight = "1.6";
-if (orderedSelectedChapters.length >= 2) {
-  printable.innerHTML = ``;
-} else if (includeWorksheet) {
-  printable.innerHTML = `
-    ${finalSchoolName ? `
+function __qbBuildSchoolHeaderHTML(name, withStroke = true) {
+  const cleanName = __qbFormatSchoolNameForHeader(name);
+
+  return `
     <div style="
       text-align:center;
       font-size:1.85em;
       font-weight:900;
       letter-spacing:0.03em;
-      margin:10px 0 16px 0;
-      line-height:1.2;
-      text-transform:uppercase;
+      margin:4px 0 1px 0;
+      line-height:1.12;
+      text-transform:none;
       font-family:'Times New Roman', Times, serif;
       color:#7A2230;
       -webkit-text-fill-color:#7A2230;
-      -webkit-text-stroke:1.2px #163A63;
+      ${withStroke ? '-webkit-text-stroke:1.2px #163A63;' : ''}
     ">
-      ${__qbEscapeHtml(String(finalSchoolName).toUpperCase())}
-    </div>` : ''}
-  `;
-} else {
-  printable.innerHTML = `
-    ${finalSchoolName ? `
+      ${__qbEscapeHtml(cleanName)}
+    </div>
+
     <div style="
       text-align:center;
-      font-size:1.85em;
+      font-size:1.05em;
       font-weight:900;
-      letter-spacing:0.03em;
-      margin:10px 0 16px 0;
-      line-height:1.2;
+      letter-spacing:0.12em;
+      margin:0 0 6px 0;
+      line-height:1.1;
+      font-family:'Times New Roman', Times, serif;
+      color:#163A63;
       text-transform:uppercase;
     ">
-      ${__qbEscapeHtml(String(finalSchoolName || '').toUpperCase())}
-    </div>` : ''}
+      IIT &amp; NEET FOUNDATION
+    </div>
   `;
 }
+
+printable.insertAdjacentHTML('beforeend', __qbBuildSchoolHeaderHTML(finalSchoolName, includeWorksheet));
       const displayArea = document.getElementById('questions-display-area');
       const nodes = displayArea.querySelectorAll('.question-item');
       if (!nodes.length) {
@@ -1928,7 +1935,7 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
   t.style.cssText = `
     display:block;
     width:100%;
-    margin:${chapterLabel ? '22px' : '0'} 0 16px 0;
+    margin:${chapterLabel ? '8px' : '0'} 0 8px 0;
     page-break-inside:avoid;
     break-inside:avoid;
     page-break-after:avoid;
@@ -2925,18 +2932,9 @@ if (includeKey) {
     spacer.style.cssText = 'height:24px;';
     printable.appendChild(spacer);
 
-    const keySchool = document.createElement('div');
-    keySchool.style.cssText = `
-      text-align:center;
-      font-size:1.85em;
-      font-weight:900;
-      letter-spacing:0.03em;
-      margin:10px 0 16px 0;
-      line-height:1.2;
-      text-transform:uppercase;
-    `;
-    keySchool.textContent = String(finalSchoolName || '').toUpperCase();
-    printable.appendChild(keySchool);
+   const keySchool = document.createElement('div');
+keySchool.innerHTML = __qbBuildSchoolHeaderHTML(finalSchoolName, false);
+printable.appendChild(keySchool);
 
     const keyHeader = document.createElement('div');
     keyHeader.style.cssText = `
