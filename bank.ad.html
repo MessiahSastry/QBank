@@ -1224,35 +1224,47 @@ printable.prepend(avoidCSS);
 function __qbBuildSchoolHeaderHTML(name, withStroke = true) {
   const cleanName = __qbFormatSchoolNameForHeader(name);
 
-  return `
-    <div style="
+ return `
+    <div class="school-header-block" data-school-header="true" style="
+      display:block;
+      width:100%;
       text-align:center;
-      font-size:1.85em;
-      font-weight:900;
-      letter-spacing:0.03em;
-      margin:4px 0 1px 0;
-      line-height:1.12;
-      text-transform:none;
-      font-family:'Times New Roman', Times, serif;
-      color:#7A2230;
-      -webkit-text-fill-color:#7A2230;
-      ${withStroke ? '-webkit-text-stroke:1.2px #163A63;' : ''}
+      margin:0 0 8px 0;
+      padding:0;
+      page-break-inside:avoid;
+      break-inside:avoid;
+      page-break-after:avoid;
+      break-after:avoid;
     ">
-      ${__qbEscapeHtml(cleanName)}
-    </div>
+      <div class="school-header-title" style="
+        text-align:center;
+        font-size:1.85em;
+        font-weight:900;
+        letter-spacing:0.03em;
+        margin:0 0 1px 0;
+        line-height:1.12;
+        text-transform:none;
+        font-family:'Times New Roman', Times, serif;
+        color:#7A2230;
+        -webkit-text-fill-color:#7A2230;
+        ${withStroke ? '-webkit-text-stroke:1.2px #163A63;' : ''}
+      ">
+        ${__qbEscapeHtml(cleanName)}
+      </div>
 
-    <div style="
-      text-align:center;
-      font-size:1.05em;
-      font-weight:900;
-      letter-spacing:0.12em;
-      margin:0 0 6px 0;
-      line-height:1.1;
-      font-family:'Times New Roman', Times, serif;
-      color:#163A63;
-      text-transform:uppercase;
-    ">
-      IIT &amp; NEET FOUNDATION
+      <div class="school-header-subline" style="
+        text-align:center;
+        font-size:1.05em;
+        font-weight:900;
+        letter-spacing:0.12em;
+        margin:0;
+        line-height:1.1;
+        font-family:'Times New Roman', Times, serif;
+        color:#163A63;
+        text-transform:uppercase;
+      ">
+        IIT &amp; NEET FOUNDATION
+      </div>
     </div>
   `;
 }
@@ -4328,9 +4340,21 @@ if (node.classList.contains('worksheet-flow-block')) {
 
         while (blocks.length) {
   const nextBlock = blocks[0];
+const __pageHasOnlySchoolHeader =
+    pageHasContent &&
+    Array.from(measureShell.content.children).every(el =>
+      el.nodeType === 1 &&
+      (
+        el.classList.contains('school-header-block') ||
+        el.classList.contains('school-header-title') ||
+        el.classList.contains('school-header-subline') ||
+        el.tagName === 'STYLE'
+      )
+    );
 
   if (
     pageHasContent &&
+    !__pageHasOnlySchoolHeader &&
     nextBlock.nodeType === 1 &&
     nextBlock.classList &&
     nextBlock.classList.contains('chapter-start-block')
