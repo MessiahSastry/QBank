@@ -1223,7 +1223,7 @@ printable.prepend(avoidCSS);
       printable.style.maxWidth = "820px";
       printable.style.margin = "0 auto";
       printable.style.padding = "0";
-      printable.style.lineHeight = "1.6";
+      printable.style.lineHeight = "1";
 function __qbBuildSchoolHeaderHTML(name, withStroke = true) {
   const cleanName = __qbFormatSchoolNameForHeader(name);
 
@@ -3890,8 +3890,8 @@ const __PDF_THEME = ${JSON.stringify(__themeForPdf)};
       marginSide: 1.5,
       marginTop: 2.1,
       marginBottom: 1.9,
-      questionGap: 10,
-      lineHeight: 1.6
+      questionGap: 4,
+      lineHeight: 1
     };
 
     let pageSettings = [];
@@ -4564,11 +4564,11 @@ pagesHost.appendChild(finalShell.page);
     function saveCurrentPageSettings(){
       const s = ensurePageSettings(currentPageIndex);
 
-      s.questionGap = Number(gapSlider.value || 10);
+      s.questionGap = Number(gapSlider.value || 4);
       s.marginSide = Number(marginSlider.value || 1.5);
       s.marginTop = Number((s.marginSide + 0.6).toFixed(1));
       s.marginBottom = Number((s.marginSide + 0.4).toFixed(1));
-      s.lineHeight = Number(lineSlider.value || 1.6);
+      s.lineHeight = Number(lineSlider.value || 1);
 
       gapValue.textContent = s.questionGap + 'px';
       marginValue.textContent = Number(s.marginSide).toFixed(1) + 'cm';
