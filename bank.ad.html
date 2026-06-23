@@ -1934,18 +1934,36 @@ function __qbFormatChapterTitleForBox(rawTitle) {
     .replace(/\s*:\s*$/,'')
     .trim();
 
-  const parts = title.split(/\s+[-–—]\s+/);
+  const parts = title
+    .split(/\s+[-–—]\s+/)
+    .map(x => x.trim())
+    .filter(Boolean);
 
   if (parts.length >= 2) {
-    const firstLine = parts.shift().trim();
-    const secondLine = parts.join(' - ').trim();
+    let firstLine = parts.shift();
+    let secondParts = [];
 
-    return `
-      ${__qbEscapeHtml(firstLine)}<br>
-      <span style="display:inline-block;margin-top:2px;">
-        ${__qbEscapeHtml(secondLine)}
-      </span>
-    `;
+    while (parts.length) {
+      const nextPart = parts.shift();
+
+      if (/^(?:[IVXLCDM]+|\d+)$/i.test(nextPart)) {
+        firstLine += ' - ' + nextPart;
+      } else {
+        secondParts = [nextPart, ...parts];
+        break;
+      }
+    }
+
+    if (secondParts.length) {
+      const secondLine = secondParts.join(' - ').trim();
+
+      return `
+        ${__qbEscapeHtml(firstLine)}<br>
+        <span style="display:inline-block;margin-top:2px;">
+          ${__qbEscapeHtml(secondLine)}
+        </span>
+      `;
+    }
   }
 
   return __qbEscapeHtml(title);
@@ -1970,10 +1988,8 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
   const __chapterInfo = __qbSplitChapterDisplay(text);
   const __subtopicsText = __qbExtractSubtopicsLine(text);
 
-  const __subtopicsLine = [
-    __chapterInfo.assimilationTitle || '',
-    __subtopicsText || ''
-  ].filter(Boolean).join(' | ');
+  const __assimilationLine = __chapterInfo.assimilationTitle || '';
+const __subtopicsLine = __subtopicsText || '';
 
   const __chapterNumber = String(chapterLabel || '')
     .replace(/^Chapter\s*/i, '')
@@ -2049,11 +2065,22 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
         ${__qbFormatChapterTitleForBox(__chapterInfo.mainTitle || 'Unspecified')}
         </div>
 
+                ${__assimilationLine ? `
+        <div style="
+          font-size:14pt;
+          font-weight:800;
+          line-height:1.25;
+          color:${__theme.normalHeadingColor || __theme.dark};
+          margin-bottom:4px;
+        ">
+          ${__qbEscapeHtml(__assimilationLine)}
+        </div>` : ''}
+
         ${__subtopicsLine ? `
         <div style="
-          font-size:12pt;
+          font-size:11.5pt;
           font-weight:600;
-          line-height:1.35;
+          line-height:1.3;
           color:${__theme.normalHeadingColor || __theme.dark};
           margin-bottom:8px;
         ">
