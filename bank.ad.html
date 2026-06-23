@@ -1728,17 +1728,17 @@ function buildQuestionHTML(item, __parent = printable) {
             ${__qbPdfSafeText(source.passage || '')}
           </div>
 
-          ${__mcqs.length ? __renderParagraphWorksheetSubQuestion(__mcqs[0], 0) : ''}
+         
         </div>
       </div>
     `;
 
     wrap.appendChild(firstPart);
 
-    __mcqs.slice(1).forEach((mcq, index) => {
+        __mcqs.forEach((mcq, index) => {
       const continuationPart = document.createElement('div');
 
-      continuationPart.className = index === __mcqs.length - 2
+           continuationPart.className = index === __mcqs.length - 1
         ? 'paragraph-continuation-part question-gap-block'
         : 'paragraph-continuation-part';
 
@@ -1754,11 +1754,11 @@ function buildQuestionHTML(item, __parent = printable) {
         line-height:1.4;
       `;
 
-      continuationPart.innerHTML = __renderParagraphWorksheetSubQuestion(mcq, index + 1);
+            continuationPart.innerHTML = __renderParagraphWorksheetSubQuestion(mcq, index);
       wrap.appendChild(continuationPart);
     });
 
-    if (__mcqs.length <= 1) {
+       if (__mcqs.length === 0) {
       firstPart.classList.add('question-gap-block');
     }
 
@@ -4171,6 +4171,7 @@ if (node.classList.contains('question-container')) {
     ch.classList &&
     (
       ch.classList.contains('page-flow-block') ||
+      ch.classList.contains('worksheet-flow-block') ||
       ch.classList.contains('question-container')
     )
   );
@@ -4179,10 +4180,13 @@ if (node.classList.contains('question-container')) {
     const leading = kids.slice(0, firstContentIndex);
     const firstContent = kids[firstContentIndex];
 
-    if (
+       if (
       firstContent.nodeType === 1 &&
       firstContent.classList &&
-      firstContent.classList.contains('page-flow-block')
+      (
+        firstContent.classList.contains('page-flow-block') ||
+        firstContent.classList.contains('worksheet-flow-block')
+      )
     ) {
       const flowChildren = getMeaningfulChildren(firstContent);
 
