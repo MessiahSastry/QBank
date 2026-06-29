@@ -487,9 +487,16 @@
 
       return [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
     }
-    function isMultipleQuestion(q){
+       function isMultipleQuestion(q){
       const typeText = String(q?.type || q?.mcqType || '').toLowerCase();
-      const answerLetters = extractAnswerLetters(q?.answer || '', q?.options || []);
+      const options = q?.options || [];
+
+      const answerLetters = uniqueLetters([
+        ...extractAnswerLetters(q?.answerLetters || [], options),
+        ...extractAnswerLetters(q?.answer || '', options),
+        ...extractAnswerLetters(q?.answerText || '', options),
+        ...extractAnswerLetters(q?.explanation || '', options)
+      ]);
 
       return (
         typeText.includes('multiple') ||
@@ -506,13 +513,39 @@
       )];
     }
 
-    function sameLetterSet(a, b){
+       function sameLetterSet(a, b){
       const aa = uniqueLetters(a).sort();
       const bb = uniqueLetters(b).sort();
 
       if (aa.length !== bb.length) return false;
 
       return aa.every((x, i) => x === bb[i]);
+    }
+
+    function getCorrectLettersForQuestion(q){
+      const options = q?.options || [];
+
+      const sources = [
+        q?.answerLetters || [],
+        q?.answer || '',
+        q?.answerText || '',
+        q?.correctAnswer || '',
+        q?.correctAnswers || '',
+        q?.explanation || '',
+        q?.solution || '',
+        q?.explain || ''
+      ];
+
+      let bestLetters = [];
+
+      sources.forEach(src => {
+        const letters = extractAnswerLetters(src, options);
+        if (letters.length > bestLetters.length) {
+          bestLetters = letters;
+        }
+      });
+
+      return uniqueLetters(bestLetters);
     }
 
     function renderMath(){
@@ -840,7 +873,7 @@
 
     function finishQuestionAnswer(selectedLetters){
       const q = quizState.questions[quizState.currentIndex];
-            const correctLetters = extractAnswerLetters(q.answerLetters && q.answerLetters.length ? q.answerLetters : q.answer, q.options || []);
+            const correctLetters = getCorrectLettersForQuestion(q);
       const selectedSet = uniqueLetters(selectedLetters);
 
       quizState.answered = true;
