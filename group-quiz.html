@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Group Quiz | SciMentra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]] }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    :root{
+      --blue:#0f3d6b;
+      --blue2:#1762a7;
+      --light:#f4f8fc;
+      --border:#bcd6ef;
+      --red:#c82333;
+      --red-bg:#fdeaea;
+      --green:#2e9d57;
+      --green-bg:#e8f7ee;
+      --gold:#fff8e8;
+      --gold-border:#f0d08a;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:'Segoe UI', Arial, sans-serif;
+      background:var(--light);
+      color:#111;
+      min-height:100vh;
+    }
+
+    body::after{
+      content:"SciMentra\A IIT & NEET FOUNDATION";
+      white-space:pre;
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      font-size:6vw;
+      font-weight:900;
+      color:rgba(15,61,107,0.035);
+      z-index:-1;
+      text-align:center;
+      pointer-events:none;
+      line-height:1.2;
+    }
+
+    .top-header{
+      background:linear-gradient(90deg, var(--blue2), var(--blue));
+      color:#fff;
+      padding:18px 18px 20px;
+      border-bottom-left-radius:28px;
+      border-bottom-right-radius:28px;
+      text-align:center;
+      box-shadow:0 4px 18px rgba(0,27,68,0.12);
+      position:sticky;
+      top:0;
+      z-index:50;
+    }
+
+    .top-title{
+      font-size:2em;
+      font-weight:900;
+      margin:0;
+      line-height:1.1;
+    }
+
+    .top-subtitle{
+      font-size:1.05em;
+      margin-top:6px;
+      color:#e0eaff;
+      font-weight:500;
+    }
+
+    .page{
+      width:100%;
+      max-width:1100px;
+      margin:0 auto;
+      padding:18px;
+    }
+
+    .quiz-panel{
+      background:#fff;
+      border:1.5px solid #d9e8f7;
+      border-radius:20px;
+      box-shadow:0 4px 18px rgba(0,27,68,0.10);
+      padding:18px;
+      margin-bottom:16px;
+    }
+
+    .quiz-info{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+      gap:10px;
+      margin-bottom:14px;
+    }
+
+    .info-pill{
+      background:#f7fafd;
+      border:1.5px solid #d9e8f7;
+      border-radius:12px;
+      padding:9px 11px;
+      color:var(--blue);
+      font-weight:800;
+      text-align:center;
+    }
+
+    .score-board{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));
+      gap:10px;
+      margin-bottom:15px;
+    }
+
+    .score-card{
+      background:#f7fafd;
+      border:2px solid var(--border);
+      border-radius:15px;
+      padding:11px;
+      text-align:center;
+      color:var(--blue);
+      font-weight:900;
+      transition:0.15s ease;
+    }
+
+    .score-card.active{
+      background:var(--green-bg);
+      border-color:var(--green);
+    }
+
+    .score-name{
+      font-size:0.95em;
+      margin-bottom:3px;
+      word-break:break-word;
+    }
+
+    .score-num{
+      font-size:1.75em;
+      line-height:1;
+    }
+
+    .quiz-row{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .question-count{
+      color:#7A2230;
+      font-size:1.25em;
+      font-weight:900;
+    }
+
+    .group-select-wrap{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .group-select-wrap label{
+      color:var(--blue);
+      font-weight:900;
+    }
+
+    #currentGroupSelect{
+      padding:10px 12px;
+      border:1.5px solid var(--border);
+      border-radius:10px;
+      color:var(--blue);
+      font-weight:800;
+      background:#fff;
+      font-size:1em;
+    }
+
+    .question-box{
+      background:#f7fafd;
+      border:1.5px solid #d9e8f7;
+      border-radius:18px;
+      padding:20px;
+      margin-bottom:15px;
+    }
+
+    .question-text{
+      color:var(--blue);
+      font-size:1.45em;
+      font-weight:900;
+      line-height:1.55;
+      white-space:pre-wrap;
+    }
+
+    .question-img{
+      max-width:340px;
+      max-height:240px;
+      display:block;
+      margin-top:14px;
+      border-radius:12px;
+      border:1px solid #e0eaff;
+      box-shadow:0 2px 10px rgba(0,27,68,0.10);
+    }
+
+    .options-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .option-btn{
+      width:100%;
+      min-height:76px;
+      text-align:left;
+      padding:15px 16px;
+      border:2px solid var(--border);
+      background:#fff;
+      color:#123f6b;
+      border-radius:16px;
+      font-size:1.16em;
+      font-weight:850;
+      cursor:pointer;
+      line-height:1.45;
+      box-shadow:0 2px 10px rgba(0,27,68,0.05);
+      transition:0.15s ease;
+    }
+
+    .option-btn:hover:not(:disabled){
+      transform:translateY(-1px);
+      box-shadow:0 4px 16px rgba(15,61,107,0.14);
+      border-color:var(--blue2);
+    }
+
+    .option-btn:disabled{
+      cursor:default;
+    }
+
+    .option-letter{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:32px;
+      height:32px;
+      border-radius:50%;
+      background:#eef6ff;
+      color:var(--blue);
+      margin-right:10px;
+      font-weight:900;
+      vertical-align:middle;
+      flex:0 0 auto;
+    }
+
+    .answer-box{
+      display:none;
+      background:var(--gold);
+      border:1.5px solid var(--gold-border);
+      border-radius:16px;
+      padding:15px;
+      margin-top:12px;
+      color:#111;
+      line-height:1.65;
+      font-size:1.05em;
+    }
+
+    .answer-title{
+      color:#7A2230;
+      font-weight:900;
+      margin-bottom:6px;
+    }
+
+    .action-row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    .main-btn,
+    .secondary-btn,
+    .danger-btn{
+      flex:1;
+      min-width:180px;
+      padding:14px 16px;
+      border-radius:12px;
+      font-size:1.05em;
+      font-weight:900;
+      cursor:pointer;
+      border:none;
+    }
+
+    .main-btn{
+      background:var(--blue2);
+      color:#fff;
+      box-shadow:0 2px 10px rgba(15,61,107,0.18);
+    }
+
+    .main-btn:disabled{
+      opacity:0.5;
+      cursor:not-allowed;
+    }
+
+    .secondary-btn{
+      background:#f7fafd;
+      color:#185496;
+      border:1.5px solid var(--border);
+    }
+
+    .danger-btn{
+      background:#fff3f4;
+      color:#9d1c28;
+      border:1.5px solid #f2b9bf;
+    }
+
+    .completed-title{
+      text-align:center;
+      color:var(--blue);
+      font-size:2em;
+      font-weight:900;
+      margin-bottom:8px;
+    }
+
+    .winner-title{
+      text-align:center;
+      color:#7A2230;
+      font-size:1.35em;
+      font-weight:900;
+      margin-bottom:18px;
+    }
+
+    .error-box{
+      max-width:650px;
+      margin:40px auto;
+      background:#fff;
+      border:1.5px solid #d9e8f7;
+      border-radius:18px;
+      padding:24px;
+      text-align:center;
+      box-shadow:0 4px 18px rgba(0,27,68,0.10);
+      color:var(--blue);
+      font-weight:800;
+      line-height:1.5;
+    }
+
+    @media (max-width:700px){
+      .top-title{ font-size:1.65em; }
+      .page{ padding:12px; }
+      .quiz-panel{ padding:14px; }
+      .question-text{ font-size:1.18em; }
+      .options-grid{ grid-template-columns:1fr; }
+      .option-btn{ font-size:1.03em; min-height:62px; }
+      .question-img{ max-width:100%; max-height:210px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="top-header">
+    <h1 class="top-title">SciMentra</h1>
+    <div class="top-subtitle">IIT & NEET FOUNDATION | Group Quiz</div>
+  </header>
+
+  <div class="page">
+    <div id="quiz-root"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'scimentra_group_quiz_payload';
+
+    let quizState = {
+      payload: null,
+      questions: [],
+      groups: [],
+      currentIndex: 0,
+      currentGroupIndex: 0,
+      answered: false,
+      lastSelectedLetter: null
+    };
+
+    function escapeHtml(str){
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function cleanOptionText(opt){
+      return String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
+    }
+
+    function normalizeAnswerCompareText(str){
+      return String(str || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/^\s*(Answer|Ans)\s*:\s*/i, '')
+        .replace(/^[A-D][).]\s*/i, '')
+        .replace(/\\\(|\\\)|\$|\{|\}/g, '')
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    function extractAnswerLetters(answer, options = []){
+      const raw = String(answer || '')
+        .replace(/^\s*Answer\s*:\s*/i, '')
+        .replace(/^\s*Ans\s*:\s*/i, '')
+        .trim();
+
+      const optionList = Array.isArray(options) ? options : [];
+      const rawCompare = normalizeAnswerCompareText(raw);
+
+      if (rawCompare && rawCompare.length > 1 && optionList.length === 4) {
+        for (let i = 0; i < optionList.length; i++) {
+          const optCompare = normalizeAnswerCompareText(cleanOptionText(optionList[i]));
+
+          if (
+            optCompare &&
+            (
+              rawCompare === optCompare ||
+              rawCompare.includes(optCompare) ||
+              optCompare.includes(rawCompare)
+            )
+          ) {
+            return [String.fromCharCode(65 + i)];
+          }
+        }
+      }
+
+      const compact = raw.toUpperCase().replace(/\s+/g, '');
+
+      if (/^[A-D](,[A-D])*$/.test(compact)) {
+        return [...new Set(compact.split(',').filter(x => /^[A-D]$/.test(x)))];
+      }
+
+      const optionPrefix = raw.match(/^\s*([A-D])[\)\.]/i);
+      if (optionPrefix) {
+        return [optionPrefix[1].toUpperCase()];
+      }
+
+      const optionWord = raw.match(/\bOPTION\s*([A-D])\b/i);
+      if (optionWord) {
+        return [optionWord[1].toUpperCase()];
+      }
+
+      if (raw.length <= 20) {
+        const letters = raw.toUpperCase().match(/\b[A-D]\b/g);
+        if (letters) return [...new Set(letters)];
+      }
+
+      return [];
+    }
+
+    function renderMath(){
+      const root = document.getElementById('quiz-root');
+      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+        window.MathJax.typesetPromise([root]).catch(function(err){
+          console.error('MathJax render error:', err);
+        });
+      }
+    }
+
+    function loadQuiz(){
+      const root = document.getElementById('quiz-root');
+
+      let payload = null;
+
+      try {
+        payload = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      } catch(err) {
+        payload = null;
+      }
+
+      if (!payload || !Array.isArray(payload.questions) || !payload.questions.length) {
+        root.innerHTML = `
+          <div class="error-box">
+            <div style="font-size:1.4em;margin-bottom:8px;">No Group Quiz Found</div>
+            <div>Please go back to workbook.html, select questions, and click Generate Group Quiz again.</div>
+          </div>
+        `;
+        return;
+      }
+
+      quizState.payload = payload;
+      quizState.questions = payload.questions.filter(q => Array.isArray(q.options) && q.options.length === 4);
+      quizState.groups = Array.isArray(payload.groups) && payload.groups.length
+        ? payload.groups.map(g => ({ name: String(g.name || 'Group'), score: Number(g.score || 0) }))
+        : [
+            { name:'Group A', score:0 },
+            { name:'Group B', score:0 },
+            { name:'Group C', score:0 },
+            { name:'Group D', score:0 }
+          ];
+
+      quizState.currentIndex = 0;
+      quizState.currentGroupIndex = 0;
+      quizState.answered = false;
+      quizState.lastSelectedLetter = null;
+
+      if (!quizState.questions.length) {
+        root.innerHTML = `
+          <div class="error-box">
+            <div style="font-size:1.4em;margin-bottom:8px;">No Valid MCQ Questions</div>
+            <div>This quiz has no questions with exactly 4 options.</div>
+          </div>
+        `;
+        return;
+      }
+
+      renderQuiz();
+    }
+
+    function renderQuizInfo(){
+      const p = quizState.payload || {};
+      const items = [
+        p.className ? `Class: ${p.className}` : '',
+        p.subject ? `Subject: ${p.subject}` : '',
+        p.chapter ? `Chapter: ${p.chapter}` : '',
+        p.level ? `Level: ${p.level}` : ''
+      ].filter(Boolean);
+
+      if (!items.length) return '';
+
+      return `
+        <div class="quiz-info">
+          ${items.map(x => `<div class="info-pill">${escapeHtml(x)}</div>`).join('')}
+        </div>
+      `;
+    }
+
+    function renderScoreBoard(){
+      return `
+        <div class="score-board">
+          ${quizState.groups.map((g, idx) => `
+            <div class="score-card ${idx === quizState.currentGroupIndex ? 'active' : ''}">
+              <div class="score-name">${escapeHtml(g.name)}</div>
+              <div class="score-num">${g.score}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderGroupOptions(){
+      return quizState.groups.map((g, idx) => `
+        <option value="${idx}" ${idx === quizState.currentGroupIndex ? 'selected' : ''}>
+          ${escapeHtml(g.name)}
+        </option>
+      `).join('');
+    }
+
+    function renderQuestionOptions(question){
+      return question.options.slice(0, 4).map((opt, i) => {
+        const letter = String.fromCharCode(65 + i);
+        const clean = escapeHtml(cleanOptionText(opt));
+
+        return `
+          <button type="button" class="option-btn" data-letter="${letter}" onclick="handleOptionClick(this)">
+            <span class="option-letter">${letter}</span>
+            <span>${clean}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderQuiz(){
+      const root = document.getElementById('quiz-root');
+
+      if (quizState.currentIndex >= quizState.questions.length) {
+        renderCompleted();
+        return;
+      }
+
+      const q = quizState.questions[quizState.currentIndex];
+      const qNo = quizState.currentIndex + 1;
+      const total = quizState.questions.length;
+
+      root.innerHTML = `
+        <div class="quiz-panel">
+          ${renderQuizInfo()}
+
+          <div class="quiz-row">
+            <div class="question-count">Question ${qNo} / ${total}</div>
+
+            <div class="group-select-wrap">
+              <label>Answering Group:</label>
+              <select id="currentGroupSelect" onchange="changeCurrentGroup(this)">
+                ${renderGroupOptions()}
+              </select>
+            </div>
+          </div>
+
+          ${renderScoreBoard()}
+
+          <div class="question-box">
+            <div class="question-text">${escapeHtml(q.question || '').replace(/\n/g, '<br>')}</div>
+            ${q.image ? `<img class="question-img" src="${escapeHtml(q.image)}" alt="Question Image">` : ''}
+          </div>
+
+          <div class="options-grid" id="optionsGrid">
+            ${renderQuestionOptions(q)}
+          </div>
+
+          <div class="answer-box" id="answerBox">
+            <div class="answer-title">Answer: <span id="correctAnswerText"></span></div>
+            <div id="explanationText"></div>
+          </div>
+
+          <div class="action-row">
+            <button type="button" class="main-btn" id="nextBtn" onclick="nextQuestion()" disabled>
+              Next Question
+            </button>
+
+            <button type="button" class="secondary-btn" onclick="toggleFullScreen()">
+              Full Screen
+            </button>
+
+            <button type="button" class="danger-btn" onclick="closeQuizPage()">
+              Close Quiz
+            </button>
+          </div>
+        </div>
+      `;
+
+      renderMath();
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    function changeCurrentGroup(sel){
+      if (quizState.answered) return;
+      quizState.currentGroupIndex = Number(sel.value || 0);
+      renderQuiz();
+    }
+
+    function handleOptionClick(btn){
+      if (quizState.answered) return;
+
+      const q = quizState.questions[quizState.currentIndex];
+      const selectedLetter = btn.getAttribute('data-letter');
+      const correctLetters = extractAnswerLetters(q.answer, q.options || []);
+
+      quizState.answered = true;
+      quizState.lastSelectedLetter = selectedLetter;
+
+      const isCorrect = correctLetters.includes(selectedLetter);
+
+      if (isCorrect && quizState.groups[quizState.currentGroupIndex]) {
+        quizState.groups[quizState.currentGroupIndex].score += 1;
+      }
+
+      document.querySelectorAll('.option-btn').forEach(optionBtn => {
+        const letter = optionBtn.getAttribute('data-letter');
+        optionBtn.disabled = true;
+
+        if (correctLetters.includes(letter)) {
+          optionBtn.style.background = '#e8f7ee';
+          optionBtn.style.borderColor = '#2e9d57';
+          optionBtn.style.color = '#146b35';
+        } else if (letter === selectedLetter) {
+          optionBtn.style.background = '#fdeaea';
+          optionBtn.style.borderColor = '#c82333';
+          optionBtn.style.color = '#9d1c28';
+        } else {
+          optionBtn.style.opacity = '0.68';
+        }
+      });
+
+      showAnswer(q, correctLetters);
+
+      const nextBtn = document.getElementById('nextBtn');
+      if (nextBtn) nextBtn.disabled = false;
+
+      const select = document.getElementById('currentGroupSelect');
+      if (select) select.disabled = true;
+
+      const scoreBoard = document.querySelector('.score-board');
+      if (scoreBoard) scoreBoard.outerHTML = renderScoreBoard();
+
+      renderMath();
+    }
+
+    function showAnswer(q, correctLetters){
+      const answerBox = document.getElementById('answerBox');
+      const correctAnswerText = document.getElementById('correctAnswerText');
+      const explanationText = document.getElementById('explanationText');
+
+      const correctOptionTexts = (q.options || [])
+        .filter((opt, i) => correctLetters.includes(String.fromCharCode(65 + i)))
+        .join(', ');
+
+      if (correctAnswerText) {
+        correctAnswerText.innerHTML = escapeHtml(correctOptionTexts || q.answer || 'Not available');
+      }
+
+      if (explanationText) {
+        const exp = String(q.explanation || '').trim();
+
+        explanationText.innerHTML = exp
+          ? `<span class="answer-title">Explanation:</span><br>${escapeHtml(exp).replace(/\n/g, '<br>')}`
+          : `<span class="answer-title">Explanation:</span> No explanation available.`;
+      }
+
+      if (answerBox) answerBox.style.display = 'block';
+    }
+
+    function nextQuestion(){
+      quizState.currentIndex += 1;
+      quizState.answered = false;
+      quizState.lastSelectedLetter = null;
+
+      if (quizState.groups.length > 0) {
+        quizState.currentGroupIndex = (quizState.currentGroupIndex + 1) % quizState.groups.length;
+      }
+
+      renderQuiz();
+    }
+
+    function renderCompleted(){
+      const root = document.getElementById('quiz-root');
+      const sortedGroups = [...quizState.groups].sort((a, b) => b.score - a.score);
+      const topScore = sortedGroups.length ? sortedGroups[0].score : 0;
+      const winners = sortedGroups
+        .filter(g => g.score === topScore)
+        .map(g => g.name)
+        .join(', ');
+
+      root.innerHTML = `
+        <div class="quiz-panel">
+          <div class="completed-title">Group Quiz Completed</div>
+          <div class="winner-title">Winner: ${escapeHtml(winners || 'No Winner')}</div>
+
+          <div class="score-board">
+            ${sortedGroups.map((g, idx) => `
+              <div class="score-card ${idx === 0 ? 'active' : ''}">
+                <div class="score-name">${escapeHtml(g.name)}</div>
+                <div class="score-num">${g.score}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="action-row">
+            <button type="button" class="main-btn" onclick="restartQuizSameQuestions()">
+              Restart Same Quiz
+            </button>
+
+            <button type="button" class="secondary-btn" onclick="toggleFullScreen()">
+              Full Screen
+            </button>
+
+            <button type="button" class="danger-btn" onclick="closeQuizPage()">
+              Close Quiz
+            </button>
+          </div>
+        </div>
+      `;
+
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    function restartQuizSameQuestions(){
+      quizState.currentIndex = 0;
+      quizState.currentGroupIndex = 0;
+      quizState.answered = false;
+      quizState.lastSelectedLetter = null;
+      quizState.groups = quizState.groups.map(g => ({ ...g, score:0 }));
+      renderQuiz();
+    }
+
+    function toggleFullScreen(){
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function closeQuizPage(){
+      window.close();
+
+      setTimeout(() => {
+        alert('You can close this quiz tab manually.');
+      }, 150);
+    }
+
+    document.addEventListener('DOMContentLoaded', loadQuiz);
+  </script>
+</body>
+</html>
