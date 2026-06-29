@@ -424,18 +424,48 @@
         .toLowerCase();
     }
 
-    function extractAnswerLetters(answer, options = []){
+        function extractAnswerLetters(answer, options = []){
+      if (Array.isArray(answer)) {
+        return [...new Set(
+          answer
+            .map(x => String(x || '').toUpperCase().trim())
+            .flatMap(x => x.match(/[A-D]/g) || [])
+            .filter(x => /^[A-D]$/.test(x))
+        )];
+      }
+
       const raw = String(answer || '')
         .replace(/^\s*Answer\s*:\s*/i, '')
         .replace(/^\s*Ans\s*:\s*/i, '')
         .trim();
 
       const optionList = Array.isArray(options) ? options : [];
+      const letters = [];
+      let m;
+
+      const optionPrefixRegex = /(?:^|[\s,;|])([A-D])\s*[\)\.]/gi;
+      while ((m = optionPrefixRegex.exec(raw)) !== null) {
+        letters.push(m[1].toUpperCase());
+      }
+
+      const optionWordRegex = /\boptions?\s*([A-D])\b/gi;
+      while ((m = optionWordRegex.exec(raw)) !== null) {
+        letters.push(m[1].toUpperCase());
+      }
+
+      const compact = raw.toUpperCase().replace(/\s+/g, '');
+
+      if (/^[A-D](,[A-D])*$/.test(compact)) {
+        compact.split(',').forEach(x => letters.push(x));
+      } else if (/^[A-D]([,&\/+]?[A-D])+$/.test(compact)) {
+        compact.match(/[A-D]/g).forEach(x => letters.push(x));
+      }
+
       const rawCompare = normalizeAnswerCompareText(raw);
 
       if (rawCompare && rawCompare.length > 1 && optionList.length === 4) {
-        for (let i = 0; i < optionList.length; i++) {
-          const optCompare = normalizeAnswerCompareText(cleanOptionText(optionList[i]));
+        optionList.forEach((opt, i) => {
+          const optCompare = normalizeAnswerCompareText(cleanOptionText(opt));
 
           if (
             optCompare &&
@@ -445,35 +475,18 @@
               optCompare.includes(rawCompare)
             )
           ) {
-            return [String.fromCharCode(65 + i)];
+            letters.push(String.fromCharCode(65 + i));
           }
-        }
+        });
       }
 
-      const compact = raw.toUpperCase().replace(/\s+/g, '');
-
-      if (/^[A-D](,[A-D])*$/.test(compact)) {
-        return [...new Set(compact.split(',').filter(x => /^[A-D]$/.test(x)))];
+      if (raw.length <= 30) {
+        const simpleLetters = raw.toUpperCase().match(/\b[A-D]\b/g);
+        if (simpleLetters) letters.push(...simpleLetters);
       }
 
-      const optionPrefix = raw.match(/^\s*([A-D])[\)\.]/i);
-      if (optionPrefix) {
-        return [optionPrefix[1].toUpperCase()];
-      }
-
-      const optionWord = raw.match(/\bOPTION\s*([A-D])\b/i);
-      if (optionWord) {
-        return [optionWord[1].toUpperCase()];
-      }
-
-      if (raw.length <= 20) {
-        const letters = raw.toUpperCase().match(/\b[A-D]\b/g);
-        if (letters) return [...new Set(letters)];
-      }
-
-           return [];
+      return [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
     }
-
     function isMultipleQuestion(q){
       const typeText = String(q?.type || q?.mcqType || '').toLowerCase();
       const answerLetters = extractAnswerLetters(q?.answer || '', q?.options || []);
@@ -827,7 +840,7 @@
 
     function finishQuestionAnswer(selectedLetters){
       const q = quizState.questions[quizState.currentIndex];
-      const correctLetters = extractAnswerLetters(q.answer, q.options || []);
+            const correctLetters = extractAnswerLetters(q.answerLetters && q.answerLetters.length ? q.answerLetters : q.answer, q.options || []);
       const selectedSet = uniqueLetters(selectedLetters);
 
       quizState.answered = true;
@@ -899,12 +912,13 @@
       const correctAnswerText = document.getElementById('correctAnswerText');
       const explanationText = document.getElementById('explanationText');
 
-      const correctOptionTexts = (q.options || [])
+            const correctOptionTexts = (q.options || [])
         .filter((opt, i) => correctLetters.includes(String.fromCharCode(65 + i)))
-        .join(', ');
+        .map(opt => escapeHtml(opt))
+        .join('<br>');
 
       if (correctAnswerText) {
-        correctAnswerText.innerHTML = escapeHtml(correctOptionTexts || q.answer || 'Not available');
+        correctAnswerText.innerHTML = correctOptionTexts || escapeHtml(q.answerText || q.answer || 'Not available');
       }
 
       if (explanationText) {
