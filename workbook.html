@@ -237,6 +237,36 @@
             <button type="button" id="manual-unselect-all-btn" style="border:none; border-radius:8px; padding:9px 12px; cursor:pointer; font-weight:600; background:#eef4fb; color:#1a4b78;">Unselect All</button>
           </div>
         </div>
+           </div>
+
+      <div id="quiz-generator-toolbar" style="width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:end;">
+          <div>
+            <label for="quiz-question-count" style="display:block; font-weight:700; color:#185496; margin-bottom:5px;">No. of Questions:</label>
+            <input type="number" id="quiz-question-count" min="1" value="10" style="width:100%; box-sizing:border-box; padding:10px 12px; border:1.3px solid #bcd6ef; border-radius:8px; color:#12416c; font-weight:600;">
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:7px;">
+            <label style="display:flex; align-items:center; gap:8px; color:#12416c; font-weight:600;">
+              <input type="checkbox" id="quiz-shuffle-questions" style="width:17px; height:17px; accent-color:#1762a7;">
+              Shuffle Questions
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; color:#12416c; font-weight:600;">
+              <input type="checkbox" id="quiz-shuffle-display-options" style="width:17px; height:17px; accent-color:#1762a7;">
+              Shuffle Options
+            </label>
+          </div>
+        </div>
+
+        <button type="button" id="generate-quiz-btn" class="main-btn" style="margin-top:12px;">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Quiz
+        </button>
+
+        <button type="button" id="reset-generated-quiz-btn" style="width:100%; box-sizing:border-box; padding:11px 0; border-radius:6px; border:1.3px solid #bcd6ef; font-size:1.02em; background:#f7fafd; color:#185496; font-weight:bold; cursor:pointer; margin-top:8px;">
+          Show All Questions Again
+        </button>
+
+        <button type="button" id="create-quiz-btn" style="display:none;"></button>
       </div>
 
            <div id="questions-display-area">
@@ -649,13 +679,23 @@ const questionsDb = stpatricksApp.firestore();
 });
     });
 
-   function initializeApp() {
+      function initializeApp() {
   setupDropdowns();
   // Do NOT fetch on load; wait until Class + Subject are chosen
   document.getElementById('questions-display-area').innerHTML =
     '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
-  document.getElementById('download-pdf-btn').addEventListener('click', exportPDF);
-  document.getElementById('manage-students-btn').addEventListener('click', showClassSectionStudentPopup);
+
+  const pdfBtn = document.getElementById('download-pdf-btn');
+  if (pdfBtn) pdfBtn.addEventListener('click', exportPDF);
+
+  const manageStudentsBtn = document.getElementById('manage-students-btn');
+  if (manageStudentsBtn) manageStudentsBtn.addEventListener('click', showClassSectionStudentPopup);
+
+  const generateQuizBtn = document.getElementById('generate-quiz-btn');
+  if (generateQuizBtn) generateQuizBtn.addEventListener('click', generateQuizFromDisplayedQuestions);
+
+  const resetGeneratedQuizBtn = document.getElementById('reset-generated-quiz-btn');
+  if (resetGeneratedQuizBtn) resetGeneratedQuizBtn.addEventListener('click', resetGeneratedQuizQuestions);
 }
 
     // PDF EXPORT USING html2pdf.js
@@ -2754,7 +2794,9 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     async function fetchAndDisplayQuestions() {
       if (!currentUser) return;
 
-      const displayArea = document.getElementById('questions-display-area');
+           const displayArea = document.getElementById('questions-display-area');
+      window.__qbLastQuestionBankHTML = '';
+      window.__qbLastQuestionBankMap = {};
 
      const classVal   = document.getElementById('class-value').value;
       const boardVal   = document.getElementById('board-value').value;
@@ -2927,7 +2969,9 @@ if (selQtypes.length > 0) {
         });
 
         if (questionCount > 0) {
-          displayArea.innerHTML = questionsHTML;
+                   displayArea.innerHTML = questionsHTML;
+          window.__qbLastQuestionBankHTML = questionsHTML;
+          window.__qbLastQuestionBankMap = { ...(window.__pdfQuestionDataMap || {}) };
 
          if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
   // yield one frame so the DOM paints before heavy typesetting
@@ -3165,6 +3209,230 @@ if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
         displayArea.innerHTML = '<p class="no-questions-message">An error occurred while fetching questions.</p>';
       }
     }
+
+   function __qbCleanOptionText(opt) {
+  return String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
+}
+
+function __qbGetQuizSourceNodes() {
+  const holder = document.createElement('div');
+  holder.innerHTML = window.__qbLastQuestionBankHTML || '';
+
+  let nodes = Array.from(holder.querySelectorAll('.question-item'));
+
+  if (!nodes.length) {
+    const displayArea = document.getElementById('questions-display-area');
+    nodes = Array.from(displayArea.querySelectorAll('.question-item'));
+  }
+
+  return nodes;
+}
+
+async function __qbGetQuestionDataForPreview(docId) {
+  if (window.__pdfQuestionDataMap && window.__pdfQuestionDataMap[docId]) {
+    return window.__pdfQuestionDataMap[docId];
+  }
+
+  if (window.__qbLastQuestionBankMap && window.__qbLastQuestionBankMap[docId]) {
+    return window.__qbLastQuestionBankMap[docId];
+  }
+
+  const snap = await questionsDb.collection('questions').doc(docId).get();
+  return snap.data() || {};
+}
+
+function __qbBuildGeneratedQuizCard(docId, data, qNo, shuffleOptions) {
+  const rawType = String(
+    data.mcqType ||
+    data.type ||
+    (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
+  ).trim();
+
+  const rawTypeLower = rawType.toLowerCase();
+
+  const normType =
+    (rawTypeLower.includes('assertion') && rawTypeLower.includes('reason')) ? 'Assertion and Reason (MCQ Single)'
+    : (rawTypeLower.includes('multiple')) ? 'MCQ (Multiple)'
+    : (rawTypeLower === 'mcq (single)' || rawTypeLower === 'mcq single') ? 'MCQ (Single)'
+    : (rawTypeLower.includes('fill') && rawTypeLower.includes('blank')) ? 'Fill in the Blanks'
+    : (rawTypeLower.includes('descriptive')) ? 'Descriptive'
+    : rawType;
+
+  let options = Array.isArray(data.options) ? __qbNormalizeOptions(data.options) : [];
+
+  let displayData = {
+    ...data,
+    options,
+    answer: data.parsedAnswer || data.answer || data.parsedAns || ''
+  };
+
+  if (shuffleOptions && options.length === 4) {
+    displayData = __qbShuffleQuestionOptions(displayData);
+    options = displayData.options || [];
+  }
+
+  if (!window.__pdfQuestionDataMap) window.__pdfQuestionDataMap = {};
+  window.__pdfQuestionDataMap[docId] = {
+    ...data,
+    options: options,
+    parsedAnswer: displayData.answer || data.parsedAnswer || data.answer || '',
+    answer: displayData.answer || data.answer || data.parsedAnswer || ''
+  };
+
+  const questionText = autoLatexAll(
+    String(data.question || data.body || data.text || '')
+      .replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ')
+  );
+
+  const optionsHTML = options.length === 4
+    ? `
+      <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${questionText}</div>
+      <div style="margin-left:18px;">
+        <div>${autoLatexAll(__qbCleanOptionText(options[0]))}</div>
+        <div>${autoLatexAll(__qbCleanOptionText(options[1]))}</div>
+        <div>${autoLatexAll(__qbCleanOptionText(options[2]))}</div>
+        <div>${autoLatexAll(__qbCleanOptionText(options[3]))}</div>
+      </div>
+    `
+    : (data.body || data.text || data.question || '');
+
+  return `
+    <div class="question-item"
+      data-id="${docId}"
+      data-level="${data.difficulty || data.level || ''}"
+      data-type="${normType}"
+      data-textbook="${data.isTextbook === true || data.textbook === true ? 'true' : 'false'}"
+      data-chapter="${data.chapter || ''}"
+      data-marks="${(data.marks ?? '')}"
+      style="position:relative;">
+      
+      <div class="question-select-box">
+        <input type="checkbox" class="quiz-question-checkbox" data-id="${docId}">
+      </div>
+
+      <div class="question-meta">
+        Q${qNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
+      </div>
+
+      <div class="question-text">
+        ${optionsHTML}
+        ${
+          data.image
+            ? `<img src="${data.image}">`
+            : ''
+        }
+      </div>
+
+      <button type="button" class="ask-ai-btn">💡 Explain It</button>
+    </div>
+  `;
+}
+
+async function generateQuizFromDisplayedQuestions() {
+  const displayArea = document.getElementById('questions-display-area');
+  const countInput = document.getElementById('quiz-question-count');
+  const shuffleQuestions = document.getElementById('quiz-shuffle-questions')?.checked;
+  const shuffleOptions = document.getElementById('quiz-shuffle-display-options')?.checked;
+
+  let sourceNodes = __qbGetQuizSourceNodes();
+
+  if (!sourceNodes.length) {
+    alert('No questions available. Please select filters and load questions first.');
+    return;
+  }
+
+  const count = Number(countInput ? countInput.value : 0);
+
+  if (!Number.isInteger(count) || count < 1) {
+    alert('Please enter a valid number of questions.');
+    return;
+  }
+
+  if (count > sourceNodes.length) {
+    alert('Only ' + sourceNodes.length + ' questions are available for the selected filters.');
+    return;
+  }
+
+  if (shuffleQuestions) {
+    sourceNodes = __qbShuffleArray(sourceNodes);
+  }
+
+  const selectedNodes = sourceNodes.slice(0, count);
+
+  let html = `
+    <div style="width:100%; max-width:650px; margin:0 auto 12px auto; background:#eef6ff; border:1.5px solid #bcd6ef; border-radius:12px; padding:10px 12px; box-sizing:border-box; color:#12416c; font-weight:800; text-align:center;">
+      Generated Quiz: ${selectedNodes.length} Question(s)
+    </div>
+  `;
+
+  let qNo = 1;
+
+  for (const node of selectedNodes) {
+    const docId = node.getAttribute('data-id');
+    if (!docId) continue;
+
+    const data = await __qbGetQuestionDataForPreview(docId);
+    html += __qbBuildGeneratedQuizCard(docId, data, qNo, shuffleOptions);
+    qNo++;
+  }
+
+  window.__quizSelectionMode = null;
+  window.__quizRandomCount = null;
+  window.__quizShuffleQuestionOrder = !!shuffleQuestions;
+  window.__quizShuffleOptions = !!shuffleOptions;
+
+  displayArea.innerHTML = html;
+
+  document.querySelectorAll('.question-item').forEach(item => {
+    item.classList.remove('manual-select-mode');
+    const cb = item.querySelector('.quiz-question-checkbox');
+    if (cb) cb.checked = false;
+  });
+
+  bindManualQuizToolbar();
+
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    window.MathJax.typesetPromise([displayArea]).catch(function(err) {
+      console.error('MathJax generated quiz render error:', err);
+    });
+  }
+
+  displayArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetGeneratedQuizQuestions() {
+  const displayArea = document.getElementById('questions-display-area');
+
+  if (!window.__qbLastQuestionBankHTML) {
+    fetchAndDisplayQuestions();
+    return;
+  }
+
+  if (window.__qbLastQuestionBankMap) {
+    window.__pdfQuestionDataMap = { ...window.__qbLastQuestionBankMap };
+  }
+
+  window.__quizSelectionMode = null;
+  window.__quizRandomCount = null;
+  window.__quizShuffleQuestionOrder = false;
+  window.__quizShuffleOptions = false;
+
+  displayArea.innerHTML = window.__qbLastQuestionBankHTML;
+
+  document.querySelectorAll('.question-item').forEach(item => {
+    item.classList.remove('manual-select-mode');
+    const cb = item.querySelector('.quiz-question-checkbox');
+    if (cb) cb.checked = false;
+  });
+
+  bindManualQuizToolbar();
+
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    window.MathJax.typesetPromise([displayArea]).catch(function(err) {
+      console.error('MathJax reset quiz render error:', err);
+    });
+  }
+}
 
    function updateManualQuizToolbar() {
   const toolbar = document.getElementById('manual-quiz-toolbar');
