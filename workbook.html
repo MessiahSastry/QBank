@@ -181,6 +181,14 @@
     min-height: 44px;           /* meets iOS/Material touch target */
     box-shadow:0 3px 12px rgba(15,61,107,0.2);
   }
+
+  #group-quiz-options{
+    grid-template-columns:1fr !important;
+  }
+
+  #quiz-generator-toolbar > div:first-child{
+    grid-template-columns:1fr !important;
+  }
 }
   </style>
 
@@ -239,27 +247,37 @@
         </div>
            </div>
 
-      <div id="quiz-generator-toolbar" style="width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
+           <div id="quiz-generator-toolbar" style="width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:end;">
           <div>
             <label for="quiz-question-count" style="display:block; font-weight:700; color:#185496; margin-bottom:5px;">No. of Questions:</label>
             <input type="number" id="quiz-question-count" min="1" value="10" style="width:100%; box-sizing:border-box; padding:10px 12px; border:1.3px solid #bcd6ef; border-radius:8px; color:#12416c; font-weight:600;">
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:7px;">
-            <label style="display:flex; align-items:center; gap:8px; color:#12416c; font-weight:600;">
-              <input type="checkbox" id="quiz-shuffle-questions" style="width:17px; height:17px; accent-color:#1762a7;">
-              Shuffle Questions
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; color:#12416c; font-weight:600;">
-              <input type="checkbox" id="quiz-shuffle-display-options" style="width:17px; height:17px; accent-color:#1762a7;">
-              Shuffle Options
-            </label>
+          <div>
+            <label for="quiz-group-count" style="display:block; font-weight:700; color:#185496; margin-bottom:5px;">No. of Groups:</label>
+            <input type="number" id="quiz-group-count" min="1" max="12" value="4" style="width:100%; box-sizing:border-box; padding:10px 12px; border:1.3px solid #bcd6ef; border-radius:8px; color:#12416c; font-weight:600;">
           </div>
         </div>
 
+        <div style="margin-top:10px;">
+          <label for="quiz-group-names" style="display:block; font-weight:700; color:#185496; margin-bottom:5px;">Group Names:</label>
+          <input type="text" id="quiz-group-names" value="Group A, Group B, Group C, Group D" placeholder="Group A, Group B, Group C, Group D" style="width:100%; box-sizing:border-box; padding:10px 12px; border:1.3px solid #bcd6ef; border-radius:8px; color:#12416c; font-weight:600;">
+        </div>
+
+        <div style="display:flex; gap:18px; flex-wrap:wrap; margin-top:10px;">
+          <label style="display:flex; align-items:center; gap:8px; color:#12416c; font-weight:700;">
+            <input type="checkbox" id="quiz-shuffle-questions" style="width:17px; height:17px; accent-color:#1762a7;" checked>
+            Shuffle Questions
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; color:#12416c; font-weight:700;">
+            <input type="checkbox" id="quiz-shuffle-display-options" style="width:17px; height:17px; accent-color:#1762a7;" checked>
+            Shuffle Options
+          </label>
+        </div>
+
         <button type="button" id="generate-quiz-btn" class="main-btn" style="margin-top:12px;">
-          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Quiz
+          <i class="fa-solid fa-users"></i> Generate Group Quiz
         </button>
 
         <button type="button" id="reset-generated-quiz-btn" style="width:100%; box-sizing:border-box; padding:11px 0; border-radius:6px; border:1.3px solid #bcd6ef; font-size:1.02em; background:#f7fafd; color:#185496; font-weight:bold; cursor:pointer; margin-top:8px;">
@@ -268,7 +286,6 @@
 
         <button type="button" id="create-quiz-btn" style="display:none;"></button>
       </div>
-
            <div id="questions-display-area">
         <p class="no-questions-message">Select filters to view questions.</p>
       </div>
@@ -3210,7 +3227,7 @@ if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
       }
     }
 
-   function __qbCleanOptionText(opt) {
+  function __qbCleanOptionText(opt) {
   return String(opt || '').replace(/^[A-D][).]\s*/, '').trim();
 }
 
@@ -3241,91 +3258,291 @@ async function __qbGetQuestionDataForPreview(docId) {
   return snap.data() || {};
 }
 
-function __qbBuildGeneratedQuizCard(docId, data, qNo, shuffleOptions) {
-  const rawType = String(
-    data.mcqType ||
-    data.type ||
-    (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
-  ).trim();
+function __qbGetGroupNamesForQuiz() {
+  const countInput = document.getElementById('quiz-group-count');
+  const namesInput = document.getElementById('quiz-group-names');
 
-  const rawTypeLower = rawType.toLowerCase();
+  let count = Number(countInput ? countInput.value : 4);
+  if (!Number.isInteger(count) || count < 1) count = 4;
+  if (count > 12) count = 12;
 
-  const normType =
-    (rawTypeLower.includes('assertion') && rawTypeLower.includes('reason')) ? 'Assertion and Reason (MCQ Single)'
-    : (rawTypeLower.includes('multiple')) ? 'MCQ (Multiple)'
-    : (rawTypeLower === 'mcq (single)' || rawTypeLower === 'mcq single') ? 'MCQ (Single)'
-    : (rawTypeLower.includes('fill') && rawTypeLower.includes('blank')) ? 'Fill in the Blanks'
-    : (rawTypeLower.includes('descriptive')) ? 'Descriptive'
-    : rawType;
+  let names = String(namesInput ? namesInput.value : '')
+    .split(',')
+    .map(x => x.trim())
+    .filter(Boolean);
 
-  let options = Array.isArray(data.options) ? __qbNormalizeOptions(data.options) : [];
-
-  let displayData = {
-    ...data,
-    options,
-    answer: data.parsedAnswer || data.answer || data.parsedAns || ''
-  };
-
-  if (shuffleOptions && options.length === 4) {
-    displayData = __qbShuffleQuestionOptions(displayData);
-    options = displayData.options || [];
+  if (!names.length) {
+    names = Array.from({ length: count }, (_, i) => 'Group ' + String.fromCharCode(65 + i));
   }
 
-  if (!window.__pdfQuestionDataMap) window.__pdfQuestionDataMap = {};
-  window.__pdfQuestionDataMap[docId] = {
-    ...data,
-    options: options,
-    parsedAnswer: displayData.answer || data.parsedAnswer || data.answer || '',
-    answer: displayData.answer || data.answer || data.parsedAnswer || ''
-  };
+  while (names.length < count) {
+    names.push('Group ' + String.fromCharCode(65 + names.length));
+  }
+
+  names = names.slice(0, count);
+
+  if (namesInput) namesInput.value = names.join(', ');
+
+  return names.map(name => ({ name, score: 0 }));
+}
+
+function __qbExtractAnswerLetters(answer) {
+  const s = String(answer || '')
+    .replace(/^\s*Answer\s*:\s*/i, '')
+    .replace(/^\s*Ans\s*:\s*/i, '')
+    .toUpperCase()
+    .trim();
+
+  let letters = [];
+
+  const bracketMatches = s.match(/\b[A-D]\b/g);
+  if (bracketMatches) letters.push(...bracketMatches);
+
+  const optionStart = s.match(/^([A-D])[\)\.]/);
+  if (optionStart) letters.push(optionStart[1]);
+
+  letters = [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
+
+  return letters;
+}
+
+function __qbGroupQuizOptionHTML(options) {
+  return options.slice(0, 4).map((opt, i) => {
+    const letter = String.fromCharCode(65 + i);
+    const clean = autoLatexAll(__qbCleanOptionText(opt));
+
+    return `
+      <button type="button"
+        class="group-quiz-option-btn"
+        data-letter="${letter}"
+        onclick="__qbHandleGroupQuizOption(this)"
+        style="
+          width:100%;
+          text-align:left;
+          padding:14px 16px;
+          border:2px solid #bcd6ef;
+          background:#ffffff;
+          color:#123f6b;
+          border-radius:14px;
+          font-size:1.08em;
+          font-weight:800;
+          cursor:pointer;
+          line-height:1.45;
+          box-shadow:0 2px 10px rgba(0,27,68,0.05);
+        ">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#eef6ff;color:#0f3d6b;margin-right:8px;font-weight:900;">${letter}</span>
+        <span>${clean}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function __qbRenderGroupScoreBoard() {
+  const quiz = window.__qbGroupQuizState;
+  if (!quiz || !Array.isArray(quiz.groups)) return '';
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;">
+      ${quiz.groups.map((g, idx) => `
+        <div style="
+          background:${idx === quiz.currentGroupIndex ? '#e8f7ee' : '#f7fafd'};
+          border:2px solid ${idx === quiz.currentGroupIndex ? '#2e9d57' : '#bcd6ef'};
+          border-radius:14px;
+          padding:10px;
+          text-align:center;
+          color:#0f3d6b;
+          font-weight:900;
+        ">
+          <div style="font-size:0.92em;">${__qbEscapeHtml(g.name)}</div>
+          <div style="font-size:1.45em;">${g.score}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function __qbRenderGroupQuiz() {
+  const displayArea = document.getElementById('questions-display-area');
+  const quiz = window.__qbGroupQuizState;
+
+  if (!displayArea || !quiz || !Array.isArray(quiz.questions) || !quiz.questions.length) {
+    alert('Quiz not ready.');
+    return;
+  }
+
+  if (quiz.currentIndex >= quiz.questions.length) {
+    const sortedGroups = [...quiz.groups].sort((a, b) => b.score - a.score);
+    const topScore = sortedGroups.length ? sortedGroups[0].score : 0;
+    const winners = sortedGroups.filter(g => g.score === topScore).map(g => g.name).join(', ');
+
+    displayArea.innerHTML = `
+      <div style="width:100%;max-width:850px;margin:0 auto;background:#fff;border:1.5px solid #d9e8f7;border-radius:18px;box-shadow:0 4px 18px rgba(0,27,68,0.1);padding:22px;box-sizing:border-box;">
+        <div style="text-align:center;color:#0f3d6b;font-size:1.7em;font-weight:900;margin-bottom:8px;">Group Quiz Completed</div>
+        <div style="text-align:center;color:#7A2230;font-size:1.25em;font-weight:900;margin-bottom:18px;">Winner: ${__qbEscapeHtml(winners || 'No Winner')}</div>
+
+        ${__qbRenderGroupScoreBoard()}
+
+        <button type="button" onclick="resetGeneratedQuizQuestions()" class="main-btn" style="margin-top:12px;">
+          Show All Questions Again
+        </button>
+      </div>
+    `;
+    displayArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const q = quiz.questions[quiz.currentIndex];
+  const qNo = quiz.currentIndex + 1;
+  const total = quiz.questions.length;
+
+  const answerLetters = __qbExtractAnswerLetters(q.answer);
+  q.correctLetters = answerLetters;
 
   const questionText = autoLatexAll(
-    String(data.question || data.body || data.text || '')
+    String(q.question || '')
       .replace(/\s*Reason\s*\(R\)\s*:/gi, '\nReason (R): ')
   );
 
-  const optionsHTML = options.length === 4
-    ? `
-      <div style="font-weight:bold;margin-bottom:0;padding-bottom:0;white-space:pre-wrap;">${questionText}</div>
-      <div style="margin-left:18px;">
-        <div>${autoLatexAll(__qbCleanOptionText(options[0]))}</div>
-        <div>${autoLatexAll(__qbCleanOptionText(options[1]))}</div>
-        <div>${autoLatexAll(__qbCleanOptionText(options[2]))}</div>
-        <div>${autoLatexAll(__qbCleanOptionText(options[3]))}</div>
-      </div>
-    `
-    : (data.body || data.text || data.question || '');
+  const groupOptions = quiz.groups.map((g, idx) => `
+    <option value="${idx}" ${idx === quiz.currentGroupIndex ? 'selected' : ''}>${__qbEscapeHtml(g.name)}</option>
+  `).join('');
 
-  return `
-    <div class="question-item"
-      data-id="${docId}"
-      data-level="${data.difficulty || data.level || ''}"
-      data-type="${normType}"
-      data-textbook="${data.isTextbook === true || data.textbook === true ? 'true' : 'false'}"
-      data-chapter="${data.chapter || ''}"
-      data-marks="${(data.marks ?? '')}"
-      style="position:relative;">
-      
-      <div class="question-select-box">
-        <input type="checkbox" class="quiz-question-checkbox" data-id="${docId}">
+  displayArea.innerHTML = `
+    <div style="width:100%;max-width:900px;margin:0 auto;background:#fff;border:1.5px solid #d9e8f7;border-radius:18px;box-shadow:0 4px 18px rgba(0,27,68,0.1);padding:18px;box-sizing:border-box;">
+
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+        <div style="color:#7A2230;font-size:1.2em;font-weight:900;">Question ${qNo} / ${total}</div>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="color:#0f3d6b;font-weight:900;">Answering Group:</label>
+          <select id="group-quiz-current-group" onchange="__qbChangeCurrentGroup(this)" style="padding:9px 12px;border:1.5px solid #bcd6ef;border-radius:10px;color:#0f3d6b;font-weight:800;background:#fff;">
+            ${groupOptions}
+          </select>
+        </div>
       </div>
 
-      <div class="question-meta">
-        Q${qNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s)${(data.mcqType || data.type) ? ` [${data.mcqType || data.type}]` : ''}
+      ${__qbRenderGroupScoreBoard()}
+
+      <div style="background:#f7fafd;border:1.5px solid #d9e8f7;border-radius:16px;padding:18px;margin-bottom:14px;">
+        <div style="color:#0f3d6b;font-size:1.28em;font-weight:900;line-height:1.55;white-space:pre-wrap;">${questionText}</div>
+        ${q.image ? `<img src="${q.image}" style="max-width:260px;max-height:180px;border-radius:10px;margin-top:12px;display:block;">` : ''}
       </div>
 
-      <div class="question-text">
-        ${optionsHTML}
-        ${
-          data.image
-            ? `<img src="${data.image}">`
-            : ''
-        }
+      <div id="group-quiz-options" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        ${__qbGroupQuizOptionHTML(q.options || [])}
       </div>
 
-      <button type="button" class="ask-ai-btn">💡 Explain It</button>
+      <div id="group-quiz-answer-box" style="display:none;background:#fff8e8;border:1.5px solid #f0d08a;border-radius:14px;padding:14px;margin-top:12px;color:#111;line-height:1.6;">
+        <div style="color:#7A2230;font-weight:900;margin-bottom:6px;">Answer: <span id="group-quiz-correct-answer-text"></span></div>
+        <div id="group-quiz-explanation-text"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <button type="button" id="group-quiz-next-btn" onclick="__qbNextGroupQuizQuestion()" disabled style="flex:1;min-width:180px;padding:13px 16px;border:none;border-radius:10px;background:#1762a7;color:#fff;font-size:1.05em;font-weight:900;cursor:pointer;opacity:0.55;">
+          Next Question
+        </button>
+
+        <button type="button" onclick="resetGeneratedQuizQuestions()" style="flex:1;min-width:180px;padding:13px 16px;border:1.5px solid #bcd6ef;border-radius:10px;background:#f7fafd;color:#185496;font-size:1.05em;font-weight:900;cursor:pointer;">
+          Exit Quiz
+        </button>
+      </div>
     </div>
   `;
+
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    window.MathJax.typesetPromise([displayArea]).catch(function(err) {
+      console.error('MathJax group quiz render error:', err);
+    });
+  }
+
+  displayArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function __qbChangeCurrentGroup(sel) {
+  const quiz = window.__qbGroupQuizState;
+  if (!quiz) return;
+  quiz.currentGroupIndex = Number(sel.value || 0);
+  __qbRenderGroupQuiz();
+}
+
+function __qbHandleGroupQuizOption(btn) {
+  const quiz = window.__qbGroupQuizState;
+  if (!quiz || quiz.answered) return;
+
+  const q = quiz.questions[quiz.currentIndex];
+  const selectedLetter = btn.getAttribute('data-letter');
+  const correctLetters = __qbExtractAnswerLetters(q.answer);
+
+  const isCorrect = correctLetters.includes(selectedLetter);
+  quiz.answered = true;
+  quiz.lastSelectedLetter = selectedLetter;
+
+  if (isCorrect && quiz.groups[quiz.currentGroupIndex]) {
+    quiz.groups[quiz.currentGroupIndex].score += 1;
+  }
+
+  document.querySelectorAll('.group-quiz-option-btn').forEach(optionBtn => {
+    const letter = optionBtn.getAttribute('data-letter');
+    optionBtn.disabled = true;
+    optionBtn.style.cursor = 'default';
+
+    if (correctLetters.includes(letter)) {
+      optionBtn.style.background = '#e8f7ee';
+      optionBtn.style.borderColor = '#2e9d57';
+      optionBtn.style.color = '#146b35';
+    } else if (letter === selectedLetter) {
+      optionBtn.style.background = '#fdeaea';
+      optionBtn.style.borderColor = '#c82333';
+      optionBtn.style.color = '#9d1c28';
+    } else {
+      optionBtn.style.opacity = '0.72';
+    }
+  });
+
+  const answerBox = document.getElementById('group-quiz-answer-box');
+  const answerText = document.getElementById('group-quiz-correct-answer-text');
+  const explanationText = document.getElementById('group-quiz-explanation-text');
+
+  const correctOptionTexts = (q.options || [])
+    .filter((opt, i) => correctLetters.includes(String.fromCharCode(65 + i)))
+    .join(', ');
+
+  if (answerText) {
+    answerText.innerHTML = autoLatexAll(correctOptionTexts || q.answer || 'Not available');
+  }
+
+  if (explanationText) {
+    const exp = String(q.explanation || '').trim();
+    explanationText.innerHTML = exp
+      ? '<span style="color:#7A2230;font-weight:900;">Explanation:</span><br>' + autoLatexAll(exp).replace(/\n/g, '<br>')
+      : '<span style="color:#7A2230;font-weight:900;">Explanation:</span> No explanation available.';
+  }
+
+  if (answerBox) answerBox.style.display = 'block';
+
+  const nextBtn = document.getElementById('group-quiz-next-btn');
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '1';
+  }
+
+  const displayArea = document.getElementById('questions-display-area');
+  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+    window.MathJax.typesetPromise([displayArea]).catch(function(err) {
+      console.error('MathJax answer render error:', err);
+    });
+  }
+}
+
+function __qbNextGroupQuizQuestion() {
+  const quiz = window.__qbGroupQuizState;
+  if (!quiz) return;
+
+  quiz.currentIndex += 1;
+  quiz.answered = false;
+  quiz.lastSelectedLetter = null;
+
+  __qbRenderGroupQuiz();
 }
 
 async function generateQuizFromDisplayedQuestions() {
@@ -3358,22 +3575,40 @@ async function generateQuizFromDisplayedQuestions() {
   }
 
   const selectedNodes = sourceNodes.slice(0, count);
-
-  let html = `
-    <div style="width:100%; max-width:650px; margin:0 auto 12px auto; background:#eef6ff; border:1.5px solid #bcd6ef; border-radius:12px; padding:10px 12px; box-sizing:border-box; color:#12416c; font-weight:800; text-align:center;">
-      Generated Quiz: ${selectedNodes.length} Question(s)
-    </div>
-  `;
-
-  let qNo = 1;
+  const questions = [];
 
   for (const node of selectedNodes) {
     const docId = node.getAttribute('data-id');
     if (!docId) continue;
 
     const data = await __qbGetQuestionDataForPreview(docId);
-    html += __qbBuildGeneratedQuizCard(docId, data, qNo, shuffleOptions);
-    qNo++;
+
+    let qObj = {
+      id: docId,
+      question: data.question || data.body || data.text || '',
+      options: __qbNormalizeOptions(data.options || []),
+      answer: data.parsedAnswer || data.answer || data.parsedAns || data.correctAnswer || data.correct_option || data.correctOption || '',
+      explanation: data.explanation || data.solution || data.explain || '',
+      image: data.image || '',
+      level: data.difficulty || data.level || '',
+      marks: data.marks || '',
+      type: data.mcqType || data.type || ''
+    };
+
+    if (!Array.isArray(qObj.options) || qObj.options.length !== 4) {
+      continue;
+    }
+
+    if (shuffleOptions) {
+      qObj = __qbShuffleQuestionOptions(qObj);
+    }
+
+    questions.push(qObj);
+  }
+
+  if (!questions.length) {
+    alert('No valid MCQ questions with 4 options were found for group quiz.');
+    return;
   }
 
   window.__quizSelectionMode = null;
@@ -3381,27 +3616,22 @@ async function generateQuizFromDisplayedQuestions() {
   window.__quizShuffleQuestionOrder = !!shuffleQuestions;
   window.__quizShuffleOptions = !!shuffleOptions;
 
-  displayArea.innerHTML = html;
+  window.__qbGroupQuizState = {
+    questions,
+    groups: __qbGetGroupNamesForQuiz(),
+    currentIndex: 0,
+    currentGroupIndex: 0,
+    answered: false,
+    lastSelectedLetter: null
+  };
 
-  document.querySelectorAll('.question-item').forEach(item => {
-    item.classList.remove('manual-select-mode');
-    const cb = item.querySelector('.quiz-question-checkbox');
-    if (cb) cb.checked = false;
-  });
-
-  bindManualQuizToolbar();
-
-  if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-    window.MathJax.typesetPromise([displayArea]).catch(function(err) {
-      console.error('MathJax generated quiz render error:', err);
-    });
-  }
-
-  displayArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  __qbRenderGroupQuiz();
 }
 
 function resetGeneratedQuizQuestions() {
   const displayArea = document.getElementById('questions-display-area');
+
+  window.__qbGroupQuizState = null;
 
   if (!window.__qbLastQuestionBankHTML) {
     fetchAndDisplayQuestions();
