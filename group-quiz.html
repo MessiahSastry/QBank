@@ -245,6 +245,12 @@
       border-color:var(--blue2);
     }
 
+       .option-btn.multi-selected{
+      background:#eef6ff;
+      border-color:#1762a7;
+      color:#0f3d6b;
+    }
+
     .option-btn:disabled{
       cursor:default;
     }
@@ -380,13 +386,14 @@
   <script>
     const STORAGE_KEY = 'scimentra_group_quiz_payload';
 
-       let quizState = {
+           let quizState = {
       payload: null,
       questions: [],
       groups: [],
       currentIndex: 0,
       currentGroupIndex: 0,
       nextGroupIndex: null,
+      selectedLetters: [],
       answered: false,
       lastSelectedLetter: null
     };
@@ -464,7 +471,35 @@
         if (letters) return [...new Set(letters)];
       }
 
-      return [];
+           return [];
+    }
+
+    function isMultipleQuestion(q){
+      const typeText = String(q?.type || q?.mcqType || '').toLowerCase();
+      const answerLetters = extractAnswerLetters(q?.answer || '', q?.options || []);
+
+      return (
+        typeText.includes('multiple') ||
+        typeText.includes('multi') ||
+        answerLetters.length > 1
+      );
+    }
+
+    function uniqueLetters(arr){
+      return [...new Set(
+        (Array.isArray(arr) ? arr : [])
+          .map(x => String(x || '').toUpperCase().trim())
+          .filter(x => /^[A-D]$/.test(x))
+      )];
+    }
+
+    function sameLetterSet(a, b){
+      const aa = uniqueLetters(a).sort();
+      const bb = uniqueLetters(b).sort();
+
+      if (aa.length !== bb.length) return false;
+
+      return aa.every((x, i) => x === bb[i]);
     }
 
     function renderMath(){
@@ -508,9 +543,10 @@
             { name:'Group D', score:0 }
           ];
 
-            quizState.currentIndex = 0;
+                 quizState.currentIndex = 0;
       quizState.currentGroupIndex = 0;
       quizState.nextGroupIndex = null;
+      quizState.selectedLetters = [];
       quizState.answered = false;
       quizState.lastSelectedLetter = null;
 
@@ -577,13 +613,19 @@
       `).join('');
     }
 
-    function renderQuestionOptions(question){
+       function renderQuestionOptions(question){
+      const isMulti = isMultipleQuestion(question);
+
       return question.options.slice(0, 4).map((opt, i) => {
         const letter = String.fromCharCode(65 + i);
         const clean = escapeHtml(cleanOptionText(opt));
 
         return `
-          <button type="button" class="option-btn" data-letter="${letter}" onclick="handleOptionClick(this)">
+          <button type="button"
+                  class="option-btn"
+                  data-letter="${letter}"
+                  data-multiple="${isMulti ? 'true' : 'false'}"
+                  onclick="handleOptionClick(this)">
             <span class="option-letter">${letter}</span>
             <span>${clean}</span>
           </button>
@@ -620,7 +662,10 @@
 
           ${renderScoreBoard()}
 
-          <div class="question-box">
+                   <div class="question-box">
+            <div style="display:inline-block;background:${isMultipleQuestion(q) ? '#fff8e8' : '#eef6ff'};border:1.5px solid ${isMultipleQuestion(q) ? '#f0d08a' : '#bcd6ef'};color:#7A2230;font-weight:900;border-radius:999px;padding:5px 12px;margin-bottom:10px;">
+              ${isMultipleQuestion(q) ? 'MCQ Multiple: Select all correct options, then submit' : 'MCQ Single: Select one option'}
+            </div>
             <div class="question-text">${escapeHtml(q.question || '').replace(/\n/g, '<br>')}</div>
             ${q.image ? `<img class="question-img" src="${escapeHtml(q.image)}" alt="Question Image">` : ''}
           </div>
@@ -634,7 +679,15 @@
             <div id="explanationText"></div>
           </div>
 
-          <div class="action-row">
+                   <div class="action-row">
+            ${
+              isMultipleQuestion(q)
+                ? `<button type="button" class="main-btn" id="submitMultiBtn" onclick="submitMultipleAnswer()" disabled>
+                    Submit Answer
+                  </button>`
+                : ''
+            }
+
             <button type="button" class="main-btn" id="nextBtn" onclick="nextQuestion()" disabled>
               Next Question
             </button>
@@ -654,7 +707,7 @@
       window.scrollTo({ top:0, behavior:'smooth' });
     }
 
-          function changeCurrentGroup(sel){
+              function changeCurrentGroup(sel){
       const idx = Number(sel.value || 0);
 
       if (quizState.answered) {
@@ -672,6 +725,7 @@
       }
 
       quizState.currentGroupIndex = idx;
+      quizState.selectedLetters = [];
       renderQuiz();
     }
 
@@ -696,22 +750,94 @@
       }
 
       quizState.currentGroupIndex = idx;
+      quizState.selectedLetters = [];
+      renderQuiz();
+    }
+    function selectGroupByBox(index){
+      const idx = Number(index || 0);
+
+      if (quizState.answered) {
+        quizState.nextGroupIndex = idx;
+
+        const select = document.getElementById('currentGroupSelect');
+        if (select) select.value = idx;
+
+        const scoreBoard = document.querySelector('.score-board');
+        if (scoreBoard) scoreBoard.outerHTML = renderScoreBoard();
+
+        const nextBtn = document.getElementById('nextBtn');
+        if (nextBtn && quizState.groups[idx]) {
+          nextBtn.innerHTML = 'Next Question - ' + escapeHtml(quizState.groups[idx].name);
+        }
+
+        return;
+      }
+
+      quizState.currentGroupIndex = idx;
       renderQuiz();
     }
 
-    function handleOptionClick(btn){
+       function handleOptionClick(btn){
       if (quizState.answered) return;
 
       const q = quizState.questions[quizState.currentIndex];
       const selectedLetter = btn.getAttribute('data-letter');
+
+      if (isMultipleQuestion(q)) {
+        const alreadySelected = quizState.selectedLetters.includes(selectedLetter);
+
+        if (alreadySelected) {
+          quizState.selectedLetters = quizState.selectedLetters.filter(x => x !== selectedLetter);
+          btn.classList.remove('multi-selected');
+          btn.style.background = '#ffffff';
+          btn.style.borderColor = '#bcd6ef';
+          btn.style.color = '#123f6b';
+        } else {
+          quizState.selectedLetters.push(selectedLetter);
+          quizState.selectedLetters = uniqueLetters(quizState.selectedLetters);
+          btn.classList.add('multi-selected');
+          btn.style.background = '#eef6ff';
+          btn.style.borderColor = '#1762a7';
+          btn.style.color = '#0f3d6b';
+        }
+
+        const submitBtn = document.getElementById('submitMultiBtn');
+        if (submitBtn) submitBtn.disabled = quizState.selectedLetters.length === 0;
+
+        return;
+      }
+
+      finishQuestionAnswer([selectedLetter]);
+    }
+
+    function submitMultipleAnswer(){
+      if (quizState.answered) return;
+
+      const q = quizState.questions[quizState.currentIndex];
+
+      if (!isMultipleQuestion(q)) return;
+
+      if (!quizState.selectedLetters.length) {
+        alert('Please select at least one option.');
+        return;
+      }
+
+      finishQuestionAnswer(quizState.selectedLetters);
+    }
+
+    function finishQuestionAnswer(selectedLetters){
+      const q = quizState.questions[quizState.currentIndex];
       const correctLetters = extractAnswerLetters(q.answer, q.options || []);
+      const selectedSet = uniqueLetters(selectedLetters);
 
       quizState.answered = true;
-      quizState.lastSelectedLetter = selectedLetter;
+      quizState.lastSelectedLetter = selectedSet.join(', ');
 
-      const isCorrect = correctLetters.includes(selectedLetter);
+      const isFullyCorrect =
+        correctLetters.length > 0 &&
+        sameLetterSet(selectedSet, correctLetters);
 
-      if (isCorrect && quizState.groups[quizState.currentGroupIndex]) {
+      if (isFullyCorrect && quizState.groups[quizState.currentGroupIndex]) {
         quizState.groups[quizState.currentGroupIndex].score += 1;
       }
 
@@ -723,21 +849,29 @@
           optionBtn.style.background = '#e8f7ee';
           optionBtn.style.borderColor = '#2e9d57';
           optionBtn.style.color = '#146b35';
-        } else if (letter === selectedLetter) {
+          optionBtn.style.opacity = '1';
+        } else if (selectedSet.includes(letter)) {
           optionBtn.style.background = '#fdeaea';
           optionBtn.style.borderColor = '#c82333';
           optionBtn.style.color = '#9d1c28';
+          optionBtn.style.opacity = '1';
         } else {
           optionBtn.style.opacity = '0.68';
         }
       });
+
+      const submitBtn = document.getElementById('submitMultiBtn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = isFullyCorrect ? 'Correct Answer' : 'Wrong Answer';
+      }
 
       showAnswer(q, correctLetters);
 
       const nextBtn = document.getElementById('nextBtn');
       if (nextBtn) nextBtn.disabled = false;
 
-           if (quizState.groups.length > 0) {
+      if (quizState.groups.length > 0) {
         quizState.nextGroupIndex = (Number(quizState.currentGroupIndex) + 1) % quizState.groups.length;
       }
 
@@ -784,10 +918,11 @@
       if (answerBox) answerBox.style.display = 'block';
     }
 
-              function nextQuestion(){
+                 function nextQuestion(){
       quizState.currentIndex += 1;
       quizState.answered = false;
       quizState.lastSelectedLetter = null;
+      quizState.selectedLetters = [];
 
       if (quizState.groups.length > 0) {
         if (quizState.nextGroupIndex !== null && quizState.nextGroupIndex !== undefined) {
@@ -843,10 +978,11 @@
       window.scrollTo({ top:0, behavior:'smooth' });
     }
 
-       function restartQuizSameQuestions(){
+           function restartQuizSameQuestions(){
       quizState.currentIndex = 0;
       quizState.currentGroupIndex = 0;
       quizState.nextGroupIndex = null;
+      quizState.selectedLetters = [];
       quizState.answered = false;
       quizState.lastSelectedLetter = null;
       quizState.groups = quizState.groups.map(g => ({ ...g, score:0 }));
