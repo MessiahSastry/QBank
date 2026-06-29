@@ -3299,21 +3299,96 @@ function __qbFirstNonEmptyValue(...values) {
   return '';
 }
 
+function __qbCountAnswerLettersFromTextForPick(answer, options = []) {
+  const raw = String(answer || '').trim();
+  const letters = [];
+
+  let m;
+
+  const optionPrefixRegex = /(?:^|[\s,;|])([A-D])\s*[\)\.]/gi;
+  while ((m = optionPrefixRegex.exec(raw)) !== null) {
+    letters.push(m[1].toUpperCase());
+  }
+
+  const optionWordRegex = /\boptions?\s*([A-D])\b/gi;
+  while ((m = optionWordRegex.exec(raw)) !== null) {
+    letters.push(m[1].toUpperCase());
+  }
+
+  const compact = raw.toUpperCase().replace(/\s+/g, '');
+  if (/^[A-D]([,&\/+]?[A-D])+$/.test(compact)) {
+    compact.match(/[A-D]/g).forEach(x => letters.push(x));
+  }
+
+  const optionList = Array.isArray(options) ? options : [];
+  const rawCompare = __qbNormalizeAnswerCompareText(raw);
+
+  if (rawCompare && optionList.length === 4) {
+    optionList.forEach((opt, i) => {
+      const optCompare = __qbNormalizeAnswerCompareText(__qbCleanOptionText(opt));
+      if (optCompare && rawCompare.includes(optCompare)) {
+        letters.push(String.fromCharCode(65 + i));
+      }
+    });
+  }
+
+  return [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
+}
+
 function __qbPickCorrectAnswerFromData(data) {
-  return __qbFirstNonEmptyValue(
-    data.parsedAnswer,
-    data.answer,
-    data.parsedAns,
+  const options = Array.isArray(data.options) ? data.options : [];
+
+  const candidates = [
+    data.correctAnswers,
+    data.correct_answers,
+    data.correctOptions,
+    data.correct_options,
+    data.answerLetters,
+    data.answerLetter,
+    data.answerKeys,
+    data.answerKey,
+    data.keys,
+    data.key,
+    data.answers,
+    data.correct,
     data.correctAnswer,
     data.correct_answer,
     data.correctOption,
     data.correct_option,
     data.finalAnswer,
-    data.answerKey,
-    data.key,
-    data.correct,
-    data.answers
-  );
+    data.parsedAnswer,
+    data.answer,
+    data.parsedAns
+  ];
+
+  const normalizedCandidates = candidates
+    .map(v => {
+      if (Array.isArray(v)) {
+        return v.map(x => String(x || '').trim()).filter(Boolean).join(', ');
+      }
+      return String(v ?? '').trim();
+    })
+    .filter(Boolean);
+
+  const typeText = String(data.mcqType || data.type || '').toLowerCase();
+  const isMulti = typeText.includes('multiple') || typeText.includes('multi');
+
+  if (isMulti) {
+    let best = '';
+    let bestCount = 0;
+
+    normalizedCandidates.forEach(candidate => {
+      const count = __qbCountAnswerLettersFromTextForPick(candidate, options).length;
+      if (count > bestCount) {
+        best = candidate;
+        bestCount = count;
+      }
+    });
+
+    if (best && bestCount >= 2) return best;
+  }
+
+  return normalizedCandidates[0] || '';
 }
 
 function __qbNormalizeAnswerCompareText(str) {
@@ -3697,11 +3772,17 @@ async function generateQuizFromDisplayedQuestions() {
 
     const data = await __qbGetQuestionDataForPreview(docId);
 
+        const normalizedOptions = __qbNormalizeOptions(data.options || []);
+    const pickedAnswer = __qbPickCorrectAnswerFromData(data);
+    const pickedLetters = __qbExtractAnswerLetters(pickedAnswer, normalizedOptions);
+
     let qObj = {
       id: docId,
       question: data.question || data.body || data.text || '',
-      options: __qbNormalizeOptions(data.options || []),
-      answer: __qbPickCorrectAnswerFromData(data),
+      options: normalizedOptions,
+      answer: pickedLetters.length ? pickedLetters.join(', ') : pickedAnswer,
+      answerText: pickedAnswer,
+      answerLetters: pickedLetters,
       explanation: data.explanation || data.solution || data.explain || '',
       image: data.image || '',
       level: data.difficulty || data.level || '',
