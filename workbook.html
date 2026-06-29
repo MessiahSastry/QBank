@@ -3356,11 +3356,13 @@ function __qbPickCorrectAnswerFromData(data) {
     data.correctOption,
     data.correct_option,
     data.finalAnswer,
-    data.parsedAnswer,
+        data.parsedAnswer,
     data.answer,
-    data.parsedAns
+    data.parsedAns,
+    data.explanation,
+    data.solution,
+    data.explain
   ];
-
   const normalizedCandidates = candidates
     .map(v => {
       if (Array.isArray(v)) {
@@ -3405,18 +3407,47 @@ function __qbNormalizeAnswerCompareText(str) {
 }
 
 function __qbExtractAnswerLetters(answer, options = []) {
+  if (Array.isArray(answer)) {
+    return [...new Set(
+      answer
+        .map(x => String(x || '').toUpperCase().trim())
+        .flatMap(x => x.match(/[A-D]/g) || [])
+        .filter(x => /^[A-D]$/.test(x))
+    )];
+  }
+
   const raw = String(answer || '')
     .replace(/^\s*Answer\s*:\s*/i, '')
     .replace(/^\s*Ans\s*:\s*/i, '')
     .trim();
 
   const optionList = Array.isArray(options) ? options : [];
+  const letters = [];
+  let m;
+
+  const optionPrefixRegex = /(?:^|[\s,;|])([A-D])\s*[\)\.]/gi;
+  while ((m = optionPrefixRegex.exec(raw)) !== null) {
+    letters.push(m[1].toUpperCase());
+  }
+
+  const optionWordRegex = /\boptions?\s*([A-D])\b/gi;
+  while ((m = optionWordRegex.exec(raw)) !== null) {
+    letters.push(m[1].toUpperCase());
+  }
+
+  const compact = raw.toUpperCase().replace(/\s+/g, '');
+
+  if (/^[A-D](,[A-D])*$/.test(compact)) {
+    compact.split(',').forEach(x => letters.push(x));
+  } else if (/^[A-D]([,&\/+]?[A-D])+$/.test(compact)) {
+    compact.match(/[A-D]/g).forEach(x => letters.push(x));
+  }
 
   const rawCompare = __qbNormalizeAnswerCompareText(raw);
 
   if (rawCompare && rawCompare.length > 1 && optionList.length === 4) {
-    for (let i = 0; i < optionList.length; i++) {
-      const optCompare = __qbNormalizeAnswerCompareText(__qbCleanOptionText(optionList[i]));
+    optionList.forEach((opt, i) => {
+      const optCompare = __qbNormalizeAnswerCompareText(__qbCleanOptionText(opt));
 
       if (
         optCompare &&
@@ -3426,35 +3457,18 @@ function __qbExtractAnswerLetters(answer, options = []) {
           optCompare.includes(rawCompare)
         )
       ) {
-        return [String.fromCharCode(65 + i)];
+        letters.push(String.fromCharCode(65 + i));
       }
-    }
+    });
   }
 
-  const compact = raw.toUpperCase().replace(/\s+/g, '');
-
-  if (/^[A-D](,[A-D])*$/.test(compact)) {
-    return [...new Set(compact.split(',').filter(x => /^[A-D]$/.test(x)))];
+  if (raw.length <= 30) {
+    const simpleLetters = raw.toUpperCase().match(/\b[A-D]\b/g);
+    if (simpleLetters) letters.push(...simpleLetters);
   }
 
-  const optionPrefix = raw.match(/^\s*([A-D])[\)\.]/i);
-  if (optionPrefix) {
-    return [optionPrefix[1].toUpperCase()];
-  }
-
-  const optionWord = raw.match(/\bOPTION\s*([A-D])\b/i);
-  if (optionWord) {
-    return [optionWord[1].toUpperCase()];
-  }
-
-  if (raw.length <= 20) {
-    const letters = raw.toUpperCase().match(/\b[A-D]\b/g);
-    if (letters) return [...new Set(letters)];
-  }
-
-  return [];
+  return [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
 }
-
 function __qbGroupQuizOptionHTML(options) {
   return options.slice(0, 4).map((opt, i) => {
     const letter = String.fromCharCode(65 + i);
@@ -4905,10 +4919,12 @@ function __qbShuffleQuestionOptions(questionObj) {
     .map((item, idx) => oldAnswerLetters.includes(item.oldLetter) ? String.fromCharCode(65 + idx) : null)
     .filter(Boolean);
 
-  return {
+    return {
     ...questionObj,
     options: newOptions,
-    answer: newAnswerLetters.length ? newAnswerLetters.join(', ') : originalAnswerRaw
+    answer: newAnswerLetters.length ? newAnswerLetters.join(', ') : originalAnswerRaw,
+    answerLetters: newAnswerLetters,
+    answerText: questionObj.answerText || originalAnswerRaw
   };
 }
 
