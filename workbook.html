@@ -276,8 +276,8 @@
           </label>
         </div>
 
-        <button type="button" id="generate-quiz-btn" class="main-btn" style="margin-top:12px;">
-          <i class="fa-solid fa-users"></i> Generate Group Quiz
+               <button type="button" id="generate-quiz-btn" class="main-btn" style="margin-top:12px;">
+          <i class="fa-solid fa-users"></i> Generate Group Quiz in New Page
         </button>
 
         <button type="button" id="reset-generated-quiz-btn" style="width:100%; box-sizing:border-box; padding:11px 0; border-radius:6px; border:1.3px solid #bcd6ef; font-size:1.02em; background:#f7fafd; color:#185496; font-weight:bold; cursor:pointer; margin-top:8px;">
@@ -3620,7 +3620,6 @@ function __qbNextGroupQuizQuestion() {
 }
 
 async function generateQuizFromDisplayedQuestions() {
-  const displayArea = document.getElementById('questions-display-area');
   const countInput = document.getElementById('quiz-question-count');
   const shuffleQuestions = document.getElementById('quiz-shuffle-questions')?.checked;
   const shuffleOptions = document.getElementById('quiz-shuffle-display-options')?.checked;
@@ -3644,6 +3643,47 @@ async function generateQuizFromDisplayedQuestions() {
     return;
   }
 
+  const quizWindow = window.open('about:blank', '_blank');
+
+  if (!quizWindow) {
+    alert('Popup blocked. Please allow popups for this site and click Generate Group Quiz again.');
+    return;
+  }
+
+  quizWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Opening Group Quiz...</title>
+        <style>
+          body{
+            margin:0;
+            height:100vh;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-family:Segoe UI,Arial,sans-serif;
+            background:#f4f8fc;
+            color:#0f3d6b;
+            text-align:center;
+          }
+          .box{
+            background:#fff;
+            border:1.5px solid #d9e8f7;
+            border-radius:18px;
+            padding:24px 30px;
+            box-shadow:0 4px 18px rgba(0,27,68,0.1);
+            font-weight:800;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="box">Preparing Group Quiz...</div>
+      </body>
+    </html>
+  `);
+  quizWindow.document.close();
+
   if (shuffleQuestions) {
     sourceNodes = __qbShuffleArray(sourceNodes);
   }
@@ -3666,7 +3706,11 @@ async function generateQuizFromDisplayedQuestions() {
       image: data.image || '',
       level: data.difficulty || data.level || '',
       marks: data.marks || '',
-      type: data.mcqType || data.type || ''
+      type: data.mcqType || data.type || '',
+      chapter: data.chapter || '',
+      subject: data.subject || '',
+      board: data.board || '',
+      className: data.class || ''
     };
 
     if (!Array.isArray(qObj.options) || qObj.options.length !== 4) {
@@ -3681,27 +3725,42 @@ async function generateQuizFromDisplayedQuestions() {
   }
 
   if (!questions.length) {
+    quizWindow.close();
     alert('No valid MCQ questions with 4 options were found for group quiz.');
     return;
   }
+
+  const classVal = document.getElementById('class-value')?.value || '';
+  const boardVal = document.getElementById('board-value')?.value || '';
+  const subjectVal = document.getElementById('subject-value')?.value || '';
+  const chapterVal = getMultiSelected('chapter').join(', ') || 'All Chapters';
+  const levelVal = getMultiSelected('level').join(', ') || 'All Levels';
+  const marksVal = getMultiSelected('marks').join(', ') || 'All Marks';
+
+  const quizPayload = {
+    title: 'SciMentra Group Quiz',
+    createdAt: new Date().toISOString(),
+    className: classVal,
+    board: boardVal,
+    subject: subjectVal,
+    chapter: chapterVal,
+    level: levelVal,
+    marks: marksVal,
+    shuffleQuestions: !!shuffleQuestions,
+    shuffleOptions: !!shuffleOptions,
+    groups: __qbGetGroupNamesForQuiz(),
+    questions: questions
+  };
+
+  localStorage.setItem('scimentra_group_quiz_payload', JSON.stringify(quizPayload));
 
   window.__quizSelectionMode = null;
   window.__quizRandomCount = null;
   window.__quizShuffleQuestionOrder = !!shuffleQuestions;
   window.__quizShuffleOptions = !!shuffleOptions;
 
-  window.__qbGroupQuizState = {
-    questions,
-    groups: __qbGetGroupNamesForQuiz(),
-    currentIndex: 0,
-    currentGroupIndex: 0,
-    answered: false,
-    lastSelectedLetter: null
-  };
-
-  __qbRenderGroupQuiz();
+  quizWindow.location.href = 'group-quiz.html';
 }
-
 function resetGeneratedQuizQuestions() {
   const displayArea = document.getElementById('questions-display-area');
 
