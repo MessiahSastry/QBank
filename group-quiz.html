@@ -380,12 +380,13 @@
   <script>
     const STORAGE_KEY = 'scimentra_group_quiz_payload';
 
-    let quizState = {
+       let quizState = {
       payload: null,
       questions: [],
       groups: [],
       currentIndex: 0,
       currentGroupIndex: 0,
+      nextGroupIndex: null,
       answered: false,
       lastSelectedLetter: null
     };
@@ -507,8 +508,9 @@
             { name:'Group D', score:0 }
           ];
 
-      quizState.currentIndex = 0;
+            quizState.currentIndex = 0;
       quizState.currentGroupIndex = 0;
+      quizState.nextGroupIndex = null;
       quizState.answered = false;
       quizState.lastSelectedLetter = null;
 
@@ -543,13 +545,18 @@
       `;
     }
 
-       function renderScoreBoard(){
+          function renderScoreBoard(){
+      const activeIndex =
+        quizState.answered && quizState.nextGroupIndex !== null
+          ? quizState.nextGroupIndex
+          : quizState.currentGroupIndex;
+
       return `
         <div class="score-board">
           ${quizState.groups.map((g, idx) => `
-            <div class="score-card ${idx === quizState.currentGroupIndex ? 'active' : ''}"
+            <div class="score-card ${idx === activeIndex ? 'active' : ''}"
                  onclick="selectGroupByBox(${idx})"
-                 style="${quizState.answered ? 'cursor:default;' : 'cursor:pointer;'}">
+                 style="cursor:pointer;">
               <div class="score-name">${escapeHtml(g.name)}</div>
               <div class="score-num">${g.score}</div>
             </div>
@@ -557,10 +564,14 @@
         </div>
       `;
     }
+        function renderGroupOptions(){
+      const selectedIndex =
+        quizState.answered && quizState.nextGroupIndex !== null
+          ? quizState.nextGroupIndex
+          : quizState.currentGroupIndex;
 
-    function renderGroupOptions(){
       return quizState.groups.map((g, idx) => `
-        <option value="${idx}" ${idx === quizState.currentGroupIndex ? 'selected' : ''}>
+        <option value="${idx}" ${idx === selectedIndex ? 'selected' : ''}>
           ${escapeHtml(g.name)}
         </option>
       `).join('');
@@ -600,7 +611,7 @@
             <div class="question-count">Question ${qNo} / ${total}</div>
 
             <div class="group-select-wrap">
-              <label>Answering Group:</label>
+                            <label>${quizState.answered ? 'Next Group:' : 'Answering Group:'}</label>
               <select id="currentGroupSelect" onchange="changeCurrentGroup(this)">
                 ${renderGroupOptions()}
               </select>
@@ -643,15 +654,48 @@
       window.scrollTo({ top:0, behavior:'smooth' });
     }
 
-       function changeCurrentGroup(sel){
-      if (quizState.answered) return;
-      quizState.currentGroupIndex = Number(sel.value || 0);
+          function changeCurrentGroup(sel){
+      const idx = Number(sel.value || 0);
+
+      if (quizState.answered) {
+        quizState.nextGroupIndex = idx;
+
+        const scoreBoard = document.querySelector('.score-board');
+        if (scoreBoard) scoreBoard.outerHTML = renderScoreBoard();
+
+        const nextBtn = document.getElementById('nextBtn');
+        if (nextBtn && quizState.groups[idx]) {
+          nextBtn.innerHTML = 'Next Question - ' + escapeHtml(quizState.groups[idx].name);
+        }
+
+        return;
+      }
+
+      quizState.currentGroupIndex = idx;
       renderQuiz();
     }
 
     function selectGroupByBox(index){
-      if (quizState.answered) return;
-      quizState.currentGroupIndex = Number(index || 0);
+      const idx = Number(index || 0);
+
+      if (quizState.answered) {
+        quizState.nextGroupIndex = idx;
+
+        const select = document.getElementById('currentGroupSelect');
+        if (select) select.value = idx;
+
+        const scoreBoard = document.querySelector('.score-board');
+        if (scoreBoard) scoreBoard.outerHTML = renderScoreBoard();
+
+        const nextBtn = document.getElementById('nextBtn');
+        if (nextBtn && quizState.groups[idx]) {
+          nextBtn.innerHTML = 'Next Question - ' + escapeHtml(quizState.groups[idx].name);
+        }
+
+        return;
+      }
+
+      quizState.currentGroupIndex = idx;
       renderQuiz();
     }
 
@@ -693,11 +737,25 @@
       const nextBtn = document.getElementById('nextBtn');
       if (nextBtn) nextBtn.disabled = false;
 
+           if (quizState.groups.length > 0) {
+        quizState.nextGroupIndex = (Number(quizState.currentGroupIndex) + 1) % quizState.groups.length;
+      }
+
       const select = document.getElementById('currentGroupSelect');
-      if (select) select.disabled = true;
+      if (select && quizState.nextGroupIndex !== null) {
+        select.disabled = false;
+        select.value = quizState.nextGroupIndex;
+      }
+
+      const groupLabel = document.querySelector('.group-select-wrap label');
+      if (groupLabel) groupLabel.textContent = 'Next Group:';
 
       const scoreBoard = document.querySelector('.score-board');
       if (scoreBoard) scoreBoard.outerHTML = renderScoreBoard();
+
+      if (nextBtn && quizState.nextGroupIndex !== null && quizState.groups[quizState.nextGroupIndex]) {
+        nextBtn.innerHTML = 'Next Question - ' + escapeHtml(quizState.groups[quizState.nextGroupIndex].name);
+      }
 
       renderMath();
     }
@@ -726,18 +784,23 @@
       if (answerBox) answerBox.style.display = 'block';
     }
 
-           function nextQuestion(){
+              function nextQuestion(){
       quizState.currentIndex += 1;
       quizState.answered = false;
       quizState.lastSelectedLetter = null;
 
       if (quizState.groups.length > 0) {
-        quizState.currentGroupIndex = (Number(quizState.currentGroupIndex) + 1) % quizState.groups.length;
+        if (quizState.nextGroupIndex !== null && quizState.nextGroupIndex !== undefined) {
+          quizState.currentGroupIndex = Number(quizState.nextGroupIndex);
+        } else {
+          quizState.currentGroupIndex = (Number(quizState.currentGroupIndex) + 1) % quizState.groups.length;
+        }
       }
+
+      quizState.nextGroupIndex = null;
 
       renderQuiz();
     }
-
     function renderCompleted(){
       const root = document.getElementById('quiz-root');
       const sortedGroups = [...quizState.groups].sort((a, b) => b.score - a.score);
@@ -780,9 +843,10 @@
       window.scrollTo({ top:0, behavior:'smooth' });
     }
 
-    function restartQuizSameQuestions(){
+       function restartQuizSameQuestions(){
       quizState.currentIndex = 0;
       quizState.currentGroupIndex = 0;
+      quizState.nextGroupIndex = null;
       quizState.answered = false;
       quizState.lastSelectedLetter = null;
       quizState.groups = quizState.groups.map(g => ({ ...g, score:0 }));
