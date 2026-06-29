@@ -3286,24 +3286,98 @@ function __qbGetGroupNamesForQuiz() {
   return names.map(name => ({ name, score: 0 }));
 }
 
-function __qbExtractAnswerLetters(answer) {
-  const s = String(answer || '')
+function __qbFirstNonEmptyValue(...values) {
+  for (const v of values) {
+    if (Array.isArray(v)) {
+      const joined = v.map(x => String(x || '').trim()).filter(Boolean).join(', ');
+      if (joined) return joined;
+    } else {
+      const s = String(v ?? '').trim();
+      if (s) return s;
+    }
+  }
+  return '';
+}
+
+function __qbPickCorrectAnswerFromData(data) {
+  return __qbFirstNonEmptyValue(
+    data.parsedAnswer,
+    data.answer,
+    data.parsedAns,
+    data.correctAnswer,
+    data.correct_answer,
+    data.correctOption,
+    data.correct_option,
+    data.finalAnswer,
+    data.answerKey,
+    data.key,
+    data.correct,
+    data.answers
+  );
+}
+
+function __qbNormalizeAnswerCompareText(str) {
+  return String(str || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/^\s*(Answer|Ans)\s*:\s*/i, '')
+    .replace(/^[A-D][).]\s*/i, '')
+    .replace(/\\\(|\\\)|\$|\{|\}/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function __qbExtractAnswerLetters(answer, options = []) {
+  const raw = String(answer || '')
     .replace(/^\s*Answer\s*:\s*/i, '')
     .replace(/^\s*Ans\s*:\s*/i, '')
-    .toUpperCase()
     .trim();
 
-  let letters = [];
+  const optionList = Array.isArray(options) ? options : [];
 
-  const bracketMatches = s.match(/\b[A-D]\b/g);
-  if (bracketMatches) letters.push(...bracketMatches);
+  const rawCompare = __qbNormalizeAnswerCompareText(raw);
 
-  const optionStart = s.match(/^([A-D])[\)\.]/);
-  if (optionStart) letters.push(optionStart[1]);
+  if (rawCompare && rawCompare.length > 1 && optionList.length === 4) {
+    for (let i = 0; i < optionList.length; i++) {
+      const optCompare = __qbNormalizeAnswerCompareText(__qbCleanOptionText(optionList[i]));
 
-  letters = [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
+      if (
+        optCompare &&
+        (
+          rawCompare === optCompare ||
+          rawCompare.includes(optCompare) ||
+          optCompare.includes(rawCompare)
+        )
+      ) {
+        return [String.fromCharCode(65 + i)];
+      }
+    }
+  }
 
-  return letters;
+  const compact = raw.toUpperCase().replace(/\s+/g, '');
+
+  if (/^[A-D](,[A-D])*$/.test(compact)) {
+    return [...new Set(compact.split(',').filter(x => /^[A-D]$/.test(x)))];
+  }
+
+  const optionPrefix = raw.match(/^\s*([A-D])[\)\.]/i);
+  if (optionPrefix) {
+    return [optionPrefix[1].toUpperCase()];
+  }
+
+  const optionWord = raw.match(/\bOPTION\s*([A-D])\b/i);
+  if (optionWord) {
+    return [optionWord[1].toUpperCase()];
+  }
+
+  if (raw.length <= 20) {
+    const letters = raw.toUpperCase().match(/\b[A-D]\b/g);
+    if (letters) return [...new Set(letters)];
+  }
+
+  return [];
 }
 
 function __qbGroupQuizOptionHTML(options) {
@@ -3395,7 +3469,7 @@ function __qbRenderGroupQuiz() {
   const qNo = quiz.currentIndex + 1;
   const total = quiz.questions.length;
 
-  const answerLetters = __qbExtractAnswerLetters(q.answer);
+    const answerLetters = __qbExtractAnswerLetters(q.answer, q.options || []);
   q.correctLetters = answerLetters;
 
   const questionText = autoLatexAll(
@@ -3471,7 +3545,7 @@ function __qbHandleGroupQuizOption(btn) {
 
   const q = quiz.questions[quiz.currentIndex];
   const selectedLetter = btn.getAttribute('data-letter');
-  const correctLetters = __qbExtractAnswerLetters(q.answer);
+   const correctLetters = __qbExtractAnswerLetters(q.answer, q.options || []);
 
   const isCorrect = correctLetters.includes(selectedLetter);
   quiz.answered = true;
@@ -3587,7 +3661,7 @@ async function generateQuizFromDisplayedQuestions() {
       id: docId,
       question: data.question || data.body || data.text || '',
       options: __qbNormalizeOptions(data.options || []),
-      answer: data.parsedAnswer || data.answer || data.parsedAns || data.correctAnswer || data.correct_option || data.correctOption || '',
+      answer: __qbPickCorrectAnswerFromData(data),
       explanation: data.explanation || data.solution || data.explain || '',
       image: data.image || '',
       level: data.difficulty || data.level || '',
@@ -4665,17 +4739,18 @@ function __qbShuffleQuestionOptions(questionObj) {
     return questionObj;
   }
 
-  const rawOptions = questionObj.options.map(opt =>
+  const originalOptions = questionObj.options.map(opt =>
     String(opt || '').replace(/^[A-D][).]\s*/, '').trim()
   );
 
-  const originalAnswer = String(questionObj.answer || '').toUpperCase().replace(/\s+/g, '');
-  const answerLetters = originalAnswer
-    .split(',')
-    .map(x => x.trim())
-    .filter(x => /^[A-D]$/.test(x));
+  const originalAnswerRaw = String(questionObj.answer || questionObj.parsedAnswer || questionObj.parsedAns || '').trim();
 
-  const indexed = rawOptions.map((text, index) => ({
+  const oldAnswerLetters = __qbExtractAnswerLetters(
+    originalAnswerRaw,
+    questionObj.options || []
+  );
+
+  const indexed = originalOptions.map((text, index) => ({
     oldLetter: String.fromCharCode(65 + index),
     text
   }));
@@ -4687,13 +4762,13 @@ function __qbShuffleQuestionOptions(questionObj) {
   });
 
   const newAnswerLetters = shuffled
-    .map((item, idx) => answerLetters.includes(item.oldLetter) ? String.fromCharCode(65 + idx) : null)
+    .map((item, idx) => oldAnswerLetters.includes(item.oldLetter) ? String.fromCharCode(65 + idx) : null)
     .filter(Boolean);
 
   return {
     ...questionObj,
     options: newOptions,
-    answer: newAnswerLetters.join(', ')
+    answer: newAnswerLetters.length ? newAnswerLetters.join(', ') : originalAnswerRaw
   };
 }
 
