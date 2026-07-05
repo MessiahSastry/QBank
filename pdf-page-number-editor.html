@@ -388,7 +388,7 @@
   }
 
     function drawRunningHeader(page, actualPageNo, font, boldFont, options) {
-    const {
+      const {
       chapterHeaderText,
       rightHeaderText,
       headerFontSize,
@@ -396,7 +396,8 @@
       sideMargin,
       themeColor,
       themeRgbParts,
-      pageHeaderStyle
+      pageHeaderStyle,
+      isFirstPdfPage
     } = options;
 
     if (pageHeaderStyle === "noHeader") return;
@@ -407,7 +408,9 @@
     const maxWidth = width - (sideMargin * 2);
 
     if (pageHeaderStyle === "plainText") {
-      if (actualPageNo % 2 === 0) {
+           if (actualPageNo % 2 === 0) {
+        if (isFirstPdfPage) return;
+
         const chapterText = String(chapterHeaderText || "").trim();
         if (!chapterText) return;
 
@@ -443,7 +446,9 @@
     const headerDownShift = 16;
     const barY = height - headerTopMargin - barHeight - headerDownShift;
 
-    if (actualPageNo % 2 === 0) {
+       if (actualPageNo % 2 === 0) {
+      if (isFirstPdfPage) return;
+
       const chapterText = String(chapterHeaderText || "").trim();
       if (!chapterText) return;
 
@@ -533,9 +538,10 @@
         headerFontSize,
         headerTopMargin,
         sideMargin,
-        themeColor,
+                themeColor,
         themeRgbParts,
-        pageHeaderStyle
+        pageHeaderStyle,
+        isFirstPdfPage: index === 0
       });
 
       // Add page number
