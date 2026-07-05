@@ -388,7 +388,7 @@
   }
 
     function drawRunningHeader(page, actualPageNo, font, boldFont, options) {
-      const {
+         const {
       chapterHeaderText,
       rightHeaderText,
       headerFontSize,
@@ -400,7 +400,8 @@
       isFirstPdfPage
     } = options;
 
-    if (pageHeaderStyle === "noHeader") return;
+       if (pageHeaderStyle === "noHeader") return;
+    if (isFirstPdfPage) return;
 
     const { width, height } = page.getSize();
 
