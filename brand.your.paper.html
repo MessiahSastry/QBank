@@ -977,7 +977,7 @@ outPage.drawPage(embedded, { x, y, width: drawW, height: drawH });
   });
 
   // 3) Header (logos + titles) on TOP
-  const logoY = height - 100;
+  const logoY = height - 125; // logos moved little down
 
 if (logo1Img) {
   const logoScale1 = 66 / logo1Img.height;
@@ -1001,7 +1001,7 @@ if (logo2Img) {
   });
 }
 
-  const headingY = logoY + 15;
+  const headingY = height - 85; // title position fixed
   outPage.drawText(schoolName, {
     x: width / 2 - fontBold.widthOfTextAtSize(schoolName, 24) / 2,
     y: headingY + 30, size: 24, font: fontBold, color: PDFLib.rgb(0.10, 0.18, 0.5)
