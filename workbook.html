@@ -3801,7 +3801,7 @@ async function generateQuizFromDisplayedQuestions() {
       image: data.image || '',
       level: data.difficulty || data.level || '',
       marks: data.marks || '',
-      type: data.mcqType || data.type || '',
+      type: (node.getAttribute('data-type') || data.mcqType || data.type || '').trim(),
       chapter: data.chapter || '',
       subject: data.subject || '',
       board: data.board || '',
