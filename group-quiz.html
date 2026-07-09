@@ -488,21 +488,26 @@
       return [...new Set(letters)].filter(x => /^[A-D]$/.test(x));
     }
        function isMultipleQuestion(q){
-      const typeText = String(q?.type || q?.mcqType || '').toLowerCase();
+      const typeText = String(q?.type || q?.mcqType || '').toLowerCase().trim();
+
+      // ✅ If the question type says Single, never treat it as Multiple
+      if (typeText.includes('single')) return false;
+
+      // ✅ If the question type says Multiple, treat it as Multiple
+      if (typeText.includes('multiple') || typeText.includes('multi')) return true;
+
+      // ✅ Only fallback to answer letters when type is missing
       const options = q?.options || [];
 
       const answerLetters = uniqueLetters([
         ...extractAnswerLetters(q?.answerLetters || [], options),
         ...extractAnswerLetters(q?.answer || '', options),
         ...extractAnswerLetters(q?.answerText || '', options),
-        ...extractAnswerLetters(q?.explanation || '', options)
+        ...extractAnswerLetters(q?.correctAnswer || '', options),
+        ...extractAnswerLetters(q?.correctAnswers || '', options)
       ]);
 
-      return (
-        typeText.includes('multiple') ||
-        typeText.includes('multi') ||
-        answerLetters.length > 1
-      );
+      return answerLetters.length > 1;
     }
 
     function uniqueLetters(arr){
@@ -525,27 +530,33 @@
     function getCorrectLettersForQuestion(q){
       const options = q?.options || [];
 
-      const sources = [
+      // ✅ First trust only direct answer fields
+      const directSources = [
         q?.answerLetters || [],
         q?.answer || '',
         q?.answerText || '',
         q?.correctAnswer || '',
-        q?.correctAnswers || '',
-        q?.explanation || '',
-        q?.solution || '',
-        q?.explain || ''
+        q?.correctAnswers || ''
       ];
 
-      let bestLetters = [];
-
-      sources.forEach(src => {
+      for (const src of directSources) {
         const letters = extractAnswerLetters(src, options);
-        if (letters.length > bestLetters.length) {
-          bestLetters = letters;
-        }
-      });
+        if (letters.length) return uniqueLetters(letters);
+      }
 
-      return uniqueLetters(bestLetters);
+      // ✅ Use explanation only as last fallback
+      const fallbackSources = [
+        q?.solution || '',
+        q?.explain || '',
+        q?.explanation || ''
+      ];
+
+      for (const src of fallbackSources) {
+        const letters = extractAnswerLetters(src, options);
+        if (letters.length) return uniqueLetters(letters);
+      }
+
+      return [];
     }
 
     function renderMath(){
