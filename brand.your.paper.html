@@ -521,7 +521,7 @@
   const storage = firebase.storage();
 
 const config = {
-  classes: ["Nursery", "LKG", "UKG", "1st Class", "2nd Class", "3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class"],
+  classes: ["Nursery", "LKG", "UKG", "1st Class", "2nd Class", "3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class", "XI Class", "XII Class"],
   subjectMappings: {
     "Nursery":   ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
     "LKG":       ["Telugu", "English", "Math", "E V S", "Colouring", "Drawing", "Rhymes & Stories"],
@@ -536,7 +536,9 @@ const config = {
     "7th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Science", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
     "8th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Science", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
     "9th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Science", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
-    "10th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Science", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"]
+   "10th Class": ["Telugu", "Hindi", "English", "English 1", "English 2", "Math", "Math 1", "Math 2", "Math 1 IIT", "Math 2 IIT", "Math IIT", "Science", "Physics", "Physics IIT & NEET", "Chemistry", "Chemistry IIT & NEET", "Biology", "Biology NEET", "Social"],
+"XI Class": ["English", "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Accountancy", "Business Studies", "Economics"],
+"XII Class": ["English", "Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Accountancy", "Business Studies", "Economics"]
   }
 };
 function createDropdown(containerId, options, placeholder) {
