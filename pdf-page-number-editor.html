@@ -250,8 +250,25 @@
   </div>
 
   <script>
-  let finalPdfBytes = null;
-  let originalFileName = "numbered-pdf.pdf";
+ let finalPdfBytes = null;
+let originalFileName = "numbered-pdf.pdf";
+
+// Auto-fill Chapter / Lesson Name from uploaded PDF filename
+document.getElementById("pdfFile").addEventListener("change", function () {
+  const file = this.files[0];
+
+  if (!file) {
+    document.getElementById("chapterHeaderText").value = "";
+    return;
+  }
+
+  let chapterName = file.name
+    .replace(/\.pdf$/i, "")             // Remove .pdf extension
+    .replace(/^\s*\d+\s*[.\-_:)]*\s*/, "") // Remove starting number
+    .trim();
+
+  document.getElementById("chapterHeaderText").value = chapterName;
+});
 
   function formatPageNumber(num, style) {
     if (style === "simple") return String(num);
