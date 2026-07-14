@@ -2519,16 +2519,25 @@ function repairOptionLayouts(root = document) {
     }
   });
 }
+
+function formatQuestionText(text) {
     text = text.replace(/^\d+\.\s*/, '');
     text = text.replace(/^.*?,\s*\d+\s+Marks?\s*/i, '');
     text = text.replace(/^Q\d+:[^A-Za-z]*?Marks?\s*/i, '');
     text = text.replace(/^Q\d+:[^A-Za-z0-9]*\s*/, '');
     text = text.replace(/\s*Ans:\s*[A-D]\)?\.?$/, '');
+
     if (text.includes('A)') && text.includes('B)')) {
-        return text.replace(/\s*A\)/g, '\nA)').replace(/\s*B\)/g, '\nB)').replace(/\s*C\)/g, '\nC)').replace(/\s*D\)/g, '\nD)');
+        return text
+            .replace(/\s*A\)/g, '\nA)')
+            .replace(/\s*B\)/g, '\nB)')
+            .replace(/\s*C\)/g, '\nC)')
+            .replace(/\s*D\)/g, '\nD)');
     }
+
     return text;
 }
+
 function stripLeadingLabel(s) {
   let t = String(s).trim();
 
