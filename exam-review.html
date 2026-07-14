@@ -2692,8 +2692,12 @@ try {
       qObj.solution = explanation;
     }
 
-    applied++;
-   setExamPaper(paper);
+       applied++;
+  }
+
+  setExamPaper(paper);
+
+  // Keep preview and QR answer-key data synchronized
 
   // Keep preview and QR answer-key data synchronized
   sessionStorage.setItem(
