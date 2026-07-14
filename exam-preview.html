@@ -340,15 +340,28 @@
         margin-bottom: 24px;
     }
     .toolbar {
-      width: 210mm;
-      max-width: 99vw;
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      margin: 24px auto 12px auto;
-      position: relative;
-      z-index: 11;
-    }
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9998;
+
+  width: auto;
+  max-width: calc(100vw - 30px);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+
+  margin: 0;
+  padding: 10px 12px;
+
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 14px;
+  box-shadow: 0 5px 24px rgba(15, 61, 107, 0.16);
+  box-sizing: border-box;
+}
     .toolbar button {
       background: #1463ad;
       color: #fff;
@@ -900,10 +913,10 @@ mjx-container svg {
 /* Content area leaves space for the page-number footer */
 .exam-page-content {
   position: absolute;
-  top: var(--page-margin, 1.5cm);
-  left: var(--page-margin, 1.5cm);
-  right: var(--page-margin, 1.5cm);
-  bottom: calc(var(--page-margin, 1.5cm) + 8mm);
+  top: var(--exam-page-margin, 1.5cm);
+  left: var(--exam-page-margin, 1.5cm);
+  right: var(--exam-page-margin, 1.5cm);
+  bottom: calc(var(--exam-page-margin, 1.5cm) + 8mm);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -911,16 +924,20 @@ mjx-container svg {
 /* Footer and page number */
 .exam-page-footer {
   position: absolute;
-  left: var(--page-margin, 1.5cm);
-  right: var(--page-margin, 1.5cm);
+  left: var(--exam-page-margin, 1.5cm);
+  right: var(--exam-page-margin, 1.5cm);
   bottom: 5mm;
-  height: 8mm;
+  height: 9mm;
+
   border-top: 1px solid #c9c9c9;
+
   display: flex;
   align-items: flex-end;
-  justify-content: center;
+  justify-content: flex-end;
+
   box-sizing: border-box;
   padding-top: 2mm;
+
   color: #333333;
   font-family: "Times New Roman", Times, serif;
   font-size: 10.5pt;
@@ -929,8 +946,9 @@ mjx-container svg {
 
 .exam-page-number {
   display: block;
-  text-align: center;
+  text-align: right;
   white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 
 /* Used to keep a section heading with its first question */
@@ -946,7 +964,7 @@ mjx-container svg {
 /* Question gap controlled by the existing slider */
 .exam-paginated-page .question-container,
 .exam-paginated-page .paragraph-set-preview {
-  margin-bottom: var(--question-gap, 12px) !important;
+  margin-bottom: var(--exam-question-gap, 12px) !important;
 }
 
 /* Remove the final unnecessary question gap on every page */
@@ -1032,8 +1050,25 @@ mjx-container svg {
     <div id="page-container">
     <div id="print-preview" class="print-preview"></div>
   <div class="toolbar">
-     <button id="print-action-btn"><i class="fas fa-print"></i> Print</button>
-  </div>
+  <button id="print-action-btn">
+    <i class="fas fa-file-pdf"></i> Download PDF
+  </button>
+
+  <select id="page-select" style="
+    min-width:150px;
+    padding:14px 18px;
+    border:2px solid #bcd6ef;
+    border-radius:10px;
+    background:#ffffff;
+    color:#12416c;
+    font-size:1.12em;
+    font-weight:700;
+    cursor:pointer;
+    outline:none;
+  ">
+    <option value="0">Page 1</option>
+  </select>
+</div>
 </div>
  <script>
   function formatSubQuestions(text) {
@@ -2462,14 +2497,20 @@ function changeSchoolPreview(step) {
   syncSchoolNamesFromTextarea(false);
 
   exam.currentSchoolIndex =
-    (exam.currentSchoolIndex + step + exam.schoolNames.length) % exam.schoolNames.length;
+    (
+      exam.currentSchoolIndex +
+      step +
+      exam.schoolNames.length
+    ) % exam.schoolNames.length;
 
-  exam.schoolName = exam.schoolNames[exam.currentSchoolIndex];
+  exam.schoolName =
+    exam.schoolNames[
+      exam.currentSchoolIndex
+    ];
+
   persistPreviewExam();
-
-  updateGap();
-  updateMargin();
   renderPrintPreview();
+  updateSchoolPreviewStatus();
 }
 
 function sanitizeFileName(name) {
@@ -2812,29 +2853,119 @@ function waitForExamImages(root) {
   );
 }
 
+window.__examPageSettings =
+  window.__examPageSettings || [];
+
+window.__examCurrentPageIndex =
+  Number.isInteger(window.__examCurrentPageIndex)
+    ? window.__examCurrentPageIndex
+    : 0;
+
+function getDefaultExamPageSettings() {
+  return {
+    questionGap: 12,
+    margin: 1.5
+  };
+}
+
+function ensureExamPageSettings(pageIndex) {
+  const index = Math.max(
+    0,
+    Number(pageIndex) || 0
+  );
+
+  if (!window.__examPageSettings[index]) {
+    window.__examPageSettings[index] = {
+      ...getDefaultExamPageSettings()
+    };
+  }
+
+  return window.__examPageSettings[index];
+}
+
+function refreshExamPagePicker(totalPages) {
+  const pageSelect =
+    document.getElementById('page-select');
+
+  const safeTotal = Math.max(
+    1,
+    Number(totalPages) || 1
+  );
+
+  window.__examCurrentPageIndex = Math.min(
+    Math.max(
+      0,
+      Number(window.__examCurrentPageIndex) || 0
+    ),
+    safeTotal - 1
+  );
+
+  if (!pageSelect) return;
+
+  pageSelect.innerHTML = Array.from(
+    { length: safeTotal },
+    (_, index) =>
+      `<option value="${index}">Page ${index + 1}</option>`
+  ).join('');
+
+  pageSelect.value =
+    String(window.__examCurrentPageIndex);
+
+  if (
+    typeof updateSliderUIFromPage === 'function'
+  ) {
+    updateSliderUIFromPage();
+  }
+}
+
 function createExamPageShell(pageNumber) {
+  const pageIndex = pageNumber - 1;
+  const settings =
+    ensureExamPageSettings(pageIndex);
+
   const page = document.createElement('div');
 
-  page.className = 'a4-page exam-paginated-page';
-  page.setAttribute('data-page-number', String(pageNumber));
-  page.setAttribute('data-page-index', String(pageNumber - 1));
+  page.className =
+    'a4-page exam-paginated-page';
+
+  page.setAttribute(
+    'data-page-number',
+    String(pageNumber)
+  );
+
+  page.setAttribute(
+    'data-page-index',
+    String(pageIndex)
+  );
+
+  page.style.setProperty(
+    '--exam-page-margin',
+    `${settings.margin}cm`
+  );
+
+  page.style.setProperty(
+    '--exam-question-gap',
+    `${settings.questionGap}px`
+  );
 
   page.innerHTML = `
     <div class="exam-page-content"></div>
 
     <div class="exam-page-footer">
       <span class="exam-page-number">
-        Page ${pageNumber}
+        ${pageNumber} | P a g e
       </span>
     </div>
   `;
 
   return {
     page,
-    content: page.querySelector('.exam-page-content')
+    pageIndex,
+    settings,
+    content:
+      page.querySelector('.exam-page-content')
   };
 }
-
 function isExamQuestionFlowBlock(node) {
   return !!(
     node &&
@@ -2951,13 +3082,14 @@ function getExamFlowBlocks(sourcePage) {
   return blocks;
 }
 
-function applyExamQuestionGap(root) {
+function applyExamQuestionGap(
+  root,
+  settings = getDefaultExamPageSettings()
+) {
   if (!root) return;
 
   const gap =
-    getComputedStyle(document.documentElement)
-      .getPropertyValue('--question-gap')
-      .trim() || '12px';
+    `${Number(settings.questionGap || 12)}px`;
 
   const questionBlocks = [];
 
@@ -3000,25 +3132,28 @@ async function paginateExamPreview(sourcePage, renderId) {
 
   const pages = [];
 
-  function addNewPage() {
-    const shell = createExamPageShell(pages.length + 1);
+ function addNewPage() {
+  const shell =
+    createExamPageShell(pages.length + 1);
 
-    container.appendChild(shell.page);
-    pages.push(shell);
+  container.appendChild(shell.page);
+  pages.push(shell);
 
-    /* Force Chrome to calculate the fixed A4 height */
-    void shell.page.offsetHeight;
-    void shell.content.offsetHeight;
+  void shell.page.offsetHeight;
+  void shell.content.offsetHeight;
 
-    return shell;
-  }
+  return shell;
+}
 
   let currentShell = addNewPage();
 
   for (const block of blocks) {
     if (renderId !== window.__examPreviewRenderId) return;
 
-    applyExamQuestionGap(block);
+   applyExamQuestionGap(
+  block,
+  currentShell.settings
+);
 
     const hadPreviousContent =
       currentShell.content.children.length > 0;
@@ -3035,9 +3170,15 @@ async function paginateExamPreview(sourcePage, renderId) {
       block.remove();
 
       currentShell = addNewPage();
-      currentShell.content.appendChild(block);
 
-      void currentShell.content.offsetHeight;
+applyExamQuestionGap(
+  block,
+  currentShell.settings
+);
+
+currentShell.content.appendChild(block);
+
+void currentShell.content.offsetHeight;
 
       /*
         An individual question should normally be shorter
@@ -3071,32 +3212,54 @@ async function paginateExamPreview(sourcePage, renderId) {
     pages.pop();
   }
 
-  /*
-    Add page numbers after the final page count is known.
-  */
-  const totalPages = pages.length;
+ const totalPages = pages.length;
 
-  pages.forEach((shell, index) => {
-    const pageNumber = index + 1;
+pages.forEach((shell, index) => {
+  const pageNumber = index + 1;
 
-    shell.page.setAttribute(
-      'data-page-number',
-      String(pageNumber)
+  shell.page.setAttribute(
+    'data-page-number',
+    String(pageNumber)
+  );
+
+  shell.page.setAttribute(
+    'data-page-index',
+    String(index)
+  );
+
+  const settings =
+    ensureExamPageSettings(index);
+
+  shell.page.style.setProperty(
+    '--exam-page-margin',
+    `${settings.margin}cm`
+  );
+
+  shell.page.style.setProperty(
+    '--exam-question-gap',
+    `${settings.questionGap}px`
+  );
+
+  const numberBox =
+    shell.page.querySelector(
+      '.exam-page-number'
     );
 
-    shell.page.setAttribute(
-      'data-page-index',
-      String(index)
-    );
+  if (numberBox) {
+    numberBox.textContent =
+      `${pageNumber} | P a g e`;
+  }
+});
 
-    const numberBox =
-      shell.page.querySelector('.exam-page-number');
+window.__examCurrentPageIndex = Math.min(
+  Math.max(
+    0,
+    Number(window.__examCurrentPageIndex) || 0
+  ),
+  Math.max(0, totalPages - 1)
+);
 
-    if (numberBox) {
-      numberBox.textContent =
-        `Page ${pageNumber} of ${totalPages}`;
-    }
-  });
+refreshExamPagePicker(totalPages);
 
   repairOptionLayouts(container);
 
@@ -3775,15 +3938,33 @@ async function handlePrintAction() {
 
   const names = getSchoolNames();
   const btn = document.getElementById('print-action-btn');
+if (names.length <= 1) {
+  updateGap();
+  updateMargin();
 
-  if (names.length <= 1) {
-    updateGap();
-updateMargin();
-renderPrintPreview();
-await waitForPreviewReady();
-    window.print();
-    return;
-  }
+  renderPrintPreview();
+  await waitForPreviewReady();
+
+  const pdfBlob =
+    await exportCurrentPreviewPdfBlob();
+
+  const schoolPart =
+    sanitizeFileName(
+      exam.schoolName || 'School'
+    );
+
+  const examPart =
+    sanitizeFileName(
+      exam.examName || 'Exam_Paper'
+    );
+
+  downloadPreviewBlob(
+    pdfBlob,
+    `${schoolPart}_${examPart}.pdf`
+  );
+
+  return;
+}
 
   if (!window.JSZip) {
     alert('JSZip not loaded.');
@@ -3839,7 +4020,9 @@ await waitForPreviewReady();
 
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = oldHtml || '<i class="fas fa-print"></i> Print';
+     btn.innerHTML =
+  oldHtml ||
+  '<i class="fas fa-file-pdf"></i> Download PDF';
     }
   }
 }
@@ -3918,10 +4101,27 @@ async function renderMathJaxToImages(containerSelector) {
     flex-direction: column;
     align-items: flex-start;
   ">
-    <div style="font-weight:700;color:#12416c;font-size:1.2em;margin-bottom:18px;">
-      <i class="fas fa-sliders-h" style="margin-right:8px;color:#1463ad;"></i>Print Settings
-    </div>
-    <div style="margin-bottom:18px;">
+    <div style="font-weight:700;color:#12416c;font-size:1.2em;margin-bottom:14px;">
+  <i class="fas fa-sliders-h" style="margin-right:8px;color:#1463ad;"></i>
+  Page-wise Print Settings
+</div>
+
+<div style="margin-bottom:16px;width:100%;">
+  <label style="font-weight:600;color:#185496;font-size:0.98em;">
+    Editing Page
+  </label>
+
+  <div id="current-page-label" style="
+    margin-top:6px;
+    color:#12416c;
+    font-weight:700;
+    font-size:1.08em;
+  ">
+    Page 1
+  </div>
+</div>
+
+<div style="margin-bottom:18px;width:100%;">
       <label style="font-weight:600;color:#185496;font-size:1em;">Gap between questions</label>
       <div style="display:flex;align-items:center;gap:10px;">
         <input id="gap-slider" type="range" min="4" max="36" value="12" style="width: 100%;">
@@ -3993,95 +4193,353 @@ async function renderMathJaxToImages(containerSelector) {
   </div>
 
 <script>
-  // Show/hide the settings popup
-  // Show/hide the settings popup
-document.getElementById('floating-settings-btn').onclick = function() {
-  document.getElementById('settings-popup-modal').style.display = 'flex';
-};
-document.getElementById('close-settings-popup').onclick = function() {
-  document.getElementById('settings-popup-modal').style.display = 'none';
-};
+  const floatingSettingsBtn =
+  document.getElementById(
+    'floating-settings-btn'
+  );
 
-// GAP & MARGIN SLIDER LOGIC
-const gapSlider = document.getElementById('gap-slider');
-const gapValue = document.getElementById('gap-slider-value');
-const marginSlider = document.getElementById('margin-slider');
-const marginValue = document.getElementById('margin-slider-value');
+const settingsModal =
+  document.getElementById(
+    'settings-popup-modal'
+  );
 
-let examRepaginateTimer = null;
+const closeSettingsBtn =
+  document.getElementById(
+    'close-settings-popup'
+  );
+
+const pageSelect =
+  document.getElementById('page-select');
+
+const currentPageLabel =
+  document.getElementById(
+    'current-page-label'
+  );
+
+const gapSlider =
+  document.getElementById('gap-slider');
+
+const gapValue =
+  document.getElementById(
+    'gap-slider-value'
+  );
+
+const marginSlider =
+  document.getElementById(
+    'margin-slider'
+  );
+
+const marginValue =
+  document.getElementById(
+    'margin-slider-value'
+  );
+
+function getVisibleExamPageIndex() {
+  const pages = Array.from(
+    document.querySelectorAll(
+      '#print-preview .exam-paginated-page'
+    )
+  );
+
+  if (!pages.length) return 0;
+
+  const viewportCenter =
+    window.innerHeight / 2;
+
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+
+  pages.forEach((page, index) => {
+    const rect =
+      page.getBoundingClientRect();
+
+    const pageCenter =
+      rect.top + rect.height / 2;
+
+    const distance =
+      Math.abs(pageCenter - viewportCenter);
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
+}
+
+function updateSliderUIFromPage() {
+  const settings =
+    ensureExamPageSettings(
+      window.__examCurrentPageIndex
+    );
+
+  if (currentPageLabel) {
+    currentPageLabel.textContent =
+      `Page ${
+        window.__examCurrentPageIndex + 1
+      }`;
+  }
+
+  if (gapSlider) {
+    gapSlider.value =
+      String(settings.questionGap);
+  }
+
+  if (gapValue) {
+    gapValue.textContent =
+      `${settings.questionGap}px`;
+  }
+
+  if (marginSlider) {
+    marginSlider.value =
+      String(settings.margin);
+  }
+
+  if (marginValue) {
+    marginValue.textContent =
+      `${Number(settings.margin).toFixed(1)}cm`;
+  }
+
+  if (pageSelect) {
+    pageSelect.value =
+      String(window.__examCurrentPageIndex);
+  }
+}
+
+function scrollToSelectedExamPage() {
+  const targetPage =
+    document.querySelector(
+      '.exam-paginated-page' +
+      `[data-page-index="` +
+      `${window.__examCurrentPageIndex}"]`
+    );
+
+  if (!targetPage) return;
+
+  const top =
+    targetPage.getBoundingClientRect().top +
+    window.pageYOffset -
+    90;
+
+  window.scrollTo({
+    top,
+    behavior: 'smooth'
+  });
+}
+
+if (floatingSettingsBtn) {
+  floatingSettingsBtn.onclick = function() {
+    window.__examCurrentPageIndex =
+      getVisibleExamPageIndex();
+
+    if (pageSelect) {
+      pageSelect.value =
+        String(
+          window.__examCurrentPageIndex
+        );
+    }
+
+    updateSliderUIFromPage();
+
+    if (settingsModal) {
+      settingsModal.style.display = 'flex';
+    }
+  };
+}
+
+if (closeSettingsBtn) {
+  closeSettingsBtn.onclick = function() {
+    if (settingsModal) {
+      settingsModal.style.display = 'none';
+    }
+  };
+}
+
+if (pageSelect) {
+  pageSelect.addEventListener(
+    'change',
+    function() {
+      window.__examCurrentPageIndex =
+        Math.max(
+          0,
+          Number(this.value) || 0
+        );
+
+      updateSliderUIFromPage();
+      scrollToSelectedExamPage();
+    }
+  );
+}
 
 function updateGap() {
-  const px = Number(gapSlider.value || 12);
+  const settings =
+    ensureExamPageSettings(
+      window.__examCurrentPageIndex
+    );
 
-  gapValue.textContent = px + 'px';
+  settings.questionGap =
+    Number(gapSlider?.value || 12);
 
-  document.documentElement.style.setProperty(
-    '--question-gap',
-    px + 'px'
-  );
+  if (gapValue) {
+    gapValue.textContent =
+      `${settings.questionGap}px`;
+  }
+
+  const targetPage =
+    document.querySelector(
+      '.exam-paginated-page' +
+      `[data-page-index="` +
+      `${window.__examCurrentPageIndex}"]`
+    );
+
+  if (targetPage) {
+    targetPage.style.setProperty(
+      '--exam-question-gap',
+      `${settings.questionGap}px`
+    );
+
+    applyExamQuestionGap(
+      targetPage,
+      settings
+    );
+  }
 }
 
 function updateMargin() {
-  const cm = Number(
-    marginSlider.value || 1.5
-  ).toFixed(1);
+  const settings =
+    ensureExamPageSettings(
+      window.__examCurrentPageIndex
+    );
 
-  marginValue.textContent = cm + 'cm';
+  settings.margin =
+    Number(marginSlider?.value || 1.5);
 
-  document.documentElement.style.setProperty(
-    '--page-margin',
-    cm + 'cm'
+  if (marginValue) {
+    marginValue.textContent =
+      `${settings.margin.toFixed(1)}cm`;
+  }
+
+  const targetPage =
+    document.querySelector(
+      '.exam-paginated-page' +
+      `[data-page-index="` +
+      `${window.__examCurrentPageIndex}"]`
+    );
+
+  if (targetPage) {
+    targetPage.style.setProperty(
+      '--exam-page-margin',
+      `${settings.margin}cm`
+    );
+  }
+}
+
+let examRepaginateTimer = null;
+
+function queueExamRepagination() {
+  const lockedPageIndex =
+    window.__examCurrentPageIndex;
+
+  clearTimeout(examRepaginateTimer);
+
+  examRepaginateTimer = setTimeout(
+    async () => {
+      await renderPrintPreview();
+      await waitForPreviewReady();
+
+      const pageCount =
+        document.querySelectorAll(
+          '#print-preview ' +
+          '.exam-paginated-page'
+        ).length;
+
+      window.__examCurrentPageIndex =
+        Math.min(
+          lockedPageIndex,
+          Math.max(0, pageCount - 1)
+        );
+
+      refreshExamPagePicker(pageCount);
+      updateSliderUIFromPage();
+    },
+    350
   );
 }
 
-function queueExamRepagination() {
-  clearTimeout(examRepaginateTimer);
+gapSlider?.addEventListener(
+  'input',
+  () => {
+    updateGap();
+    queueExamRepagination();
+  }
+);
 
-  examRepaginateTimer = setTimeout(() => {
-    renderPrintPreview();
-  }, 350);
-}
-
-gapSlider.addEventListener('input', () => {
-  updateGap();
-  queueExamRepagination();
-});
-
-marginSlider.addEventListener('input', () => {
-  updateMargin();
-  queueExamRepagination();
-});
+marginSlider?.addEventListener(
+  'input',
+  () => {
+    updateMargin();
+    queueExamRepagination();
+  }
+);
 
 // Set initial values after DOM loaded
-window.addEventListener('DOMContentLoaded', () => {
-  ensureSchoolState();
-  updateGap();
-  updateMargin();
+window.addEventListener(
+  'DOMContentLoaded',
+  async () => {
+    ensureSchoolState();
 
-  const schoolBox = document.getElementById('school-names-list');
-  if (schoolBox) {
-    schoolBox.value = getSchoolNames().join('\n');
+    const schoolBox =
+      document.getElementById(
+        'school-names-list'
+      );
+
+    if (schoolBox) {
+      schoolBox.value =
+        getSchoolNames().join('\n');
+    }
+
+    document
+      .getElementById('apply-school-list-btn')
+      ?.addEventListener('click', () => {
+        syncSchoolNamesFromTextarea(true);
+        renderPrintPreview();
+        updateSchoolPreviewStatus();
+      });
+
+    document
+      .getElementById('prev-school-btn')
+      ?.addEventListener('click', () => {
+        changeSchoolPreview(-1);
+      });
+
+    document
+      .getElementById('next-school-btn')
+      ?.addEventListener('click', () => {
+        changeSchoolPreview(1);
+      });
+
+    document
+      .getElementById('print-action-btn')
+      ?.addEventListener(
+        'click',
+        handlePrintAction
+      );
+
+    updateSchoolPreviewStatus();
+
+    await waitForPreviewReady();
+
+    const pageCount =
+      document.querySelectorAll(
+        '#print-preview ' +
+        '.exam-paginated-page'
+      ).length;
+
+    refreshExamPagePicker(pageCount);
+    updateSliderUIFromPage();
   }
-
- document.getElementById('apply-school-list-btn')?.addEventListener('click', () => {
-  syncSchoolNamesFromTextarea(true);
-  updateGap();
-  updateMargin();
-  renderPrintPreview();
-});
-
-  document.getElementById('prev-school-btn')?.addEventListener('click', () => {
-    changeSchoolPreview(-1);
-  });
-
-  document.getElementById('next-school-btn')?.addEventListener('click', () => {
-    changeSchoolPreview(1);
-  });
-
-  document.getElementById('print-action-btn')?.addEventListener('click', handlePrintAction);
-
-  updateSchoolPreviewStatus();
-});
+);
 </script>
  <style id="ab-pair-style">
   #print-preview .ab-pair{display:block;margin:6px 0 2px}
