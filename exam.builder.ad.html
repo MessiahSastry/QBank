@@ -2113,9 +2113,22 @@ function createMultiSelectDropdown(containerId, options, placeholder, onChange) 
     updateDisplay();
 }
 
+function getMarksPerSelectedSubject() {
+    const totalMaxMarks = Number(
+        document.getElementById('max-marks-input')?.value || 0
+    );
+
+    const selectedSubjectCount = Math.max(
+        1,
+        getSelectedSubjects().length
+    );
+
+    return totalMaxMarks / selectedSubjectCount;
+}
+
 function getFixedPaperSectionPreset() {
     const paperType = getPaperType();
-    const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
+    const maxMarks = getMarksPerSelectedSubject();
 
     const fixedModelsByMarks = {
         25: {
@@ -2307,8 +2320,13 @@ function setSubjectSectionsFromCurrentPaper(sIdx) {
 
 function rebuildFixedPaperSectionsIfChanged() {
     const preset = getFixedPaperSectionPreset();
-    const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
-    const nextKey = preset ? `${getPaperType()}|${maxMarks}` : '';
+    const subjectMaxMarks = getMarksPerSelectedSubject();
+    const subjectCount = Math.max(1, getSelectedSubjects().length);
+
+    const nextKey = preset
+        ? `${getPaperType()}|${subjectMaxMarks}|${subjectCount}`
+        : '';
+
     const previousKey = window._fixedPaperPresetKey || '';
 
     if (nextKey === previousKey) return;
@@ -2954,10 +2972,19 @@ function updateSubjectsSectionsArea() {
         return;
     }
 
-    renderSubjectsSectionsArea(selectedSubjects, selectedClass, selectedBoard);
+   window._fixedPaperPresetKey = '';
 
-    document.getElementById('exam-source-dropdown')
-        ?.dispatchEvent(new Event('change'));
+renderSubjectsSectionsArea(
+    selectedSubjects,
+    selectedClass,
+    selectedBoard
+);
+
+applyPaperTypePreset();
+rebuildFixedPaperSectionsIfChanged();
+
+document.getElementById('exam-source-dropdown')
+    ?.dispatchEvent(new Event('change'));
 }
 
 function getSourceTypeGlobal() {
@@ -3686,7 +3713,7 @@ function buildFairChapterPlan(chapters, totalNeed) {
 }
 function applyPaperTypePreset() {
     const paperType = getPaperType();
-    const maxMarks = Number(document.getElementById('max-marks-input')?.value || 0);
+    const maxMarks = getMarksPerSelectedSubject();
 
     const pinnacleTypes = [
         'Pinnacle Paper',
@@ -4089,7 +4116,10 @@ const selectionMode = getSelectionMode();
                     });
                 }
 
-              const finalPaper = {
+              const subjectMaxMarks =
+    Number(maxMarks || 0) / Math.max(1, subjectsData.length);
+
+const finalPaper = {
     class: selectedClass,
     board: selectedBoard,
     examName,
@@ -4339,7 +4369,7 @@ const cleanPool = manualPool;
 } else {
                         const requiredManualLevelPlan = getFixedSectionLevelPlan({
                 paperType: getPaperType(),
-                maxMarks: Number(maxMarks || 0),
+                maxMarks: subjectMaxMarks,
                 mcqType: sec.mcqType,
                 numQuestions: requestedCount,
                 marksPerQuestion: mPerQ
@@ -4393,7 +4423,7 @@ const cleanPool = manualPool;
 
     const fixedLevelPlan = getFixedSectionLevelPlan({
         paperType: getPaperType(),
-        maxMarks: Number(maxMarks || 0),
+        maxMarks: subjectMaxMarks,
         mcqType: sec.mcqType,
         numQuestions: requestedCount,
         marksPerQuestion: mPerQ
