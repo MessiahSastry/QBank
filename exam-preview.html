@@ -2186,7 +2186,11 @@ async function renderAnswerKeyPageFromUrl() {
     });
 
     if (window.MathJax?.typesetPromise) {
-      MathJax.typesetPromise([document.body]).catch(() => {});
+      MathJax.typesetPromise([document.body])
+  .then(() => {
+    repairOptionLayouts(document);
+  })
+  .catch(() => {});
     }
   } catch (e) {
     console.error('Answer key open failed:', e);
