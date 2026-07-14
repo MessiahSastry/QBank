@@ -727,41 +727,95 @@ mjx-container svg {
   }
 }
 
-/* ✅ Prevent right-side clipping of options in print */
-@media print {
+/* ===== FINAL AUTOMATIC OPTION LAYOUT ===== */
 
-  /* Print has no horizontal scroll — must not clip */
-  #print-preview, .print-preview, .a4-page {
-    overflow: visible !important;
-  }
-
-  /* If options are placed in a single flex row, allow wrapping */
-  .options-block > div {
-    flex-wrap: wrap !important;
-    row-gap: 2px !important;
-    column-gap: 18px !important;   /* reduce gap to fit */
-  }
+.options-block,
+.paragraph-sub-options {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
 }
+
+.paragraph-sub-options {
+  margin-left: 38px;
+  width: calc(100% - 38px);
+  padding-left: 0;
+}
+
+.option-layout {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0 0 2px 0;
+}
+
+/* A B C D in one row */
+.option-layout-4 {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  justify-content: space-between;
+  column-gap: 14px;
+  row-gap: 2px;
+}
+
+/* A B / C D */
+.option-layout-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: 2px;
+}
+
+/* A / B / C / D */
+.option-layout-1 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 2px;
+}
+
+.option-item {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+/* Long options may wrap only in the four-line layout */
+.option-layout-1 .option-item {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.option-item mjx-container {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+}
+
 @media print {
-
-  /* Do not clip right side */
-  #print-preview, .print-preview, .a4-page {
+  #print-preview,
+  .print-preview,
+  .a4-page,
+  .question-body,
+  .options-block,
+  .paragraph-sub-options {
     overflow: visible !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  /* Keep options in one line when possible */
-  .options-block > div {
-    flex-wrap: wrap !important;      /* wrap only if needed */
-    column-gap: 18px !important;     /* smaller gap so it fits */
-    row-gap: 2px !important;
+  .option-layout,
+  .option-item {
+    box-sizing: border-box !important;
   }
 
-  /* IMPORTANT: prevent breaking words/equations inside each option */
-  .options-block > div > span,
-  .options-block > div > div,
-  .options-block > div > span * {
-    white-space: nowrap !important;
-    overflow-wrap: normal !important;
+  .option-layout-1 .option-item {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
     word-break: normal !important;
   }
 }
@@ -1370,8 +1424,11 @@ function __epRenderParagraphSubBlock(mcq = {}, indexOrNumber = 0, includeAnswers
 
       ${
         optionLines.length
-          ? `<div class="paragraph-sub-options">${renderOptionsLayout(optionLines)}</div>`
-          : ''
+  ? `<div
+       class="paragraph-sub-options options-block"
+       data-options="${encodeURIComponent(JSON.stringify(optionLines))}">
+     </div>`
+  : ''
       }
 
       ${
@@ -1450,7 +1507,10 @@ function __epBuildMatchingMatrixPreviewQuestionHtml(q = {}, currentQNum = '') {
           optionLines.length
             ? `
               <div style="font-weight:700;color:#163A63;margin:4px 0 3px 0;">Options:</div>
-                           <div class="options-block" data-options="${encodeURIComponent(JSON.stringify(optionLines))}">${renderOptionsLayout(optionLines)}</div>
+                           <div
+  class="options-block"
+  data-options="${encodeURIComponent(JSON.stringify(optionLines))}">
+</div>
             `
             : ''
         }
@@ -1511,7 +1571,10 @@ function __epBuildMatchingMatrixAnswerKeyHtml(q = {}, subjectName = '') {
           optionLines.length
             ? `
               <div style="font-weight:700;color:#163A63;margin:4px 0 3px 0;">Options:</div>
-              <div class="options-block">${renderOptionsLayout(optionLines)}</div>
+              <div
+  class="options-block"
+  data-options="${encodeURIComponent(JSON.stringify(optionLines))}">
+</div>
             `
             : ''
         }
@@ -2268,103 +2331,190 @@ function fitsInLine(option1, option2, maxWidth = 700) {
     document.body.removeChild(dummy);
     return fits;
 }
- function renderOptionsLayout(optionLines, hostNode) {
-  if (!Array.isArray(optionLines) || optionLines.length === 0) return '';
-
-     const stackHTML = optionLines
-    .map(opt => `<div style="margin-bottom:2px;margin-left:2px;">${formatPreviewOption(String(opt).trim()).replace(/\n/g,'<br>')}</div>`)
-    .join('');
-
-  // Non-4 options -> always stacked
-  if (optionLines.length !== 4) return stackHTML;
-
-  // IMPORTANT: use actual available width of the options area, not full A4 page width
-  const widthSource =
-    hostNode ||
-    document.querySelector('.options-block') ||
-    document.querySelector('.question-body') ||
-    document.querySelector('.a4-page') ||
-    document.body;
-
-  let availableWidth = Math.floor((widthSource.getBoundingClientRect?.().width || 0));
-
-  // If we are measuring from .question-body / .options-block, keep a tiny safety buffer
-  availableWidth = Math.max(220, availableWidth - 8);
-
-  function measureHTML(html) {
-    const probe = document.createElement('div');
-    probe.style.cssText = `
-      visibility:hidden;
-      position:absolute;
-      left:-99999px;
-      top:0;
-      white-space:nowrap;
-      padding:0;
-      margin:0;
-      border:none;
-      font-family:'Times New Roman', Times, serif;
-      font-size:1.15em;
-      line-height:1.22;
-    `;
-    probe.innerHTML = html;
-    document.body.appendChild(probe);
-    const w = probe.getBoundingClientRect().width;
-    probe.remove();
-    return w;
+function renderOptionsLayout(optionLines, hostNode) {
+  if (!Array.isArray(optionLines) || optionLines.length === 0) {
+    return '';
   }
 
-  const rendered = optionLines.map(opt => formatPreviewOption(String(opt).trim()));
-  const optionWidths = rendered.map(html =>
-    measureHTML(`<span style="display:inline-block;white-space:nowrap;">${html}</span>`)
+  const rendered = optionLines.map(option =>
+    formatPreviewOption(String(option || '').trim())
+      .replace(/\n/g, '<br>')
   );
 
-  // ---------- 1) Try all 4 in one row ----------
-  const gap4 = 26;
-  const totalOneRowWidth = optionWidths.reduce((a, b) => a + b, 0) + (gap4 * 3);
-
-  const hasLatex = optionLines.some(opt => /\\\(|\\\[|\$/.test(String(opt)));
-  const isShortLatexSet = hasLatex && optionLines.every(opt => {
-    const s = String(opt)
-      .replace(/^([A-D])\)\s*/, '')
-      .replace(/\\\(|\\\)|\\\[|\\\]/g, '')
-      .replace(/\$/g, '')
-      .replace(/\\[a-zA-Z]+/g, 'x')
-      .replace(/[{}]/g, '')
-      .trim();
-    return s.length <= 10;
-  });
-
-  if ((!hasLatex || isShortLatexSet) && totalOneRowWidth <= availableWidth) {
+  function buildLayout(mode) {
     return `
-      <div style="display:flex;flex-wrap:nowrap;gap:${gap4}px;margin-bottom:3px;width:100%;margin-left:2px;">
-        ${rendered.map(html => `<span style="display:inline-block;white-space:nowrap;">${html}</span>`).join('')}
+      <div class="option-layout option-layout-${mode}" data-option-layout="${mode}">
+        ${rendered.map(html => `
+          <div class="option-item">${html}</div>
+        `).join('')}
       </div>
     `;
   }
 
-  // ---------- 2) Try 2 + 2 ----------
-  const colGap = 24;
-  const colWidth = Math.floor((availableWidth - colGap) / 2);
-
-  // Every single option must fit safely inside one column
-  const fitsTwoCols = optionWidths.every(w => w <= colWidth);
-
-  if (fitsTwoCols) {
-    return `
-      <div class="opt-grid-2x2" style="display:grid;grid-template-columns:1fr 1fr;column-gap:${colGap}px;row-gap:2px;margin-bottom:2px;width:100%;margin-left:2px;">
-        <span style="display:block;width:100%;white-space:nowrap;">${rendered[0]}</span>
-        <span style="display:block;width:100%;white-space:nowrap;">${rendered[1]}</span>
-        <span style="display:block;width:100%;white-space:nowrap;">${rendered[2]}</span>
-        <span style="display:block;width:100%;white-space:nowrap;">${rendered[3]}</span>
-      </div>
-    `;
+  /* Any number other than four must remain one option per line */
+  if (optionLines.length !== 4) {
+    return buildLayout(1);
   }
 
-  // ---------- 3) Otherwise stack all 4 ----------
-  return stackHTML;
+  /*
+    Do not measure before the options block has been inserted into the page.
+    It will be rendered again by doTypeset() with the real hostNode.
+  */
+  if (!hostNode || !hostNode.isConnected) {
+    return buildLayout(1);
+  }
+
+  const hostStyle = window.getComputedStyle(hostNode);
+  const hostRect = hostNode.getBoundingClientRect();
+
+  const paddingLeft = parseFloat(hostStyle.paddingLeft) || 0;
+  const paddingRight = parseFloat(hostStyle.paddingRight) || 0;
+
+  const availableWidth = Math.floor(
+    hostRect.width - paddingLeft - paddingRight - 4
+  );
+
+  if (availableWidth <= 0) {
+    return buildLayout(1);
+  }
+
+  function measureOption(html) {
+    const probe = document.createElement('span');
+
+    probe.style.position = 'fixed';
+    probe.style.left = '-100000px';
+    probe.style.top = '0';
+    probe.style.visibility = 'hidden';
+    probe.style.display = 'inline-block';
+    probe.style.width = 'max-content';
+    probe.style.maxWidth = 'none';
+    probe.style.whiteSpace = 'nowrap';
+    probe.style.margin = '0';
+    probe.style.padding = '0';
+    probe.style.border = '0';
+
+    probe.style.fontFamily =
+      hostStyle.fontFamily || "'Times New Roman', Times, serif";
+
+    probe.style.fontSize =
+      hostStyle.fontSize || '16px';
+
+    probe.style.fontWeight =
+      hostStyle.fontWeight || '400';
+
+    probe.style.fontStyle =
+      hostStyle.fontStyle || 'normal';
+
+    probe.style.letterSpacing =
+      hostStyle.letterSpacing || 'normal';
+
+    probe.style.lineHeight =
+      hostStyle.lineHeight || 'normal';
+
+    probe.innerHTML = html;
+
+    document.body.appendChild(probe);
+
+    const measuredWidth = Math.ceil(
+      probe.getBoundingClientRect().width
+    );
+
+    probe.remove();
+
+    return measuredWidth;
+  }
+
+  const optionWidths = rendered.map(measureOption);
+
+  /* 1. Try all four options in one row */
+  const fourColumnGap = 14;
+  const requiredFourWidth =
+    optionWidths.reduce((total, width) => total + width, 0) +
+    fourColumnGap * 3;
+
+  if (requiredFourWidth <= availableWidth) {
+    return buildLayout(4);
+  }
+
+  /* 2. Try two options per row */
+  const twoColumnGap = 18;
+  const eachColumnWidth =
+    Math.floor((availableWidth - twoColumnGap) / 2);
+
+  const fitsTwoColumns = optionWidths.every(
+    width => width <= eachColumnWidth - 3
+  );
+
+  if (fitsTwoColumns) {
+    return buildLayout(2);
+  }
+
+  /* 3. Otherwise use four separate lines */
+  return buildLayout(1);
 }
 
-function formatQuestionText(text) {
+
+/*
+  Final check after MathJax has rendered.
+  If MathJax makes an option wider, downgrade:
+  4 columns → 2 columns → 1 column.
+*/
+function repairOptionLayouts(root = document) {
+  const scope = root || document;
+
+  scope.querySelectorAll('.option-layout').forEach(layout => {
+    const items = Array.from(
+      layout.querySelectorAll('.option-item')
+    );
+
+    function changeMode(mode) {
+      layout.classList.remove(
+        'option-layout-4',
+        'option-layout-2',
+        'option-layout-1'
+      );
+
+      layout.classList.add(`option-layout-${mode}`);
+      layout.setAttribute('data-option-layout', String(mode));
+    }
+
+    function layoutCrossesRightMargin() {
+      const layoutRect = layout.getBoundingClientRect();
+
+      return (
+        layout.scrollWidth > layout.clientWidth + 1 ||
+        items.some(item => {
+          const itemRect = item.getBoundingClientRect();
+
+          return itemRect.right > layoutRect.right + 1;
+        })
+      );
+    }
+
+    function twoColumnItemOverflows() {
+      return items.some(item =>
+        item.scrollWidth > item.clientWidth + 1
+      );
+    }
+
+    if (
+      layout.classList.contains('option-layout-4') &&
+      layoutCrossesRightMargin()
+    ) {
+      changeMode(2);
+    }
+
+    if (
+      layout.classList.contains('option-layout-2') &&
+      (
+        layoutCrossesRightMargin() ||
+        twoColumnItemOverflows()
+      )
+    ) {
+      changeMode(1);
+    }
+  });
+}
     text = text.replace(/^\d+\.\s*/, '');
     text = text.replace(/^.*?,\s*\d+\s+Marks?\s*/i, '');
     text = text.replace(/^Q\d+:[^A-Za-z]*?Marks?\s*/i, '');
@@ -2830,12 +2980,14 @@ if (window.MathJax && typeof window.MathJax.typesetPromise === 'function' && tar
     });
   }
   dedupePairText(document);
+repairOptionLayouts(target || document);
 });
 
 }
     // No-MathJax fallback
     return Promise.resolve().then(() => {
   dedupePairText(document);
+repairOptionLayouts(target || document);
 });
   }
   if (window.MathJax?.startup?.promise) {
