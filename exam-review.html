@@ -2279,7 +2279,23 @@ document.getElementById('randomize-numbers-btn').onclick = async function() {
         if (!isProbSubject) return;
         const text = (q.text || q.body || q.question || '');
         if (!/\d/.test(text)) return;
-        all.push({ subjIdx, sIdx, qIdx, subject: subjectBlock.subject, sectionLabel: section.label, stem: text, options: Array.isArray(q.options) ? q.options : [] });
+        all.push({
+  subjIdx,
+  sIdx,
+  qIdx,
+  subject: subjectBlock.subject,
+  sectionLabel: section.label,
+  questionType:
+    section.mcqType ||
+    section.label ||
+    (Array.isArray(q.options) && q.options.length === 4
+      ? 'MCQ'
+      : 'Descriptive'),
+  stem: text,
+  options: Array.isArray(q.options) ? q.options : [],
+  answer: q.answer || q.parsedAnswer || q.finalAnswer || '',
+  explanation: q.explanation || q.solution || ''
+});
       });
     });
   });
@@ -2333,38 +2349,97 @@ document.getElementById('randomize-numbers-btn').onclick = async function() {
 
 function buildRandomizePrompt(batchQuestions) {
   const header = `
-You will receive a batch of questions (mostly numerical). For EACH question:
-- Keep the SAME wording/structure; only change numeric values to new reasonable integers (avoid 0/1 unless appropriate).
-- Recompute all options so they match the new numbers.
-- MCQ (Single): exactly one correct option.
-- MCQ (Multiple): 1–4 correct options (you choose per question).
-- Randomize intended correct-count distribution across the batch approximately as:
-  • 20%: 1 correct option
-  • 30%: 2 correct options
-  • 30%: 3 correct options
-  • 20%: 4 correct options (all correct)
-- Never return a question where none of the options are correct.
-- Shuffle options AND ensure the answer letters match the shuffled options.
-- Preserve any TeX/Math formatting already present (e.g., \\( ... \\)).
-- Return STRICT JSON only (no prose, no markdown fences). Each item must be ONE of:
-  • MCQ:
-    { "stem":"<updated question text>", "options":["A","B","C","D"], "answer":["A"] }  // or ["A","C"] for multiple
-  • Descriptive:
-    { "stem":"<updated question text>" }  // no options, no answer
-- Do not include any extra fields.
+You will receive a batch of numerical questions.
+
+For EACH question:
+
+- Keep the SAME concept, wording and structure.
+- Change only the numerical values to new reasonable values.
+- Avoid 0 and 1 unless they are naturally required.
+- Recalculate the complete question after changing the numbers.
+- Recalculate all four MCQ options.
+- Recalculate the correct answer.
+- Recalculate the complete explanation or step-by-step solution.
+- The answer and explanation must match the NEW numerical values.
+- Never retain an answer or explanation belonging to the old values.
+- Keep the same question type shown in "questionType".
+- Do not convert a descriptive question into an MCQ.
+- Do not convert an MCQ into a descriptive question.
+
+For MCQ (Single Correct):
+- Exactly one option must be correct.
+- Return exactly one answer letter.
+
+For MCQ (Multiple Correct):
+- One to four options may be correct.
+- Never create a question with no correct option.
+- Randomize the intended correct-count distribution approximately as:
+  • 20% with 1 correct option
+  • 30% with 2 correct options
+  • 30% with 3 correct options
+  • 20% with 4 correct options
+- Shuffle the options.
+- Recalculate the answer letters after shuffling.
+
+For Descriptive questions:
+- Return the newly calculated final answer.
+- Return a complete explanation or solution.
+- The answer must not be empty.
+- The explanation must not be empty.
+
+Formatting rules:
+- Preserve TeX/Math formatting.
+- Use inline LaTeX delimiters \\( ... \\).
+- Do not use display-math delimiters.
+- Return STRICT JSON only.
+- Do not return prose.
+- Do not use markdown fences.
+- Return the same number of items in the same order.
+
+Every MCQ item must use this exact structure:
+{
+  "stem": "<updated question text>",
+  "options": ["<option A>", "<option B>", "<option C>", "<option D>"],
+  "answer": ["A"],
+  "explanation": "<updated explanation or solution>"
+}
+
+For multiple-correct MCQs, answer may be:
+{
+  "answer": ["A", "C"]
+}
+
+Every descriptive item must use this exact structure:
+{
+  "stem": "<updated question text>",
+  "answer": "<updated final answer>",
+  "explanation": "<updated explanation or step-by-step solution>"
+}
+
+Do not include any fields other than:
+- stem
+- options
+- answer
+- explanation
+
+Return format:
 [
-  { ... }, { ... }, ...
+  { ... },
+  { ... }
 ]
 
-Input items (JSON per line):
+Input items, one JSON object per line:
 `.trim();
 
   const lines = batchQuestions.map((q, idx) => JSON.stringify({
     index: idx + 1,
     subject: q.subject,
     section: q.sectionLabel,
+    questionType: q.questionType,
     stem: q.stem,
-    options: q.options
+    options: q.options,
+    currentAnswer: q.answer,
+    currentExplanation: q.explanation
   })).join('\n');
 
   return `${header}\n${lines}\n`;
@@ -2492,65 +2567,140 @@ try {
     return;
   }
 
-  const backup = JSON.parse(JSON.stringify(paper));
-  let applied = 0;
+   let applied = 0;
 
   for (let i = 0; i < items.length; i++) {
     const { subjIdx, sIdx, qIdx } = currentMap[i];
-    const out = items[i] || {};
-    const stem = (out.stem || '').trim();
-const isMCQ = Array.isArray(out.options) && out.options.length === 4;
-const opts = isMCQ ? out.options.map(x => String(x || '').trim()) : [];
-let ans = Array.isArray(out.answer) ? out.answer.map(x => String(x || '').trim().toUpperCase()) : [];
+       const out = items[i] || {};
 
-const qObj = paper.subjects[subjIdx].sections[sIdx].questions[qIdx];
+    const section =
+      paper.subjects[subjIdx].sections[sIdx];
 
-// Basic stem check
-const validStem = stem.replace(/<[^>]+>/g, '').length >= 3;
-if (validStem) qObj.text = stem;
+    const qObj =
+      section.questions[qIdx];
 
-if (isMCQ) {
-  // MCQ path
-  const validOpts = opts.every(s => s.length > 0);
-  if (validOpts) qObj.options = opts;
+    const stem =
+      String(out.stem || '').trim();
 
-  // Normalize answers (A–D, unique, original order)
-  const seen = new Set();
-  ans = ans.filter(L => /^[A-D]$/.test(L) && !seen.has(L) && (seen.add(L), true));
-  if (ans.length >= 1) qObj.answer = ans.join(ans.length > 1 ? ',' : '');
+    const explanation =
+      String(out.explanation || '').trim();
 
-  // Guard: if options exist but answer missing, keep previous answer if any
-  if (Array.isArray(qObj.options) && qObj.options.length === 4 && !qObj.answer) {
-    const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
-    if (orig?.answer) qObj.answer = orig.answer;
-  }
-} else {
-  // Descriptive path: keep existing answer unless AI gives a new one
-  delete qObj.options;
+    const originalWasMCQ =
+      Array.isArray(qObj.options) &&
+      qObj.options.length === 4;
 
-  if (typeof out.answer === 'string' && out.answer.trim()) {
-    qObj.answer = out.answer.trim();
-  }
-}
-
-// Guard: if stem was emptied by accident, restore original
-if (!qObj.text || !qObj.text.trim()) {
-  const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
-  if (orig?.text || orig?.question) qObj.text = (orig.text || orig.question);
-}
-    if (Array.isArray(qObj.options) && qObj.options.length === 4 && !qObj.answer) {
-      const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
-      if (orig?.answer) qObj.answer = orig.answer;
+    if (stem.replace(/<[^>]+>/g, '').trim().length < 3) {
+      alert(`Item ${i + 1}: Updated question text is missing.`);
+      return;
     }
-    if (!qObj.text || !qObj.text.trim()) {
-      const orig = backup.subjects[subjIdx].sections[sIdx].questions[qIdx];
-      if (orig?.text || orig?.question) qObj.text = (orig.text || orig.question);
+
+    if (!explanation) {
+      alert(`Item ${i + 1}: Updated explanation is missing.`);
+      return;
+    }
+
+    if (originalWasMCQ) {
+      if (!Array.isArray(out.options) || out.options.length !== 4) {
+        alert(`Item ${i + 1}: Exactly four updated options are required.`);
+        return;
+      }
+
+      const opts = out.options.map(option =>
+        String(option == null ? '' : option).trim()
+      );
+
+      if (opts.some(option => !option)) {
+        alert(`Item ${i + 1}: One or more MCQ options are empty.`);
+        return;
+      }
+
+      const rawAnswer = Array.isArray(out.answer)
+        ? out.answer.join(',')
+        : String(out.answer || '');
+
+      const seen = new Set();
+
+      const answerLetters =
+        (rawAnswer.toUpperCase().match(/[A-D]/g) || [])
+          .filter(letter => {
+            if (seen.has(letter)) return false;
+            seen.add(letter);
+            return true;
+          });
+
+      if (!answerLetters.length) {
+        alert(`Item ${i + 1}: Correct MCQ answer is missing.`);
+        return;
+      }
+
+      const questionType =
+        String(
+          section.mcqType ||
+          section.label ||
+          ''
+        ).toLowerCase();
+
+      if (
+        questionType.includes('single') &&
+        answerLetters.length !== 1
+      ) {
+        alert(
+          `Item ${i + 1}: Single Correct MCQ must have exactly one correct answer.`
+        );
+        return;
+      }
+
+      qObj.text = stem;
+      qObj.question = stem;
+      qObj.options = opts;
+
+      qObj.answer = answerLetters.join(',');
+      qObj.parsedAnswer = qObj.answer;
+      qObj.finalAnswer = qObj.answer;
+
+      qObj.explanation = explanation;
+      qObj.solution = explanation;
+
+      qObj.body = [
+        stem,
+        ...opts.map((option, optionIndex) =>
+          `${String.fromCharCode(65 + optionIndex)}) ${option}`
+        )
+      ].join('\n');
+    } else {
+      const descriptiveAnswer =
+        Array.isArray(out.answer)
+          ? out.answer.join(', ')
+          : String(out.answer || '').trim();
+
+      if (!descriptiveAnswer) {
+        alert(`Item ${i + 1}: Updated descriptive answer is missing.`);
+        return;
+      }
+
+      qObj.text = stem;
+      qObj.question = stem;
+      qObj.body = stem;
+
+      delete qObj.options;
+
+      qObj.answer = descriptiveAnswer;
+      qObj.parsedAnswer = descriptiveAnswer;
+      qObj.finalAnswer = descriptiveAnswer;
+
+      qObj.explanation = explanation;
+      qObj.solution = explanation;
     }
 
     applied++;
-  }
+   setExamPaper(paper);
 
-  setExamPaper(paper);
+  // Keep preview and QR answer-key data synchronized
+  sessionStorage.setItem(
+    'finalExamData',
+    JSON.stringify(paper)
+  );
+
   renderExam();
 
   // Update session progress
