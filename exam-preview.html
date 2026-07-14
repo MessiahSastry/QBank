@@ -2590,9 +2590,18 @@ function formatAnswerKeyQuestionHtml(q) {
     .trim();
 
   if (Array.isArray(q.options) && q.options.length) {
-    raw = raw.replace(/\s*A\).*/gis, '').trim();
-  }
+  raw = stripStoredOptionBlock(raw);
+}
 
+raw = raw
+  .replace(
+    /Assertion\s*\(\s*A\s*\)\s*:/i,
+    'Assertion (A): '
+  )
+  .replace(
+    /\s*Reason\s*\(\s*R\s*\)\s*:/i,
+    '\nReason (R): '
+  );
   raw = raw
     .replace(/<\/p>/gi, '<br>')
     .replace(/<p[^>]*>/gi, '')
@@ -3232,6 +3241,29 @@ function formatQuestionText(text) {
     }
 
     return text;
+}
+
+function stripStoredOptionBlock(raw) {
+  const text = String(raw || '');
+
+  /*
+    Detect only a real option such as:
+    A) option text
+
+    Do not detect:
+    Assertion (A):
+  */
+  const optionMatch = text.match(
+    /(?:^|<br\s*\/?>|\r?\n|\s)A\)\s+(?=\S)/i
+  );
+
+  if (!optionMatch) {
+    return text.trim();
+  }
+
+  return text
+    .slice(0, optionMatch.index)
+    .trim();
 }
 
 function stripLeadingLabel(s) {
@@ -4108,7 +4140,16 @@ function renderPrintPreview() {
 
     if (hasShuffledOptions) {
       const raw = (q.question || q.text || '');
-      questionContentHTML = raw.replace(/\s*A\).*/g, '').trim();
+      questionContentHTML = stripStoredOptionBlock(raw)
+  .replace(
+    /Assertion\s*\(\s*A\s*\)\s*:/i,
+    'Assertion (A): '
+  )
+  .replace(
+    /\s*Reason\s*\(\s*R\s*\)\s*:/i,
+    '<br>Reason (R): '
+  )
+  .trim();
       optionLines = q.options.map((opt, idx) => {
         const cleanOpt = stripLeadingLabel(opt);
         return String.fromCharCode(65 + idx) + ') ' + cleanOpt;
