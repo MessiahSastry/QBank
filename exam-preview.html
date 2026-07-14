@@ -843,6 +843,189 @@ mjx-container svg {
     break-after: auto !important;
   }
 }
+/* ===== PAGE-WISE A4 EXAM PREVIEW ===== */
+
+:root {
+  --question-gap: 12px;
+  --page-margin: 1.5cm;
+}
+
+.print-preview.exam-pagewise {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  min-height: 100vh !important;
+  padding: 18px 0 38px 0 !important;
+  background: #eef3f8 !important;
+  overflow-x: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 18px !important;
+  box-sizing: border-box !important;
+}
+
+/* Temporary off-screen page used for MathJax and measurement */
+.exam-source-page {
+  position: absolute;
+  left: -100000px;
+  top: 0;
+  visibility: hidden;
+  width: 210mm;
+  min-height: 297mm;
+  padding: var(--page-margin, 1.5cm);
+  background: #ffffff;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* Actual visible and printable A4 page */
+.a4-page.exam-paginated-page {
+  position: relative !important;
+  display: block !important;
+  width: 210mm !important;
+  min-width: 210mm !important;
+  max-width: 210mm !important;
+  height: 297mm !important;
+  min-height: 297mm !important;
+  max-height: 297mm !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  background: #ffffff !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  border-radius: 2px !important;
+  box-shadow: 0 4px 20px rgba(0, 27, 68, 0.14) !important;
+}
+
+/* Content area leaves space for the page-number footer */
+.exam-page-content {
+  position: absolute;
+  top: var(--page-margin, 1.5cm);
+  left: var(--page-margin, 1.5cm);
+  right: var(--page-margin, 1.5cm);
+  bottom: calc(var(--page-margin, 1.5cm) + 8mm);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Footer and page number */
+.exam-page-footer {
+  position: absolute;
+  left: var(--page-margin, 1.5cm);
+  right: var(--page-margin, 1.5cm);
+  bottom: 5mm;
+  height: 8mm;
+  border-top: 1px solid #c9c9c9;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+  padding-top: 2mm;
+  color: #333333;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 10.5pt;
+  line-height: 1;
+}
+
+.exam-page-number {
+  display: block;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Used to keep a section heading with its first question */
+.exam-flow-group {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Question gap controlled by the existing slider */
+.exam-paginated-page .question-container,
+.exam-paginated-page .paragraph-set-preview {
+  margin-bottom: var(--question-gap, 12px) !important;
+}
+
+/* Remove the final unnecessary question gap on every page */
+.exam-paginated-page .exam-page-content > :last-child,
+.exam-paginated-page .exam-page-content > :last-child .question-container:last-child,
+.exam-paginated-page .exam-page-content > :last-child .paragraph-set-preview:last-child {
+  margin-bottom: 0 !important;
+}
+
+@media (max-width: 800px) {
+  .print-preview.exam-pagewise {
+    align-items: flex-start !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .a4-page.exam-paginated-page {
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    padding: 0 !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  #print-preview.exam-pagewise {
+    display: block !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .a4-page.exam-paginated-page {
+    position: relative !important;
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .a4-page.exam-paginated-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .exam-page-footer {
+    color: #000000 !important;
+    border-top-color: #777777 !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -2284,10 +2467,9 @@ function changeSchoolPreview(step) {
   exam.schoolName = exam.schoolNames[exam.currentSchoolIndex];
   persistPreviewExam();
 
-  renderPrintPreview();
   updateGap();
   updateMargin();
-  updateSchoolPreviewStatus();
+  renderPrintPreview();
 }
 
 function sanitizeFileName(name) {
@@ -2576,11 +2758,400 @@ function formatPreviewOption(opt) {
     n.innerHTML = stripABPrefix(String(n.innerHTML));
   });
 }
-function renderPrintPreview() {
-  const container = document.getElementById('print-preview');
-  container.innerHTML = '';
+window.__examPreviewReadyPromise = Promise.resolve();
+window.__examPreviewRenderId = 0;
+
+function waitForExamMathJax(maxWaitMs = 5000) {
+  return new Promise(resolve => {
+    const startedAt = Date.now();
+
+    function check() {
+      if (
+        window.MathJax &&
+        typeof window.MathJax.typesetPromise === 'function'
+      ) {
+        const startupPromise =
+          window.MathJax.startup &&
+          window.MathJax.startup.promise
+            ? window.MathJax.startup.promise
+            : Promise.resolve();
+
+        Promise.resolve(startupPromise)
+          .catch(() => {})
+          .then(resolve);
+
+        return;
+      }
+
+      if (Date.now() - startedAt >= maxWaitMs) {
+        resolve();
+        return;
+      }
+
+      setTimeout(check, 50);
+    }
+
+    check();
+  });
+}
+
+function waitForExamImages(root) {
+  if (!root) return Promise.resolve();
+
+  const images = Array.from(root.querySelectorAll('img'));
+
+  return Promise.all(
+    images.map(img => {
+      if (img.complete) return Promise.resolve();
+
+      return new Promise(resolve => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    })
+  );
+}
+
+function createExamPageShell(pageNumber) {
   const page = document.createElement('div');
-  page.className = 'a4-page';
+
+  page.className = 'a4-page exam-paginated-page';
+  page.setAttribute('data-page-number', String(pageNumber));
+  page.setAttribute('data-page-index', String(pageNumber - 1));
+
+  page.innerHTML = `
+    <div class="exam-page-content"></div>
+
+    <div class="exam-page-footer">
+      <span class="exam-page-number">
+        Page ${pageNumber}
+      </span>
+    </div>
+  `;
+
+  return {
+    page,
+    content: page.querySelector('.exam-page-content')
+  };
+}
+
+function isExamQuestionFlowBlock(node) {
+  return !!(
+    node &&
+    node.nodeType === 1 &&
+    node.matches(
+      '.question-container, .paragraph-set-preview'
+    )
+  );
+}
+
+function isExamSubjectHeading(node) {
+  if (!node || node.nodeType !== 1) return false;
+
+  return /^Subject\s*:/i.test(
+    String(node.textContent || '').trim()
+  );
+}
+
+function createExamFlowGroup() {
+  const group = document.createElement('div');
+  group.className = 'exam-flow-group';
+  return group;
+}
+
+function getExamFlowBlocks(sourcePage) {
+  const nodes = Array.from(sourcePage.children).filter(node => {
+    return (
+      node.nodeType === 1 &&
+      !node.classList.contains('print-footer-spacer') &&
+      !node.classList.contains('exam-page-footer')
+    );
+  });
+
+  const blocks = [];
+  let index = 0;
+
+  while (index < nodes.length) {
+    const node = nodes[index];
+
+    /*
+      Keep the school heading and examination-details
+      box together on the first page.
+    */
+    if (
+      node.classList.contains('heading-row') &&
+      nodes[index + 1] &&
+      nodes[index + 1].classList.contains('details-rect')
+    ) {
+      const group = createExamFlowGroup();
+
+      group.classList.add('exam-first-page-header');
+      group.appendChild(node);
+      group.appendChild(nodes[index + 1]);
+
+      blocks.push(group);
+      index += 2;
+      continue;
+    }
+
+    /*
+      Keep a subject heading, section heading and first
+      question together whenever possible.
+    */
+    if (isExamSubjectHeading(node)) {
+      const group = createExamFlowGroup();
+      group.appendChild(node);
+      index += 1;
+
+      if (
+        nodes[index] &&
+        nodes[index].classList.contains('section-block')
+      ) {
+        group.appendChild(nodes[index]);
+        index += 1;
+      }
+
+      if (
+        nodes[index] &&
+        isExamQuestionFlowBlock(nodes[index])
+      ) {
+        group.appendChild(nodes[index]);
+        index += 1;
+      }
+
+      blocks.push(group);
+      continue;
+    }
+
+    /*
+      Keep every section heading with its first question.
+    */
+    if (node.classList.contains('section-block')) {
+      const group = createExamFlowGroup();
+
+      group.appendChild(node);
+      index += 1;
+
+      if (
+        nodes[index] &&
+        isExamQuestionFlowBlock(nodes[index])
+      ) {
+        group.appendChild(nodes[index]);
+        index += 1;
+      }
+
+      blocks.push(group);
+      continue;
+    }
+
+    blocks.push(node);
+    index += 1;
+  }
+
+  return blocks;
+}
+
+function applyExamQuestionGap(root) {
+  if (!root) return;
+
+  const gap =
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--question-gap')
+      .trim() || '12px';
+
+  const questionBlocks = [];
+
+  if (
+    root.nodeType === 1 &&
+    root.matches(
+      '.question-container, .paragraph-set-preview'
+    )
+  ) {
+    questionBlocks.push(root);
+  }
+
+  root.querySelectorAll(
+    '.question-container, .paragraph-set-preview'
+  ).forEach(node => {
+    questionBlocks.push(node);
+  });
+
+  questionBlocks.forEach(node => {
+    node.style.setProperty(
+      'margin-bottom',
+      gap,
+      'important'
+    );
+  });
+}
+
+async function paginateExamPreview(sourcePage, renderId) {
+  if (!sourcePage || !sourcePage.isConnected) return;
+
+  await waitForExamImages(sourcePage);
+
+  if (renderId !== window.__examPreviewRenderId) return;
+
+  const container = document.getElementById('print-preview');
+  const blocks = getExamFlowBlocks(sourcePage);
+
+  sourcePage.remove();
+  container.innerHTML = '';
+
+  const pages = [];
+
+  function addNewPage() {
+    const shell = createExamPageShell(pages.length + 1);
+
+    container.appendChild(shell.page);
+    pages.push(shell);
+
+    /* Force Chrome to calculate the fixed A4 height */
+    void shell.page.offsetHeight;
+    void shell.content.offsetHeight;
+
+    return shell;
+  }
+
+  let currentShell = addNewPage();
+
+  for (const block of blocks) {
+    if (renderId !== window.__examPreviewRenderId) return;
+
+    applyExamQuestionGap(block);
+
+    const hadPreviousContent =
+      currentShell.content.children.length > 0;
+
+    currentShell.content.appendChild(block);
+
+    void currentShell.content.offsetHeight;
+
+    const overflowed =
+      currentShell.content.scrollHeight >
+      currentShell.content.clientHeight + 1;
+
+    if (overflowed && hadPreviousContent) {
+      block.remove();
+
+      currentShell = addNewPage();
+      currentShell.content.appendChild(block);
+
+      void currentShell.content.offsetHeight;
+
+      /*
+        An individual question should normally be shorter
+        than a page. This class helps identify an unusually
+        large question in the console or Elements panel.
+      */
+      if (
+        currentShell.content.scrollHeight >
+        currentShell.content.clientHeight + 1
+      ) {
+        block.classList.add('exam-oversize-block');
+        console.warn(
+          'A single exam block is taller than one A4 page:',
+          block
+        );
+      }
+    }
+  }
+
+  /*
+    Remove an accidental empty final page.
+  */
+  const lastShell = pages[pages.length - 1];
+
+  if (
+    pages.length > 1 &&
+    lastShell &&
+    lastShell.content.children.length === 0
+  ) {
+    lastShell.page.remove();
+    pages.pop();
+  }
+
+  /*
+    Add page numbers after the final page count is known.
+  */
+  const totalPages = pages.length;
+
+  pages.forEach((shell, index) => {
+    const pageNumber = index + 1;
+
+    shell.page.setAttribute(
+      'data-page-number',
+      String(pageNumber)
+    );
+
+    shell.page.setAttribute(
+      'data-page-index',
+      String(index)
+    );
+
+    const numberBox =
+      shell.page.querySelector('.exam-page-number');
+
+    if (numberBox) {
+      numberBox.textContent =
+        `Page ${pageNumber} of ${totalPages}`;
+    }
+  });
+
+  repairOptionLayouts(container);
+
+  container
+    .querySelectorAll('.exam-page-content')
+    .forEach(content => {
+      const lastChild = content.lastElementChild;
+
+      if (!lastChild) return;
+
+      if (
+        lastChild.matches(
+          '.question-container, .paragraph-set-preview'
+        )
+      ) {
+        lastChild.style.setProperty(
+          'margin-bottom',
+          '0px',
+          'important'
+        );
+      }
+
+      const finalQuestion = lastChild.querySelector(
+        '.question-container:last-child, ' +
+        '.paragraph-set-preview:last-child'
+      );
+
+      if (finalQuestion) {
+        finalQuestion.style.setProperty(
+          'margin-bottom',
+          '0px',
+          'important'
+        );
+      }
+    });
+}
+
+function renderPrintPreview() {
+  const renderId = ++window.__examPreviewRenderId;
+
+  const container =
+    document.getElementById('print-preview');
+
+  container.innerHTML = '';
+  container.classList.add(
+    'exam-pagewise',
+    'mjx-process'
+  );
+
+  const page = document.createElement('div');
+  page.className = 'exam-source-page';
+  page.setAttribute(
+    'data-preview-render-id',
+    String(renderId)
+  );
 
     page.innerHTML = `
     <div class="heading-row">
@@ -2921,20 +3492,16 @@ if (section.questions && section.questions.length > 0) {
     }
   }
 
-   page.innerHTML += contentHTML;
-  page.innerHTML += `<div class="print-footer-spacer"></div>`;
-    container.appendChild(page);
+    page.innerHTML += contentHTML;
+  container.appendChild(page);
 
-     if (exam.includeQrInPrint) {
-    setTimeout(() => {
-      renderAnswerKeyQR(exam);
-    }, 300);
-  }
+  // Internal-choice A/B auto-splitting remains disabled.
+  // setTimeout(() => { insertManualOrBoxes(page); }, 0);
 
-  // NOTE: Internal-choice A/B auto-splitting is disabled in preview for now.
-  // setTimeout(()=>{ insertManualOrBoxes(page); },0);
-
-  container.classList.add('mjx-process');
+  container.classList.add(
+    'exam-pagewise',
+    'mjx-process'
+  );
 
    function doTypeset() {
     // Build options HTML BEFORE MathJax
@@ -3003,19 +3570,52 @@ repairOptionLayouts(target || document);
 repairOptionLayouts(target || document);
 });
   }
-  if (window.MathJax?.startup?.promise) {
-    window.MathJax.startup.promise.then(doTypeset);
-  } else if (window.MathJax?.typesetPromise) {
-    doTypeset();
-  } else {
-    const iv = setInterval(() => {
-      if (window.MathJax?.typesetPromise) {
-        clearInterval(iv);
-        doTypeset();
-      }
-    }, 50);
-    setTimeout(() => clearInterval(iv), 5000);
-  }
+    window.__examPreviewReadyPromise =
+    waitForExamMathJax()
+      .then(() => doTypeset())
+      .then(async () => {
+        if (
+          renderId !== window.__examPreviewRenderId ||
+          !page.isConnected
+        ) {
+          return;
+        }
+
+        await paginateExamPreview(page, renderId);
+
+        if (
+          renderId !== window.__examPreviewRenderId
+        ) {
+          return;
+        }
+
+        /*
+          Generate the QR only after the school header has
+          been moved into the final first A4 page.
+        */
+        if (exam.includeQrInPrint) {
+          await renderAnswerKeyQR(exam);
+        }
+      })
+      .catch(async error => {
+        console.error(
+          'Page-wise preview failed:',
+          error
+        );
+
+        /*
+          Even when MathJax has a problem, create the
+          page-wise preview with the available content.
+        */
+        if (
+          renderId === window.__examPreviewRenderId &&
+          page.isConnected
+        ) {
+          await paginateExamPreview(page, renderId);
+        }
+      });
+
+  return window.__examPreviewReadyPromise;
 }
 
 
@@ -3067,61 +3667,98 @@ function insertManualOrBoxes(root=document){
 })();
    
 async function waitForPreviewReady() {
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-  if (exam.includeQrInPrint) {
-    await new Promise(resolve => setTimeout(resolve, 700));
+  try {
+    if (window.__examPreviewReadyPromise) {
+      await window.__examPreviewReadyPromise;
+    }
+  } catch (error) {
+    console.error(
+      'Preview readiness error:',
+      error
+    );
   }
 
-  if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
-    try {
-      await MathJax.typesetPromise([document.getElementById('print-preview')]);
-    } catch (e) {}
-  }
+  const preview =
+    document.getElementById('print-preview');
 
-  await new Promise(resolve => setTimeout(resolve, 150));
+  await waitForExamImages(preview);
+
+  await new Promise(resolve => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(resolve);
+    });
+  });
+
+  await new Promise(resolve => {
+    setTimeout(resolve, 100);
+  });
 }
 
 async function exportCurrentPreviewPdfBlob() {
-  const pageEl = document.querySelector('.a4-page');
-  if (!pageEl) throw new Error('Preview page not found');
+  await waitForPreviewReady();
 
-  const canvas = await html2canvas(pageEl, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-    scrollX: 0,
-    scrollY: -window.scrollY,
-    windowWidth: pageEl.scrollWidth,
-    windowHeight: pageEl.scrollHeight
+  const pages = Array.from(
+    document.querySelectorAll(
+      '#print-preview .a4-page.exam-paginated-page'
+    )
+  );
+
+  if (!pages.length) {
+    throw new Error(
+      'No page-wise preview pages were found'
+    );
+  }
+
+  const { jsPDF } = window.jspdf;
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true
   });
 
-  const imgData = canvas.toDataURL('image/png');
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p', 'mm', 'a4');
+  for (let index = 0; index < pages.length; index++) {
+    const page = pages[index];
 
-  const pdfWidth = 210;
-  const pdfHeight = 297;
-  const imgWidth = pdfWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    await waitForExamImages(page);
 
-  let heightLeft = imgHeight;
-  let position = 0;
+    if (index > 0) {
+      pdf.addPage('a4', 'portrait');
+    }
 
-  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-  heightLeft -= pdfHeight;
+    const canvas = await html2canvas(page, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: page.scrollWidth,
+      windowHeight: page.scrollHeight
+    });
 
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-    heightLeft -= pdfHeight;
+    const imageData =
+      canvas.toDataURL('image/jpeg', 0.96);
+
+    pdf.addImage(
+      imageData,
+      'JPEG',
+      0,
+      0,
+      210,
+      297,
+      undefined,
+      'FAST'
+    );
   }
 
   return pdf.output('blob');
 }
 
 function downloadPreviewBlob(blob, filename) {
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -3140,10 +3777,10 @@ async function handlePrintAction() {
   const btn = document.getElementById('print-action-btn');
 
   if (names.length <= 1) {
-    renderPrintPreview();
     updateGap();
-    updateMargin();
-    await waitForPreviewReady();
+updateMargin();
+renderPrintPreview();
+await waitForPreviewReady();
     window.print();
     return;
   }
@@ -3169,12 +3806,12 @@ async function handlePrintAction() {
       exam.schoolName = names[i];
       persistPreviewExam();
 
-      renderPrintPreview();
       updateGap();
-      updateMargin();
-      updateSchoolPreviewStatus();
+updateMargin();
+renderPrintPreview();
+updateSchoolPreviewStatus();
 
-      await waitForPreviewReady();
+await waitForPreviewReady();
       const pdfBlob = await exportCurrentPreviewPdfBlob();
 
       zip.file(`${sanitizeFileName(names[i])}.pdf`, pdfBlob);
@@ -3371,27 +4008,49 @@ const gapValue = document.getElementById('gap-slider-value');
 const marginSlider = document.getElementById('margin-slider');
 const marginValue = document.getElementById('margin-slider-value');
 
-// Set default from slider
+let examRepaginateTimer = null;
+
 function updateGap() {
-  const px = gapSlider.value;
-  gapValue.textContent = px + "px";
-  document.querySelectorAll('.question-container').forEach(div => {
-    div.style.marginBottom = px + "px";
-  });
-  document.documentElement.style.setProperty('--question-gap', px + 'px');
-}
-function updateMargin() {
-  const cm = marginSlider.value;
-  marginValue.textContent = cm + "cm";
-  document.querySelectorAll('.a4-page').forEach(page => {
-    page.style.padding = `${cm}cm`;
-  });
-  document.documentElement.style.setProperty('--page-margin', cm + 'cm');
+  const px = Number(gapSlider.value || 12);
+
+  gapValue.textContent = px + 'px';
+
+  document.documentElement.style.setProperty(
+    '--question-gap',
+    px + 'px'
+  );
 }
 
-// Listen for changes
-gapSlider.addEventListener('input', updateGap);
-marginSlider.addEventListener('input', updateMargin);
+function updateMargin() {
+  const cm = Number(
+    marginSlider.value || 1.5
+  ).toFixed(1);
+
+  marginValue.textContent = cm + 'cm';
+
+  document.documentElement.style.setProperty(
+    '--page-margin',
+    cm + 'cm'
+  );
+}
+
+function queueExamRepagination() {
+  clearTimeout(examRepaginateTimer);
+
+  examRepaginateTimer = setTimeout(() => {
+    renderPrintPreview();
+  }, 350);
+}
+
+gapSlider.addEventListener('input', () => {
+  updateGap();
+  queueExamRepagination();
+});
+
+marginSlider.addEventListener('input', () => {
+  updateMargin();
+  queueExamRepagination();
+});
 
 // Set initial values after DOM loaded
 window.addEventListener('DOMContentLoaded', () => {
@@ -3404,13 +4063,12 @@ window.addEventListener('DOMContentLoaded', () => {
     schoolBox.value = getSchoolNames().join('\n');
   }
 
-  document.getElementById('apply-school-list-btn')?.addEventListener('click', () => {
-    syncSchoolNamesFromTextarea(true);
-    renderPrintPreview();
-    updateGap();
-    updateMargin();
-    updateSchoolPreviewStatus();
-  });
+ document.getElementById('apply-school-list-btn')?.addEventListener('click', () => {
+  syncSchoolNamesFromTextarea(true);
+  updateGap();
+  updateMargin();
+  renderPrintPreview();
+});
 
   document.getElementById('prev-school-btn')?.addEventListener('click', () => {
     changeSchoolPreview(-1);
