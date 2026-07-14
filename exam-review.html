@@ -2575,13 +2575,7 @@ function extractJsonArray(raw) {
       // Repair unescaped LaTeX backslashes
       out += '\\\\';
       continue;
-    }
-
-      // for EVERYTHING ELSE in strings, double the slash
-      // this safely repairs \begin, \end, \(, \), \times, \\ etc.
-      out += '\\\\';
-      continue;
-    }
+        }
 
     if (ch === '"') {
       inString = false;
