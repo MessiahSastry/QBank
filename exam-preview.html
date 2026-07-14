@@ -1047,10 +1047,16 @@ mjx-container svg {
 /* ===== SPLIT CONTENT PAGE FLOW ===== */
 
 .exam-flow-piece {
-  display: block;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+/* Keep normal question number and text in the same row */
+.question-container.exam-flow-piece,
+.normal-question-flow {
+  display: flex !important;
+  align-items: flex-start !important;
 }
 
 /* Paragraph passage is separate from its questions */
