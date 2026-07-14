@@ -1044,6 +1044,167 @@ mjx-container svg {
   }
 }
 
+/* ===== SPLIT CONTENT PAGE FLOW ===== */
+
+.exam-flow-piece {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Paragraph passage is separate from its questions */
+.paragraph-passage-piece {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
+.paragraph-passage-piece .paragraph-passage-row {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.paragraph-question-piece {
+  display: block;
+  margin-left: 74px;
+  width: calc(100% - 74px);
+  box-sizing: border-box;
+  margin-top: 8px;
+  margin-bottom: 3px;
+}
+
+.paragraph-options-piece {
+  display: block;
+  margin-left: 112px !important;
+  width: calc(100% - 112px) !important;
+  max-width: calc(100% - 112px) !important;
+  box-sizing: border-box;
+  padding-left: 0 !important;
+}
+
+.paragraph-image-piece {
+  display: block;
+  margin-left: 74px;
+  width: calc(100% - 74px);
+  box-sizing: border-box;
+}
+
+/* Matching Matrix is divided into heading, rows and options */
+.matching-set-preview {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0;
+}
+
+.matching-first-piece {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.matching-flow-head,
+.matching-flow-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 18px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.matching-flow-head {
+  color: #7A2230;
+  font-weight: 700;
+  padding: 3px 0 5px 0;
+  border-bottom: 1px solid #b8c9da;
+  margin-top: 4px;
+}
+
+.matching-flow-row {
+  color: #163A63;
+  padding: 4px 0 3px 0;
+}
+
+.matching-flow-cell {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+  min-width: 0;
+}
+
+.matching-row-piece,
+.matching-options-label-piece,
+.matching-options-piece,
+.matching-image-piece {
+  display: block;
+  margin-left: 32px;
+  width: calc(100% - 32px);
+  box-sizing: border-box;
+}
+
+.matching-options-label-piece {
+  color: #163A63;
+  font-weight: 700;
+  margin-top: 5px;
+  margin-bottom: 3px;
+}
+
+.matching-options-piece {
+  padding-left: 0 !important;
+}
+
+.normal-question-flow {
+  margin-bottom: 3px !important;
+}
+
+.normal-options-flow {
+  display: block;
+  margin-left: 32px !important;
+  width: calc(100% - 32px) !important;
+  max-width: calc(100% - 32px) !important;
+  padding-left: 0 !important;
+  box-sizing: border-box;
+}
+
+.exam-paginated-page .paragraph-question-piece {
+  margin-bottom: 3px !important;
+}
+
+.exam-paginated-page .paragraph-question-no-options,
+.exam-paginated-page .paragraph-options-piece,
+.exam-paginated-page .normal-options-flow,
+.exam-paginated-page .matching-options-piece,
+.exam-paginated-page .matching-final-piece {
+  margin-bottom:
+    var(
+      --exam-question-gap,
+      var(--question-gap, 12px)
+    ) !important;
+}
+
+.exam-paginated-page .normal-question-flow {
+  margin-bottom: 3px !important;
+}
+
+.exam-paginated-page .matching-row-piece {
+  margin-bottom: 2px !important;
+}
+
+@media print {
+  .matching-flow-row,
+  .matching-flow-cell,
+  .matching-flow-cell * {
+    color: #000000 !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1621,122 +1782,428 @@ function __epRenderMatchingMatrixBody(q = {}) {
   `;
 }
 
-function __epRenderParagraphSubBlock(mcq = {}, indexOrNumber = 0, includeAnswers = false, subjectName = '', useExactNumber = false) {
-  const optionLines = __epBuildOptionLines(mcq.options);
-  const displayLabel = useExactNumber ? `${indexOrNumber}.` : `(${indexOrNumber + 1})`;
+function __epRenderParagraphSubBlock(
+  mcq = {},
+  indexOrNumber = 0,
+  includeAnswers = false,
+  subjectName = '',
+  useExactNumber = false
+) {
+  const optionLines =
+    __epBuildOptionLines(mcq.options);
+
+  const displayLabel = useExactNumber
+    ? `${indexOrNumber}.`
+    : `(${indexOrNumber + 1})`;
 
   const answerHTML = includeAnswers
-    ? formatAnswerKeyAnswerHtml(mcq.answer || mcq.parsedAnswer || mcq.finalAnswer || '', subjectName)
+    ? formatAnswerKeyAnswerHtml(
+        mcq.answer ||
+        mcq.parsedAnswer ||
+        mcq.finalAnswer ||
+        '',
+        subjectName
+      )
     : '';
 
   const explanationHTML = includeAnswers
-    ? formatAnswerKeyExplanationHtml(mcq.explanation || '', mcq.answer || mcq.parsedAnswer || '', subjectName)
+    ? formatAnswerKeyExplanationHtml(
+        mcq.explanation || '',
+        mcq.answer || mcq.parsedAnswer || '',
+        subjectName
+      )
     : '';
 
-  return `
-    <div class="paragraph-sub-block">
-      <div class="paragraph-sub-head">
-        <span class="paragraph-sub-number">${displayLabel}</span>
-        <span class="paragraph-sub-text">${__epSafeText(__epGetParagraphSubQuestionText(mcq))}</span>
-      </div>
+  /*
+    Keep the old combined structure for the answer key.
+  */
+  if (includeAnswers) {
+    return `
+      <div class="paragraph-sub-block">
+        <div class="paragraph-sub-head">
+          <span class="paragraph-sub-number">
+            ${displayLabel}
+          </span>
 
-      ${
-        optionLines.length
-  ? `<div
-       class="paragraph-sub-options options-block"
-       data-options="${encodeURIComponent(JSON.stringify(optionLines))}">
-     </div>`
-  : ''
-      }
-
-      ${
-        answerHTML
-          ? `
-            <div style="margin:6px 0 0 38px;color:#7A2230;font-weight:700;font-size:1.04em;">
-              Answer: <span style="color:#111111;font-weight:400;">${answerHTML}</span>
-            </div>
-          `
-          : ''
-      }
-
-      ${
-        explanationHTML
-          ? `
-            <div style="margin:6px 0 0 38px;color:#7A2230;font-weight:700;font-size:1.04em;">
-              Explanation:
-            </div>
-            <div style="margin:2px 0 0 60px;line-height:1.35;color:#111111;">
-              ${explanationHTML}
-            </div>
-          `
-          : ''
-      }
-    </div>
-  `;
-}
-
-function __epBuildParagraphPreviewQuestionHtml(q = {}, currentQNum = '') {
-  const normalized = __epNormalizeParagraphQuestion(q);
-  const mcqs = __epGetParagraphMcqs(normalized);
-
-  const startNo = Number(currentQNum) || 1;
-  const totalSubQuestions = Math.max(mcqs.length, 1);
-  const endNo = startNo + totalSubQuestions - 1;
-  const rangeLabel = totalSubQuestions > 1 ? `(${startNo}-${endNo})` : `(${startNo})`;
-
-  const imageHTML = normalized.image
-    ? `<div class="question-img-block"><img class="question-img" src="${normalized.image}" alt="Question Image" /></div>`
-    : '';
-
-  return `
-    <div class="paragraph-set-preview">
-      <div class="paragraph-first-part">
-        <div class="question-number" style="min-width:70px;">${rangeLabel}</div>
-
-        <div class="question-body">
-          <div style="color:#163A63;font-weight:400;line-height:1.3;margin-bottom:7px;">
-            Read the following passage and answer the questions:
-          </div>
-
-          <div class="paragraph-passage-text">
-            ${__epSafeText(normalized.passage || '')}
-          </div>
-
-          ${mcqs.map((mcq, index) => __epRenderParagraphSubBlock(mcq, startNo + index, false, '', true)).join('')}
-          ${imageHTML}
+          <span class="paragraph-sub-text">
+            ${__epSafeText(
+              __epGetParagraphSubQuestionText(mcq)
+            )}
+          </span>
         </div>
-      </div>
-    </div>
-  `;
-}
-function __epBuildMatchingMatrixPreviewQuestionHtml(q = {}, currentQNum = '') {
-  const optionLines = __epBuildOptionLines(q.options);
-  const imageHTML = q.image
-    ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>`
-    : '';
 
-  return `
-    <div class="question-container">
-      <div class="question-number">${currentQNum}.</div>
-      <div class="question-body">
-        ${__epRenderMatchingMatrixBody(q)}
-        ${imageHTML}
         ${
           optionLines.length
             ? `
-              <div style="font-weight:700;color:#163A63;margin:4px 0 3px 0;">Options:</div>
-                           <div
-  class="options-block"
-  data-options="${encodeURIComponent(JSON.stringify(optionLines))}">
-</div>
+              <div
+                class="paragraph-sub-options options-block"
+                data-options="${encodeURIComponent(
+                  JSON.stringify(optionLines)
+                )}">
+              </div>
+            `
+            : ''
+        }
+
+        ${
+          answerHTML
+            ? `
+              <div style="
+                margin:6px 0 0 38px;
+                color:#7A2230;
+                font-weight:700;
+                font-size:1.04em;
+              ">
+                Answer:
+                <span style="
+                  color:#111111;
+                  font-weight:400;
+                ">
+                  ${answerHTML}
+                </span>
+              </div>
+            `
+            : ''
+        }
+
+        ${
+          explanationHTML
+            ? `
+              <div style="
+                margin:6px 0 0 38px;
+                color:#7A2230;
+                font-weight:700;
+                font-size:1.04em;
+              ">
+                Explanation:
+              </div>
+
+              <div style="
+                margin:2px 0 0 60px;
+                line-height:1.35;
+                color:#111111;
+              ">
+                ${explanationHTML}
+              </div>
             `
             : ''
         }
       </div>
+    `;
+  }
+
+  /*
+    Question and options are separate page-flow pieces.
+  */
+  const noOptionsClass =
+    optionLines.length
+      ? ''
+      : ' paragraph-question-no-options';
+
+  return `
+    <div
+      class="paragraph-question-piece exam-flow-piece${noOptionsClass}"
+      data-exam-flow-piece="paragraph-question">
+
+      <div class="paragraph-sub-head">
+        <span class="paragraph-sub-number">
+          ${displayLabel}
+        </span>
+
+        <span class="paragraph-sub-text">
+          ${__epSafeText(
+            __epGetParagraphSubQuestionText(mcq)
+          )}
+        </span>
+      </div>
     </div>
+
+    ${
+      optionLines.length
+        ? `
+          <div
+            class="
+              paragraph-sub-options
+              paragraph-options-piece
+              options-block
+              exam-flow-piece
+            "
+            data-exam-flow-piece="paragraph-options"
+            data-options="${encodeURIComponent(
+              JSON.stringify(optionLines)
+            )}">
+          </div>
+        `
+        : ''
+    }
   `;
 }
 
+function __epBuildParagraphPreviewQuestionHtml(
+  q = {},
+  currentQNum = ''
+) {
+  const normalized =
+    __epNormalizeParagraphQuestion(q);
+
+  const mcqs =
+    __epGetParagraphMcqs(normalized);
+
+  const startNo =
+    Number(currentQNum) || 1;
+
+  const totalSubQuestions =
+    Math.max(mcqs.length, 1);
+
+  const endNo =
+    startNo + totalSubQuestions - 1;
+
+  const rangeLabel =
+    totalSubQuestions > 1
+      ? `(${startNo}-${endNo})`
+      : `(${startNo})`;
+
+  const imageHTML = normalized.image
+    ? `
+      <div
+        class="
+          paragraph-image-piece
+          exam-flow-piece
+        "
+        data-exam-flow-piece="paragraph-image">
+
+        <div class="question-img-block">
+          <img
+            class="question-img"
+            src="${normalized.image}"
+            alt="Question Image">
+        </div>
+      </div>
+    `
+    : '';
+
+  return `
+    <div
+      class="
+        paragraph-set-preview
+        exam-splittable-flow
+      ">
+
+      <!-- Passage is one independent page-flow block -->
+      <div
+        class="
+          paragraph-passage-piece
+          exam-flow-piece
+        "
+        data-exam-flow-piece="paragraph-passage">
+
+        <div class="paragraph-passage-row">
+          <div
+            class="question-number"
+            style="min-width:70px;">
+            ${rangeLabel}
+          </div>
+
+          <div class="question-body">
+            <div style="
+              color:#163A63;
+              font-weight:400;
+              line-height:1.3;
+              margin-bottom:7px;
+            ">
+              Read the following passage and answer the questions:
+            </div>
+
+            <div class="paragraph-passage-text">
+              ${__epSafeText(
+                normalized.passage || ''
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${imageHTML}
+
+      ${mcqs.map(
+        (mcq, index) =>
+          __epRenderParagraphSubBlock(
+            mcq,
+            startNo + index,
+            false,
+            '',
+            true
+          )
+      ).join('')}
+    </div>
+  `;
+}
+function __epBuildMatchingMatrixPreviewQuestionHtml(
+  q = {},
+  currentQNum = ''
+) {
+  const parsed =
+    __epParseMatchingMatrix(q);
+
+  const optionLines =
+    __epBuildOptionLines(q.options);
+
+  const introText = parsed.rows.length
+    ? parsed.intro
+    : parsed.raw;
+
+  const firstRow =
+    parsed.rows.length
+      ? parsed.rows[0]
+      : null;
+
+  const remainingRows =
+    parsed.rows.length > 1
+      ? parsed.rows.slice(1)
+      : [];
+
+  function renderMatchingRow(row) {
+    return `
+      <div class="matching-flow-row">
+        <div class="matching-flow-cell">
+          <span class="matching-matrix-label">
+            ${escapeHtml(row.leftLabel)})
+          </span>
+
+          <span class="matching-matrix-text">
+            ${__epSafeText(row.leftText)}
+          </span>
+        </div>
+
+        <div class="matching-flow-cell">
+          <span class="matching-matrix-label">
+            ${escapeHtml(row.rightLabel)})
+          </span>
+
+          <span class="matching-matrix-text">
+            ${__epSafeText(row.rightText)}
+          </span>
+        </div>
+      </div>
+    `;
+  }
+
+  const imageHTML = q.image
+    ? `
+      <div
+        class="
+          matching-image-piece
+          exam-flow-piece
+        "
+        data-exam-flow-piece="matching-image">
+
+        <div class="question-img-block">
+          <img
+            class="question-img"
+            src="${q.image}"
+            alt="Question Image">
+        </div>
+      </div>
+    `
+    : '';
+
+  return `
+    <div
+      class="
+        matching-set-preview
+        exam-splittable-flow
+      ">
+
+      <!-- Number, introduction, column headings and first row -->
+      <div
+        class="
+          matching-first-piece
+          exam-flow-piece
+        "
+        data-exam-flow-piece="matching-first">
+
+        <div class="question-number">
+          ${currentQNum}.
+        </div>
+
+        <div class="question-body">
+          ${
+            introText
+              ? `
+                <div class="matching-matrix-intro">
+                  ${__epSafeText(introText)}
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            parsed.rows.length
+              ? `
+                <div class="matching-flow-head">
+                  <div>Column I</div>
+                  <div>Column II</div>
+                </div>
+
+                ${renderMatchingRow(firstRow)}
+              `
+              : ''
+          }
+        </div>
+      </div>
+
+      <!-- Every remaining matrix row is separate -->
+      ${remainingRows.map(
+        (row, index) => `
+          <div
+            class="
+              matching-row-piece
+              exam-flow-piece
+              ${
+                index === remainingRows.length - 1 &&
+                !optionLines.length
+                  ? 'matching-final-piece'
+                  : ''
+              }
+            "
+            data-exam-flow-piece="matching-row">
+
+            ${renderMatchingRow(row)}
+          </div>
+        `
+      ).join('')}
+
+      ${imageHTML}
+
+      ${
+        optionLines.length
+          ? `
+            <div
+              class="
+                matching-options-label-piece
+                exam-flow-piece
+              "
+              data-exam-flow-piece="matching-options-label">
+              Options:
+            </div>
+
+            <div
+              class="
+                matching-options-piece
+                options-block
+                exam-flow-piece
+              "
+              data-exam-flow-piece="matching-options"
+              data-options="${encodeURIComponent(
+                JSON.stringify(optionLines)
+              )}">
+            </div>
+          `
+          : ''
+      }
+    </div>
+  `;
+}
 function __epBuildParagraphAnswerKeyHtml(q = {}, subjectName = '') {
   const qNo = String(q.number || '').replace(/\.$/, '');
   const mcqs = __epGetParagraphMcqs(q);
@@ -2990,13 +3457,199 @@ function createExamFlowGroup() {
   return group;
 }
 
+function __examExtractDirectFlowPieces(wrapper) {
+  if (!wrapper) return [];
+
+  const pieces = Array.from(
+    wrapper.children
+  ).filter(child =>
+    child.hasAttribute(
+      'data-exam-flow-piece'
+    )
+  );
+
+  if (!pieces.length) {
+    return [wrapper];
+  }
+
+  pieces.forEach(piece => {
+    piece.remove();
+  });
+
+  wrapper.remove();
+
+  return pieces;
+}
+
+function __examSplitStandardQuestion(node) {
+  if (
+    !node ||
+    !node.matches('.question-container')
+  ) {
+    return [node];
+  }
+
+  /*
+    Paragraph and Matching Matrix have already been
+    separated by their own render functions.
+  */
+  if (
+    node.querySelector('.matching-matrix-table') ||
+    node.closest('.paragraph-set-preview') ||
+    node.closest('.matching-set-preview')
+  ) {
+    return [node];
+  }
+
+  const numberNode =
+    node.querySelector(
+      ':scope > .question-number'
+    );
+
+  const bodyNode =
+    node.querySelector(
+      ':scope > .question-body'
+    );
+
+  if (!numberNode || !bodyNode) {
+    return [node];
+  }
+
+  const optionsNode =
+    bodyNode.querySelector(
+      ':scope > .options-block'
+    );
+
+  if (!optionsNode) {
+    return [node];
+  }
+
+  /*
+    Build a question-only block.
+  */
+  const questionPart =
+    document.createElement('div');
+
+  questionPart.className =
+    'question-container ' +
+    'normal-question-flow ' +
+    'exam-flow-piece';
+
+  questionPart.setAttribute(
+    'data-exam-flow-piece',
+    'normal-question'
+  );
+
+  const newBody =
+    document.createElement('div');
+
+  newBody.className = 'question-body';
+
+  Array.from(bodyNode.childNodes)
+    .forEach(child => {
+      if (child !== optionsNode) {
+        newBody.appendChild(child);
+      }
+    });
+
+  questionPart.appendChild(numberNode);
+  questionPart.appendChild(newBody);
+
+  /*
+    Options become a separate block.
+  */
+  optionsNode.remove();
+
+  optionsNode.classList.add(
+    'normal-options-flow',
+    'exam-flow-piece'
+  );
+
+  optionsNode.setAttribute(
+    'data-exam-flow-piece',
+    'normal-options'
+  );
+
+  node.remove();
+
+  return [
+    questionPart,
+    optionsNode
+  ];
+}
+
+function __examExpandTopLevelNode(node) {
+  if (!node || node.nodeType !== 1) {
+    return [];
+  }
+
+  if (
+    node.matches(
+      '.paragraph-set-preview, ' +
+      '.matching-set-preview'
+    )
+  ) {
+    return __examExtractDirectFlowPieces(
+      node
+    );
+  }
+
+  if (
+    node.matches('.question-container')
+  ) {
+    return __examSplitStandardQuestion(
+      node
+    );
+  }
+
+  return [node];
+}
+
+function __examCanFollowHeading(node) {
+  return !!(
+    node &&
+    node.nodeType === 1 &&
+    (
+      node.hasAttribute(
+        'data-exam-flow-piece'
+      ) ||
+      node.matches(
+        '.question-container, ' +
+        '.paragraph-set-preview, ' +
+        '.matching-set-preview'
+      )
+    )
+  );
+}
+
 function getExamFlowBlocks(sourcePage) {
-  const nodes = Array.from(sourcePage.children).filter(node => {
+  const rawNodes = Array.from(
+    sourcePage.children
+  ).filter(node => {
     return (
       node.nodeType === 1 &&
-      !node.classList.contains('print-footer-spacer') &&
-      !node.classList.contains('exam-page-footer')
+      !node.classList.contains(
+        'print-footer-spacer'
+      ) &&
+      !node.classList.contains(
+        'exam-page-footer'
+      )
     );
+  });
+
+  /*
+    Convert paragraph sets, matching matrices and
+    ordinary MCQs into smaller independent blocks.
+  */
+  const nodes = [];
+
+  rawNodes.forEach(node => {
+    __examExpandTopLevelNode(node)
+      .forEach(piece => {
+        if (piece) {
+          nodes.push(piece);
+        }
+      });
   });
 
   const blocks = [];
@@ -3006,19 +3659,28 @@ function getExamFlowBlocks(sourcePage) {
     const node = nodes[index];
 
     /*
-      Keep the school heading and examination-details
-      box together on the first page.
+      Keep school heading and details box together.
     */
     if (
-      node.classList.contains('heading-row') &&
+      node.classList.contains(
+        'heading-row'
+      ) &&
       nodes[index + 1] &&
-      nodes[index + 1].classList.contains('details-rect')
+      nodes[index + 1].classList.contains(
+        'details-rect'
+      )
     ) {
-      const group = createExamFlowGroup();
+      const group =
+        createExamFlowGroup();
 
-      group.classList.add('exam-first-page-header');
+      group.classList.add(
+        'exam-first-page-header'
+      );
+
       group.appendChild(node);
-      group.appendChild(nodes[index + 1]);
+      group.appendChild(
+        nodes[index + 1]
+      );
 
       blocks.push(group);
       index += 2;
@@ -3026,17 +3688,21 @@ function getExamFlowBlocks(sourcePage) {
     }
 
     /*
-      Keep a subject heading, section heading and first
-      question together whenever possible.
+      Subject heading + section heading +
+      only the first logical content block.
     */
     if (isExamSubjectHeading(node)) {
-      const group = createExamFlowGroup();
+      const group =
+        createExamFlowGroup();
+
       group.appendChild(node);
       index += 1;
 
       if (
         nodes[index] &&
-        nodes[index].classList.contains('section-block')
+        nodes[index].classList.contains(
+          'section-block'
+        )
       ) {
         group.appendChild(nodes[index]);
         index += 1;
@@ -3044,7 +3710,9 @@ function getExamFlowBlocks(sourcePage) {
 
       if (
         nodes[index] &&
-        isExamQuestionFlowBlock(nodes[index])
+        __examCanFollowHeading(
+          nodes[index]
+        )
       ) {
         group.appendChild(nodes[index]);
         index += 1;
@@ -3055,17 +3723,25 @@ function getExamFlowBlocks(sourcePage) {
     }
 
     /*
-      Keep every section heading with its first question.
+      Section heading stays only with the first
+      passage/question/matrix piece—not the whole set.
     */
-    if (node.classList.contains('section-block')) {
-      const group = createExamFlowGroup();
+    if (
+      node.classList.contains(
+        'section-block'
+      )
+    ) {
+      const group =
+        createExamFlowGroup();
 
       group.appendChild(node);
       index += 1;
 
       if (
         nodes[index] &&
-        isExamQuestionFlowBlock(nodes[index])
+        __examCanFollowHeading(
+          nodes[index]
+        )
       ) {
         group.appendChild(nodes[index]);
         index += 1;
@@ -3075,6 +3751,10 @@ function getExamFlowBlocks(sourcePage) {
       continue;
     }
 
+    /*
+      All passage questions, options, matrix rows
+      and normal MCQ options now flow independently.
+    */
     blocks.push(node);
     index += 1;
   }
