@@ -2387,12 +2387,30 @@ For Descriptive questions:
 - The answer must not be empty.
 - The explanation must not be empty.
 
-Formatting rules:
+Explanation formatting rules:
+
+For mathematical or calculation-based explanations:
+- Return "explanation" as an array of separate lines.
+- Put only one calculation or reasoning statement in each array item.
+- Every calculation must appear one below the other.
+- Do not number the lines.
+- Do not write Step 1, Step 2, Step 3, etc.
+- Do not combine the working into a paragraph.
+- Do not repeat the final answer inside the explanation.
+- The final answer must appear only in the "answer" field.
+
+For non-mathematical or conceptual explanations:
+- Return "explanation" as an array of separate point-wise statements.
+- Put one point in each array item.
+- Do not include point numbers inside the array items.
+- The application will automatically display them as 1, 2, 3, etc.
+
+General formatting rules:
 - Preserve TeX/Math formatting.
 - Use inline LaTeX delimiters \\( ... \\).
 - Do not use display-math delimiters.
 - Return STRICT JSON only.
-- Do not return prose.
+- Do not return prose outside the JSON.
 - Do not use markdown fences.
 - Return the same number of items in the same order.
 
@@ -2401,7 +2419,7 @@ Every MCQ item must use this exact structure:
   "stem": "<updated question text>",
   "options": ["<option A>", "<option B>", "<option C>", "<option D>"],
   "answer": ["A"],
-  "explanation": "<updated explanation or solution>"
+    "explanation": ["<first line>", "<second line>", "<third line>"]
 }
 
 For multiple-correct MCQs, answer may be:
@@ -2413,7 +2431,7 @@ Every descriptive item must use this exact structure:
 {
   "stem": "<updated question text>",
   "answer": "<updated final answer>",
-  "explanation": "<updated explanation or step-by-step solution>"
+    "explanation": ["<first line>", "<second line>", "<third line>"]
 }
 
 Do not include any fields other than:
@@ -2516,15 +2534,48 @@ function extractJsonArray(raw) {
       continue;
     }
 
-    if (ch === '\\') {
+        if (ch === '\\') {
       const next = sub[i + 1] || '';
+      const afterNext = sub[i + 2] || '';
 
-      // keep only escaped quote as-is
-      if (next === '"') {
-        out += '\\"';
+      // Preserve valid JSON escapes
+      if (next === '"' || next === '\\' || next === '/') {
+        out += '\\' + next;
         i++;
         continue;
       }
+
+      /*
+        Preserve genuine JSON control escapes such as:
+        \n  \r  \t  \b  \f
+
+        But do not mistake LaTeX commands such as:
+        \times, \theta, \frac, \rightarrow
+        for JSON control escapes.
+      */
+      if (
+        ['n', 'r', 't', 'b', 'f'].includes(next) &&
+        !/[a-z]/.test(afterNext)
+      ) {
+        out += '\\' + next;
+        i++;
+        continue;
+      }
+
+      // Preserve valid Unicode escapes
+      if (
+        next === 'u' &&
+        /^[0-9a-fA-F]{4}$/.test(sub.slice(i + 2, i + 6))
+      ) {
+        out += '\\u' + sub.slice(i + 2, i + 6);
+        i += 5;
+        continue;
+      }
+
+      // Repair unescaped LaTeX backslashes
+      out += '\\\\';
+      continue;
+    }
 
       // for EVERYTHING ELSE in strings, double the slash
       // this safely repairs \begin, \end, \(, \), \times, \\ etc.
@@ -2582,8 +2633,81 @@ try {
     const stem =
       String(out.stem || '').trim();
 
-    const explanation =
-      String(out.explanation || '').trim();
+        const explanationSource = Array.isArray(out.explanation)
+      ? out.explanation.join('\n')
+      : String(out.explanation || '');
+
+    let explanationLines = explanationSource
+      // Convert HTML breaks into real line breaks
+      .replace(/<br\s*\/?>/gi, '\n')
+
+      // Convert old literal "\n" text into real line breaks
+      .replace(/\\n/g, '\n')
+
+      // Separate old inline numbered steps
+      .replace(
+        /\s+(?=(?:Step\s*)?\d+\s*[\.\)])/gi,
+        '\n'
+      )
+
+      .split(/\n+/)
+      .map(line => String(line || '').trim())
+
+      // Remove repeated final-answer lines from the explanation
+      .filter(line =>
+        line &&
+        !/^(?:therefore,\s*)?(?:final\s+)?answer\s*:/i.test(line)
+      );
+
+    const subjectName = String(
+      paper.subjects[subjIdx]?.subject || ''
+    );
+
+    const combinedExplanation = explanationLines.join(' ');
+
+    const isMathRelated =
+      /\bmath\b/i.test(subjectName) ||
+      /\\\(|\\\)|\\(?:frac|dfrac|sqrt|times|div|sin|cos|tan|log|theta|pi|begin|end)\b|[=±×÷]|(?:\d|[a-z])\s*[\+\-*\/^]\s*(?:\d|[a-z])/i.test(
+        combinedExplanation
+      );
+
+    if (isMathRelated) {
+      explanationLines = explanationLines.map(line =>
+        line
+          // Remove "Step 1", "Step 2", etc.
+          .replace(
+            /^\s*Step\s*\d+\s*[\.\):\-]?\s*/i,
+            ''
+          )
+
+          // Remove "1.", "2.", "3.", etc.
+          .replace(
+            /^\s*\d+\s*[\.\):\-]\s*/,
+            ''
+          )
+
+          .trim()
+      );
+    } else {
+      explanationLines = explanationLines.map((line, index) => {
+        const cleanLine = line
+          .replace(
+            /^\s*Step\s*\d+\s*[\.\):\-]?\s*/i,
+            ''
+          )
+          .replace(
+            /^\s*\d+\s*[\.\):\-]\s*/,
+            ''
+          )
+          .trim();
+
+        return `${index + 1}. ${cleanLine}`;
+      });
+    }
+
+    explanationLines = explanationLines.filter(Boolean);
+
+    const explanation = explanationLines.join('<br>');
 
     const originalWasMCQ =
       Array.isArray(qObj.options) &&
