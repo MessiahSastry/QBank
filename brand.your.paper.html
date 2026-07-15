@@ -1081,7 +1081,17 @@ if (logo2Img) {
   outPage.drawEllipse({ x: inX + inW - rIn,  y: inY + inH - rIn,  xScale: rIn, yScale: rIn, color: PDFLib.rgb(1,1,1) });
   outPage.drawText("Class: " + className, { x: 68, y: boxY + boxH - 22, size: 12.5, font: fontBold, color: PDFLib.rgb(0.11, 0.23, 0.53) });
   outPage.drawText((subject || '').toUpperCase(), { x: width/2 - fontBold.widthOfTextAtSize((subject||'').toUpperCase(), 17)/2, y: boxY + boxH - 20, size: 17, font: fontBold, color: PDFLib.rgb(0.07, 0.18, 0.5) });
-  outPage.drawText("Date: " + (formatDate(date) || ''), { x: width - 168, y: boxY + boxH - 22, size: 12.5, font: fontBold, color: PDFLib.rgb(0.11, 0.23, 0.53) });
+  if ((date || '').trim()) {
+  const dateText = "Date: " + formatDate(date);
+
+  outPage.drawText(dateText, {
+    x: width - 68 - fontBold.widthOfTextAtSize(dateText, 12.5),
+    y: boxY + boxH - 22,
+    size: 12.5,
+    font: fontBold,
+    color: PDFLib.rgb(0.11, 0.23, 0.53)
+  });
+}
   const timeStr = formatDuration(Number(time));
 if (timeStr) {
   outPage.drawText("Time: " + timeStr, {
@@ -1759,8 +1769,8 @@ async function saveSchoolToFirebase() {
 
 flatpickr("#date", {
   dateFormat: "d-m-Y",
-  allowInput: false,      // disables typing, popup only
-  defaultDate: "today"
+  allowInput: false,
+  defaultDate: null
 });
 createDropdown('class-dropdown', config.classes, 'Select Class');
 createDropdown('subject-dropdown', [], 'Select Subject');
