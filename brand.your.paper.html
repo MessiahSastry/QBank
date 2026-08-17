@@ -1085,23 +1085,31 @@ if (logo2Img) {
   ? "Date: " + formatDate(date)
   : "Date: __________";
 
+// Same X-position for Date and Max Marks
+const rightInfoX = width - 168;
+
 outPage.drawText(dateText, {
-  x: width - 68 - fontBold.widthOfTextAtSize(dateText, 12.5),
+  x: rightInfoX,
   y: boxY + boxH - 22,
   size: 12.5,
   font: fontBold,
   color: PDFLib.rgb(0.11, 0.23, 0.53)
 });
-  const timeStr = formatDuration(Number(time));
+
+const timeStr = formatDuration(Number(time));
 if (timeStr) {
   outPage.drawText("Time: " + timeStr, {
     x: 68, y: boxY + 13, size: 12.5, font: fontBold,
     color: PDFLib.rgb(0.15, 0.24, 0.35)
   });
 }
+
 if ((maxMarks || '').trim()) {
   outPage.drawText("Max Marks: " + String(maxMarks).trim(), {
-    x: width - 168, y: boxY + 13, size: 12.5, font: fontBold,
+    x: rightInfoX,
+    y: boxY + 13,
+    size: 12.5,
+    font: fontBold,
     color: PDFLib.rgb(0.15, 0.24, 0.35)
   });
 }
