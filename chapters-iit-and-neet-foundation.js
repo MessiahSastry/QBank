@@ -244,7 +244,8 @@
         "Hydrogen & Its Compounds: Assimilation 1 (Subtopics: Position of Hydrogen in Periodic Table, Occurrence, Preparation of Dihydrogen, Properties of Hydrogen and Uses, Special Forms of Hydrogen)",
         "Hydrogen & Its Compounds: Assimilation 2 (Subtopics: Structure of Water, Structure of Ice, Properties of Water, Hardness of Water)",
         "IA Group Elements: Assimilation 1 (Subtopics: Introduction, Position in Periodic Table, Occurrence and Abundance, Electronic Configuration, Physical Properties, Chemical Properties)",
-        "IA Group Elements: Assimilation 2 (Subtopics: Anomalous Behaviour of Lithium, Diagonal Relationship with Magnesium, Ores of Alkali Metals, Extraction of Sodium, Down’s Process, Properties and Uses of Sodium, Sodium Chloride, Properties, Uses)"
+        "IA Group Elements: Assimilation 2 (Subtopics: Anomalous Behaviour of Lithium, Diagonal Relationship with Magnesium, Ores of Alkali Metals, Extraction of Sodium, Down’s Process, Properties and Uses of Sodium, Sodium Chloride, Properties, Uses)",
+        "IA Group Elements: Assimilation 3 (Subtopics: Properties Of Sodium Hydroxide, Physical Properties, Chemical Properties, Biological Importance Of Na and K)"
       ],
       "Biology NEET": [
         "Biological Classification",
