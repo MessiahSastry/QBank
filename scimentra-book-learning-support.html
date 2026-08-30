@@ -1456,10 +1456,15 @@
       document.getElementById("close-explanation-popup").addEventListener("click", closeAnyModal);
 
       document.getElementById("more-explanation-btn").addEventListener("click", () => {
-        const promptText =
-          `Explain this question in detail in a very clear step-by-step way for a student. ` +
-          `Give concept, method, correct answer, and where students usually make mistakes.\n\n` +
-          `Question:\n${fullQuestionForChatGPT}`;
+       const promptText =
+  `Explain this question in detail in a very clear step-by-step way for a student.\n\n` +
+  `Give:\n` +
+  `1. The concept involved.\n` +
+  `2. A clear step-by-step method.\n` +
+  `3. The correct answer.\n` +
+  `4. Common mistakes students usually make.\n` +
+  `5. Three similar practice questions based on the same concept and difficulty level, with answers.\n\n` +
+  `Question:\n${fullQuestionForChatgpt}`;
 
         const chatgptUrl =
           "https://chatgpt.com/?q=" + encodeURIComponent(promptText);
