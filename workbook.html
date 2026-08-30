@@ -3147,7 +3147,14 @@ overlay.innerHTML = `
 };
 
 document.getElementById('more-explanation-btn').onclick = function() {
-  const promptText = `Explain this question in detail in a very clear step-by-step way for a student. Give concept, method, correct answer, and where students usually make mistakes.
+  const promptText = `Explain this question in detail in a very clear step-by-step way for a student.
+
+Give:
+1. The concept involved.
+2. A clear step-by-step method.
+3. The correct answer.
+4. Common mistakes students usually make.
+5. Three similar practice questions based on the same concept and difficulty level, with answers.
 
 Question:
 ${fullQuestionForChatgpt}`;
