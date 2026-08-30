@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Teacher AI Tools | SciMentra</title>
+  <meta name="theme-color" content="#0f3d6b">
+
+  <style>
+    :root{
+      --blue:#1762a7;
+      --navy:#0f3d6b;
+      --ink:#123c62;
+      --muted:#6a7f94;
+      --line:#d8e7f5;
+      --soft:#f4f8fc;
+      --danger:#b42318;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      min-height:100%;
+      font-family:"Segoe UI",Arial,sans-serif;
+      background:var(--soft);
+      color:var(--ink);
+    }
+
+    body::after{
+      content:"SciMentra\A IIT & NEET FOUNDATION";
+      white-space:pre;
+      position:fixed;
+      left:50%;
+      top:52%;
+      transform:translate(-50%,-50%);
+      text-align:center;
+      font-size:clamp(28px,5vw,72px);
+      font-weight:900;
+      line-height:1.15;
+      color:rgba(15,61,107,.035);
+      pointer-events:none;
+      z-index:0;
+    }
+
+    .page{
+      position:relative;
+      z-index:1;
+      min-height:100vh;
+    }
+
+    header{
+      background:linear-gradient(90deg,var(--blue),var(--navy));
+      color:#fff;
+      text-align:center;
+      padding:18px 14px 20px;
+      border-bottom-left-radius:28px;
+      border-bottom-right-radius:28px;
+      box-shadow:0 4px 14px rgba(15,61,107,.14);
+    }
+
+    .brand{
+      margin:0;
+      font-size:clamp(26px,4.5vw,34px);
+      font-weight:900;
+    }
+
+    .brand-sub{
+      margin-top:4px;
+      font-size:clamp(14px,2.6vw,17px);
+      font-weight:700;
+      color:#e5f0fb;
+      letter-spacing:.04em;
+    }
+
+    main{
+      width:min(900px,calc(100% - 24px));
+      margin:22px auto 40px;
+    }
+
+    .panel{
+      background:rgba(255,255,255,.98);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 4px 18px rgba(0,27,68,.08);
+      padding:18px;
+      margin-bottom:18px;
+    }
+
+    .teacher-badge{
+      display:flex;
+      justify-content:center;
+      margin-bottom:14px;
+    }
+
+    .teacher-badge span{
+      display:inline-flex;
+      align-items:center;
+      gap:7px;
+      padding:7px 12px;
+      border-radius:999px;
+      background:#eaf3fc;
+      border:1px solid #cfe2f4;
+      color:var(--blue);
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.03em;
+    }
+
+    .page-title{
+      margin:0;
+      text-align:center;
+      color:var(--navy);
+      font-size:clamp(22px,4vw,29px);
+      font-weight:900;
+    }
+
+    .subtitle{
+      max-width:670px;
+      margin:8px auto 18px;
+      text-align:center;
+      color:var(--muted);
+      line-height:1.5;
+      font-size:14px;
+    }
+
+    .book-info{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .info-item{
+      min-width:0;
+      background:#f8fbfe;
+      border:1px solid #cfe1f2;
+      border-radius:12px;
+      padding:10px 12px;
+    }
+
+    .info-label{
+      display:block;
+      font-size:12px;
+      font-weight:800;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      margin-bottom:4px;
+    }
+
+    .info-value{
+      display:block;
+      font-size:15px;
+      font-weight:800;
+      color:var(--navy);
+      overflow-wrap:anywhere;
+    }
+
+    .topic-wrap{margin-top:16px}
+
+    .topic-label{
+      display:block;
+      margin-bottom:7px;
+      color:var(--blue);
+      font-size:14px;
+      font-weight:900;
+    }
+
+    .topic-input{
+      width:100%;
+      min-height:50px;
+      padding:11px 13px;
+      border:1.5px solid #bcd6ef;
+      border-radius:12px;
+      background:#fff;
+      color:var(--navy);
+      font-family:inherit;
+      font-size:15px;
+      font-weight:700;
+      outline:none;
+    }
+
+    .topic-input:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(23,98,167,.12);
+    }
+
+    .topic-note{
+      margin:7px 0 0;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.45;
+    }
+
+    .status{
+      display:none;
+      margin-top:14px;
+      padding:11px 12px;
+      border-radius:11px;
+      font-size:13px;
+      line-height:1.5;
+      font-weight:700;
+    }
+
+    .status.show{display:block}
+    .status.error{
+      color:var(--danger);
+      background:#fff5f4;
+      border:1px solid #ffd7d2;
+    }
+
+    .section-title{
+      margin:0 0 5px;
+      color:var(--navy);
+      font-size:20px;
+      font-weight:900;
+      text-align:center;
+    }
+
+    .section-note{
+      margin:0 0 15px;
+      color:var(--muted);
+      text-align:center;
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .tools-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:13px;
+    }
+
+    .tool-card{
+      display:flex;
+      flex-direction:column;
+      min-height:180px;
+      padding:16px;
+      border:1.4px solid #d7e7f5;
+      border-radius:15px;
+      background:#fbfdff;
+      box-shadow:0 2px 10px rgba(0,27,68,.04);
+    }
+
+    .tool-icon{
+      font-size:28px;
+      line-height:1;
+      margin-bottom:10px;
+    }
+
+    .tool-name{
+      color:var(--navy);
+      font-size:17px;
+      font-weight:900;
+      margin-bottom:6px;
+    }
+
+    .tool-desc{
+      flex:1;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+      margin-bottom:13px;
+    }
+
+    .tool-btn{
+      width:100%;
+      min-height:44px;
+      padding:10px 13px;
+      border:none;
+      border-radius:11px;
+      background:linear-gradient(90deg,var(--blue),var(--navy));
+      color:#fff;
+      font-family:inherit;
+      font-size:14px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 3px 10px rgba(15,61,107,.16);
+    }
+
+    .tool-btn:hover{filter:brightness(1.04)}
+    .tool-btn:active{transform:translateY(1px)}
+    .tool-btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+
+    .footer-note{
+      margin:14px 0 0;
+      text-align:center;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.5;
+    }
+
+    @media(max-width:680px){
+      main{
+        width:min(100% - 16px,900px);
+        margin-top:14px;
+      }
+
+      .panel{
+        padding:14px;
+        border-radius:15px;
+      }
+
+      .book-info,
+      .tools-grid{
+        grid-template-columns:1fr;
+      }
+
+      .tool-card{min-height:0}
+      .tool-btn{min-height:48px;font-size:15px}
+    }
+  </style>
+</head>
+
+<body>
+<div class="page">
+
+  <header>
+    <h1 class="brand">SciMentra</h1>
+    <div class="brand-sub">IIT &amp; NEET FOUNDATION</div>
+  </header>
+
+  <main>
+
+    <section class="panel">
+      <div class="teacher-badge">
+        <span>👨‍🏫 Teacher Copy</span>
+      </div>
+
+      <h2 class="page-title">Teacher AI Tools</h2>
+
+      <p class="subtitle">
+        AI-assisted classroom preparation for the lesson linked to this teacher QR.
+      </p>
+
+      <div class="book-info">
+        <div class="info-item">
+          <span class="info-label">Class</span>
+          <span class="info-value" id="info-class">—</span>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">Board</span>
+          <span class="info-value" id="info-board">—</span>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">Subject</span>
+          <span class="info-value" id="info-subject">—</span>
+        </div>
+
+        <div class="info-item">
+          <span class="info-label">Chapter</span>
+          <span class="info-value" id="info-chapter">—</span>
+        </div>
+      </div>
+
+      <div class="topic-wrap">
+        <label class="topic-label" for="topic-input">
+          Today's Topic / Concept <span style="font-weight:700;color:#6a7f94;">(Optional)</span>
+        </label>
+
+        <input
+          id="topic-input"
+          class="topic-input"
+          type="text"
+          placeholder="Example: Variables and Constants"
+          autocomplete="off"
+        >
+
+        <p class="topic-note">
+          Leave this blank to use the whole chapter. Enter a topic when you want the AI tool to focus only on today's lesson.
+        </p>
+      </div>
+
+      <div id="configuration-error" class="status error"></div>
+    </section>
+
+    <section class="panel">
+      <h3 class="section-title">Choose a Teacher Tool</h3>
+
+      <p class="section-note">
+        Tap a tool to open ChatGPT with the class, subject, chapter and optional topic already included.
+      </p>
+
+      <div class="tools-grid">
+
+        <article class="tool-card">
+          <div class="tool-icon">📝</div>
+          <div class="tool-name">Board Work Generator</div>
+          <div class="tool-desc">
+            Prepare concise, classroom-ready board work in a clear teaching sequence with definitions, examples and recap.
+          </div>
+          <button type="button" class="tool-btn" data-tool="board-work">
+            Create Board Work
+          </button>
+        </article>
+
+        <article class="tool-card">
+          <div class="tool-icon">✅</div>
+          <div class="tool-name">Exit Ticket Generator</div>
+          <div class="tool-desc">
+            Create a short end-of-class assessment to quickly check concept understanding, application and reasoning.
+          </div>
+          <button type="button" class="tool-btn" data-tool="exit-ticket">
+            Create Exit Ticket
+          </button>
+        </article>
+
+        <article class="tool-card">
+          <div class="tool-icon">🎯</div>
+          <div class="tool-name">Remedial Teaching</div>
+          <div class="tool-desc">
+            Prepare a simple reteaching plan for students who are weak in the lesson, with easier explanations and practice.
+          </div>
+          <button type="button" class="tool-btn" data-tool="remedial">
+            Create Remedial Plan
+          </button>
+        </article>
+
+        <article class="tool-card">
+          <div class="tool-icon">💡</div>
+          <div class="tool-name">Teaching Support</div>
+          <div class="tool-desc">
+            Get concept sequence, prerequisites, common misconceptions, teaching tips, oral checks and classroom guidance.
+          </div>
+          <button type="button" class="tool-btn" data-tool="teaching-support">
+            Get Teaching Support
+          </button>
+        </article>
+
+      </div>
+
+      <p class="footer-note">
+        AI output should be reviewed by the teacher before classroom use.
+      </p>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const qs = new URLSearchParams(window.location.search);
+
+  function firstParam(names, fallback = "") {
+    for (const name of names) {
+      const value = qs.get(name);
+      if (value && String(value).trim()) {
+        return String(value).trim();
+      }
+    }
+    return fallback;
+  }
+
+  const TEACHER_CONTEXT = {
+    className: firstParam(["class", "className", "c"]),
+    board: firstParam(["board", "b"], "IIT & NEET Foundation"),
+    subject: firstParam(["subject", "sub", "s"]),
+    chapter: firstParam(["chapter", "ch"])
+  };
+
+  const infoClass = document.getElementById("info-class");
+  const infoBoard = document.getElementById("info-board");
+  const infoSubject = document.getElementById("info-subject");
+  const infoChapter = document.getElementById("info-chapter");
+  const topicInput = document.getElementById("topic-input");
+  const configError = document.getElementById("configuration-error");
+  const toolButtons = Array.from(document.querySelectorAll(".tool-btn"));
+
+  infoClass.textContent = TEACHER_CONTEXT.className || "Not provided";
+  infoBoard.textContent = TEACHER_CONTEXT.board || "Not provided";
+  infoSubject.textContent = TEACHER_CONTEXT.subject || "Not provided";
+  infoChapter.textContent = TEACHER_CONTEXT.chapter || "Not provided";
+
+  const missingFields = [];
+
+  if (!TEACHER_CONTEXT.className) missingFields.push("Class");
+  if (!TEACHER_CONTEXT.subject) missingFields.push("Subject");
+  if (!TEACHER_CONTEXT.chapter) missingFields.push("Chapter");
+
+  if (missingFields.length) {
+    configError.className = "status error show";
+    configError.textContent =
+      "This teacher QR link is incomplete. Missing: " +
+      missingFields.join(", ") +
+      ".";
+
+    toolButtons.forEach(button => {
+      button.disabled = true;
+    });
+  }
+
+  function getLessonContext() {
+    const topic = String(topicInput.value || "").trim();
+
+    let text =
+      `Class: ${TEACHER_CONTEXT.className}\n` +
+      `Board: ${TEACHER_CONTEXT.board}\n` +
+      `Subject: ${TEACHER_CONTEXT.subject}\n` +
+      `Chapter: ${TEACHER_CONTEXT.chapter}\n`;
+
+    if (topic) {
+      text += `Today's Topic / Concept: ${topic}\n`;
+    } else {
+      text += `Today's Topic / Concept: Use the whole chapter\n`;
+    }
+
+    return text;
+  }
+
+  function buildBoardWorkPrompt() {
+    return `You are assisting a teacher preparing classroom board work.
+
+${getLessonContext()}
+
+Prepare clear, concise and classroom-ready BOARD WORK for this lesson.
+
+Give:
+
+1. TOPIC HEADING
+2. LEARNING OBJECTIVE
+3. PREREQUISITE RECALL
+4. KEY DEFINITIONS / RULES / FORMULAS
+5. TEACHING SEQUENCE
+6. TWO SIMPLE WORKED EXAMPLES
+7. ONE FOUNDATION MAINS EXAMPLE
+8. ONE COMMON STUDENT MISTAKE AND HOW TO CORRECT IT
+9. THREE QUICK ORAL CHECK QUESTIONS WITH ANSWERS
+10. FINAL BOARD RECAP
+
+IMPORTANT:
+- Keep the board work concise enough for practical classroom use.
+- Arrange it in the order a teacher should write and explain it.
+- Use language suitable for the given class.
+- Use correct mathematical/scientific notation.
+- Keep all methods within the selected class syllabus.
+- Maintain IIT & NEET Foundation standard.
+- Do not overcrowd the board.
+- Independently verify all calculations, formulas and answers before responding.`;
+  }
+
+  function buildExitTicketPrompt() {
+    return `You are assisting a teacher who wants to check student understanding at the end of the lesson.
+
+${getLessonContext()}
+
+Create a short EXIT TICKET for this lesson.
+
+Give exactly 5 questions:
+
+1. One basic concept-check question.
+2. One direct-application question.
+3. One misconception-check question.
+4. One Foundation Mains reasoning question.
+5. One short challenge question suitable for the given class.
+
+After the questions, give a separate TEACHER ANSWER KEY with concise answers.
+
+IMPORTANT:
+- The questions must be answerable in about 5 to 8 minutes.
+- Keep every question strictly within the selected class and lesson.
+- Do not repeat the same concept unnecessarily.
+- Use clear and unambiguous wording.
+- Maintain IIT & NEET Foundation standard.
+- Independently verify every answer before responding.`;
+  }
+
+  function buildRemedialPrompt() {
+    return `You are assisting a teacher who needs to reteach this lesson to students who are struggling.
+
+${getLessonContext()}
+
+Prepare a REMEDIAL TEACHING PLAN.
+
+Give:
+
+1. LIKELY LEARNING GAP
+   Identify the prerequisite or concept students may be missing.
+
+2. SIMPLE RETEACHING EXPLANATION
+   Explain the concept in very simple classroom language.
+
+3. ANOTHER WAY TO EXPLAIN IT
+   Give an alternative explanation, analogy, model or example.
+
+4. STEP-BY-STEP TEACHING SEQUENCE
+   Show how the teacher should rebuild the concept from easy to difficult.
+
+5. THREE VERY EASY GUIDED EXAMPLES
+   Give worked examples suitable for weak students.
+
+6. FIVE REMEDIAL PRACTICE QUESTIONS
+   Start easy and increase difficulty gradually.
+
+7. ANSWERS
+   Give concise answers to all five practice questions.
+
+8. QUICK MASTERY CHECK
+   Give 3 short oral questions the teacher can use to decide whether students are ready to return to regular Foundation practice.
+
+IMPORTANT:
+- Keep the explanation age-appropriate.
+- Do not use higher-class methods.
+- Focus on conceptual understanding before speed.
+- Use proper mathematical/scientific notation.
+- Verify every example and answer before responding.`;
+  }
+
+  function buildTeachingSupportPrompt() {
+    return `You are assisting a teacher in planning and teaching this lesson effectively.
+
+${getLessonContext()}
+
+Prepare TEACHING SUPPORT for this lesson.
+
+Give:
+
+1. CORE CONCEPTS
+   List the most important concepts students must understand.
+
+2. PREREQUISITE KNOWLEDGE
+   Mention what students should already know.
+
+3. BEST TEACHING SEQUENCE
+   Suggest the order in which the ideas should be taught.
+
+4. CLASSROOM EXPLANATION STRATEGY
+   Explain how the teacher can introduce and develop the lesson.
+
+5. COMMON STUDENT MISCONCEPTIONS
+   List likely mistakes or misunderstandings and how to correct each one.
+
+6. TEACHING TIPS
+   Give useful examples, analogies, questioning techniques or demonstrations.
+
+7. CHECK FOR UNDERSTANDING
+   Give 5 short oral questions with answers.
+
+8. FOUNDATION CONNECTION
+   Explain how to move students from basic understanding to Foundation Mains reasoning without going beyond the class syllabus.
+
+9. TEACHER CLOSURE
+   Give a 2-minute recap the teacher can use at the end of the lesson.
+
+IMPORTANT:
+- Keep everything practical for classroom use.
+- Maintain the given class level and IIT & NEET Foundation standard.
+- Do not use higher-class methods unless absolutely necessary.
+- Use clear mathematical/scientific notation.
+- Verify all factual statements, examples and answers before responding.`;
+  }
+
+  function buildPrompt(tool) {
+    switch (tool) {
+      case "board-work":
+        return buildBoardWorkPrompt();
+      case "exit-ticket":
+        return buildExitTicketPrompt();
+      case "remedial":
+        return buildRemedialPrompt();
+      case "teaching-support":
+        return buildTeachingSupportPrompt();
+      default:
+        throw new Error("Unknown teacher tool.");
+    }
+  }
+
+  function openChatGPT(promptText) {
+    const chatgptUrl =
+      "https://chatgpt.com/?q=" +
+      encodeURIComponent(promptText);
+
+    window.open(
+      chatgptUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+  toolButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      try {
+        const tool = button.dataset.tool || "";
+        const prompt = buildPrompt(tool);
+        openChatGPT(prompt);
+      } catch (error) {
+        alert(
+          error && error.message
+            ? error.message
+            : "Could not open the teacher AI tool."
+        );
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
