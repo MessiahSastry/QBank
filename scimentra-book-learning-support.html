@@ -1493,8 +1493,8 @@
             </button>
 
             <button type="button" class="modal-btn more-btn" id="more-explanation-btn">
-              Need More Explanation
-            </button>
+      Teaching Support
+</button>
           </div>
         </div>`;
 
@@ -1503,22 +1503,68 @@
       document.getElementById("close-explanation-popup").addEventListener("click", closeAnyModal);
 
       document.getElementById("more-explanation-btn").addEventListener("click", () => {
-       const promptText =
-  `Explain this question in detail in a very clear step-by-step way for a student.\n\n` +
-  `Give:\n` +
-  `1. The concept involved.\n` +
-  `2. A clear step-by-step method.\n` +
-  `3. The correct answer.\n` +
-  `4. Common mistakes students usually make.\n` +
-  `5. Three similar practice questions based on the same concept and difficulty level, with answers.\n\n` +
-  `Question:\n${fullQuestionForChatGPT}`;
 
-        const chatgptUrl =
-          "https://chatgpt.com/?q=" + encodeURIComponent(promptText);
+  const questionLevel =
+    String(data.difficulty || data.level || "").trim();
 
-        window.open(chatgptUrl, "_blank");
-      });
+  const questionType =
+    normalizeDbType(data);
 
+  const promptText =
+    `You are assisting a teacher who is teaching this question to students.\n\n` +
+
+    `Class: ${BOOK_CONTEXT.className}\n` +
+    `Board: ${BOOK_CONTEXT.board}\n` +
+    `Subject: ${BOOK_CONTEXT.subject}\n` +
+    `Chapter: ${BOOK_CONTEXT.chapter}\n` +
+    `Level: ${questionLevel}\n` +
+    `Question Type: ${questionType}\n\n` +
+
+    `Analyse the question carefully and help the teacher teach it effectively.\n\n` +
+
+    `Give:\n\n` +
+
+    `1. CONCEPT INVOLVED\n` +
+    `State the exact concept or concepts being tested.\n\n` +
+
+    `2. PREREQUISITE KNOWLEDGE\n` +
+    `Mention what students should already know before solving this question.\n\n` +
+
+    `3. CLASSROOM EXPLANATION\n` +
+    `Explain the question step-by-step in simple, clear language that the teacher can use directly while teaching students.\n\n` +
+
+    `4. QUICKEST VALID METHOD\n` +
+    `Show the shortest correct method suitable for this class and Foundation level.\n\n` +
+
+    `5. BOARD WORK\n` +
+    `Give a clean, concise sequence of steps that the teacher can write on the classroom board.\n\n` +
+
+    `6. COMMON STUDENT MISTAKES\n` +
+    `Mention the likely mistakes or misconceptions students may have and explain how the teacher can correct them.\n\n` +
+
+    `7. TEACHING TIP\n` +
+    `Give one useful teaching tip, example, analogy, or questioning technique that can make the concept easier to understand.\n\n` +
+
+    `8. CHECK FOR UNDERSTANDING\n` +
+    `Give 2 short oral questions the teacher can ask immediately after explaining the concept, with answers.\n\n` +
+
+    `9. SIMILAR PRACTICE\n` +
+    `Give 3 new questions based on the same concept and approximately the same difficulty level, with answers.\n\n` +
+
+    `IMPORTANT:\n` +
+    `- Keep all methods appropriate to the given class.\n` +
+    `- Do not use higher-class methods unless absolutely necessary.\n` +
+    `- Maintain the selected IIT & NEET Foundation difficulty level.\n` +
+    `- Check every calculation and answer carefully before responding.\n\n` +
+
+    `Question:\n${fullQuestionForChatGPT}`;
+
+  const chatgptUrl =
+    "https://chatgpt.com/?q=" + encodeURIComponent(promptText);
+
+  window.open(chatgptUrl, "_blank");
+
+});
       overlay.addEventListener("click", event => {
         if (event.target === overlay) closeAnyModal();
       });
