@@ -513,27 +513,59 @@
   }
 
   function buildQuizPrompt() {
-    const counts = getCounts();
-    const total = counts.concepts + counts.mains + counts.advance;
+  const counts = getCounts();
 
-    if (total <= 0) {
-      throw new Error("Enter at least 1 question in any Foundation level.");
-    }
+  const total =
+    counts.concepts +
+    counts.mains +
+    counts.advance;
 
-    const distribution = [];
-    if (counts.concepts > 0) distribution.push(`Foundation Concepts: ${counts.concepts} question${counts.concepts === 1 ? "" : "s"}`);
-    if (counts.mains > 0) distribution.push(`Foundation Mains: ${counts.mains} question${counts.mains === 1 ? "" : "s"}`);
-    if (counts.advance > 0) distribution.push(`Foundation Advance: ${counts.advance} question${counts.advance === 1 ? "" : "s"}`);
+  if (total <= 0) {
+    throw new Error(
+      "Enter at least 1 question in any Foundation level."
+    );
+  }
 
-    return `Create an INTERACTIVE QUIZ for a student.
+  const distribution = [];
+
+  if (counts.concepts > 0) {
+    distribution.push(
+      `Foundation Concepts: ${counts.concepts} question${counts.concepts === 1 ? "" : "s"}`
+    );
+  }
+
+  if (counts.mains > 0) {
+    distribution.push(
+      `Foundation Mains: ${counts.mains} question${counts.mains === 1 ? "" : "s"}`
+    );
+  }
+
+  if (counts.advance > 0) {
+    distribution.push(
+      `Foundation Advance: ${counts.advance} question${counts.advance === 1 ? "" : "s"}`
+    );
+  }
+
+  return `Create a quiz about "${QUIZ_CONTEXT.chapter}" for ${QUIZ_CONTEXT.className} students studying ${QUIZ_CONTEXT.subject}.
+
+IMPORTANT:
+Create this using Gemini's built-in INTERACTIVE QUIZ study-material feature.
+
+Do NOT conduct the quiz as a normal chat conversation.
+Do NOT ask Question 1 directly in the chat.
+Do NOT display the questions as a normal text response.
+Do NOT simply quiz me one question at a time in this conversation.
+
+Generate an actual Gemini Interactive Quiz that can be opened and taken using Gemini's Quiz interface.
 
 Class: ${QUIZ_CONTEXT.className}
 Board: ${QUIZ_CONTEXT.board}
 Subject: ${QUIZ_CONTEXT.subject}
 Chapter: ${QUIZ_CONTEXT.chapter}
 
-Quiz Distribution:
+Question Distribution:
 ${distribution.join("\n")}
+
 Total Questions: ${total}
 
 Use these Foundation difficulty standards STRICTLY:
@@ -541,7 +573,7 @@ Use these Foundation difficulty standards STRICTLY:
 FOUNDATION CONCEPTS:
 - Basic conceptual, recall, or direct-application questions suitable for students beginning IIT/NEET Foundation training.
 - Use a single concept and avoid unnecessary multi-step reasoning.
-- Keep the style competitive-exam oriented, but simple and focused.
+- Keep the questions competitive-exam oriented, simple and focused.
 - Do not reduce this level to ordinary board-textbook drill.
 
 FOUNDATION MAINS:
@@ -551,30 +583,34 @@ FOUNDATION MAINS:
 - Make these clearly more challenging than Foundation Concepts, but not full Olympiad level.
 
 FOUNDATION ADVANCE:
-- Challenging Olympiad/NTSE/IIT Foundation style.
+- Challenging Olympiad/NTSE/IIT Foundation style questions.
 - Require multi-step logical reasoning and, where suitable, combine two or more concepts.
 - Use non-standard twists, deeper application, or novel approaches.
-- Keep every question within the selected class syllabus. Do not require higher-class methods.
+- Keep every question strictly within the selected class syllabus.
+- Do not require higher-class methods.
 
-IMPORTANT QUIZ INSTRUCTIONS:
-1. Create this as Gemini's interactive quiz/study-material experience, not as a plain list of questions.
-2. Follow the exact number of questions requested for each Foundation level.
-3. Keep every question strictly within the selected chapter and class level.
-4. Use exactly four answer options for every question.
-5. Use exactly one correct answer for each question.
-6. Questions must be fresh, accurate, unambiguous, and non-repetitive.
-7. Independently verify every answer before finalizing the quiz.
-8. Use plausible distractors based on common student errors or misconceptions.
-9. After the student answers, provide useful feedback and a clear explanation.
-10. Include hints where appropriate without revealing the answer.
-11. Keep score throughout the quiz.
-12. At the end, show the student's total score and performance summary.
-13. Allow the student to review incorrect answers.
-14. After completion, allow more practice questions on weak concepts.
-15. For mathematical expressions, render notation clearly and correctly.
+INTERACTIVE QUIZ REQUIREMENTS:
+1. Create an actual Gemini Interactive Quiz study material.
+2. Do not answer with a normal conversational quiz.
+3. Follow the exact number of questions requested for each Foundation level.
+4. Create exactly ${total} questions in total.
+5. Keep every question strictly within the selected chapter and class level.
+6. Give exactly four options for every question.
+7. Give exactly one correct answer for every question.
+8. Questions must be fresh, accurate, unambiguous and non-repetitive.
+9. Independently verify every answer before finalizing the quiz.
+10. Use plausible distractors based on common student errors or misconceptions.
+11. Include useful hints without directly revealing the answer.
+12. Include clear explanations for answers.
+13. Enable scoring and performance review.
+14. Allow the student to review incorrect answers.
+15. Allow additional practice after completion.
+16. For Mathematics, render mathematical notation clearly and correctly.
 
-Start the interactive quiz now.`;
-  }
+Do not begin by displaying Question 1 in the chat.
+
+Create the Gemini Interactive Quiz study material now.`;
+}
 
   async function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
