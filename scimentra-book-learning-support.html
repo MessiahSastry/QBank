@@ -431,8 +431,45 @@
       box-shadow: 0 2px 10px rgba(15, 61, 107, 0.17);
     }
 
-    .ask-ai-btn:hover { filter: brightness(1.04); }
+        .ask-ai-btn:hover { filter: brightness(1.04); }
     .ask-ai-btn:active { transform: translateY(1px); }
+
+    .interactive-quiz-btn {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 16px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 13px;
+      background: linear-gradient(90deg, #1762a7, #0f3d6b);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(15, 61, 107, 0.18);
+      transition:
+        transform .15s ease,
+        box-shadow .15s ease,
+        filter .15s ease;
+    }
+
+    .interactive-quiz-btn:hover {
+      filter: brightness(1.05);
+      box-shadow: 0 6px 18px rgba(15, 61, 107, 0.23);
+    }
+
+    .interactive-quiz-btn:active {
+      transform: translateY(1px);
+    }
+
+    .interactive-quiz-note {
+      margin: 8px 0 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
 
     .modal-overlay {
       position: fixed;
@@ -711,9 +748,19 @@
           </div>
         </div>
       </div>
-      <p class="hint">
+            <p class="hint">
         Class, board, subject and chapter are taken automatically from the chapter QR.
         Select only the level and question type.
+      </p>
+
+      <button type="button"
+              id="interactive-quiz-btn"
+              class="interactive-quiz-btn">
+        🎯 Interactive Quiz
+      </button>
+
+      <p class="interactive-quiz-note">
+        Create a personalised interactive quiz for this chapter.
       </p>
     </section>
 
@@ -1500,7 +1547,7 @@
     loadQuestions
   );
 
-  document.addEventListener("click", event => {
+   document.addEventListener("click", event => {
     const button = event.target.closest(".ask-ai-btn");
     if (!button) return;
 
@@ -1508,6 +1555,56 @@
     const docId = card ? card.getAttribute("data-id") : "";
     if (docId) openExplanation(docId);
   });
+
+
+  const interactiveQuizBtn =
+    document.getElementById("interactive-quiz-btn");
+
+  if (interactiveQuizBtn) {
+
+    interactiveQuizBtn.addEventListener("click", () => {
+
+      if (
+        !BOOK_CONTEXT.className ||
+        !BOOK_CONTEXT.subject ||
+        !BOOK_CONTEXT.chapter
+      ) {
+        alert("Class, Subject or Chapter information is missing.");
+        return;
+      }
+
+      const params = new URLSearchParams();
+
+      params.set(
+        "class",
+        BOOK_CONTEXT.className
+      );
+
+      params.set(
+        "board",
+        BOOK_CONTEXT.board
+      );
+
+      params.set(
+        "subject",
+        BOOK_CONTEXT.subject
+      );
+
+      params.set(
+        "chapter",
+        BOOK_CONTEXT.chapter
+      );
+
+      const quizUrl =
+        "scimentra-interactive-quiz.html?" +
+        params.toString();
+
+      window.open(
+        quizUrl,
+        "_blank"
+      );
+    });
+  }
 </script>
 </body>
 </html>
