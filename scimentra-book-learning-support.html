@@ -152,28 +152,159 @@
       color: var(--blue);
     }
 
-    select {
+       .native-hidden-select {
+      display: none !important;
+    }
+
+    .modern-select {
+      position: relative;
       width: 100%;
-      min-height: 46px;
-      padding: 10px 12px;
-      border: 1.4px solid #bcd6ef;
-      border-radius: 10px;
-      background: #fff;
-      color: var(--ink);
+    }
+
+    .modern-select-trigger {
+      width: 100%;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 14px;
+      border: 1.5px solid #bcd6ef;
+      border-radius: 13px;
+      background: #ffffff;
+      color: var(--navy);
+      font-family: inherit;
       font-size: 16px;
-      font-weight: 650;
+      font-weight: 800;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 2px 7px rgba(15, 61, 107, 0.05);
+      transition:
+        border-color .16s ease,
+        box-shadow .16s ease,
+        background .16s ease;
+    }
+
+    .modern-select-trigger:hover {
+      border-color: #8fb9df;
+      background: #fbfdff;
+    }
+
+    .modern-select-trigger:focus-visible {
       outline: none;
-    }
-
-    select:focus {
       border-color: var(--blue);
-      box-shadow: 0 0 0 3px rgba(23, 98, 167, 0.12);
+      box-shadow: 0 0 0 3px rgba(23, 98, 167, 0.13);
     }
 
-    select:disabled {
+    .modern-select-trigger:disabled {
       background: #eef3f8;
       color: #8b9aaa;
+      border-color: #d7e1ea;
       cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .modern-select-chevron {
+      flex: 0 0 auto;
+      width: 9px;
+      height: 9px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform .16s ease;
+      opacity: .8;
+    }
+
+    .modern-select.open .modern-select-chevron {
+      transform: rotate(225deg) translate(-2px, -2px);
+    }
+
+    .modern-select-menu {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 7px);
+      z-index: 3000;
+      padding: 7px;
+      background: #ffffff;
+      border: 1px solid #d3e4f3;
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(15, 61, 107, 0.16);
+      max-height: 310px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .modern-select.open .modern-select-menu {
+      display: block;
+      animation: modernSelectIn .14s ease-out;
+    }
+
+    @keyframes modernSelectIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modern-select-option {
+      width: 100%;
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #153f66;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 750;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .modern-select-option:hover,
+    .modern-select-option:focus-visible {
+      outline: none;
+      background: #eef6fd;
+    }
+
+    .modern-select-option.selected {
+      background: #e6f1fb;
+      color: #0f4f88;
+    }
+
+    .modern-select-check {
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 900;
+      opacity: 0;
+      transform: scale(.82);
+      transition:
+        opacity .12s ease,
+        transform .12s ease;
+    }
+
+    .modern-select-option.selected .modern-select-check {
+      opacity: 1;
+      transform: scale(1);
     }
 
     .hint {
@@ -462,25 +593,124 @@
         </div>
       </div>
 
-      <div class="selector-grid">
+           <div class="selector-grid">
         <div>
-          <label for="level-select">Level</label>
-          <select id="level-select">
+          <label>Level</label>
+
+          <select id="level-select"
+                  class="native-hidden-select"
+                  aria-hidden="true"
+                  tabindex="-1">
             <option value="">Select Level</option>
             <option value="Level 1">Foundation Concepts</option>
             <option value="Level 2">Foundation Mains</option>
             <option value="Level 3">Foundation Advance</option>
           </select>
+
+          <div class="modern-select" id="level-modern">
+
+            <button type="button"
+                    class="modern-select-trigger"
+                    id="level-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false">
+
+              <span id="level-trigger-text">
+                Select Level
+              </span>
+
+              <span class="modern-select-chevron"
+                    aria-hidden="true"></span>
+
+            </button>
+
+            <div class="modern-select-menu"
+                 id="level-menu"
+                 role="listbox">
+
+              <button type="button"
+                      class="modern-select-option"
+                      data-value="Level 1"
+                      role="option">
+
+                <span>Foundation Concepts</span>
+
+                <span class="modern-select-check"
+                      aria-hidden="true">✓</span>
+
+              </button>
+
+              <button type="button"
+                      class="modern-select-option"
+                      data-value="Level 2"
+                      role="option">
+
+                <span>Foundation Mains</span>
+
+                <span class="modern-select-check"
+                      aria-hidden="true">✓</span>
+
+              </button>
+
+              <button type="button"
+                      class="modern-select-option"
+                      data-value="Level 3"
+                      role="option">
+
+                <span>Foundation Advance</span>
+
+                <span class="modern-select-check"
+                      aria-hidden="true">✓</span>
+
+              </button>
+
+            </div>
+
+          </div>
         </div>
+
 
         <div>
-          <label for="type-select">Question Type</label>
-          <select id="type-select" disabled>
-            <option value="">Select Level First</option>
+          <label>Question Type</label>
+
+          <select id="type-select"
+                  class="native-hidden-select"
+                  aria-hidden="true"
+                  tabindex="-1"
+                  disabled>
+
+            <option value="">
+              Select Level First
+            </option>
+
           </select>
+
+          <div class="modern-select" id="type-modern">
+
+            <button type="button"
+                    class="modern-select-trigger"
+                    id="type-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    disabled>
+
+              <span id="type-trigger-text">
+                Select Level First
+              </span>
+
+              <span class="modern-select-chevron"
+                    aria-hidden="true"></span>
+
+            </button>
+
+            <div class="modern-select-menu"
+                 id="type-menu"
+                 role="listbox">
+            </div>
+
+          </div>
         </div>
       </div>
-
       <p class="hint">
         Class, board, subject and chapter are taken automatically from the chapter QR.
         Select only the level and question type.
@@ -588,9 +818,33 @@
   const typeSelect = document.getElementById("type-select");
   const displayArea = document.getElementById("questions-display-area");
   const resultsHead = document.getElementById("results-head");
-  const resultsTitle = document.getElementById("results-title");
+    const resultsTitle = document.getElementById("results-title");
   const resultsCount = document.getElementById("results-count");
   const configError = document.getElementById("configuration-error");
+
+  const levelModern =
+    document.getElementById("level-modern");
+
+  const levelTrigger =
+    document.getElementById("level-trigger");
+
+  const levelTriggerText =
+    document.getElementById("level-trigger-text");
+
+  const levelMenu =
+    document.getElementById("level-menu");
+
+  const typeModern =
+    document.getElementById("type-modern");
+
+  const typeTrigger =
+    document.getElementById("type-trigger");
+
+  const typeTriggerText =
+    document.getElementById("type-trigger-text");
+
+  const typeMenu =
+    document.getElementById("type-menu");
 
   infoClass.textContent = BOOK_CONTEXT.className || "Not provided";
   infoBoard.textContent = BOOK_CONTEXT.board || "Not provided";
@@ -723,30 +977,319 @@
       </article>`;
   }
 
+    function closeModernDropdowns(except = null) {
+
+    [levelModern, typeModern].forEach(root => {
+
+      if (!root || root === except) return;
+
+      root.classList.remove("open");
+
+      const trigger =
+        root.querySelector(".modern-select-trigger");
+
+      if (trigger) {
+        trigger.setAttribute(
+          "aria-expanded",
+          "false"
+        );
+      }
+    });
+  }
+
+
+  function markSelectedOption(menu, value) {
+
+    if (!menu) return;
+
+    menu.querySelectorAll(
+      ".modern-select-option"
+    ).forEach(option => {
+
+      const selected =
+        option.dataset.value === value;
+
+      option.classList.toggle(
+        "selected",
+        selected
+      );
+
+      option.setAttribute(
+        "aria-selected",
+        selected ? "true" : "false"
+      );
+    });
+  }
+
+
+  function openOrCloseModernSelect(
+    root,
+    trigger
+  ) {
+
+    if (
+      !root ||
+      !trigger ||
+      trigger.disabled
+    ) return;
+
+    const willOpen =
+      !root.classList.contains("open");
+
+    closeModernDropdowns(root);
+
+    root.classList.toggle(
+      "open",
+      willOpen
+    );
+
+    trigger.setAttribute(
+      "aria-expanded",
+      willOpen ? "true" : "false"
+    );
+  }
+
+
+  function chooseModernValue(
+    nativeSelect,
+    triggerText,
+    menu,
+    value,
+    label
+  ) {
+
+    nativeSelect.value = value;
+
+    triggerText.textContent = label;
+
+    markSelectedOption(
+      menu,
+      value
+    );
+
+    closeModernDropdowns();
+
+    nativeSelect.dispatchEvent(
+      new Event(
+        "change",
+        { bubbles: true }
+      )
+    );
+  }
+
+
+  function setupModernDropdowns() {
+
+    levelTrigger.disabled =
+      !!levelSelect.disabled;
+
+    typeTrigger.disabled =
+      !!typeSelect.disabled;
+
+
+    levelTrigger.addEventListener(
+      "click",
+      event => {
+
+        event.stopPropagation();
+
+        openOrCloseModernSelect(
+          levelModern,
+          levelTrigger
+        );
+      }
+    );
+
+
+    typeTrigger.addEventListener(
+      "click",
+      event => {
+
+        event.stopPropagation();
+
+        openOrCloseModernSelect(
+          typeModern,
+          typeTrigger
+        );
+      }
+    );
+
+
+    levelMenu.addEventListener(
+      "click",
+      event => {
+
+        const option =
+          event.target.closest(
+            ".modern-select-option"
+          );
+
+        if (!option) return;
+
+        const value =
+          option.dataset.value || "";
+
+        const label =
+          option
+            .querySelector("span")
+            ?.textContent
+            ?.trim() ||
+          option.textContent.trim();
+
+        chooseModernValue(
+          levelSelect,
+          levelTriggerText,
+          levelMenu,
+          value,
+          label
+        );
+      }
+    );
+
+
+    typeMenu.addEventListener(
+      "click",
+      event => {
+
+        const option =
+          event.target.closest(
+            ".modern-select-option"
+          );
+
+        if (!option) return;
+
+        const value =
+          option.dataset.value || "";
+
+        const label =
+          option
+            .querySelector("span")
+            ?.textContent
+            ?.trim() ||
+          option.textContent.trim();
+
+        chooseModernValue(
+          typeSelect,
+          typeTriggerText,
+          typeMenu,
+          value,
+          label
+        );
+      }
+    );
+
+
+    document.addEventListener(
+      "click",
+      event => {
+
+        if (
+          !event.target.closest(
+            ".modern-select"
+          )
+        ) {
+          closeModernDropdowns();
+        }
+      }
+    );
+
+
+    document.addEventListener(
+      "keydown",
+      event => {
+
+        if (event.key === "Escape") {
+          closeModernDropdowns();
+        }
+      }
+    );
+  }
+
+
   function updateTypeOptions() {
-    const level = levelSelect.value;
+
+    const level =
+      levelSelect.value;
+
     typeSelect.innerHTML = "";
+    typeMenu.innerHTML = "";
+    typeSelect.value = "";
+
+    typeTriggerText.textContent =
+      level
+        ? "Select Question Type"
+        : "Select Level First";
+
+    typeTrigger.disabled = true;
+    typeSelect.disabled = true;
+
+    closeModernDropdowns();
+
+    markSelectedOption(
+      levelMenu,
+      level
+    );
+
 
     if (!level) {
-      typeSelect.disabled = true;
-      typeSelect.innerHTML = `<option value="">Select Level First</option>`;
+
+      typeSelect.innerHTML =
+        `<option value="">Select Level First</option>`;
+
       displayArea.innerHTML =
         `<div class="status">Select a level and question type to view questions.</div>`;
-      resultsHead.style.display = "none";
+
+      resultsHead.style.display =
+        "none";
+
       return;
     }
 
-    const options = LEVEL_TYPES[level] || [];
+
+    const options =
+      LEVEL_TYPES[level] || [];
+
+
     typeSelect.disabled = false;
+    typeTrigger.disabled = false;
+
+
     typeSelect.innerHTML =
       `<option value="">Select Question Type</option>` +
+
       options.map(item =>
         `<option value="${escapeAttribute(item.value)}">${escapeHtml(item.label)}</option>`
       ).join("");
 
+
+    typeMenu.innerHTML =
+      options.map(item => `
+
+        <button type="button"
+                class="modern-select-option"
+                data-value="${escapeAttribute(item.value)}"
+                role="option"
+                aria-selected="false">
+
+          <span>
+            ${escapeHtml(item.label)}
+          </span>
+
+          <span class="modern-select-check"
+                aria-hidden="true">
+            ✓
+          </span>
+
+        </button>
+
+      `).join("");
+
+
     displayArea.innerHTML =
       `<div class="status">Now select a question type.</div>`;
-    resultsHead.style.display = "none";
+
+    resultsHead.style.display =
+      "none";
   }
 
   async function loadQuestions() {
@@ -940,8 +1483,17 @@
     }
   }
 
-  levelSelect.addEventListener("change", updateTypeOptions);
-  typeSelect.addEventListener("change", loadQuestions);
+    setupModernDropdowns();
+
+  levelSelect.addEventListener(
+    "change",
+    updateTypeOptions
+  );
+
+  typeSelect.addEventListener(
+    "change",
+    loadQuestions
+  );
 
   document.addEventListener("click", event => {
     const button = event.target.closest(".ask-ai-btn");
