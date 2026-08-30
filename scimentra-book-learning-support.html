@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Book Learning Support | SciMentra</title>
+
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]] },
+      svg: { fontCache: "global" }
+    };
+  </script>
+  <script id="MathJax-script" async
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    :root {
+      --blue: #1762a7;
+      --navy: #0f3d6b;
+      --ink: #123c62;
+      --muted: #6a7f94;
+      --line: #d8e7f5;
+      --soft: #f4f8fc;
+      --white: #ffffff;
+      --danger: #b42318;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--soft);
+      color: var(--ink);
+    }
+
+    body::after {
+      content: "SciMentra\A IIT & NEET FOUNDATION";
+      white-space: pre;
+      position: fixed;
+      left: 50%;
+      top: 52%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: clamp(28px, 5vw, 72px);
+      font-weight: 900;
+      line-height: 1.15;
+      color: rgba(15, 61, 107, 0.035);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(90deg, var(--blue), var(--navy));
+      color: #fff;
+      text-align: center;
+      padding: 18px 14px 20px;
+      border-bottom-left-radius: 28px;
+      border-bottom-right-radius: 28px;
+      box-shadow: 0 4px 14px rgba(15, 61, 107, 0.14);
+    }
+
+    .brand {
+      margin: 0;
+      font-size: clamp(26px, 4.5vw, 34px);
+      font-weight: 900;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-sub {
+      margin-top: 4px;
+      font-size: clamp(14px, 2.6vw, 17px);
+      font-weight: 700;
+      color: #e5f0fb;
+      letter-spacing: 0.04em;
+    }
+
+    main {
+      width: min(920px, calc(100% - 24px));
+      margin: 22px auto 40px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.97);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 4px 18px rgba(0, 27, 68, 0.08);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .page-title {
+      margin: 0 0 16px;
+      text-align: center;
+      color: var(--navy);
+      font-size: clamp(20px, 3.6vw, 27px);
+      font-weight: 900;
+    }
+
+    .book-info {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .info-item {
+      min-width: 0;
+      background: #f8fbfe;
+      border: 1px solid #cfe1f2;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .info-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      display: block;
+      min-width: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--navy);
+      overflow-wrap: anywhere;
+    }
+
+    .selector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    select {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1.4px solid #bcd6ef;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 650;
+      outline: none;
+    }
+
+    select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(23, 98, 167, 0.12);
+    }
+
+    select:disabled {
+      background: #eef3f8;
+      color: #8b9aaa;
+      cursor: not-allowed;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .status {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .status.error {
+      color: var(--danger);
+      background: #fff5f4;
+      border: 1px solid #ffd7d2;
+      border-radius: 12px;
+    }
+
+    #results-head {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 auto 10px;
+      width: min(720px, 100%);
+    }
+
+    #results-title {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--navy);
+    }
+
+    #results-count {
+      flex: 0 0 auto;
+      background: #eaf3fc;
+      color: var(--blue);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .question-item {
+      width: min(720px, 100%);
+      margin: 0 auto 13px;
+      background: #fff;
+      border: 1.4px solid #dbe9f6;
+      border-radius: 16px;
+      box-shadow: 0 2px 14px rgba(0, 27, 68, 0.055);
+      padding: 15px 17px;
+    }
+
+    .question-meta {
+      color: #a33b46;
+      font-size: 13px;
+      font-weight: 850;
+      margin-bottom: 8px;
+    }
+
+    .question-text {
+      color: #174e7d;
+      font-size: 16px;
+      line-height: 1.6;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .stem {
+      white-space: pre-wrap;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .options {
+      margin: 6px 0 0 18px;
+      display: grid;
+      gap: 5px;
+    }
+
+    .option-row {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 5px;
+      align-items: start;
+    }
+
+    .option-letter {
+      font-weight: 900;
+      color: var(--navy);
+    }
+
+    .question-image {
+      display: block;
+      max-width: min(260px, 100%);
+      max-height: 190px;
+      object-fit: contain;
+      margin: 10px 0 2px;
+      border-radius: 9px;
+      border: 1px solid #e1eaf3;
+    }
+
+    .ask-ai-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      margin-top: 11px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--blue), var(--navy));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(15, 61, 107, 0.17);
+    }
+
+    .ask-ai-btn:hover { filter: brightness(1.04); }
+    .ask-ai-btn:active { transform: translateY(1px); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      background: rgba(0, 0, 0, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal {
+      width: min(700px, 100%);
+      max-height: 86vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #111827;
+      color: #fff;
+      border-radius: 18px;
+      box-shadow: 0 10px 34px rgba(0,0,0,0.38);
+    }
+
+    .modal-head {
+      text-align: center;
+      padding: 15px 18px 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .modal-brand {
+      font-size: 21px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
+    .modal-title {
+      margin-top: 4px;
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .modal-body {
+      padding: 18px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 18px 22px;
+      border-top: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .modal-btn {
+      min-height: 44px;
+      border: none;
+      border-radius: 11px;
+      padding: 10px 16px;
+      font-weight: 900;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .close-btn {
+      background: #fff;
+      color: #111827;
+    }
+
+    .more-btn {
+      margin-left: auto;
+      background: var(--blue);
+      color: #fff;
+    }
+
+    @media (max-width: 620px) {
+      main {
+        width: min(100% - 16px, 920px);
+        margin-top: 14px;
+      }
+
+      .panel {
+        padding: 14px;
+        border-radius: 15px;
+      }
+
+      .book-info,
+      .selector-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .selector-grid {
+        gap: 12px;
+      }
+
+      .question-item {
+        padding: 13px 14px;
+      }
+
+      .question-text {
+        font-size: 15.5px;
+      }
+
+      .ask-ai-btn {
+        width: 100%;
+        min-height: 46px;
+        font-size: 15px;
+      }
+
+      .modal-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+      }
+
+      .more-btn {
+        margin-left: 0;
+      }
+
+      .modal-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div class="page">
+  <header>
+    <h1 class="brand">SciMentra</h1>
+    <div class="brand-sub">IIT &amp; NEET FOUNDATION</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2 class="page-title">Book Learning Support</h2>
+
+      <div class="book-info">
+        <div class="info-item">
+          <span class="info-label">Class</span>
+          <span class="info-value" id="info-class">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Board</span>
+          <span class="info-value" id="info-board">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Subject</span>
+          <span class="info-value" id="info-subject">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Chapter</span>
+          <span class="info-value" id="info-chapter">—</span>
+        </div>
+      </div>
+
+      <div class="selector-grid">
+        <div>
+          <label for="level-select">Level</label>
+          <select id="level-select">
+            <option value="">Select Level</option>
+            <option value="Level 1">Foundation Concepts</option>
+            <option value="Level 2">Foundation Mains</option>
+            <option value="Level 3">Foundation Advance</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="type-select">Question Type</label>
+          <select id="type-select" disabled>
+            <option value="">Select Level First</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="hint">
+        Class, board, subject and chapter are taken automatically from the chapter QR.
+        Select only the level and question type.
+      </p>
+    </section>
+
+    <section id="configuration-error" class="status error" style="display:none;"></section>
+
+    <div id="results-head">
+      <div id="results-title">Questions</div>
+      <div id="results-count">0 Questions</div>
+    </div>
+
+    <section id="questions-display-area">
+      <div class="status">Select a level and question type to view questions.</div>
+    </section>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // ============================================================
+  // SciMentra Book Learning Support
+  //
+  // Example QR URL:
+  // book-learning-support.html
+  //   ?class=6th%20Class
+  //   &subject=Math%20IIT
+  //   &chapter=Introduction%20to%20Algebra
+  //
+  // Board defaults to "IIT & NEET Foundation".
+  // You may also include &board=IIT%20%26%20NEET%20Foundation
+  // ============================================================
+
+  const questionsProjectConfig = {
+    apiKey: "AIzaSyAszVhWXUUOYLQ7VimKmPKf1yEu_CI9RCE",
+    authDomain: "stpatricks-questionbank.firebaseapp.com",
+    projectId: "stpatricks-questionbank",
+    storageBucket: "stpatricks-questionbank.appspot.com",
+    messagingSenderId: "917615322861",
+    appId: "1:917615322861:web:c6c890aa2184dd395b8ee4"
+  };
+
+  // The original workbook uses this Firestore project for the question data.
+
+  const questionsApp =
+    firebase.apps.find(app => app.name === "bookSupportQuestions") ||
+    firebase.initializeApp(questionsProjectConfig, "bookSupportQuestions");
+
+  const questionsDb = questionsApp.firestore();
+
+  const LEVEL_TYPES = {
+    "Level 1": [
+      { value: "MCQ (Single)", label: "MCQ (Single)" },
+      { value: "Assertion and Reason (MCQ Single)", label: "Assertion & Reason" },
+      { value: "Matching Matrix", label: "Matching Matrix" },
+      { value: "Passage-Based MCQ", label: "Passage-Based MCQ" }
+    ],
+    "Level 2": [
+      { value: "MCQ (Single)", label: "MCQ (Single)" },
+      { value: "Assertion and Reason (MCQ Single)", label: "Assertion & Reason" },
+      { value: "Matching Matrix", label: "Matching Matrix" },
+      { value: "Passage-Based MCQ", label: "Passage-Based MCQ" }
+    ],
+    "Level 3": [
+      { value: "MCQ (Single)", label: "MCQ (Single)" },
+      { value: "MCQ (Multiple)", label: "MCQ (Multiple)" },
+      { value: "Assertion and Reason (MCQ Single)", label: "Assertion & Reason" },
+      { value: "Matching Matrix", label: "Matching Matrix" },
+      { value: "Passage-Based MCQ", label: "Passage-Based MCQ" },
+      { value: "Numerical", label: "Numerical" }
+    ]
+  };
+
+  const LEVEL_LABELS = {
+    "Level 1": "Foundation Concepts",
+    "Level 2": "Foundation Mains",
+    "Level 3": "Foundation Advance"
+  };
+
+  const qs = new URLSearchParams(window.location.search);
+
+  function firstParam(names, fallback = "") {
+    for (const name of names) {
+      const value = qs.get(name);
+      if (value && String(value).trim()) return String(value).trim();
+    }
+    return fallback;
+  }
+
+  const BOOK_CONTEXT = {
+    className: firstParam(["class", "className", "c"]),
+    board: firstParam(["board", "b"], "IIT & NEET Foundation"),
+    subject: firstParam(["subject", "sub", "s"]),
+    chapter: firstParam(["chapter", "ch"])
+  };
+
+  const infoClass = document.getElementById("info-class");
+  const infoBoard = document.getElementById("info-board");
+  const infoSubject = document.getElementById("info-subject");
+  const infoChapter = document.getElementById("info-chapter");
+  const levelSelect = document.getElementById("level-select");
+  const typeSelect = document.getElementById("type-select");
+  const displayArea = document.getElementById("questions-display-area");
+  const resultsHead = document.getElementById("results-head");
+  const resultsTitle = document.getElementById("results-title");
+  const resultsCount = document.getElementById("results-count");
+  const configError = document.getElementById("configuration-error");
+
+  infoClass.textContent = BOOK_CONTEXT.className || "Not provided";
+  infoBoard.textContent = BOOK_CONTEXT.board || "Not provided";
+  infoSubject.textContent = BOOK_CONTEXT.subject || "Not provided";
+  infoChapter.textContent = BOOK_CONTEXT.chapter || "Not provided";
+
+  const missingFields = [];
+  if (!BOOK_CONTEXT.className) missingFields.push("Class");
+  if (!BOOK_CONTEXT.subject) missingFields.push("Subject");
+  if (!BOOK_CONTEXT.chapter) missingFields.push("Chapter");
+
+  if (missingFields.length) {
+    configError.style.display = "block";
+    configError.textContent =
+      "This QR link is incomplete. Missing: " + missingFields.join(", ") + ".";
+    levelSelect.disabled = true;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/`/g, "&#96;");
+  }
+
+  function normalizeDbType(data) {
+    const raw = String(
+      data.mcqType ||
+      data.type ||
+      (Array.isArray(data.options) && data.options.length === 4
+        ? "MCQ (Single)"
+        : "Descriptive")
+    ).trim();
+
+    const t = raw.toLowerCase();
+
+    // Passage/paragraph must be checked before generic "single".
+    if (
+      t.includes("passage") ||
+      t.includes("paragraph") ||
+      t.includes("case-based") ||
+      t.includes("case based") ||
+      t.includes("case study")
+    ) {
+      return "Passage-Based MCQ";
+    }
+
+    if (t.includes("assertion") && t.includes("reason")) {
+      return "Assertion and Reason (MCQ Single)";
+    }
+
+    if (t.includes("matching") || t.includes("match matrix")) {
+      return "Matching Matrix";
+    }
+
+    if (
+      (t.includes("fill") && t.includes("blank")) ||
+      t.includes("numerical")
+    ) {
+      return "Numerical";
+    }
+
+    if (t.includes("multiple") || t.includes("multi correct")) {
+      return "MCQ (Multiple)";
+    }
+
+    if (
+      t === "mcq (single)" ||
+      t === "mcq single" ||
+      t.includes("single correct")
+    ) {
+      return "MCQ (Single)";
+    }
+
+    return raw;
+  }
+
+  function cleanOptionText(opt) {
+    return String(opt ?? "").replace(/^[A-D][\)\.\-]\s*/i, "").trim();
+  }
+
+  function renderQuestionCard(docId, data, number, normalizedType) {
+    const questionText = String(data.question || data.body || data.text || "").trim();
+    const options = Array.isArray(data.options) ? data.options : [];
+    const image = String(data.image || "").trim();
+
+    let bodyHtml = "";
+
+    if (options.length === 4) {
+      bodyHtml += `<div class="stem">${escapeHtml(questionText)}</div>`;
+      bodyHtml += `<div class="options">`;
+
+      options.forEach((opt, index) => {
+        const letter = String.fromCharCode(65 + index);
+        bodyHtml += `
+          <div class="option-row">
+            <div class="option-letter">${letter})</div>
+            <div>${escapeHtml(cleanOptionText(opt))}</div>
+          </div>`;
+      });
+
+      bodyHtml += `</div>`;
+    } else {
+      bodyHtml += `<div class="stem">${escapeHtml(questionText)}</div>`;
+    }
+
+    if (image) {
+      bodyHtml += `
+        <img class="question-image"
+             src="${escapeAttribute(image)}"
+             alt="Question illustration"
+             loading="lazy">`;
+    }
+
+    return `
+      <article class="question-item"
+               data-id="${escapeAttribute(docId)}">
+        <div class="question-meta">
+          Q${number} &nbsp;•&nbsp; ${escapeHtml(LEVEL_LABELS[data.difficulty || data.level] || data.difficulty || data.level || "")}
+          &nbsp;•&nbsp; ${escapeHtml(normalizedType)}
+        </div>
+        <div class="question-text">${bodyHtml}</div>
+        <button type="button" class="ask-ai-btn">💡 Explain It</button>
+      </article>`;
+  }
+
+  function updateTypeOptions() {
+    const level = levelSelect.value;
+    typeSelect.innerHTML = "";
+
+    if (!level) {
+      typeSelect.disabled = true;
+      typeSelect.innerHTML = `<option value="">Select Level First</option>`;
+      displayArea.innerHTML =
+        `<div class="status">Select a level and question type to view questions.</div>`;
+      resultsHead.style.display = "none";
+      return;
+    }
+
+    const options = LEVEL_TYPES[level] || [];
+    typeSelect.disabled = false;
+    typeSelect.innerHTML =
+      `<option value="">Select Question Type</option>` +
+      options.map(item =>
+        `<option value="${escapeAttribute(item.value)}">${escapeHtml(item.label)}</option>`
+      ).join("");
+
+    displayArea.innerHTML =
+      `<div class="status">Now select a question type.</div>`;
+    resultsHead.style.display = "none";
+  }
+
+  async function loadQuestions() {
+    const selectedLevel = levelSelect.value;
+    const selectedType = typeSelect.value;
+
+    if (!selectedLevel || !selectedType) {
+      resultsHead.style.display = "none";
+      return;
+    }
+
+    displayArea.innerHTML = `<div class="status">Loading questions...</div>`;
+    resultsHead.style.display = "none";
+
+    try {
+      // Query only the fixed QR context on Firestore.
+      // Level and question type are filtered client-side, matching the method
+      // used in the existing workbook and avoiding Firestore "in" limitations.
+      let query = questionsDb.collection("questions")
+        .where("class", "==", BOOK_CONTEXT.className)
+        .where("board", "==", BOOK_CONTEXT.board)
+        .where("subject", "==", BOOK_CONTEXT.subject)
+        .where("chapter", "==", BOOK_CONTEXT.chapter);
+
+      const snapshot = await query.get();
+
+      const matches = [];
+
+      snapshot.forEach(doc => {
+        const data = doc.data() || {};
+        const dbLevel = String(data.difficulty || data.level || "").trim();
+        const dbType = normalizeDbType(data);
+
+        if (dbLevel !== selectedLevel) return;
+        if (dbType !== selectedType) return;
+
+        matches.push({
+          id: doc.id,
+          data,
+          dbType,
+          questionNumber: Number(data.questionNumber)
+        });
+      });
+
+      matches.sort((a, b) => {
+        const an = Number.isFinite(a.questionNumber) ? a.questionNumber : Number.MAX_SAFE_INTEGER;
+        const bn = Number.isFinite(b.questionNumber) ? b.questionNumber : Number.MAX_SAFE_INTEGER;
+        if (an !== bn) return an - bn;
+        return String(a.id).localeCompare(String(b.id));
+      });
+
+      if (!matches.length) {
+        displayArea.innerHTML =
+          `<div class="status">No questions found for the selected level and question type.</div>`;
+        resultsHead.style.display = "flex";
+        resultsTitle.textContent = `${LEVEL_LABELS[selectedLevel]} — ${typeSelect.options[typeSelect.selectedIndex].text}`;
+        resultsCount.textContent = "0 Questions";
+        return;
+      }
+
+      const html = matches.map((item, index) =>
+        renderQuestionCard(item.id, item.data, index + 1, item.dbType)
+      ).join("");
+
+      displayArea.innerHTML = html;
+      resultsHead.style.display = "flex";
+      resultsTitle.textContent =
+        `${LEVEL_LABELS[selectedLevel]} — ${typeSelect.options[typeSelect.selectedIndex].text}`;
+      resultsCount.textContent =
+        `${matches.length} Question${matches.length === 1 ? "" : "s"}`;
+
+      if (window.MathJax && typeof window.MathJax.typesetPromise === "function") {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        window.MathJax.typesetPromise([displayArea]).catch(err => {
+          console.error("MathJax rendering error:", err);
+        });
+      }
+    } catch (error) {
+      console.error("Could not load book questions:", error);
+
+      displayArea.innerHTML = `
+        <div class="status error">
+          Could not load questions.<br>
+          ${escapeHtml(error && error.message ? error.message : "Please check the question database connection and Firestore read permissions.")}
+        </div>`;
+      resultsHead.style.display = "none";
+    }
+  }
+
+  function makeFullQuestionForChatGPT(data) {
+    const questionText = String(data.question || data.body || data.text || "").trim();
+    const options = Array.isArray(data.options) ? data.options : [];
+
+    let full = questionText;
+
+    if (options.length === 4) {
+      const formatted = options.map((opt, i) =>
+        `${String.fromCharCode(65 + i)}) ${cleanOptionText(opt)}`
+      ).join("\n");
+
+      full += "\n" + formatted;
+    }
+
+    return full;
+  }
+
+  function closeAnyModal() {
+    document.querySelectorAll(".modal-overlay").forEach(el => el.remove());
+  }
+
+  async function openExplanation(docId) {
+    try {
+      const snap = await questionsDb.collection("questions").doc(docId).get();
+
+      if (!snap.exists) {
+        throw new Error("Question not found.");
+      }
+
+      const data = snap.data() || {};
+
+      const explanation = String(
+        data.explanation || data.solution || data.explain || ""
+      ).replace(/^\s*Explanation\s*:\s*/i, "").trim();
+
+      const answer = String(
+        data.parsedAnswer || data.answer || data.parsedAns || ""
+      )
+        .replace(/^\s*Answer\s*:\s*/i, "")
+        .replace(/^\s*Ans\s*:\s*/i, "")
+        .trim();
+
+      const popupTitle = explanation ? "Explanation" : "Answer";
+      const popupContent =
+        explanation || answer || "No explanation or answer available.";
+
+      const fullQuestionForChatGPT = makeFullQuestionForChatGPT(data);
+
+      closeAnyModal();
+
+      const overlay = document.createElement("div");
+      overlay.className = "modal-overlay";
+      overlay.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <div class="modal-head">
+            <div class="modal-brand">SciMentra</div>
+            <div class="modal-title" id="modal-title">${escapeHtml(popupTitle)}</div>
+          </div>
+
+          <div class="modal-body" id="explanation-popup-body">${escapeHtml(popupContent)}</div>
+
+          <div class="modal-actions">
+            <button type="button" class="modal-btn close-btn" id="close-explanation-popup">
+              Close
+            </button>
+
+            <button type="button" class="modal-btn more-btn" id="more-explanation-btn">
+              Need More Explanation
+            </button>
+          </div>
+        </div>`;
+
+      document.body.appendChild(overlay);
+
+      document.getElementById("close-explanation-popup").addEventListener("click", closeAnyModal);
+
+      document.getElementById("more-explanation-btn").addEventListener("click", () => {
+        const promptText =
+          `Explain this question in detail in a very clear step-by-step way for a student. ` +
+          `Give concept, method, correct answer, and where students usually make mistakes.\n\n` +
+          `Question:\n${fullQuestionForChatGPT}`;
+
+        const chatgptUrl =
+          "https://chatgpt.com/?q=" + encodeURIComponent(promptText);
+
+        window.open(chatgptUrl, "_blank");
+      });
+
+      overlay.addEventListener("click", event => {
+        if (event.target === overlay) closeAnyModal();
+      });
+
+      const bodyEl = document.getElementById("explanation-popup-body");
+      if (window.MathJax && typeof window.MathJax.typesetPromise === "function") {
+        window.MathJax.typesetPromise([bodyEl]).catch(err => {
+          console.error("MathJax explanation render error:", err);
+        });
+      }
+    } catch (error) {
+      console.error("Explanation popup failed:", error);
+      alert("Could not load explanation.");
+    }
+  }
+
+  levelSelect.addEventListener("change", updateTypeOptions);
+  typeSelect.addEventListener("change", loadQuestions);
+
+  document.addEventListener("click", event => {
+    const button = event.target.closest(".ask-ai-btn");
+    if (!button) return;
+
+    const card = button.closest(".question-item");
+    const docId = card ? card.getAttribute("data-id") : "";
+    if (docId) openExplanation(docId);
+  });
+</script>
+</body>
+</html>
