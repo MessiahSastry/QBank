@@ -1004,14 +1004,57 @@ const schoolPassword = document.getElementById("school-password");
 const schoolLoginBtn = document.getElementById("school-login-btn");
 const authError = document.getElementById("auth-error");
 
-questionsAuth.onAuthStateChanged(user => {
+questionsAuth.onAuthStateChanged(async user => {
 
-  if (user) {
-    authGate.style.display = "none";
-    mainPage.style.display = "block";
-  } else {
+  if (!user) {
+
     mainPage.style.display = "none";
     authGate.style.display = "flex";
+    return;
+
+  }
+
+  try {
+
+    const schoolDoc = await questionsDb
+      .collection("scimentraSchools")
+      .doc(user.uid)
+      .get();
+
+    if (
+      schoolDoc.exists &&
+      schoolDoc.data() &&
+      schoolDoc.data().active === true
+    ) {
+
+      authGate.style.display = "none";
+      mainPage.style.display = "block";
+      return;
+
+    }
+
+    await questionsAuth.signOut();
+
+    mainPage.style.display = "none";
+    authGate.style.display = "flex";
+
+    authError.textContent =
+      "This school account is not authorised by SciMentra. Please contact SciMentra.";
+
+    authError.style.display = "block";
+
+  } catch (error) {
+
+    console.error("School approval check failed:", error);
+
+    mainPage.style.display = "none";
+    authGate.style.display = "flex";
+
+    authError.textContent =
+      "Unable to verify SciMentra access. Please try again.";
+
+    authError.style.display = "block";
+
   }
 
 });
