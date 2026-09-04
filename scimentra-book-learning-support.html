@@ -725,7 +725,43 @@
 
 <body>
 
-<div id="auth-gate" class="auth-gate">
+<div id="role-gate" class="auth-gate">
+  <div class="auth-card">
+
+    <div class="auth-brand">SciMentra</div>
+    <div class="auth-sub">IIT &amp; NEET FOUNDATION</div>
+
+    <h2 class="auth-title">Choose Access</h2>
+
+    <p class="auth-description">
+      Please select how you are using this book.
+    </p>
+
+    <button
+      type="button"
+      id="role-teacher-btn"
+      class="auth-login-btn">
+      👨‍🏫 Teacher
+    </button>
+
+    <button
+      type="button"
+      id="role-student-btn"
+      class="auth-login-btn"
+      style="margin-top:12px;background:linear-gradient(90deg,#0f8b6d,#0b6b54);">
+      🎓 Student
+    </button>
+
+    <div class="auth-footer">
+      Teacher access requires the SciMentra school login.
+      Student access opens directly.
+    </div>
+
+  </div>
+</div>
+
+
+<div id="auth-gate" class="auth-gate" style="display:none;">
   <div class="auth-card">
 
     <div class="auth-brand">SciMentra</div>
@@ -780,10 +816,31 @@
 </div>
 
 <div class="page" id="main-page" style="display:none;">
-  <header>
-    <h1 class="brand">SciMentra</h1>
-    <div class="brand-sub">IIT &amp; NEET FOUNDATION</div>
-  </header>
+  <header style="position:relative;">
+  <h1 class="brand">SciMentra</h1>
+  <div class="brand-sub">IIT &amp; NEET FOUNDATION</div>
+
+  <button
+    type="button"
+    id="teacher-logout-btn"
+    style="
+      display:none;
+      position:absolute;
+      right:14px;
+      top:16px;
+      border:1px solid rgba(255,255,255,0.55);
+      background:rgba(255,255,255,0.12);
+      color:#ffffff;
+      border-radius:9px;
+      padding:7px 12px;
+      font-family:inherit;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+    ">
+    Logout
+  </button>
+</header>
 
   <main>
     <section class="panel">
@@ -996,6 +1053,10 @@ questionsAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     console.error("Auth persistence error:", error);
   });
 
+const roleGate = document.getElementById("role-gate");
+const teacherRoleBtn = document.getElementById("role-teacher-btn");
+const studentRoleBtn = document.getElementById("role-student-btn");
+
 const authGate = document.getElementById("auth-gate");
 const mainPage = document.getElementById("main-page");
 const schoolLoginForm = document.getElementById("school-login-form");
@@ -1004,14 +1065,19 @@ const schoolPassword = document.getElementById("school-password");
 const schoolLoginBtn = document.getElementById("school-login-btn");
 const authError = document.getElementById("auth-error");
 
-questionsAuth.onAuthStateChanged(async user => {
+let selectedRole = "";
+
+
+async function handleTeacherAccess(user) {
+
+  mainPage.style.display = "none";
+
+  authError.style.display = "none";
+  authError.textContent = "";
 
   if (!user) {
-
-    mainPage.style.display = "none";
     authGate.style.display = "flex";
     return;
-
   }
 
   try {
@@ -1027,10 +1093,18 @@ questionsAuth.onAuthStateChanged(async user => {
       schoolDoc.data().active === true
     ) {
 
-      authGate.style.display = "none";
-      mainPage.style.display = "block";
-      return;
+     authGate.style.display = "none";
+roleGate.style.display = "none";
+mainPage.style.display = "block";
 
+const teacherLogoutBtn =
+  document.getElementById("teacher-logout-btn");
+
+if (teacherLogoutBtn) {
+  teacherLogoutBtn.style.display = "inline-block";
+}
+
+return;
     }
 
     await questionsAuth.signOut();
@@ -1054,10 +1128,84 @@ questionsAuth.onAuthStateChanged(async user => {
       "Unable to verify SciMentra access. Please try again.";
 
     authError.style.display = "block";
+  }
+}
 
+
+teacherRoleBtn.addEventListener("click", async () => {
+
+  selectedRole = "teacher";
+
+  roleGate.style.display = "none";
+  mainPage.style.display = "none";
+
+  await handleTeacherAccess(
+    questionsAuth.currentUser
+  );
+});
+
+
+studentRoleBtn.addEventListener("click", () => {
+
+  selectedRole = "student";
+
+  roleGate.style.display = "none";
+  authGate.style.display = "none";
+
+  const teacherLogoutBtn =
+    document.getElementById("teacher-logout-btn");
+
+  if (teacherLogoutBtn) {
+    teacherLogoutBtn.style.display = "none";
+  }
+
+  mainPage.style.display = "block";
+});
+
+
+questionsAuth.onAuthStateChanged(user => {
+
+  if (selectedRole === "teacher") {
+    handleTeacherAccess(user);
   }
 
 });
+
+const teacherLogoutBtn =
+  document.getElementById("teacher-logout-btn");
+
+if (teacherLogoutBtn) {
+
+  teacherLogoutBtn.addEventListener("click", async () => {
+
+    try {
+
+      selectedRole = "";
+
+      await questionsAuth.signOut();
+
+      teacherLogoutBtn.style.display = "none";
+
+      mainPage.style.display = "none";
+      authGate.style.display = "none";
+      roleGate.style.display = "flex";
+
+      schoolEmail.value = "";
+      schoolPassword.value = "";
+
+      authError.style.display = "none";
+      authError.textContent = "";
+
+    } catch (error) {
+
+      console.error("Logout failed:", error);
+
+      alert("Could not log out. Please try again.");
+    }
+
+  });
+}
+
 
 schoolLoginForm.addEventListener("submit", async event => {
 
@@ -1308,7 +1456,7 @@ schoolLoginForm.addEventListener("submit", async event => {
           &nbsp;•&nbsp; ${escapeHtml(normalizedType)}
         </div>
         <div class="question-text">${bodyHtml}</div>
-        <button type="button" class="ask-ai-btn">💡 Explain It</button>
+        <button type="button" class="ask-ai-btn">${selectedRole === "student" ? "💡 Get a Hint" : "💡 Explain It"}</button>
       </article>`;
   }
 
@@ -1731,9 +1879,106 @@ schoolLoginForm.addEventListener("submit", async event => {
     return full;
   }
 
-  function closeAnyModal() {
+ function closeAnyModal() {
     document.querySelectorAll(".modal-overlay").forEach(el => el.remove());
   }
+
+
+async function openStudentHint(docId) {
+
+  const chatWindow =
+    window.open("about:blank", "_blank");
+
+  if (!chatWindow) {
+    alert("Please allow popups to open the SciMentra hint.");
+    return;
+  }
+
+  try {
+
+    const snap = await questionsDb
+      .collection("questions")
+      .doc(docId)
+      .get();
+
+    if (!snap.exists) {
+      throw new Error("Question not found.");
+    }
+
+    const data = snap.data() || {};
+
+    const questionLevel =
+      String(
+        data.difficulty ||
+        data.level ||
+        ""
+      ).trim();
+
+    const questionType =
+      normalizeDbType(data);
+
+    const fullQuestionForChatGPT =
+      makeFullQuestionForChatGPT(data);
+
+
+    const promptText =
+      `You are helping a student solve a question independently.\n\n` +
+
+      `Class: ${BOOK_CONTEXT.className}\n` +
+      `Board: ${BOOK_CONTEXT.board}\n` +
+      `Subject: ${BOOK_CONTEXT.subject}\n` +
+      `Chapter: ${BOOK_CONTEXT.chapter}\n` +
+      `Level: ${questionLevel}\n` +
+      `Question Type: ${questionType}\n\n` +
+
+      `IMPORTANT INSTRUCTIONS:\n` +
+      `- Do NOT give the final answer.\n` +
+      `- Do NOT reveal the correct option.\n` +
+      `- Do NOT give the complete worked solution.\n` +
+      `- Help the student think and solve the question independently.\n` +
+      `- Keep the hints suitable for the given class and Foundation level.\n\n` +
+
+      `Give exactly these three stages of help:\n\n` +
+
+      `HINT 1 - CONCEPT CLUE\n` +
+      `Remind the student of the important concept, rule, formula or idea needed for this question. Do not solve it.\n\n` +
+
+      `HINT 2 - FIRST STEP\n` +
+      `Tell the student what first step to take or what to look for. Do not reveal the answer.\n\n` +
+
+      `HINT 3 - STRONGER CLUE\n` +
+      `Give a stronger clue that moves the student closer to solving the question, but still do not reveal the final answer or correct option.\n\n` +
+
+      `End with:\n` +
+      `"Now try the question yourself."\n\n` +
+
+      `Question:\n${fullQuestionForChatGPT}`;
+
+
+    const chatgptUrl =
+      "https://chatgpt.com/?q=" +
+      encodeURIComponent(promptText);
+
+    chatWindow.location.href =
+      chatgptUrl;
+
+  } catch (error) {
+
+    console.error(
+      "Student hint failed:",
+      error
+    );
+
+    try {
+      chatWindow.close();
+    } catch (e) {}
+
+    alert(
+      "Could not open the hint."
+    );
+  }
+}
+
 
   async function openExplanation(docId) {
     try {
@@ -1882,12 +2127,33 @@ schoolLoginForm.addEventListener("submit", async event => {
   );
 
    document.addEventListener("click", event => {
-    const button = event.target.closest(".ask-ai-btn");
+
+    const button =
+      event.target.closest(".ask-ai-btn");
+
     if (!button) return;
 
-    const card = button.closest(".question-item");
-    const docId = card ? card.getAttribute("data-id") : "";
-    if (docId) openExplanation(docId);
+    const card =
+      button.closest(".question-item");
+
+    const docId =
+      card
+        ? card.getAttribute("data-id")
+        : "";
+
+    if (!docId) return;
+
+
+    if (selectedRole === "student") {
+
+      openStudentHint(docId);
+
+    } else {
+
+      openExplanation(docId);
+
+    }
+
   });
 
 
