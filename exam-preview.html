@@ -3063,108 +3063,25 @@ function renderOptionsLayout(optionLines, hostNode) {
     `;
   }
 
-  /* Any number other than four must remain one option per line */
-  if (optionLines.length !== 4) {
-    return buildLayout(1);
-  }
-
   /*
-    Do not measure before the options block has been inserted into the page.
-    It will be rendered again by doTypeset() with the real hostNode.
+    Normal MCQ:
+    Always start with 4 options in one row.
+
+    The FINAL decision is made after MathJax rendering by
+    repairOptionLayouts():
+
+    4 in one row
+       ↓ if not fit
+    2 + 2
+       ↓ if not fit
+    1 + 1 + 1 + 1
   */
-  if (!hostNode || !hostNode.isConnected) {
-    return buildLayout(1);
-  }
-
-  const hostStyle = window.getComputedStyle(hostNode);
-  const hostRect = hostNode.getBoundingClientRect();
-
-  const paddingLeft = parseFloat(hostStyle.paddingLeft) || 0;
-  const paddingRight = parseFloat(hostStyle.paddingRight) || 0;
-
-  const availableWidth = Math.floor(
-    hostRect.width - paddingLeft - paddingRight - 4
-  );
-
-  if (availableWidth <= 0) {
-    return buildLayout(1);
-  }
-
-  function measureOption(html) {
-    const probe = document.createElement('span');
-
-    probe.style.position = 'fixed';
-    probe.style.left = '-100000px';
-    probe.style.top = '0';
-    probe.style.visibility = 'hidden';
-    probe.style.display = 'inline-block';
-    probe.style.width = 'max-content';
-    probe.style.maxWidth = 'none';
-    probe.style.whiteSpace = 'nowrap';
-    probe.style.margin = '0';
-    probe.style.padding = '0';
-    probe.style.border = '0';
-
-    probe.style.fontFamily =
-      hostStyle.fontFamily || "'Times New Roman', Times, serif";
-
-    probe.style.fontSize =
-      hostStyle.fontSize || '16px';
-
-    probe.style.fontWeight =
-      hostStyle.fontWeight || '400';
-
-    probe.style.fontStyle =
-      hostStyle.fontStyle || 'normal';
-
-    probe.style.letterSpacing =
-      hostStyle.letterSpacing || 'normal';
-
-    probe.style.lineHeight =
-      hostStyle.lineHeight || 'normal';
-
-    probe.innerHTML = html;
-
-    document.body.appendChild(probe);
-
-    const measuredWidth = Math.ceil(
-      probe.getBoundingClientRect().width
-    );
-
-    probe.remove();
-
-    return measuredWidth;
-  }
-
-  const optionWidths = rendered.map(measureOption);
-
-  /* 1. Try all four options in one row */
-  const fourColumnGap = 14;
-  const requiredFourWidth =
-    optionWidths.reduce((total, width) => total + width, 0) +
-    fourColumnGap * 3;
-
-  if (requiredFourWidth <= availableWidth) {
+  if (optionLines.length === 4) {
     return buildLayout(4);
   }
 
-  /* 2. Try two options per row */
-  const twoColumnGap = 18;
-  const eachColumnWidth =
-    Math.floor((availableWidth - twoColumnGap) / 2);
-
-  const fitsTwoColumns = optionWidths.every(
-    width => width <= eachColumnWidth - 3
-  );
-
-  if (fitsTwoColumns) {
-    return buildLayout(2);
-  }
-
-  /* 3. Otherwise use four separate lines */
   return buildLayout(1);
 }
-
 
 /*
   Final check after MathJax has rendered.
@@ -3175,11 +3092,71 @@ function repairOptionLayouts(root = document) {
   const scope = root || document;
 
   scope.querySelectorAll('.option-layout').forEach(layout => {
+
     const items = Array.from(
-      layout.querySelectorAll('.option-item')
+      layout.querySelectorAll(':scope > .option-item')
     );
 
     if (items.length !== 4) return;
+
+    const parent =
+      layout.closest('.options-block') ||
+      layout.parentElement;
+
+    if (!parent) return;
+
+    const parentStyle = window.getComputedStyle(parent);
+
+    const paddingLeft =
+      parseFloat(parentStyle.paddingLeft) || 0;
+
+    const paddingRight =
+      parseFloat(parentStyle.paddingRight) || 0;
+
+    const availableWidth =
+      parent.getBoundingClientRect().width -
+      paddingLeft -
+      paddingRight;
+
+    if (availableWidth <= 0) return;
+
+
+    /*
+      Measure actual rendered width of each option.
+    */
+    function naturalWidth(item) {
+
+      const probe = item.cloneNode(true);
+
+      probe.style.position = 'fixed';
+      probe.style.left = '-100000px';
+      probe.style.top = '0';
+      probe.style.visibility = 'hidden';
+
+      probe.style.display = 'inline-block';
+      probe.style.width = 'max-content';
+      probe.style.minWidth = '0';
+      probe.style.maxWidth = 'none';
+
+      probe.style.whiteSpace = 'nowrap';
+      probe.style.margin = '0';
+      probe.style.padding = '0';
+      probe.style.border = '0';
+
+      parent.appendChild(probe);
+
+      const width = Math.ceil(
+        probe.getBoundingClientRect().width
+      );
+
+      probe.remove();
+
+      return width;
+    }
+
+
+    const widths = items.map(naturalWidth);
+
 
     function changeMode(mode) {
       layout.classList.remove(
@@ -3188,47 +3165,65 @@ function repairOptionLayouts(root = document) {
         'option-layout-1'
       );
 
-      layout.classList.add(`option-layout-${mode}`);
-      layout.setAttribute('data-option-layout', String(mode));
+      layout.classList.add(
+        `option-layout-${mode}`
+      );
+
+      layout.setAttribute(
+        'data-option-layout',
+        String(mode)
+      );
     }
 
-    function isOverflowing() {
-      const layoutRect = layout.getBoundingClientRect();
-
-      if (layout.scrollWidth > layout.clientWidth + 2) {
-        return true;
-      }
-
-      return items.some(item => {
-        const rect = item.getBoundingClientRect();
-
-        return (
-          rect.right > layoutRect.right + 2 ||
-          item.scrollWidth > item.clientWidth + 2
-        );
-      });
-    }
 
     /*
-      Always test the best layout AFTER MathJax renders.
-
-      Priority:
-      1. Four options in one row
-      2. Two options per row
-      3. One option per row
+      1. TRY FOUR OPTIONS IN ONE ROW
     */
 
-    changeMode(4);
+    const gap4 = 34;
 
-    if (!isOverflowing()) {
+    const widthForFour =
+      widths[0] +
+      widths[1] +
+      widths[2] +
+      widths[3] +
+      (gap4 * 3);
+
+    if (widthForFour <= availableWidth - 4) {
+      changeMode(4);
       return;
     }
 
-    changeMode(2);
 
-    if (!isOverflowing()) {
+    /*
+      2. TRY TWO OPTIONS PER ROW
+
+      A     B
+      C     D
+    */
+
+    const gap2 = 52;
+
+    const leftColumnWidth =
+      Math.max(widths[0], widths[2]);
+
+    const rightColumnWidth =
+      Math.max(widths[1], widths[3]);
+
+    const widthForTwo =
+      leftColumnWidth +
+      rightColumnWidth +
+      gap2;
+
+    if (widthForTwo <= availableWidth - 4) {
+      changeMode(2);
       return;
     }
+
+
+    /*
+      3. OTHERWISE FOUR SEPARATE ROWS
+    */
 
     changeMode(1);
   });
