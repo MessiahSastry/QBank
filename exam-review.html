@@ -2483,13 +2483,21 @@ For non-mathematical or conceptual explanations:
 - The application will automatically display them as 1, 2, 3, etc.
 
 General formatting rules:
-- Preserve TeX/Math formatting.
+- Preserve TeX/Math formatting exactly.
 - Use inline LaTeX delimiters \\( ... \\).
 - Do not use display-math delimiters.
-- Return STRICT JSON only.
-- Do not return prose outside the JSON.
-- Do not use markdown fences.
 - Return the same number of items in the same order.
+- Return the STRICT JSON array inside exactly ONE \`\`\`json code block.
+- Do not write any prose before or after the code block.
+
+IMPORTANT FOR MATRICES:
+- Preserve matrix environments exactly.
+- In the returned JSON, every matrix row separator MUST contain FOUR backslashes.
+- Never return a matrix row with only two backslashes in the JSON.
+- For example, the JSON text for a 2 x 2 matrix must look exactly like:
+  "\\\\(A=\\\\begin{pmatrix}4&6\\\\\\\\8&9\\\\end{pmatrix}\\\\)"
+- The four backslashes between 6 and 8 are essential.
+- Apply the same rule to pmatrix, bmatrix, Bmatrix, vmatrix and Vmatrix.
 
 Every MCQ item must use this exact structure:
 {
