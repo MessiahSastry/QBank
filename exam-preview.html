@@ -767,23 +767,23 @@ mjx-container svg {
   margin: 0 0 2px 0;
 }
 
-/* A B C D in one row */
+/* A B C D in one compact row */
 .option-layout-4 {
   display: grid;
   grid-template-columns: repeat(4, max-content);
-  justify-content: space-between;
-  column-gap: 14px;
+  justify-content: start;
+  column-gap: 34px;
   row-gap: 2px;
 }
 
-/* A B / C D */
+/* A B / C D in two compact columns */
 .option-layout-2 {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 18px;
+  grid-template-columns: repeat(2, max-content);
+  justify-content: start;
+  column-gap: 52px;
   row-gap: 2px;
 }
-
 /* A / B / C / D */
 .option-layout-1 {
   display: grid;
@@ -3179,6 +3179,8 @@ function repairOptionLayouts(root = document) {
       layout.querySelectorAll('.option-item')
     );
 
+    if (items.length !== 4) return;
+
     function changeMode(mode) {
       layout.classList.remove(
         'option-layout-4',
@@ -3190,41 +3192,45 @@ function repairOptionLayouts(root = document) {
       layout.setAttribute('data-option-layout', String(mode));
     }
 
-    function layoutCrossesRightMargin() {
+    function isOverflowing() {
       const layoutRect = layout.getBoundingClientRect();
 
-      return (
-        layout.scrollWidth > layout.clientWidth + 1 ||
-        items.some(item => {
-          const itemRect = item.getBoundingClientRect();
+      if (layout.scrollWidth > layout.clientWidth + 2) {
+        return true;
+      }
 
-          return itemRect.right > layoutRect.right + 1;
-        })
-      );
+      return items.some(item => {
+        const rect = item.getBoundingClientRect();
+
+        return (
+          rect.right > layoutRect.right + 2 ||
+          item.scrollWidth > item.clientWidth + 2
+        );
+      });
     }
 
-    function twoColumnItemOverflows() {
-      return items.some(item =>
-        item.scrollWidth > item.clientWidth + 1
-      );
+    /*
+      Always test the best layout AFTER MathJax renders.
+
+      Priority:
+      1. Four options in one row
+      2. Two options per row
+      3. One option per row
+    */
+
+    changeMode(4);
+
+    if (!isOverflowing()) {
+      return;
     }
 
-    if (
-      layout.classList.contains('option-layout-4') &&
-      layoutCrossesRightMargin()
-    ) {
-      changeMode(2);
+    changeMode(2);
+
+    if (!isOverflowing()) {
+      return;
     }
 
-    if (
-      layout.classList.contains('option-layout-2') &&
-      (
-        layoutCrossesRightMargin() ||
-        twoColumnItemOverflows()
-      )
-    ) {
-      changeMode(1);
-    }
+    changeMode(1);
   });
 }
 
