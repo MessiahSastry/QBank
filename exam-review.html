@@ -1410,15 +1410,40 @@ const bNode = qr.querySelectorAll('.subpart .sub-text')[1];
 let newText = '';
 
 if (__erIsMatchingMatrixQuestion(currentQuestion)) {
-  newText = __erBuildMatchingMatrixTextFromEditor(qr);
+
+  const matrixRows = qr.querySelectorAll(
+    '.matching-matrix-row'
+  );
+
+  /*
+    Save Matching Matrix only when all four
+    A-P, B-Q, C-R and D-S rows are present.
+
+    This prevents an incomplete preview from
+    destroying the original stored question.
+  */
+  if (matrixRows.length === 4) {
+    newText = __erBuildMatchingMatrixTextFromEditor(qr);
+  } else {
+    newText =
+      currentQuestion.question ||
+      currentQuestion.originalText ||
+      currentQuestion.text ||
+      currentQuestion.body ||
+      '';
+  }
+
 } else if (aNode && bNode) {
   const aRaw = (aNode.dataset?.raw || aNode.innerHTML || '').trim();
   const bRaw = (bNode.dataset?.raw || bNode.innerHTML || '').trim();
   newText = `(A) ${aRaw}\n\n(B) ${bRaw}`;
 } else {
   const qt = qr.querySelector('.question-text');
+
   if (qt) {
-    newText = (qt.dataset?.raw || '').trim() || (qt.innerHTML || '').trim();
+    newText =
+      (qt.dataset?.raw || '').trim() ||
+      (qt.innerHTML || '').trim();
   }
 }
 
