@@ -455,68 +455,120 @@ function __erGetMatchingMatrixRawText(q = {}) {
 }
 
 function __erParseMatchingMatrix(q = {}) {
-  const raw = __erGetMatchingMatrixRawText(q)
-    .replace(/\n?\s*Options\s*:?\s*$/i, '')
+  let raw = __erGetMatchingMatrixRawText(q)
+    .replace(/\n\s*Options\s*:?\s*[\s\S]*$/i, '')
     .trim();
 
-  const lines = raw
-    .split(/\n+/)
-    .map(line => line.trim())
-    .filter(Boolean);
+  /*
+    Matching Matrix may contain wrapped lines, for example:
 
-  const headingIndex = lines.findIndex(line =>
-    /Column\s*I/i.test(line) && /Column\s*II/i.test(line)
-  );
+    C) Symbol of sodium derived
+    from its Latin name    R) \( \mathrm{Co} \)
 
-  const rowPattern = /^\s*([A-D])[\)\.]\s*(.*?)\s+([P-S])[\)\.]\s*(.*?)\s*$/i;
+    Therefore do NOT parse row-by-row using physical line breaks.
+    Convert the matrix content to one normalized text stream first.
+  */
+  const normalized = raw
+    .replace(/\bColumn\s*I\b/gi, ' ')
+    .replace(/\bColumn\s*II\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  const possibleRows = headingIndex >= 0
-    ? lines.slice(headingIndex + 1)
-    : lines;
+  /*
+    Everything before A) is the introduction/instruction.
+  */
+  const firstRowMatch = normalized.match(/\bA[\)\.]\s*/i);
 
-  let rows = possibleRows
-    .map(line => {
-      const match = line.match(rowPattern);
+  let intro = '';
+  let matrixText = normalized;
 
-      return match
-        ? {
-            leftLabel: match[1].toUpperCase(),
-            leftText: match[2].trim(),
-            rightLabel: match[3].toUpperCase(),
-            rightText: match[4].trim()
-          }
-        : null;
-    })
-    .filter(Boolean);
-
-  let introLines = headingIndex > 0
-    ? lines.slice(0, headingIndex)
-    : lines.filter(line => !rowPattern.test(line) && !(/Column\s*I/i.test(line) && /Column\s*II/i.test(line)));
-
-  if (!rows.length) {
-    const oneLine = raw
-      .replace(/Column\s*I\s+Column\s*II/i, '')
+  if (firstRowMatch && typeof firstRowMatch.index === 'number') {
+    intro = normalized
+      .slice(0, firstRowMatch.index)
       .trim();
 
-    const rowMatches = Array.from(
-      oneLine.matchAll(/([A-D])[\)\.]\s*(.*?)\s+([P-S])[\)\.]\s*(.*?)(?=\s+[A-D][\)\.]|$)/gi)
+    matrixText = normalized
+      .slice(firstRowMatch.index)
+      .trim();
+  }
+
+  const leftLabels = ['A', 'B', 'C', 'D'];
+  const rightLabels = ['P', 'Q', 'R', 'S'];
+
+  const rows = [];
+
+  for (let i = 0; i < 4; i++) {
+    const left = leftLabels[i];
+    const right = rightLabels[i];
+    const nextLeft = leftLabels[i + 1];
+
+    const endLookahead = nextLeft
+      ? `(?=\\s+${nextLeft}[\\)\\.]\\s*)`
+      : `$`;
+
+    /*
+      Example accepted forms:
+
+      A) Correct symbol of cobalt P) Na
+
+      C) Symbol of sodium derived
+         from its Latin name R) Co
+
+      Line breaks inside either side do not matter.
+    */
+    const pattern = new RegExp(
+      `${left}[\\)\\.]\\s*([\\s\\S]*?)\\s+${right}[\\)\\.]\\s*([\\s\\S]*?)${endLookahead}`,
+      'i'
     );
 
-    rows = rowMatches.map(match => ({
-      leftLabel: match[1].toUpperCase(),
-      leftText: match[2].trim(),
-      rightLabel: match[3].toUpperCase(),
-      rightText: match[4].trim()
-    }));
+    const match = matrixText.match(pattern);
+
+    if (match) {
+      rows.push({
+        leftLabel: left,
+        leftText: match[1]
+          .replace(/\s+/g, ' ')
+          .trim(),
+
+        rightLabel: right,
+        rightText: match[2]
+          .replace(/\s+/g, ' ')
+          .trim()
+      });
+    }
+  }
+
+  /*
+    Fallback for unusual stored content:
+    identify each A-P / B-Q / C-R / D-S pair independently.
+  */
+  if (!rows.length) {
+    const fallbackPattern =
+      /([A-D])[\)\.]\s*([\s\S]*?)\s+([P-S])[\)\.]\s*([\s\S]*?)(?=\s+[A-D][\)\.]|$)/gi;
+
+    let match;
+
+    while ((match = fallbackPattern.exec(matrixText)) !== null) {
+      rows.push({
+        leftLabel: match[1].toUpperCase(),
+        leftText: match[2]
+          .replace(/\s+/g, ' ')
+          .trim(),
+
+        rightLabel: match[3].toUpperCase(),
+        rightText: match[4]
+          .replace(/\s+/g, ' ')
+          .trim()
+      });
+    }
   }
 
   return {
     raw,
-    intro: introLines.join('\n').trim(),
+    intro,
     rows
   };
 }
-
 function __erBuildMatchingMatrixReviewHtml(q = {}) {
   const parsed = __erParseMatchingMatrix(q);
 
