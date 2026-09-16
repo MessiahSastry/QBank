@@ -919,7 +919,7 @@ mjx-container svg {
   top: var(--exam-page-margin, 1.5cm);
   left: var(--exam-page-margin, 1.5cm);
   right: var(--exam-page-margin, 1.5cm);
-  bottom: calc(var(--exam-page-margin, 1.5cm) + 8mm);
+  bottom: max(var(--exam-page-margin, 1.5cm), 16mm);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -4074,51 +4074,373 @@ async function paginateExamPreview(sourcePage, renderId) {
   return shell;
 }
 
-  let currentShell = addNewPage();
+    let currentShell = addNewPage();
+
+  /*
+    Check the ACTUAL visible bottom of a block.
+
+    This is more accurate than comparing the whole
+    content scrollHeight with clientHeight.
+  */
+  function blockFitsCurrentPage(
+    shell,
+    node,
+    tolerance = 2
+  ) {
+    if (!shell || !shell.content || !node) {
+      return true;
+    }
+
+    void shell.content.offsetHeight;
+    void node.offsetHeight;
+
+    const contentRect =
+      shell.content.getBoundingClientRect();
+
+    const nodeRect =
+      node.getBoundingClientRect();
+
+    const style =
+      window.getComputedStyle(node);
+
+    const marginBottom =
+      parseFloat(style.marginBottom) || 0;
+
+    return (
+      nodeRect.bottom + marginBottom <=
+      contentRect.bottom + tolerance
+    );
+  }
+
+
+  /*
+    Split options ONLY when the COMPLETE option block
+    does not fit.
+
+    4-column layout:
+      A B C D
+      = one physical row, keep together.
+
+    2-column layout:
+      A B
+      C D
+      = two physical rows.
+
+    1-column layout:
+      A
+      B
+      C
+      D
+      = four physical rows.
+  */
+  function splitNormalOptionRows(
+    optionsBlock
+  ) {
+    if (
+      !optionsBlock ||
+      !optionsBlock.classList.contains(
+        'normal-options-flow'
+      )
+    ) {
+      return [];
+    }
+
+    const layout =
+      optionsBlock.querySelector(
+        ':scope > .option-layout'
+      ) ||
+      optionsBlock.querySelector(
+        '.option-layout'
+      );
+
+    if (!layout) {
+      return [];
+    }
+
+    const items = Array.from(
+      layout.querySelectorAll(
+        ':scope > .option-item'
+      )
+    );
+
+    if (!items.length) {
+      return [];
+    }
+
+    let mode = Number(
+      layout.getAttribute(
+        'data-option-layout'
+      )
+    );
+
+    if (![1, 2, 4].includes(mode)) {
+      if (
+        layout.classList.contains(
+          'option-layout-4'
+        )
+      ) {
+        mode = 4;
+      } else if (
+        layout.classList.contains(
+          'option-layout-2'
+        )
+      ) {
+        mode = 2;
+      } else {
+        mode = 1;
+      }
+    }
+
+    /*
+      Four options in one line are one physical row.
+      Do not break that row.
+    */
+    if (mode === 4) {
+      return [];
+    }
+
+    const groups = [];
+
+    if (mode === 2) {
+      for (
+        let i = 0;
+        i < items.length;
+        i += 2
+      ) {
+        groups.push(
+          items.slice(i, i + 2)
+        );
+      }
+    } else {
+      items.forEach(item => {
+        groups.push([item]);
+      });
+    }
+
+    const pieces = [];
+
+    groups.forEach(
+      (group, groupIndex) => {
+
+        const piece =
+          optionsBlock.cloneNode(false);
+
+        piece.removeAttribute(
+          'data-options'
+        );
+
+        piece.classList.add(
+          'exam-flow-piece',
+          'normal-options-flow',
+          'exam-option-row-piece'
+        );
+
+        piece.setAttribute(
+          'data-exam-flow-piece',
+          'normal-options-row'
+        );
+
+        const isLast =
+          groupIndex ===
+          groups.length - 1;
+
+        piece.style.setProperty(
+          'margin-bottom',
+          isLast
+            ? 'var(--exam-question-gap, var(--question-gap, 12px))'
+            : '2px',
+          'important'
+        );
+
+        const rowLayout =
+          document.createElement('div');
+
+        const rowMode =
+          mode === 2 ? 2 : 1;
+
+        rowLayout.className =
+          `option-layout option-layout-${rowMode}`;
+
+        rowLayout.setAttribute(
+          'data-option-layout',
+          String(rowMode)
+        );
+
+        group.forEach(item => {
+          rowLayout.appendChild(item);
+        });
+
+        piece.appendChild(
+          rowLayout
+        );
+
+        pieces.push(piece);
+      }
+    );
+
+    return pieces;
+  }
+
 
   for (const block of blocks) {
-    if (renderId !== window.__examPreviewRenderId) return;
+    if (
+      renderId !==
+      window.__examPreviewRenderId
+    ) {
+      return;
+    }
 
-   applyExamQuestionGap(
-  block,
-  currentShell.settings
-);
+    applyExamQuestionGap(
+      block,
+      currentShell.settings
+    );
 
     const hadPreviousContent =
       currentShell.content.children.length > 0;
 
-    currentShell.content.appendChild(block);
+    /*
+      FIRST TRY:
+      Put the complete block on the current page.
+    */
+    currentShell.content.appendChild(
+      block
+    );
 
     void currentShell.content.offsetHeight;
 
-    const overflowed =
-      currentShell.content.scrollHeight >
-      currentShell.content.clientHeight + 1;
+    /*
+      If the COMPLETE block fits, leave it exactly
+      where it is.
 
-    if (overflowed && hadPreviousContent) {
+      This is what will keep all four options of
+      Question 38 on Page 4 when sufficient room exists.
+    */
+    if (
+      blockFitsCurrentPage(
+        currentShell,
+        block
+      )
+    ) {
+      continue;
+    }
+
+
+    /*
+      COMPLETE OPTIONS DO NOT FIT.
+
+      Only now try splitting the option rows.
+    */
+    if (
+      block.classList.contains(
+        'normal-options-flow'
+      )
+    ) {
+      const optionPieces =
+        splitNormalOptionRows(block);
+
+      if (optionPieces.length > 1) {
+
+        /*
+          Remove the original complete options wrapper.
+        */
+        block.remove();
+
+        for (
+          const piece of optionPieces
+        ) {
+          if (
+            renderId !==
+            window.__examPreviewRenderId
+          ) {
+            return;
+          }
+
+          const pageAlreadyHasContent =
+            currentShell.content.children.length > 0;
+
+          currentShell.content.appendChild(
+            piece
+          );
+
+          void currentShell.content.offsetHeight;
+
+          /*
+            This particular option row does not fit.
+            Move ONLY this row to the next page.
+          */
+          if (
+            !blockFitsCurrentPage(
+              currentShell,
+              piece
+            ) &&
+            pageAlreadyHasContent
+          ) {
+            piece.remove();
+
+            currentShell =
+              addNewPage();
+
+            currentShell.content.appendChild(
+              piece
+            );
+
+            void currentShell.content.offsetHeight;
+          }
+
+          /*
+            Safety check for an unusually tall
+            individual option row.
+          */
+          if (
+            !blockFitsCurrentPage(
+              currentShell,
+              piece
+            )
+          ) {
+            piece.classList.add(
+              'exam-oversize-block'
+            );
+          }
+        }
+
+        continue;
+      }
+    }
+
+
+    /*
+      Normal question/passage/etc:
+      complete block did not fit.
+
+      Move the complete block to the next page.
+    */
+    if (hadPreviousContent) {
       block.remove();
 
-      currentShell = addNewPage();
+      currentShell =
+        addNewPage();
 
-applyExamQuestionGap(
-  block,
-  currentShell.settings
-);
+      applyExamQuestionGap(
+        block,
+        currentShell.settings
+      );
 
-currentShell.content.appendChild(block);
+      currentShell.content.appendChild(
+        block
+      );
 
-void currentShell.content.offsetHeight;
+      void currentShell.content.offsetHeight;
 
-      /*
-        An individual question should normally be shorter
-        than a page. This class helps identify an unusually
-        large question in the console or Elements panel.
-      */
       if (
-        currentShell.content.scrollHeight >
-        currentShell.content.clientHeight + 1
+        !blockFitsCurrentPage(
+          currentShell,
+          block
+        )
       ) {
-        block.classList.add('exam-oversize-block');
+        block.classList.add(
+          'exam-oversize-block'
+        );
+
         console.warn(
           'A single exam block is taller than one A4 page:',
           block
