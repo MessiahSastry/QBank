@@ -1948,6 +1948,129 @@ function __epRenderParagraphSubBlock(
   `;
 }
 
+/*
+  Split a long paragraph passage into smaller page-flow pieces.
+
+  IMPORTANT:
+  This does NOT split the MCQ questions/options.
+  It only allows the reading passage itself to continue
+  naturally onto the next A4 page instead of moving
+  the entire passage to the next page.
+*/
+function __epSplitPassageForPageFlow(
+  passage = '',
+  maxChars = 280
+) {
+  const text = String(passage || '')
+    .replace(/\r/g, '')
+    .trim();
+
+  if (!text) {
+    return [''];
+  }
+
+  const paragraphs = text
+    .split(/\n+/)
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  const chunks = [];
+
+  function splitVeryLongSentence(sentence) {
+    const words = String(sentence || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    let current = '';
+
+    words.forEach(word => {
+      const candidate =
+        current
+          ? `${current} ${word}`
+          : word;
+
+      if (
+        current &&
+        candidate.length > maxChars
+      ) {
+        chunks.push(current);
+        current = word;
+      } else {
+        current = candidate;
+      }
+    });
+
+    if (current) {
+      chunks.push(current);
+    }
+  }
+
+  paragraphs.forEach(paragraph => {
+    /*
+      Prefer splitting at sentence endings so the page
+      break does not normally occur in the middle of
+      a sentence.
+    */
+    const sentences =
+      paragraph.match(
+        /[^.!?]+(?:[.!?]+["'’”)\]]*|$)/g
+      ) || [paragraph];
+
+    let current = '';
+
+    sentences.forEach(sentence => {
+      const cleanSentence =
+        String(sentence || '').trim();
+
+      if (!cleanSentence) {
+        return;
+      }
+
+      /*
+        Extremely long sentence:
+        split safely at word boundaries.
+      */
+      if (cleanSentence.length > maxChars) {
+        if (current) {
+          chunks.push(current);
+          current = '';
+        }
+
+        splitVeryLongSentence(
+          cleanSentence
+        );
+
+        return;
+      }
+
+      const candidate =
+        current
+          ? `${current} ${cleanSentence}`
+          : cleanSentence;
+
+      if (
+        current &&
+        candidate.length > maxChars
+      ) {
+        chunks.push(current);
+        current = cleanSentence;
+      } else {
+        current = candidate;
+      }
+    });
+
+    if (current) {
+      chunks.push(current);
+    }
+  });
+
+  return chunks.length
+    ? chunks
+    : [text];
+}
+
+
 function __epBuildParagraphPreviewQuestionHtml(
   q = {},
   currentQNum = ''
@@ -1971,6 +2094,119 @@ function __epBuildParagraphPreviewQuestionHtml(
     totalSubQuestions > 1
       ? `(${startNo}-${endNo})`
       : `(${startNo})`;
+
+  /*
+    NEW:
+    Passage is divided into smaller independent
+    page-flow pieces.
+
+    Therefore the paginator can use the remaining
+    space on the current page.
+  */
+  const passageChunks =
+    __epSplitPassageForPageFlow(
+      normalized.passage || ''
+    );
+
+  const firstPassageChunk =
+    passageChunks[0] || '';
+
+  const continuationChunks =
+    passageChunks.slice(1);
+
+  const firstPieceBottomMargin =
+    continuationChunks.length
+      ? '0'
+      : '8px';
+
+  /*
+    First passage piece contains:
+    - question number/range
+    - instruction
+    - beginning of passage
+  */
+  const firstPassageHTML = `
+    <div
+      class="
+        paragraph-passage-piece
+        exam-flow-piece
+      "
+      data-exam-flow-piece="paragraph-passage-first"
+      style="
+        margin-bottom:${firstPieceBottomMargin};
+      ">
+
+      <div class="paragraph-passage-row">
+
+        <div
+          class="question-number"
+          style="min-width:70px;">
+          ${rangeLabel}
+        </div>
+
+        <div class="question-body">
+
+          <div style="
+            color:#163A63;
+            font-weight:400;
+            line-height:1.3;
+            margin-bottom:7px;
+          ">
+            Read the following passage and answer the questions:
+          </div>
+
+          <div
+            class="paragraph-passage-text"
+            style="margin-bottom:0;">
+            ${__epSafeText(
+              firstPassageChunk
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  /*
+    Remaining passage pieces.
+
+    These are direct page-flow pieces, so if one does
+    not fit, only that continuation moves to the next
+    page — not the complete passage.
+  */
+  const continuationHTML =
+    continuationChunks
+      .map((chunk, index) => {
+        const isLast =
+          index ===
+          continuationChunks.length - 1;
+
+        return `
+          <div
+            class="
+              paragraph-passage-continuation-piece
+              exam-flow-piece
+            "
+            data-exam-flow-piece="paragraph-passage-continuation"
+            style="
+              display:block;
+              margin-left:74px;
+              width:calc(100% - 74px);
+              max-width:calc(100% - 74px);
+              box-sizing:border-box;
+              margin-top:0;
+              margin-bottom:${isLast ? '8px' : '0'};
+              padding:0;
+              color:#111111;
+              font-weight:400;
+              line-height:1.35;
+            ">
+            ${__epSafeText(chunk)}
+          </div>
+        `;
+      })
+      .join('');
 
   const imageHTML = normalized.image
     ? `
@@ -1998,39 +2234,9 @@ function __epBuildParagraphPreviewQuestionHtml(
         exam-splittable-flow
       ">
 
-      <!-- Passage is one independent page-flow block -->
-      <div
-        class="
-          paragraph-passage-piece
-          exam-flow-piece
-        "
-        data-exam-flow-piece="paragraph-passage">
+      ${firstPassageHTML}
 
-        <div class="paragraph-passage-row">
-          <div
-            class="question-number"
-            style="min-width:70px;">
-            ${rangeLabel}
-          </div>
-
-          <div class="question-body">
-            <div style="
-              color:#163A63;
-              font-weight:400;
-              line-height:1.3;
-              margin-bottom:7px;
-            ">
-              Read the following passage and answer the questions:
-            </div>
-
-            <div class="paragraph-passage-text">
-              ${__epSafeText(
-                normalized.passage || ''
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      ${continuationHTML}
 
       ${imageHTML}
 
@@ -2044,6 +2250,7 @@ function __epBuildParagraphPreviewQuestionHtml(
             true
           )
       ).join('')}
+
     </div>
   `;
 }
