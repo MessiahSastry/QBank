@@ -1448,10 +1448,12 @@ if (__erIsMatchingMatrixQuestion(currentQuestion)) {
 }
 
 if (newText) {
+  // Keep every stored version of the question synchronized
   currentQuestion.text = newText;
+  currentQuestion.question = newText;
+  currentQuestion.body = newText;
 
   if (__erIsMatchingMatrixQuestion(currentQuestion)) {
-    currentQuestion.body = newText;
     currentQuestion.type = 'Matching Matrix';
     currentQuestion.mcqType = 'Matching Matrix';
   }
