@@ -497,16 +497,15 @@ mjx-container svg {
         margin-right: 0 !important;
         box-sizing: border-box !important;
     }
-   @media print {
+  @media print {
   mjx-container {
     font-weight: normal !important;
   }
 
-  /* Strongest possible override for SVG-based MathJax in Chrome print */
+  /* Keep MathJax table/array borders visible in print */
   mjx-container[jax="SVG"] svg,
   mjx-container[jax="SVG"] svg * {
     font-weight: 400 !important;
-    stroke: none !important;
   }
 
   mjx-container[jax="SVG"] svg text,
