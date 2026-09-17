@@ -497,20 +497,33 @@ mjx-container svg {
         margin-right: 0 !important;
         box-sizing: border-box !important;
     }
-  @media print {
+ @media print {
   mjx-container {
     font-weight: normal !important;
   }
 
-  /* Keep MathJax table/array borders visible in print */
+  /* Keep normal MathJax weight */
   mjx-container[jax="SVG"] svg,
   mjx-container[jax="SVG"] svg * {
     font-weight: 400 !important;
   }
 
+  /* MathJax characters are SVG <use> elements.
+     Remove stroke from characters so they do not print bold. */
+  mjx-container[jax="SVG"] svg use {
+    stroke: none !important;
+  }
+
+  /* Keep array/table border lines visible */
+  mjx-container[jax="SVG"] svg line,
+  mjx-container[jax="SVG"] svg polyline {
+    stroke: currentColor !important;
+  }
+
   mjx-container[jax="SVG"] svg text,
   mjx-container[jax="SVG"] svg tspan {
     font-weight: 400 !important;
+    stroke: none !important;
   }
 }
 
