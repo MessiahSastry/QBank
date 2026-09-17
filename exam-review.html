@@ -2797,10 +2797,8 @@ try {
       return;
     }
 
-    if (!explanation) {
-      alert(`Item ${i + 1}: Updated explanation is missing.`);
-      return;
-    }
+       // Explanation is optional.
+    // If no explanation is provided, it will be saved as blank.
 
     if (originalWasMCQ) {
       if (!Array.isArray(out.options) || out.options.length !== 4) {
@@ -2830,12 +2828,8 @@ try {
             seen.add(letter);
             return true;
           });
-
-      if (!answerLetters.length) {
-        alert(`Item ${i + 1}: Correct MCQ answer is missing.`);
-        return;
-      }
-
+      // MCQ answer is optional.
+      // If no answer is provided, save it as blank.
       const questionType =
         String(
           section.mcqType ||
@@ -2843,7 +2837,8 @@ try {
           ''
         ).toLowerCase();
 
-      if (
+           if (
+        answerLetters.length > 0 &&
         questionType.includes('single') &&
         answerLetters.length !== 1
       ) {
@@ -2852,7 +2847,6 @@ try {
         );
         return;
       }
-
       qObj.text = stem;
       qObj.question = stem;
       qObj.options = opts;
@@ -2876,11 +2870,8 @@ try {
           ? out.answer.join(', ')
           : String(out.answer || '').trim();
 
-      if (!descriptiveAnswer) {
-        alert(`Item ${i + 1}: Updated descriptive answer is missing.`);
-        return;
-      }
-
+            // Descriptive answer is optional.
+      // If no answer is provided, save it as blank.
       qObj.text = stem;
       qObj.question = stem;
       qObj.body = stem;
