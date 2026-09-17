@@ -2802,21 +2802,26 @@ try {
        // Explanation is optional.
     // If no explanation is provided, it will be saved as blank.
 
-    if (originalWasMCQ) {
-      if (!Array.isArray(out.options) || out.options.length !== 4) {
-        alert(`Item ${i + 1}: Exactly four updated options are required.`);
-        return;
+       if (originalWasMCQ) {
+
+      // Options are optional.
+      // If ChatGPT supplies four options, use them.
+      // Otherwise keep the existing four options.
+      let opts;
+
+      if (Array.isArray(out.options) && out.options.length === 4) {
+        opts = out.options.map(option =>
+          String(option == null ? '' : option).trim()
+        );
+
+        if (opts.some(option => !option)) {
+          opts = qObj.options.slice(0, 4);
+        }
+      } else {
+        opts = qObj.options.slice(0, 4);
       }
 
-      const opts = out.options.map(option =>
-        String(option == null ? '' : option).trim()
-      );
-
-      if (opts.some(option => !option)) {
-        alert(`Item ${i + 1}: One or more MCQ options are empty.`);
-        return;
-      }
-
+      // Answer is optional.
       const rawAnswer = Array.isArray(out.answer)
         ? out.answer.join(',')
         : String(out.answer || '');
@@ -2830,8 +2835,7 @@ try {
             seen.add(letter);
             return true;
           });
-      // MCQ answer is optional.
-      // If no answer is provided, save it as blank.
+
       const questionType =
         String(
           section.mcqType ||
@@ -2839,7 +2843,7 @@ try {
           ''
         ).toLowerCase();
 
-           if (
+      if (
         answerLetters.length > 0 &&
         questionType.includes('single') &&
         answerLetters.length !== 1
@@ -2849,14 +2853,17 @@ try {
         );
         return;
       }
+
       qObj.text = stem;
       qObj.question = stem;
       qObj.options = opts;
 
+      // If answer is omitted, save blank.
       qObj.answer = answerLetters.join(',');
       qObj.parsedAnswer = qObj.answer;
       qObj.finalAnswer = qObj.answer;
 
+      // Explanation may also be blank.
       qObj.explanation = explanation;
       qObj.solution = explanation;
 
