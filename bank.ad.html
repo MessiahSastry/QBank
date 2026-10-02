@@ -726,14 +726,15 @@ const questionsDb = stpatricksApp.firestore();
 
     const filterConfig = {
       classes: ["3rd Class", "4th Class", "5th Class", "6th Class", "7th Class", "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"],
-      boards: [
+           boards: [
         "CBSE",
         "ICSE",
         "Olympiad",
         "IIT & NEET Foundation",
-        "JEE Mains",
-        "JEE Advance",
+        "JEE Main",
+        "JEE Advanced",
         "NEET",
+        "AP EAPCET",
         "AP State Board (SCERT)",
         "Other"
       ],
@@ -781,15 +782,20 @@ const questionsDb = stpatricksApp.firestore();
     "Biology NEET",
     "Reasoning IIT & NEET"
   ],
-  "JEE Mains": [
-    "Physics",
-    "Chemistry",
-    "Mathematics"
+       "JEE Main": [
+    "Physics (JEE Main)",
+    "Chemistry (JEE Main)",
+    "Mathematics (JEE Main)"
   ],
-  "JEE Advance": [
-    "Physics",
-    "Chemistry",
-    "Mathematics"
+  "JEE Advanced": [
+    "Physics (JEE Advanced)",
+    "Chemistry (JEE Advanced)",
+    "Mathematics (JEE Advanced)"
+  ],
+  "AP EAPCET": [
+    "Mathematics (AP EAPCET)",
+    "Physics (AP EAPCET)",
+    "Chemistry (AP EAPCET)"
   ],
   "NEET": [
     "Physics",
@@ -822,8 +828,114 @@ const questionsDb = stpatricksApp.firestore();
         "Descriptive"
       ],
       marks: Array.from({ length: 10 }, (_, i) => i + 1),
-      levels: ["Level 1", "Level 2", "Level 3"]
+            levels: ["Level 1", "Level 2", "Level 3"]
     };
+
+function __qbIsEntranceExamBoard(boardName = '') {
+  const b = String(boardName || '').trim().toLowerCase();
+
+  return (
+    b === 'jee main' ||
+    b === 'jee mains' ||
+    b === 'jee advanced' ||
+    b === 'jee advance' ||
+    b === 'ap eapcet' ||
+    b === 'ap eamcet' ||
+    b === 'eapcet / eamcet'
+  );
+}
+
+function __qbGetQuestionTypesForBoard(boardName = '') {
+  const b = String(boardName || '').trim();
+
+  if (b === 'JEE Main') {
+    return [
+      'MCQ (Single)',
+      'Numerical Value'
+    ];
+  }
+
+  if (b === 'JEE Advanced') {
+    return [
+      'MCQ (Single)',
+      'MCQ (Multiple)',
+      'Numerical Value',
+      'Matching List'
+    ];
+  }
+
+  if (b === 'AP EAPCET') {
+    return [
+      'MCQ (Single)'
+    ];
+  }
+
+  return filterConfig.questionTypes;
+}
+
+function __qbSyncEntranceFilterUI(boardName = '') {
+  const isEntrance = __qbIsEntranceExamBoard(boardName);
+
+  const qtypeDropdown = document.getElementById('qtype-dropdown');
+
+  if (qtypeDropdown) {
+    qtypeDropdown.innerHTML = createMultiDropdownHTML(
+      'qtype',
+      __qbGetQuestionTypesForBoard(boardName),
+      'All'
+    );
+
+    addMultiDropdownListener(
+      'qtype-dropdown',
+      fetchAndDisplayQuestions
+    );
+  }
+
+  const levelDropdown = document.getElementById('level-dropdown');
+  const marksDropdown = document.getElementById('marks-dropdown');
+
+  const levelGroup = levelDropdown
+    ? levelDropdown.closest('.form-group')
+    : null;
+
+  const marksGroup = marksDropdown
+    ? marksDropdown.closest('.form-group')
+    : null;
+
+  if (levelGroup) {
+    levelGroup.style.display = isEntrance ? 'none' : '';
+  }
+
+  if (marksGroup) {
+    marksGroup.style.display = isEntrance ? 'none' : '';
+  }
+
+  if (isEntrance) {
+    const levelValues = document.getElementById('level-values');
+    const marksValues = document.getElementById('marks-values');
+
+    if (levelValues) levelValues.value = '';
+    if (marksValues) marksValues.value = '';
+
+    if (levelDropdown) {
+      levelDropdown
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach(cb => cb.checked = false);
+
+      const chip = levelDropdown.querySelector('.selected-option');
+      if (chip) chip.textContent = 'Select Level';
+    }
+
+    if (marksDropdown) {
+      marksDropdown
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach(cb => cb.checked = false);
+
+      const chip = marksDropdown.querySelector('.selected-option');
+      if (chip) chip.textContent = 'All';
+    }
+  }
+}
 
     document.addEventListener('DOMContentLoaded', async () => {
   const __qs = new URLSearchParams(window.location.search);
@@ -1147,7 +1259,12 @@ const includeKey = exportMode === 'key';
       pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Preview...';
 
      const classVal = document.getElementById('class-value').value || '';
+const boardValForPdf = document.getElementById('board-value').value || '';
 const subjectVal = document.getElementById('subject-value').value || '';
+
+const __pdfIsEntranceExam =
+  __qbIsEntranceExamBoard(boardValForPdf);
+
 const __pdfTheme = __qbGetSubjectTheme(subjectVal);
 const __isMathTheme = __pdfTheme.key === 'math';
 const selChaptersForHeader = getMultiSelected('chapter');
@@ -1189,10 +1306,12 @@ const __singleChapterLabel =
 // Use actual selected types to drive layout later
 const selectedQtypes = getMultiSelected('qtype'); // [] means All
 const __typesOrderHdr = [
-  'MCQ (Single)',
-  'MCQ (Multiple)',
-  'Assertion and Reason (MCQ Single)',
-  'Matching Matrix',
+     'MCQ (Single)',
+    'MCQ (Multiple)',
+    'Numerical Value',
+    'Assertion and Reason (MCQ Single)',
+    'Matching Matrix',
+    'Matching List',
   'Paragraph-Based MCQ (Single Correct)',
   'Fill in the Blanks',
   'Descriptive'
@@ -2154,7 +2273,7 @@ function renderLeftHeading(text, __parent = printable) {
   const t = String(text || '').trim();
 
   const isLevel = /^Level\s*[1-3]$/i.test(t);
-  const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\)|Matching Matrix|Paragraph-Based MCQ\s*\(Single Correct\))$/i.test(t);
+  const isSectionHeading = /^(MCQ\s*\(Single\)|MCQ\s*\(Multiple\)|Numerical Value|Fill in the Blanks|Assertion and Reason\s*\(MCQ Single\)|Matching Matrix|Matching List|Paragraph-Based MCQ\s*\(Single Correct\))$/i.test(t);
 
     const h = document.createElement('div');
   const __theme = __pdfTheme;
@@ -2848,10 +2967,12 @@ if (includeWorksheet) {
   // Level 3 -> all selected question types
 
     const __worksheetTypesOrder = [
-    'MCQ (Single)',
+        'MCQ (Single)',
     'MCQ (Multiple)',
+    'Numerical Value',
     'Assertion and Reason (MCQ Single)',
     'Matching Matrix',
+    'Matching List',
     'Paragraph-Based MCQ (Single Correct)',
     'Fill in the Blanks',
     'Descriptive'
@@ -2868,7 +2989,14 @@ if (includeWorksheet) {
     return __sec;
   }
 
-  function __qbGetLevelBuckets(listScope) {
+    function __qbGetLevelBuckets(listScope) {
+    if (__pdfIsEntranceExam) {
+      return [{
+        name: '',
+        items: listScope
+      }];
+    }
+
     const buckets = levelsOrder.map(lvl => ({
       name: lvl,
       items: listScope.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
@@ -2937,8 +3065,10 @@ if (includeWorksheet) {
   function __qbRenderWorksheetLevelWise(listScope) {
     const levelBuckets = __qbGetLevelBuckets(listScope);
 
-    levelBuckets.forEach(bucket => {
-      renderLeftHeading(bucket.name);
+        levelBuckets.forEach(bucket => {
+      if (bucket.name) {
+        renderLeftHeading(bucket.name);
+      }
 
       __wantedWorksheetTypes.forEach(typeLabel => {
         const itemsOfType = bucket.items.filter(n =>
@@ -3036,10 +3166,12 @@ if (includeKey) {
   // Level 3 -> all selected question types
 
     const __keyTypesOrder = [
-    'MCQ (Single)',
+        'MCQ (Single)',
     'MCQ (Multiple)',
+    'Numerical Value',
     'Assertion and Reason (MCQ Single)',
     'Matching Matrix',
+    'Matching List',
     'Paragraph-Based MCQ (Single Correct)',
     'Fill in the Blanks',
     'Descriptive'
@@ -3057,7 +3189,14 @@ if (includeKey) {
     return __sec;
   }
 
-  function __qbGetKeyLevelBuckets(listScope) {
+    function __qbGetKeyLevelBuckets(listScope) {
+    if (__pdfIsEntranceExam) {
+      return [{
+        name: '',
+        items: listScope
+      }];
+    }
+
     const buckets = levelsOrder.map(lvl => ({
       name: lvl,
       items: listScope.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
@@ -3126,8 +3265,10 @@ if (includeKey) {
   function __qbRenderKeyLevelWise(listScope) {
     const levelBuckets = __qbGetKeyLevelBuckets(listScope);
 
-    levelBuckets.forEach(bucket => {
-      renderLeftHeading(bucket.name);
+        levelBuckets.forEach(bucket => {
+      if (bucket.name) {
+        renderLeftHeading(bucket.name);
+      }
 
       __wantedKeyTypes.forEach(typeLabel => {
         const itemsOfType = bucket.items.filter(n =>
@@ -4912,8 +5053,10 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
   const subjectInput = document.getElementById('subject-value');
   const subjectSelected = subjectDropdown.querySelector('.selected-option');
 
-  boardInput.value = '';
+    boardInput.value = '';
   boardSelected.textContent = 'Select Board';
+
+  __qbSyncEntranceFilterUI('');
 
   subjectInput.value = '';
   subjectSelected.textContent = 'Select Subject';
@@ -4925,8 +5068,11 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
   document.getElementById('questions-display-area').innerHTML =
     '<p class="no-questions-message">Select Class, Board, Subject and Chapter to view questions.</p>';
 }
-  function onBoardChange() {
+    function onBoardChange() {
   const boardName = document.getElementById('board-value').value;
+
+  __qbSyncEntranceFilterUI(boardName);
+
   const subjects = boardName && boardName !== 'All'
     ? filterConfig.boardSubjectMappings[boardName] || []
     : [];
@@ -5021,9 +5167,27 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       if (lowerType.includes('fill') && lowerType.includes('blank')) {
         return 'Fill in the Blanks';
       }
-      if (lowerType.includes('matching') && lowerType.includes('matrix')) {
+            if (
+        lowerType.includes('numerical') &&
+        lowerType.includes('value')
+      ) {
+        return 'Numerical Value';
+      }
+
+      if (
+        lowerType.includes('matching') &&
+        lowerType.includes('list')
+      ) {
+        return 'Matching List';
+      }
+
+      if (
+        lowerType.includes('matching') &&
+        lowerType.includes('matrix')
+      ) {
         return 'Matching Matrix';
       }
+
       if (lowerType.includes('multiple')) {
         return 'MCQ (Multiple)';
       }
@@ -5147,9 +5311,12 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
 
       const displayArea = document.getElementById('questions-display-area');
 
-    const classVal   = document.getElementById('class-value').value;
+       const classVal   = document.getElementById('class-value').value;
 const boardVal   = document.getElementById('board-value').value;
 const subjectVal = document.getElementById('subject-value').value;
+
+const __isEntranceExam =
+  __qbIsEntranceExamBoard(boardVal);
 
 if (!classVal || !boardVal || !subjectVal || classVal === 'All' || boardVal === 'All' || subjectVal === 'All') {
   displayArea.innerHTML = '<p class="no-questions-message">Select Class, Board and Subject to load chapters.</p>';
@@ -5242,16 +5409,24 @@ if (selChapters.length > 1) {
 }
 
 // Level
-if (selLevels.length > 0) {
+// Entrance-exam questions do not use stored Level.
+if (!__isEntranceExam && selLevels.length > 0) {
   const lv = (data.difficulty || data.level || '').trim();
   if (!lv || !selLevels.includes(lv)) return;
 }
 
 // Marks
-if (selMarks.length > 0) {
+// Entrance-exam marks belong to the Exam Builder pattern,
+// not to the stored Question Bank question.
+if (!__isEntranceExam && selMarks.length > 0) {
   const m = Number(data.marks);
-  // selMarks are strings like "2 Mark(s)" → normalize to number set
-  const wanted = new Set(selMarks.map(s => Number(String(s).replace(/[^\d]/g, ''))));
+
+  const wanted = new Set(
+    selMarks.map(s =>
+      Number(String(s).replace(/[^\d]/g, ''))
+    )
+  );
+
   if (!wanted.has(m)) return;
 }
 
@@ -5290,8 +5465,12 @@ questionsHTML += `
                 <input type="checkbox" class="quiz-question-checkbox" data-id="${doc.id}">
               </div>
 
-                            <div class="question-meta">
-                Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s) [${__normType}]
+                                                       <div class="question-meta">
+                ${
+                  __isEntranceExam
+                    ? `Q${__savedQNo}: [${__normType}]`
+                    : `Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s) [${__normType}]`
+                }
               </div>
               <div class="question-text">
                                ${
@@ -5906,10 +6085,13 @@ function autoLatexAll(str) {
   const initLevel = data.difficulty || '';
   const initBoard = data.board || '';
   const initChapter = data.chapter || '';
-  const initQNo = (typeof data.questionNumber === 'number' || /^[0-9]+$/.test(String(data.questionNumber))) ? data.questionNumber : '';
+   const initQNo = (typeof data.questionNumber === 'number' || /^[0-9]+$/.test(String(data.questionNumber))) ? data.questionNumber : '';
 
-  const opts = isMCQInitial ? (data.options || ["", "", "", ""]) : ["", "", "", ""];
+  const editTypeOptions = __qbGetQuestionTypesForBoard(initBoard);
 
+  const opts = isMCQInitial
+    ? (data.options || ["", "", "", ""])
+    : ["", "", "", ""];
   const popup = document.createElement('div');
   popup.className = 'edit-popup';
   popup.innerHTML = `
@@ -5922,20 +6104,19 @@ function autoLatexAll(str) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
         <div>
           <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Question Type</label>
-          <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
-  <option value="Descriptive">Descriptive</option>
-  <option value="MCQ (Single)">MCQ (Single)</option>
-  <option value="MCQ (Multiple)">MCQ (Multiple)</option>
-  <option value="Fill in the Blanks">Fill in the Blanks</option>
-  <option value="Assertion and Reason (MCQ Single)">Assertion and Reason (MCQ Single)</option>
-  <option value="Matching Matrix">Matching Matrix</option>
-</select>
+                   <select id="edit-q-type" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
+            ${editTypeOptions
+              .map(type => `<option value="${type}">${type}</option>`)
+              .join('')}
+          </select>
         </div>
-        <div>
+
+        <div id="edit-marks-wrap">
           <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Marks</label>
           <input id="edit-q-marks" type="number" min="1" step="1" value="${initMarks}" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
         </div>
-        <div>
+
+        <div id="edit-level-wrap">
           <label style="display:block;margin-bottom:4px;font-weight:600;color:#1d5b96;">Level / Difficulty</label>
           <select id="edit-q-level" style="width:100%;padding:9px;border-radius:8px;border:1.5px solid #bdd7f6;">
             <option value="">Select Level</option>
@@ -5964,8 +6145,8 @@ function autoLatexAll(str) {
       <label style="display:block;margin-bottom:4px;margin-top:4px;font-weight:600;color:#1d5b96;">Explanation</label>
       <textarea id="edit-q-explanation" rows="6" style="width:100%;min-height:110px;margin-bottom:12px;padding:12px 14px;border-radius:8px;border:1.5px solid #bdd7f6;font-size:1.02em;resize:vertical;">${(data.explanation || '').replace(/</g,'&lt;')}</textarea>
 
-      <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div id="edit-mcq-block" style="display:none;border:1px dashed #bdd7f6;padding:12px;border-radius:10px;background:#f9fcff;margin-bottom:12px;">
+        <div id="edit-options-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
             <label style="display:block;margin-bottom:4px;font-weight:500;color:#1d5b96;">Option A</label>
             <input id="edit-q-optA" type="text" value="${(opts[0]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
@@ -5983,7 +6164,7 @@ function autoLatexAll(str) {
             <input id="edit-q-optD" type="text" value="${(opts[3]||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
           </div>
         </div>
-        <label style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer (e.g., A or A,C)</label>
+        <label id="edit-q-answer-label" style="display:block;margin-top:12px;margin-bottom:4px;font-weight:500;color:#1d5b96;">Answer (e.g., A or A,C)</label>
         <input id="edit-q-answer" type="text" value="${(data.parsedAnswer || data.answer || '').replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid #bdd7f6;">
       </div>
 
@@ -6030,21 +6211,108 @@ function autoLatexAll(str) {
 
   window.addEventListener('popstate', __editPopupPopHandler);
 
-  const selType = popup.querySelector('#edit-q-type');
+   const selType = popup.querySelector('#edit-q-type');
   const selLevel = popup.querySelector('#edit-q-level');
-  selType.value = initialType;
-  if (initLevel) selLevel.value = initLevel;
+  const editBoardInput = popup.querySelector('#edit-q-board');
+  const editMarksWrap = popup.querySelector('#edit-marks-wrap');
+  const editLevelWrap = popup.querySelector('#edit-level-wrap');
 
-  const mcqBlock = popup.querySelector('#edit-mcq-block');
+  selType.value = initialType;
+
+  if (initLevel) {
+    selLevel.value = initLevel;
+  }
+
+  function syncEditExamMetaUI() {
+    const isEntrance =
+      __qbIsEntranceExamBoard(
+        editBoardInput?.value || ''
+      );
+
+    if (editMarksWrap) {
+      editMarksWrap.style.display =
+        isEntrance ? 'none' : '';
+    }
+
+    if (editLevelWrap) {
+      editLevelWrap.style.display =
+        isEntrance ? 'none' : '';
+    }
+
+    if (isEntrance) {
+      const marksInput =
+        popup.querySelector('#edit-q-marks');
+
+      if (marksInput) {
+        marksInput.value = '';
+      }
+
+      if (selLevel) {
+        selLevel.value = '';
+      }
+    }
+  }
+
+  const mcqBlock =
+    popup.querySelector('#edit-mcq-block');
+
+  const optionsGrid =
+    popup.querySelector('#edit-options-grid');
+
+  const answerLabel =
+    popup.querySelector('#edit-q-answer-label');
+
   const toggleMCQBlock = () => {
-    mcqBlock.style.display = (
-      selType.value === 'MCQ (Single)' ||
-      selType.value === 'MCQ (Multiple)' ||
-      selType.value === 'Assertion and Reason (MCQ Single)' ||
-      selType.value === 'Matching Matrix'
-    ) ? 'block' : 'none';
+    const type = selType.value;
+
+    const isFourOptionType =
+      type === 'MCQ (Single)' ||
+      type === 'MCQ (Multiple)' ||
+      type === 'Assertion and Reason (MCQ Single)' ||
+      type === 'Matching Matrix' ||
+      type === 'Matching List';
+
+    const isNumericalValue =
+      type === 'Numerical Value';
+
+    mcqBlock.style.display =
+      (isFourOptionType || isNumericalValue)
+        ? 'block'
+        : 'none';
+
+    if (optionsGrid) {
+      optionsGrid.style.display =
+        isFourOptionType
+          ? 'grid'
+          : 'none';
+    }
+
+    if (answerLabel) {
+      answerLabel.textContent =
+        isNumericalValue
+          ? 'Numerical Answer'
+          : 'Answer (e.g., A or A,C)';
+    }
   };
-  selType.addEventListener('change', toggleMCQBlock);
+
+  selType.addEventListener(
+    'change',
+    toggleMCQBlock
+  );
+
+  if (editBoardInput) {
+    editBoardInput.addEventListener(
+      'input',
+      syncEditExamMetaUI
+    );
+
+    editBoardInput.addEventListener(
+      'change',
+      syncEditExamMetaUI
+    );
+  }
+
+  syncEditExamMetaUI();
   toggleMCQBlock();
 
   popup.querySelector('#edit-cancel').onclick = () => {
@@ -6059,12 +6327,34 @@ function autoLatexAll(str) {
     const qType = selType.value;
     const qText = popup.querySelector('#edit-q-text').value.trim();
     const explanationText = popup.querySelector('#edit-q-explanation').value.trim();
-    const marksRaw = popup.querySelector('#edit-q-marks').value.trim();
-    const levelVal = selLevel.value || '';
-    const boardVal = popup.querySelector('#edit-q-board').value.trim();
-    const chapterVal = popup.querySelector('#edit-q-chapter').value.trim();
-    const qNoRaw = popup.querySelector('#edit-q-number').value.trim();
-    if (!qText) { alert("Question text is required."); return; }
+        const marksRaw =
+      popup.querySelector('#edit-q-marks').value.trim();
+
+    const levelVal =
+      selLevel.value || '';
+
+    const boardVal =
+      popup.querySelector('#edit-q-board').value.trim();
+
+    const chapterVal =
+      popup.querySelector('#edit-q-chapter').value.trim();
+
+    const qNoRaw =
+      popup.querySelector('#edit-q-number').value.trim();
+
+    if (!qText) {
+      alert("Question text is required.");
+      return;
+    }
+
+    const __editIsEntrance =
+      __qbIsEntranceExamBoard(boardVal);
+
+    const __effectiveMarksRaw =
+      __editIsEntrance ? '' : marksRaw;
+
+    const __effectiveLevel =
+      __editIsEntrance ? '' : levelVal;
 
     const __oldSub = String((data && data.subject) || '').trim();
     let __newSub = __oldSub;
@@ -6076,21 +6366,33 @@ function autoLatexAll(str) {
       subject: __oldSub
     });
 
-    const __newMarksValue = marksRaw === '' ? '' : Number(marksRaw);
+        const __newMarksValue =
+      __effectiveMarksRaw === ''
+        ? ''
+        : Number(__effectiveMarksRaw);
     const __newSeed = __qbBuildNumberSeed(data, {
       board: boardVal || '',
       subject: __newSub || __oldSub || '',
       chapter: chapterVal || '',
       mcqType: qType,
       type: qType,
-      marks: __newMarksValue,
-      difficulty: levelVal || '',
-      level: levelVal || ''
+           marks: __newMarksValue,
+      difficulty: __effectiveLevel,
+      level: __effectiveLevel
     });
 
     const updateObj = {
       question: qText,
-      difficulty: levelVal || firebase.firestore.FieldValue.delete(),
+           difficulty: __editIsEntrance
+        ? firebase.firestore.FieldValue.delete()
+        : (__effectiveLevel || firebase.firestore.FieldValue.delete()),
+
+      level: __editIsEntrance
+        ? firebase.firestore.FieldValue.delete()
+        : (data.level !== undefined
+            ? (__effectiveLevel || firebase.firestore.FieldValue.delete())
+            : firebase.firestore.FieldValue.delete()),
+
       board: boardVal || firebase.firestore.FieldValue.delete(),
       chapter: chapterVal || firebase.firestore.FieldValue.delete(),
       explanation: explanationText || firebase.firestore.FieldValue.delete(),
@@ -6102,11 +6404,21 @@ function autoLatexAll(str) {
 
     if (__newSub && __newSub !== __oldSub) updateObj.subject = __newSub;
 
-    if (marksRaw === '') {
-      updateObj.marks = firebase.firestore.FieldValue.delete();
+       if (
+      __editIsEntrance ||
+      __effectiveMarksRaw === ''
+    ) {
+      updateObj.marks =
+        firebase.firestore.FieldValue.delete();
+
     } else {
-      const m = Number(marksRaw);
-      if (Number.isNaN(m) || m < 0) { alert("Marks must be a positive number."); return; }
+      const m = Number(__effectiveMarksRaw);
+
+      if (Number.isNaN(m) || m < 0) {
+        alert("Marks must be a positive number.");
+        return;
+      }
+
       updateObj.marks = m;
     }
 
@@ -6118,27 +6430,76 @@ function autoLatexAll(str) {
       updateObj.questionNumber = qn;
     }
 
-    if (qType === 'Descriptive' || qType === 'Fill in the Blanks') {
-      updateObj.type = qType;
-      updateObj.mcqType = firebase.firestore.FieldValue.delete();
-      updateObj.options = firebase.firestore.FieldValue.delete();
-      updateObj.body = qText;
-      updateObj.text = qText;
-      updateObj.parsedAnswer = firebase.firestore.FieldValue.delete();
-    } else {
-      const optA = popup.querySelector('#edit-q-optA').value.trim();
-      const optB = popup.querySelector('#edit-q-optB').value.trim();
-      const optC = popup.querySelector('#edit-q-optC').value.trim();
-      const optD = popup.querySelector('#edit-q-optD').value.trim();
-      const ans = popup.querySelector('#edit-q-answer').value.trim();
-      if (!optA || !optB || !optC || !optD || !ans) {
-        alert("For MCQ or Matching Matrix, all four options and the answer are required.");
+       if (qType === 'Numerical Value') {
+      const ans =
+        popup.querySelector('#edit-q-answer').value.trim();
+
+      if (!ans) {
+        alert("Numerical answer is required.");
         return;
       }
+
+      updateObj.type = qType;
+      updateObj.mcqType =
+        firebase.firestore.FieldValue.delete();
+
+      updateObj.options =
+        firebase.firestore.FieldValue.delete();
+
+      updateObj.answer = ans;
+      updateObj.parsedAnswer = ans;
+      updateObj.body = qText;
+      updateObj.text = qText;
+
+    } else if (
+      qType === 'Descriptive' ||
+      qType === 'Fill in the Blanks'
+    ) {
+      updateObj.type = qType;
+
+      updateObj.mcqType =
+        firebase.firestore.FieldValue.delete();
+
+      updateObj.options =
+        firebase.firestore.FieldValue.delete();
+
+      updateObj.body = qText;
+      updateObj.text = qText;
+
+      updateObj.parsedAnswer =
+        firebase.firestore.FieldValue.delete();
+
+    } else {
+      const optA =
+        popup.querySelector('#edit-q-optA').value.trim();
+
+      const optB =
+        popup.querySelector('#edit-q-optB').value.trim();
+
+      const optC =
+        popup.querySelector('#edit-q-optC').value.trim();
+
+      const optD =
+        popup.querySelector('#edit-q-optD').value.trim();
+
+      const ans =
+        popup.querySelector('#edit-q-answer').value.trim();
+
+      if (!optA || !optB || !optC || !optD || !ans) {
+        alert(
+          "For MCQ or Matching List/Matrix, all four options and the answer are required."
+        );
+        return;
+      }
+
       updateObj.type = qType;
       updateObj.mcqType = qType;
-      updateObj.options = [optA, optB, optC, optD];
+      updateObj.options =
+        [optA, optB, optC, optD];
+
+      updateObj.answer = ans;
       updateObj.parsedAnswer = ans;
+
       if (wasTextbookQuestion) {
         updateObj.isTextbook = true;
         updateObj.textbook = true;
@@ -6871,15 +7232,45 @@ if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Sectio
 
 function __qbGetSectionKey(data = {}) {
   const rawType = __qbNormalizeQuestionType(data);
+  const board = String(data.board || '').trim();
 
-  const level = String(data.difficulty || data.level || '').trim() || 'Level 1';
-  const levelKey = level.replace(/\s+/g, '_').toUpperCase();
+  if (__qbIsEntranceExamBoard(board)) {
+    if (rawType === 'MCQ (Single)') {
+      return 'MCQ_SINGLE';
+    }
+
+    if (rawType === 'MCQ (Multiple)') {
+      return 'MCQ_MULTIPLE';
+    }
+
+    if (rawType === 'Numerical Value') {
+      return 'NUMERICAL_VALUE';
+    }
+
+    if (rawType === 'Matching List') {
+      return 'MATCHING_LIST';
+    }
+
+    return `EXAM_${String(rawType || 'QUESTION')
+      .replace(/[^A-Za-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toUpperCase()}`;
+  }
+
+  const level =
+    String(data.difficulty || data.level || '').trim() ||
+    'Level 1';
+
+  const levelKey =
+    level.replace(/\s+/g, '_').toUpperCase();
 
   if (rawType === 'MCQ (Single)') return `MCQ_SINGLE_${levelKey}`;
   if (rawType === 'MCQ (Multiple)') return `MCQ_MULTIPLE_${levelKey}`;
+  if (rawType === 'Numerical Value') return `NUMERICAL_VALUE_${levelKey}`;
   if (rawType === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
   if (rawType === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
   if (rawType === 'Matching Matrix') return `MATCHING_MATRIX_${levelKey}`;
+  if (rawType === 'Matching List') return `MATCHING_LIST_${levelKey}`;
   if (rawType === 'Paragraph-Based MCQ (Single Correct)') return `PARAGRAPH_MCQ_SINGLE_${levelKey}`;
 
   const marks = Number(data.marks || 0);
