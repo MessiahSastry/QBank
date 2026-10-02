@@ -785,16 +785,48 @@ function __qbIsParagraphMeta(metaLine = '') {
   return /\[(?:Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i.test(String(metaLine || ''));
 }
 
-function __qbGetSectionKeyForSave({ rawType = '', marks = 0, level = '' } = {}) {
+function __qbGetSectionKeyForSave({
+  rawType = '',
+  marks = 0,
+  level = '',
+  board = ''
+} = {}) {
   const type = __qbNormalizeTypeForSection(rawType);
-  const levelText = String(level || 'Level 1').trim() || 'Level 1';
-  const levelKey = levelText.replace(/\s+/g, '_').toUpperCase();
+
+  const isEntrance =
+    typeof __isEntranceExamBoard === 'function'
+      ? __isEntranceExamBoard(board)
+      : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
+          String(board || '').trim()
+        );
+
+  // Entrance-exam questions are grouped only by question type.
+  // No Level and no Marks belong to the stored question.
+  if (isEntrance) {
+    if (type === 'MCQ (Single)') return 'MCQ_SINGLE';
+    if (type === 'MCQ (Multiple)') return 'MCQ_MULTIPLE';
+    if (type === 'Numerical Value') return 'NUMERICAL_VALUE';
+    if (type === 'Matching List') return 'MATCHING_LIST';
+
+    return `EXAM_${String(type || 'QUESTION')
+      .replace(/[^A-Za-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toUpperCase()}`;
+  }
+
+  const levelText =
+    String(level || 'Level 1').trim() || 'Level 1';
+
+  const levelKey =
+    levelText.replace(/\s+/g, '_').toUpperCase();
 
   if (type === 'MCQ (Single)') return `MCQ_SINGLE_${levelKey}`;
   if (type === 'MCQ (Multiple)') return `MCQ_MULTIPLE_${levelKey}`;
   if (type === 'Fill in the Blanks') return `FILL_BLANKS_${levelKey}`;
   if (type === 'Assertion and Reason (MCQ Single)') return `ASSERTION_REASON_${levelKey}`;
   if (type === 'Matching Matrix') return `MATCHING_MATRIX_${levelKey}`;
+  if (type === 'Matching List') return `MATCHING_LIST_${levelKey}`;
+  if (type === 'Numerical Value') return `NUMERICAL_VALUE_${levelKey}`;
   if (type === 'Paragraph-Based MCQ (Single Correct)') return `PARAGRAPH_MCQ_SINGLE_${levelKey}`;
   if (type === 'Comprehensive') return `COMPREHENSIVE_${levelKey}`;
 
@@ -811,29 +843,42 @@ function __qbBuildSeedFromQuestion(qData = {}, sessionQuestionType = '') {
         ? 'Comprehensive'
         : (qData.type || qData.mcqType || sessionQuestionType || 'Descriptive');
 
-  const levelText = String(
-    qData.difficulty ||
-    qData.level ||
-    meta.difficulty ||
-    'Level 1'
-  ).trim() || 'Level 1';
+   const boardText =
+    String(qData.board || '').trim();
 
-  const marksValue = Number(
-    qData.marks ||
-    meta.marks ||
-    0
-  );
+  const isEntrance =
+    typeof __isEntranceExamBoard === 'function'
+      ? __isEntranceExamBoard(boardText)
+      : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(boardText);
+
+  const levelText = isEntrance
+    ? ''
+    : (
+        String(
+          qData.difficulty ||
+          qData.level ||
+          meta.difficulty ||
+          'Level 1'
+        ).trim() || 'Level 1'
+      );
+
+  const marksValue = isEntrance
+    ? 0
+    : Number(
+        qData.marks ||
+        meta.marks ||
+        0
+      );
 
   const seed = {
     class: String(qData.class || '').trim(),
-    board: String(qData.board || '').trim(),
+    board: boardText,
     subject: String(qData.subject || '').trim(),
     chapter: String(qData.chapter || '').trim(),
     rawType,
     marks: marksValue,
     level: levelText
   };
-
   seed.sectionKey = __qbGetSectionKeyForSave(seed);
   return seed;
 }
@@ -932,9 +977,10 @@ const aiGeneratorConfig = {
         "ICSE",
         "Olympiad",
         "IIT & NEET Foundation",
-        "JEE Mains",
-        "JEE Advance",
+         "JEE Main",
+        "JEE Advanced",
         "NEET",
+        "AP EAPCET",
         "AP State Board (SCERT)",
         "Other"
       ],
@@ -982,20 +1028,25 @@ const aiGeneratorConfig = {
     "Biology NEET",
     "Reasoning IIT & NEET"
   ],
-  "JEE Mains": [
-    "Physics (Mains)",
-    "Chemistry (Mains)",
-    "Mathematics (Mains)"
+    "JEE Main": [
+    "Physics (JEE Main)",
+    "Chemistry (JEE Main)",
+    "Mathematics (JEE Main)"
   ],
-  "JEE Advance": [
-    "Physics (Advance)",
-    "Chemistry (Advance)",
-    "Mathematics (Advance)"
+  "JEE Advanced": [
+    "Physics (JEE Advanced)",
+    "Chemistry (JEE Advanced)",
+    "Mathematics (JEE Advanced)"
   ],
   "NEET": [
     "Physics (NEET)",
     "Chemistry (NEET)",
     "Biology (NEET)"
+  ],
+  "AP EAPCET": [
+    "Mathematics (AP EAPCET)",
+    "Physics (AP EAPCET)",
+    "Chemistry (AP EAPCET)"
   ],
   "AP State Board (SCERT)": [
     "Telugu",
@@ -1017,20 +1068,48 @@ const aiGeneratorConfig = {
 questionTypes: [
   "MCQ (Single)",
   "MCQ (Multiple)",
-   "Assertion and Reason (MCQ Single)",
+  "Assertion and Reason (MCQ Single)",
   "Matching Matrix",
   "Paragraph-Based MCQ (Single Correct)",
-   "Fill in the Blanks",
+  "Fill in the Blanks",
   "Descriptive"
 ],
 
+getQuestionTypesForBoard: function (boardName) {
+  const b = (boardName || '').trim();
 
-      // NEW: Board-wise subjects (your data is in boardSubjectMappings)
-      getSubjectsForBoard: function (boardName) {
-        const b = (boardName || '').trim();
-        const map = this.boardSubjectMappings || {};
-        return Array.isArray(map[b]) ? map[b] : (Array.isArray(map["Other"]) ? map["Other"] : []);
-      },
+  // Round 1:
+  // Numerical Value and Matching List will be added in Round 2.
+   if (b === 'JEE Main') {
+    return [
+      "MCQ (Single)",
+      "Numerical Value"
+    ];
+  }
+
+  if (b === 'JEE Advanced') {
+    return [
+      "MCQ (Single)",
+      "MCQ (Multiple)",
+      "Numerical Value",
+      "Matching List"
+    ];
+  }
+
+  if (b === 'AP EAPCET') {
+    return [
+      "MCQ (Single)"
+    ];
+  }
+  return this.questionTypes;
+},
+
+// Board-wise subjects
+getSubjectsForBoard: function (boardName) {
+  const b = (boardName || '').trim();
+  const map = this.boardSubjectMappings || {};
+  return Array.isArray(map[b]) ? map[b] : (Array.isArray(map["Other"]) ? map["Other"] : []);
+},
 
       // BACKWARD COMPAT: if any old code still calls this
       getSubjectsForClass: function () {
@@ -1284,10 +1363,16 @@ const subjectsHTML = initialSubjectsWithOther
 window.__loadedChapterBoardFiles = window.__loadedChapterBoardFiles || {};
 
 window.__chapterBoardSlug = function(boardName) {
-  return (boardName || '')
+  const b = (boardName || '')
     .toString()
     .trim()
-    .toLowerCase()
+    .toLowerCase();
+
+  // Keep compatibility with existing chapter filenames
+  if (b === 'jee main') return 'jee-mains';
+  if (b === 'jee advanced') return 'jee-advance';
+
+  return b
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -1339,19 +1424,30 @@ window.getBoardChapterData = function(boardName) {
   const board = (boardName || '').trim();
   if (!board) return {};
 
+  const boardAliases = {
+    "JEE Main": ["JEE Main", "JEE Mains"],
+    "JEE Advanced": ["JEE Advanced", "JEE Advance"],
+    "AP EAPCET": ["AP EAPCET"]
+  };
+
+  const candidates = boardAliases[board] || [board];
   const registry = window.BOARD_CHAPTERS || window.boardChapters || {};
-  if (registry && typeof registry === 'object' && registry[board]) {
-    return registry[board];
+
+  for (const key of candidates) {
+    if (registry && typeof registry === 'object' && registry[key]) {
+      return registry[key];
+    }
   }
 
-  const globalKey = `CHAPTERS_${board.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`;
-  if (window[globalKey] && typeof window[globalKey] === 'object') {
-    return window[globalKey];
+  for (const key of candidates) {
+    const globalKey = `CHAPTERS_${key.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`;
+    if (window[globalKey] && typeof window[globalKey] === 'object') {
+      return window[globalKey];
+    }
   }
 
   return {};
 }
-
 /* NEW: Board Other + Subject Other toggle (Board "Other" forces Subject input too) */
 const __boardWrap = document.getElementById('board-other-wrap');
 const __boardOther = document.getElementById('board-other-input');
@@ -1615,31 +1711,62 @@ if (__qtypeOpts) __qtypeOpts.addEventListener('click', () => setTimeout(__syncMa
       document.getElementById("ai-setup-form").onsubmit = (e) => {
         e.preventDefault();
 
-       let qTypeFinal = document.getElementById('qtype-value-ai').value;
+      let qTypeFinal = document.getElementById('qtype-value-ai').value;
 let derivedCount = 0;
 let planRaw = '';
 
-if (qTypeFinal === 'Descriptive') {
-  const sets = (window.__getDescSetsPlan ? window.__getDescSetsPlan() : []);
-  derivedCount = sets.reduce((s, x) => s + (x.l1 + x.l2 + x.l3), 0);
+const setupBoardForCount =
+  (document.getElementById('board-value-ai')?.value || '').trim();
 
-  // Example: Set1(M1: L1:2,L2:0,L3:1) | Set2(M2: L1:1,L2:1,L3:0)
+const isEntranceExamMode =
+  __isEntranceExamBoard(setupBoardForCount);
+
+if (isEntranceExamMode) {
+
+  // JEE Main / JEE Advanced / AP EAPCET:
+  // No L1/L2/L3 selection. Teacher enters only the required quantity.
+  derivedCount =
+    parseInt(document.getElementById('lvl-total-ai')?.value || '0', 10) || 0;
+
+  planRaw = 'Exam Mode';
+
+} else if (qTypeFinal === 'Descriptive') {
+
+  const sets =
+    (window.__getDescSetsPlan ? window.__getDescSetsPlan() : []);
+
+  derivedCount =
+    sets.reduce((s, x) => s + (x.l1 + x.l2 + x.l3), 0);
+
   planRaw = sets.map((x, i) =>
-  `Set${i+1}(Give ${x.marks} Mark Question${x.marks > 1 ? 's' : ''}: L1:${x.l1}, L2:${x.l2}, L3:${x.l3})`
-).join(' | ');
+    `Set${i+1}(Give ${x.marks} Mark Question${x.marks > 1 ? 's' : ''}: L1:${x.l1}, L2:${x.l2}, L3:${x.l3})`
+  ).join(' | ');
+
 } else {
-  const l1 = parseInt(document.getElementById('lvl1-ai')?.value || '0', 10) || 0;
-  const l2 = parseInt(document.getElementById('lvl2-ai')?.value || '0', 10) || 0;
-  const l3 = parseInt(document.getElementById('lvl3-ai')?.value || '0', 10) || 0;
+
+  const l1 =
+    parseInt(document.getElementById('lvl1-ai')?.value || '0', 10) || 0;
+
+  const l2 =
+    parseInt(document.getElementById('lvl2-ai')?.value || '0', 10) || 0;
+
+  const l3 =
+    parseInt(document.getElementById('lvl3-ai')?.value || '0', 10) || 0;
+
   derivedCount = l1 + l2 + l3;
 
   if (qTypeFinal === 'Paragraph-Based MCQ (Single Correct)') {
     const questionsPerPassage = Math.max(
       2,
-      parseInt(document.getElementById('paragraph-questions-per-set-ai')?.value || '2', 10) || 2
+      parseInt(
+        document.getElementById('paragraph-questions-per-set-ai')?.value || '2',
+        10
+      ) || 2
     );
 
-    planRaw = `Passage Sets: L1:${l1}, L2:${l2}, L3:${l3}; ${questionsPerPassage} Questions per Passage`;
+    planRaw =
+      `Passage Sets: L1:${l1}, L2:${l2}, L3:${l3}; ${questionsPerPassage} Questions per Passage`;
+
   } else {
     planRaw = `L1:${l1}, L2:${l2}, L3:${l3}`;
   }
@@ -1701,7 +1828,9 @@ if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)' && ses
               <p><b>Chapter:</b> ${sessionParams.chapter}</p>
             </div>
             <div class="chat-header-line">
-              <p><b>Plan:</b> ${sessionParams.levelPlan || ''}</p>
+                 ${__isEntranceExamBoard(sessionParams.board)
+                ? ''
+                : `<p><b>Plan:</b> ${sessionParams.levelPlan || ''}</p>`}
             </div>
             <div class="chat-header-line buttons actions-row">
               <button id="ai-change-setup-btn" class="btn action-saffron">Change Setup</button>
@@ -1863,6 +1992,122 @@ function updateSendButtonState(chatPromptInput, sendBtn) {
   }
 }
 
+function __isEntranceExamBoard(boardName) {
+  return [
+    'JEE Main',
+    'JEE Advanced',
+    'AP EAPCET'
+  ].includes((boardName || '').trim());
+}
+
+function syncEntranceExamUI(selectedBoard) {
+  const isEntrance = __isEntranceExamBoard(selectedBoard);
+
+  const levelsWrap = document.getElementById('levels-wrap-ai');
+  const mcqWrap = document.getElementById('mcq-levels-wrap-ai');
+  const descWrap = document.getElementById('desc-levels-wrap-ai');
+
+  const l1 = document.getElementById('lvl1-ai');
+  const l2 = document.getElementById('lvl2-ai');
+  const l3 = document.getElementById('lvl3-ai');
+  const total = document.getElementById('lvl-total-ai');
+
+  const mainLabel = levelsWrap ? levelsWrap.querySelector('label') : null;
+
+  const levelRows = [
+    l1?.parentElement,
+    l2?.parentElement,
+    l3?.parentElement
+  ].filter(Boolean);
+
+  const totalRow = total?.parentElement;
+  const totalLabel = totalRow ? totalRow.querySelector('div') : null;
+
+  if (isEntrance) {
+    if (mainLabel) mainLabel.textContent = 'Number of Questions:';
+
+    levelRows.forEach(row => {
+      row.style.display = 'none';
+    });
+
+    if (mcqWrap) mcqWrap.style.display = 'flex';
+    if (descWrap) descWrap.style.display = 'none';
+
+    if (total) {
+      total.removeAttribute('readonly');
+      total.min = '1';
+
+      // Clear the old calculated L1/L2/L3 total
+      total.value = '';
+
+      total.style.background = '#f4fbff';
+      total.style.borderColor = '#cfe0f1';
+    }
+
+    if (totalLabel) {
+      totalLabel.textContent = 'Questions';
+    }
+
+    if (l1) l1.value = '0';
+    if (l2) l2.value = '0';
+    if (l3) l3.value = '0';
+
+  } else {
+    if (mainLabel) mainLabel.textContent = 'Questions by Level:';
+
+    levelRows.forEach(row => {
+      row.style.display = 'flex';
+    });
+
+    if (total) {
+      total.setAttribute('readonly', '');
+      total.removeAttribute('min');
+
+      const a = parseInt(l1?.value || '0', 10) || 0;
+      const b = parseInt(l2?.value || '0', 10) || 0;
+      const c = parseInt(l3?.value || '0', 10) || 0;
+
+      total.value = String(a + b + c);
+      total.style.background = '#f6f6f6';
+      total.style.borderColor = '#cfd3d8';
+    }
+
+    if (totalLabel) {
+      totalLabel.textContent = 'Total';
+    }
+  }
+}
+
+function refreshQuestionTypesForBoard(selectedBoard) {
+  const dropdown = document.getElementById('qtype-dropdown-ai');
+  if (!dropdown) return;
+
+  const options = dropdown.querySelector('.dropdown-options');
+  const selected = dropdown.querySelector('.selected-option');
+  const input = document.getElementById('qtype-value-ai');
+
+  const types = aiGeneratorConfig.getQuestionTypesForBoard(selectedBoard);
+
+  options.innerHTML = types
+    .map(type => `<div data-value="${type}">${type}</div>`)
+    .join('');
+
+  selected.textContent = types[0] || 'Select Question Type';
+  input.value = types[0] || '';
+
+  optionsContainerListener(
+    options,
+    selected,
+    input,
+    dropdown,
+    () => {
+      syncEntranceExamUI(selectedBoard);
+    }
+  );
+
+  syncEntranceExamUI(selectedBoard);
+}
+
 function setupCustomDropdownsForForm() {
   setupCustomDropdown('class-dropdown-ai', 'class-value-ai', (selectedClass) => {
     const subjectDropdown = document.getElementById('subject-dropdown-ai');
@@ -1962,17 +2207,29 @@ if (subjectInput.value === 'Other') {
 
         updateChapterDropdown(selectedClass, newSubjectsWithOther[0] || '');
 
-    optionsContainerListener(
+        optionsContainerListener(
       subjectOptions,
       subjectSelected,
       subjectInput,
       subjectDropdown,
       (newSubject) => updateChapterDropdown(selectedClass, newSubject)
     );
+
+    // Refresh question models according to selected exam
+    refreshQuestionTypesForBoard(selectedBoard);
   });
 
-    setupCustomDropdown('qtype-dropdown-ai', 'qtype-value-ai');
+  setupCustomDropdown('qtype-dropdown-ai', 'qtype-value-ai', () => {
+    const currentBoard = document.getElementById('board-value-ai')?.value || '';
+    syncEntranceExamUI(currentBoard);
+  });
+
   setupCustomDropdown('chapter-dropdown-ai', 'chapter-value-ai');
+
+  // Initial board UI
+  syncEntranceExamUI(
+    document.getElementById('board-value-ai')?.value || ''
+  );
 }
 
 async function updateChapterDropdown(selectedClass, selectedSubject) {
@@ -2007,14 +2264,35 @@ async function updateChapterDropdown(selectedClass, selectedSubject) {
 
     const boardData = window.getBoardChapterData(finalBoard);
 
-  let chapters = [];
+    let chapters = [];
 
-  if (Array.isArray(boardData?.[finalSubject])) {
-    chapters = boardData[finalSubject];
-  } else if (Array.isArray(boardData?.[selectedClass]?.[finalSubject])) {
-    chapters = boardData[selectedClass][finalSubject];
-  } else if (Array.isArray(boardData?.[selectedClass?.trim()]?.[finalSubject])) {
-    chapters = boardData[selectedClass.trim()][finalSubject];
+  const subjectAliases = {
+    "Physics (JEE Main)": ["Physics (JEE Main)", "Physics (Mains)"],
+    "Chemistry (JEE Main)": ["Chemistry (JEE Main)", "Chemistry (Mains)"],
+    "Mathematics (JEE Main)": ["Mathematics (JEE Main)", "Mathematics (Mains)"],
+
+    "Physics (JEE Advanced)": ["Physics (JEE Advanced)", "Physics (Advance)"],
+    "Chemistry (JEE Advanced)": ["Chemistry (JEE Advanced)", "Chemistry (Advance)"],
+    "Mathematics (JEE Advanced)": ["Mathematics (JEE Advanced)", "Mathematics (Advance)"]
+  };
+
+  const subjectCandidates = subjectAliases[finalSubject] || [finalSubject];
+
+  for (const subjectKey of subjectCandidates) {
+    if (Array.isArray(boardData?.[subjectKey])) {
+      chapters = boardData[subjectKey];
+      break;
+    }
+
+    if (Array.isArray(boardData?.[selectedClass]?.[subjectKey])) {
+      chapters = boardData[selectedClass][subjectKey];
+      break;
+    }
+
+    if (Array.isArray(boardData?.[selectedClass?.trim()]?.[subjectKey])) {
+      chapters = boardData[selectedClass.trim()][subjectKey];
+      break;
+    }
   }
 
   const uniqueChapters = Array.from(new Set((chapters || []).filter(Boolean)));
@@ -2265,6 +2543,72 @@ Don't mention the option in the explanation, but give the correct answer.
 
 List all MCQ (Multiple) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
+
+      } else if (sessionParams.questionType === "Numerical Value") {
+        extractPrompt = `
+Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
+
+IMPORTANT:
+Extract ONLY Numerical Value questions from the uploaded file.
+
+Do not add, change, simplify, rewrite, or invent questions.
+
+For every extracted question use:
+
+Q<num>: Level <Level>, <Marks> [Numerical Value]
+<Question text>
+Answer: <numerical answer>
+Explanation:
+<step-by-step solution if available or required>
+
+Rules:
+• Do NOT add A), B), C), or D) options.
+• Preserve all mathematical data exactly.
+• Preserve the numerical answer exactly if it is provided.
+• Do not convert MCQs into Numerical Value questions.
+• Output only the extracted Numerical Value questions.
+`;
+
+      } else if (sessionParams.questionType === "Matching List") {
+        extractPrompt = `
+Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
+
+IMPORTANT:
+Extract ONLY Matching List questions from the uploaded file.
+
+Do not add, change, simplify, rewrite, or invent questions.
+
+Format:
+
+Q<num>: Level <Level>, <Marks> [Matching List]
+
+List-I
+P) ...
+Q) ...
+R) ...
+S) ...
+
+List-II
+1) ...
+2) ...
+3) ...
+4) ...
+5) ...
+
+Options:
+A) ...
+B) ...
+C) ...
+D) ...
+
+Ans: <correct option>
+Explanation:
+<explanation if available>
+
+Preserve the original matching relationships, options, data, notation and answer exactly.
+Output only the extracted Matching List questions.
+`;
+
       } else if (sessionParams.questionType === "Descriptive") {
         extractPrompt = `
 Class: ${sessionParams.class}, Subject: ${sessionParams.subject}, Chapter: ${sessionParams.chapter}.
@@ -2572,14 +2916,27 @@ const isCBSE = selectedBoard === 'cbse';
 const isICSE = selectedBoard === 'icse';
 const isFoundation = selectedBoard === 'iit & neet foundation';
 const isOlympiad = selectedBoard === 'olympiad';
-const isJeeMains = selectedBoard === 'jee mains';
-const isJeeAdvance = selectedBoard === 'jee advance';
+const isJeeMains = selectedBoard === 'jee main';
+const isJeeAdvance = selectedBoard === 'jee advanced';
 const isNeet = selectedBoard === 'neet';
+const isApEapcet = selectedBoard === 'ap eapcet';
 const isApState = selectedBoard === 'ap state board (scert)';
 const isOtherBoard = selectedBoard === 'other';
 
-const isTextbookBoard = isCBSE || isICSE || isApState;
-const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet;
+const isTextbookBoard = isCbse || isIcse || isApState;
+
+const isEntranceExamMode =
+  isJeeMains ||
+  isJeeAdvance ||
+  isApEapcet;
+
+const isCompetitiveBoard =
+  isFoundation ||
+  isOlympiad ||
+  isJeeMains ||
+  isJeeAdvance ||
+  isNeet ||
+  isApEapcet;
 
       if (isTextbookBoard) {
         if (sessionParams.questionType === "Descriptive") {
@@ -2925,11 +3282,30 @@ async function saveSessionQuestions(sessionParams) {
       const wrappedBody      = __wrap(qData.parsedBody || '');
       const wrappedFullText  = __wrap(qData.fullText || '');
 
-          let toSave = {
+                const isEntranceExamQuestion =
+        typeof __isEntranceExamBoard === 'function'
+          ? __isEntranceExamBoard(qData.board)
+          : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
+              String(qData.board || '').trim()
+            );
+
+      let toSave = {
         metaLine: qData.parsedMeta,
-        difficulty: meta.difficulty,
-        level: meta.level,
-        marks: meta.marks,
+
+        difficulty: isEntranceExamQuestion
+          ? null
+          : meta.difficulty,
+
+        level: isEntranceExamQuestion
+          ? null
+          : meta.level,
+
+        marks: isEntranceExamQuestion
+          ? null
+          : meta.marks,
+
+        examMode: isEntranceExamQuestion,
+
         questionNumber: currentQuestionNumber,
         sectionKey: seed.sectionKey,
         class: qData.class,
@@ -2940,12 +3316,13 @@ async function saveSessionQuestions(sessionParams) {
         createdBy: currentUserProfile.uid,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
-              if (
-           sessionParams.questionType.startsWith('MCQ') ||
-           sessionParams.questionType.startsWith('Text Book') ||
-           sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
-           sessionParams.questionType === 'Matching Matrix'
-         ) {
+                            if (
+            sessionParams.questionType.startsWith('MCQ') ||
+            sessionParams.questionType.startsWith('Text Book') ||
+            sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
+            sessionParams.questionType === 'Matching Matrix' ||
+            sessionParams.questionType === 'Matching List'
+          ) {
         toSave.type = sessionParams.questionType;
         toSave.question = wrappedQuestion;
         toSave.options  = wrappedOptions;
@@ -3169,6 +3546,8 @@ const isTextbook = /Text Book/i.test(rawType);
 const isMultiple = /Multiple/i.test(rawType);
 const isFillBlank = rawType === 'Fill in the Blanks';
 const isAssertionReason = rawType === 'Assertion and Reason (MCQ Single)';
+const isNumericalValue = rawType === 'Numerical Value';
+const isMatchingList = rawType === 'Matching List';
 const isMatchingMatrix = rawType === 'Matching Matrix';
 const isParagraphBased = rawType === 'Paragraph-Based MCQ (Single Correct)';
 const paragraphQuestionsPerSet = Math.max(
@@ -3181,13 +3560,17 @@ const qtypeForFormat = isFillBlank
   ? 'Fill in the Blanks'
   : isAssertionReason
     ? 'Assertion and Reason (MCQ Single)'
-    : isMatchingMatrix
-      ? 'Matching Matrix'
-      : isParagraphBased
-        ? 'Paragraph-Based MCQ (Single Correct)'
-        : isTextbook
-          ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
-          : (isMultiple ? 'MCQ (Multiple)'  : 'MCQ (Single)');
+    : isNumericalValue
+      ? 'Numerical Value'
+      : isMatchingList
+        ? 'Matching List'
+        : isMatchingMatrix
+          ? 'Matching Matrix'
+          : isParagraphBased
+            ? 'Paragraph-Based MCQ (Single Correct)'
+            : isTextbook
+              ? (isMultiple ? 'Text (Multiple)' : 'Text (Single)')
+              : (isMultiple ? 'MCQ (Multiple)' : 'MCQ (Single)');
 
 let qtype = rawType;
 const transcribeNote = isTextbook ? `
@@ -3219,25 +3602,27 @@ const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdva
 
   // ---- COMMON headings ----
  const requestLine =
-  isParagraphBased
-    ? `Request: Generate ${count} Paragraph-Based MCQ (Single Correct) passage set(s), with exactly ${paragraphQuestionsPerSet} sub-questions in each passage set. ${plan ? `Distribution: ${plan}` : ''}`
-    : isJeeMains
-      ? `Request: Generate ${count} JEE Main style questions. ${plan ? `Distribution: ${plan}` : ''}`
-      : isJeeAdvance
-        ? `Request: Generate ${count} JEE Advanced style questions. ${plan ? `Distribution: ${plan}` : ''}`
-        : isNeet
-          ? `Request: Generate ${count} NEET style questions. ${plan ? `Distribution: ${plan}` : ''}`
-          : isOlympiad
-            ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
-            : isFoundation
-              ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
-              : isCbse
-                ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                : isIcse
-                  ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                  : isApState
-                    ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
-                    : `Request: ${plan || (count + ' questions')}`;
+  isJeeMains
+    ? `Request: Generate exactly ${count} JEE Main questions of the selected question type.`
+    : isJeeAdvance
+      ? `Request: Generate exactly ${count} JEE Advanced questions of the selected question type.`
+      : isApEapcet
+        ? `Request: Generate exactly ${count} AP EAPCET Engineering questions of the selected question type.`
+        : isParagraphBased
+          ? `Request: Generate ${count} Paragraph-Based MCQ (Single Correct) passage set(s), with exactly ${paragraphQuestionsPerSet} sub-questions in each passage set. ${plan ? `Distribution: ${plan}` : ''}`
+          : isNeet
+            ? `Request: Generate ${count} NEET style questions. ${plan ? `Distribution: ${plan}` : ''}`
+            : isOlympiad
+              ? `Request: Generate ${count} Olympiad style questions. ${plan ? `Distribution: ${plan}` : ''}`
+              : isFoundation
+                ? `Request: Generate ${count} IIT & NEET Foundation style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                : isCbse
+                  ? `Request: Generate ${count} CBSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                  : isIcse
+                    ? `Request: Generate ${count} ICSE style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                    : isApState
+                      ? `Request: Generate ${count} AP State Board (SCERT) style questions. ${plan ? `Distribution: ${plan}` : ''}`
+                      : `Request: ${plan || (count + ' questions')}`;
 
 const header = `
 Class: ${cls}
@@ -3312,28 +3697,109 @@ const olympiadLevels = `
 - Level 3: Advanced Olympiad-style multi-step thinking
 `;
 
-const jeeMainsLevels = `
-  Important
-  *Questions should follow JEE Main style for the selected subject.*
-  *Questions should be objective, concept-based, application-oriented, and exam-relevant.*
-  *Questions must resemble JEE Main standard, not Foundation or school textbook style.*
+const jeeMainExamStandard = `
+JEE MAIN EXAM MODE — STRICT:
 
-  Use these Level definitions STRICTLY (JEE Main mode):
-- Level 1: Direct formula/concept application
-- Level 2: Standard JEE Main application
-- Level 3: Moderate multi-concept JEE Main level
+• Generate ORIGINAL questions that match the standard, structure, thinking demand and solving style of JEE Main.
+• Do NOT copy or closely reproduce previous-year questions.
+• Do NOT generate school-board or Foundation-style questions merely with harder numbers.
+• Do NOT label questions as Level 1, Level 2, Level 3, Easy, Medium, Hard or Difficult.
+• Do NOT print marks or negative marks. The Exam Builder will assign the marking scheme.
+
+DIFFICULTY MIX:
+• Use a natural JEE Main paper-style mix.
+• Include some comparatively straightforward concept/application questions.
+• The majority should represent normal JEE Main standard.
+• Include some upper-end JEE Main questions requiring linked concepts or careful reasoning.
+• Do NOT force a fixed percentage or fixed difficulty count.
+
+QUESTION QUALITY:
+• Questions should reward conceptual understanding, correct modelling and efficient problem solving.
+• Use realistic calculations that can be completed within JEE Main examination time.
+• Higher-difficulty questions may combine concepts, but must NOT drift into JEE Advanced-style non-routine reasoning.
+• Avoid unnecessarily lengthy algebra or computation merely to make a question difficult.
+• Distractors must arise from realistic misconceptions, sign errors, formula misuse, unit errors or incomplete reasoning.
+• Exactly one option must be correct for MCQ (Single).
+
+SUBJECT STANDARD:
+• Mathematics: emphasize conceptual application, algebraic control, interpretation and efficient solution paths.
+• Physics: emphasize physical understanding, correct modelling, units, signs, approximations and application of principles.
+• Chemistry: maintain correct syllabus depth and appropriate Physical, Organic and Inorganic Chemistry treatment.
+
+All questions must stay strictly within the selected chapter and requested subtopics.
 `;
 
-const jeeAdvanceLevels = `
-  Important
-  *Questions should follow JEE Advanced style for the selected subject.*
-  *Questions should be deeper, multi-concept, analytical, and challenging.*
-  *Questions must resemble JEE Advanced standard, not Foundation or textbook-direct style.*
+const jeeAdvancedExamStandard = `
+JEE ADVANCED EXAM MODE — STRICT:
 
-  Use these Level definitions STRICTLY (JEE Advanced mode):
-- Level 1: Strong concept-based application
-- Level 2: Multi-step analytical problems
-- Level 3: Challenging JEE Advanced style multi-concept reasoning
+• Generate ORIGINAL questions that match the analytical and conceptual standard expected in JEE Advanced.
+• Do NOT copy or closely reproduce previous-year questions.
+• Do NOT simply make JEE Main questions longer.
+• Do NOT label questions as Level 1, Level 2, Level 3, Easy, Medium, Hard or Difficult.
+• Do NOT print marks, partial marks or negative marks. The Exam Builder will assign the marking scheme.
+
+DIFFICULTY MIX:
+• Use a natural JEE Advanced-style range of difficulty.
+• Every question must require genuine conceptual understanding.
+• Some may have a relatively accessible starting point.
+• Many should require multiple linked ideas or non-obvious reasoning.
+• Some should be demanding and non-routine.
+• Do NOT force a fixed percentage or fixed difficulty count.
+
+QUESTION QUALITY:
+• Prefer depth of reasoning over excessive calculation.
+• Use hidden constraints, parameter dependence, limiting cases, multiple representations, case analysis or conceptual elimination where naturally appropriate.
+• Require students to identify the correct approach rather than simply substitute values into a familiar formula.
+• Avoid artificial tricks and ambiguous wording.
+• Avoid unnecessary computation that does not test meaningful understanding.
+• Questions may integrate multiple concepts, but must remain within the selected syllabus/chapter scope.
+• All options and answers must be independently verified.
+
+For MCQ (Single):
+• Exactly one option must be correct.
+
+For MCQ (Multiple):
+• One or more options may be correct.
+• The number of correct options must arise naturally from the question.
+• Do NOT force a predetermined number of correct options.
+
+For Numerical Value:
+• The problem must naturally lead to a numerical response.
+• Do not create an ordinary MCQ and simply remove its options.
+
+For Matching List:
+• Every relationship must be conceptually valid and independently checked.
+• Distractor combinations must be plausible.
+
+All questions must stay strictly within the selected chapter and requested subtopics.
+`;
+
+const apEapcetExamStandard = `
+AP EAPCET ENGINEERING EXAM MODE — STRICT:
+
+• Generate ORIGINAL AP EAPCET Engineering-standard questions.
+• Questions must be syllabus-bound, objective, clear and suitable for examination-speed solving.
+• Do NOT convert the questions into JEE Advanced-style problems.
+• Do NOT label questions as Level 1, Level 2, Level 3, Easy, Medium, Hard or Difficult.
+• Do NOT print marks or negative marks. The Exam Builder will assign the marking scheme.
+
+DIFFICULTY MIX:
+• Use a natural AP EAPCET-style mix.
+• Include some direct concept/formula questions.
+• The majority should require standard application and understanding.
+• Include some moderately tricky questions involving two linked steps, careful interpretation or close distractors.
+• Do NOT force fixed difficulty percentages.
+
+QUESTION QUALITY:
+• Exactly one option must be correct.
+• Questions should generally be solvable efficiently under examination time pressure.
+• Use syllabus-relevant calculations and standard methods.
+• Do not use unnecessarily long calculations.
+• Do not introduce JEE Advanced-style hidden constructions, elaborate case analysis or highly non-routine methods.
+• Distractors should reflect common calculation, sign, formula, unit or interpretation errors.
+• Verify all numerical values, options and answers before output.
+
+All questions must stay strictly within the selected chapter and requested subtopics.
 `;
 
 const neetLevels = `
@@ -3354,8 +3820,9 @@ const neetLevels = `
   isApState ? apStateLevels :
   isFoundation ? foundationLevels :
   isOlympiad ? olympiadLevels :
-  isJeeMains ? jeeMainsLevels :
-  isJeeAdvance ? jeeAdvanceLevels :
+  isJeeMains ? jeeMainExamStandard :
+  isJeeAdvance ? jeeAdvancedExamStandard :
+  isApEapcet ? apEapcetExamStandard :
   isNeet ? neetLevels :
   foundationLevels;
 
@@ -3384,28 +3851,31 @@ When I say "the final set", give me the final set in inline LaTex COPY CODE only
 
 const mcqFormat = `
 ${quantityLine}
-Q<num>: Level <1/2/3>, 1 Mark [${qtypeForFormat}]
+${isEntranceExamMode
+  ? `Q<num>: [${qtypeForFormat}]`
+  : `Q<num>: Level <1/2/3>, 1 Mark [${qtypeForFormat}]`}
 <Question text>
 A) <Option A>
 B) <Option B>
 C) <Option C>
 D) <Option D>
-Ans: <A) or B) or C) or D)>
-Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
-But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+${isMultiple
+  ? `Ans: <All correct options, for example A), C)>`
+  : `Ans: <A) or B) or C) or D)>`}
+Explanation:
+<Complete solution/reasoning>
+Answer: <Final answer>
 
 Rules:
 ${numberingNote}
 • Include A)–D) for every MCQ and an "Ans: …" line.
-• Use ONLY content from the selected class/subject/chapter (and any subtopic names present in "Request").
-• If Any Subtopics for the chapter are mentioned, give questions only from those topics.
-• No headings, introductions, comments, or explanations—questions only.
+• Use ONLY content from the selected class/subject/chapter and requested subtopics.
+• If subtopics are mentioned, give questions only from those subtopics.
+• Give the Explanation and final Answer for every generated question.
+• Do not add any introduction, heading, summary, note or commentary outside the question blocks.
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
-• When I ask for the final set, give me the final set in inline LaTex COPY CODE only
-${isJeeMains ? '• Questions must match JEE Main standard: objective, concept-based, application-oriented, and exam-relevant. Avoid school-textbook direct questions unless they are properly converted into JEE Main style.' : ''}
-${isJeeAdvance ? '• Questions must match JEE Advanced standard: deeper, multi-concept, analytical, tricky, and non-routine. Avoid simple direct formula questions.' : ''}
+• When I ask for the final set, give the final set in inline LaTeX COPY CODE only.
+${isEntranceExamMode ? '• Do NOT write Level, difficulty label, marks, negative marks or scoring information in any question.' : ''}
 ${isNeet ? '• Questions must match NEET standard: objective, syllabus-accurate, fast-solving, and exam-relevant. Biology should stay close to NCERT style wherever appropriate.' : ''}
 ${isOlympiad ? '• Questions must match Olympiad standard: reasoning-heavy, concept-rich, and tricky. Avoid purely memory-based direct questions.' : ''}
 ${isFoundation ? '• Questions must match IIT & NEET Foundation standard: concept-based and progressively challenging, but still suitable for the selected class.' : ''}
@@ -3455,6 +3925,77 @@ ${numberingNote}
 • Every question must contain both Assertion and Reason.
 • Use ONLY content from the selected class/subject/chapter.
 • If Any Subtopics for the chapter are mentioned, give questions only from those topics.
+• No headings, introductions, comments, or extra text.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
+
+const numericalValueFormat = `
+Generate EXACTLY ${count} Numerical Value questions.
+
+Format each question EXACTLY as:
+
+Q<num>: [Numerical Value]
+<Question text>
+Answer: <final numerical value only>
+Explanation:
+<Complete step-by-step solution>
+
+Rules:
+${numberingNote}
+• Do NOT give A), B), C), or D) options.
+• This must be a genuine numerical-answer question, not a descriptive question.
+• The final response must be a genuine numerical value.
+• The numerical answer may be an integer or decimal wherever mathematically appropriate.
+• If units occur in the working, show them correctly in the Explanation.
+• Keep the final Answer line suitable for numerical entry.
+• Do NOT create an ordinary MCQ first and merely remove its options.
+• The question must naturally require the student to determine the numerical value.
+• Do NOT print Level, difficulty, marks, negative marks or scoring information.
+• The problem itself must naturally require computation or numerical determination.
+• Use ONLY content from the selected subject/chapter and any requested subtopics.
+• Check the calculation independently before giving the answer.
+• The Answer and Explanation must agree exactly.
+• No headings, introductions, comments, or extra text.
+• I will ask for a FINAL SET later after corrections. This is the DRAFT output.
+${strictAccuracy}
+`;
+
+const matchingListFormat = `
+Generate EXACTLY ${count} JEE Advanced-style Matching List questions.
+
+Format each question EXACTLY as:
+
+Q<num>: [Matching List]
+
+List-I                         List-II
+P) <Item P>                    1) <Item 1>
+Q) <Item Q>                    2) <Item 2>
+R) <Item R>                    3) <Item 3>
+S) <Item S>                    4) <Item 4>
+                               5) <Item 5>
+
+Options:
+A) P-<number>, Q-<number>, R-<number>, S-<number>
+B) P-<number>, Q-<number>, R-<number>, S-<number>
+C) P-<number>, Q-<number>, R-<number>, S-<number>
+D) P-<number>, Q-<number>, R-<number>, S-<number>
+
+Ans: <A) or B) or C) or D)>
+Explanation:
+<Complete step-by-step explanation>
+Answer: <Correct matching combination>
+
+Rules:
+${numberingNote}
+• List-I must contain exactly P), Q), R), S).
+• List-II must contain exactly 1), 2), 3), 4), 5).
+• Each answer option A–D must give a complete matching combination for P, Q, R and S.
+• Exactly ONE of the four answer options must be correct.
+• Construct the matching relationships from the concepts in the problem; do not force artificial matches.
+• Distractor combinations must be plausible.
+• Use ONLY content from the selected subject/chapter and any requested subtopics.
+• Verify every List-I to List-II relationship before finalizing.
 • No headings, introductions, comments, or extra text.
 • I will ask for a FINAL SET later after corrections. This is the DRAFT output.
 ${strictAccuracy}
@@ -3543,19 +4084,32 @@ ${isNeet ? '• Use this as higher-application NEET practice while keeping the c
 ${strictAccuracy}
 `;
   // MCQ Multiple additional distribution rule (per 10)
-  const multiBlockRule = `
+  const multiBlockRule = isJeeAdvance ? `
+Additional rules for JEE Advanced MCQ (Multiple):
+
+• One or more of A), B), C), D) may be correct.
+• Determine the number of correct options naturally from the mathematics/science of the question.
+• Do NOT force a predetermined distribution of 1, 2, 3 or 4 correct options.
+• Do NOT deliberately make every question have the same number of correct options.
+• Every option must be independently evaluated.
+• An option is correct only if the complete statement is correct.
+• Use plausible statements so the student must analyse every option carefully.
+• Verify the complete correct-option set before finalising the question.
+• Spread answer-letter patterns naturally; do not create obvious sequences.
+` : `
 Additional rules for MCQ (Multiple):
-• Some questions have multiple correct options (e.g., A), C)).
-• Spread correct letters across A–D; avoid patterns.
+
+• Some questions may have multiple correct options.
+• Spread correct letters across A–D; avoid obvious patterns.
+
 • If total > 10, apply this distribution to EACH block of 10:
   - Exactly 2 questions with 1 correct option
   - Exactly 3 questions with 2 correct options
   - Exactly 3 questions with 3 correct options
   - Exactly 2 questions with 4 correct options
-• Before finishing, self-check that each 10-question block satisfies the distribution.
-${isJeeAdvance ? '• Questions must strongly reflect JEE Advanced multiple-correct style: analytical, tricky, multi-concept, and non-routine.' : ''}
-${isJeeMains ? '• Keep multiple-correct questions limited to concept/application style only if intentionally requested, since JEE Main is usually single-correct focused.' : ''}
-${isNeet ? '• Keep multiple-correct questions only if explicitly needed; NEET is usually single-correct focused and should remain syllabus-accurate.' : ''}
+
+• Before finishing, self-check each block.
+
 ${isOlympiad ? '• Multiple-correct questions should emphasize reasoning, careful concept checking, and tricky distinctions.' : ''}
 ${isFoundation ? '• Multiple-correct questions should be suitable for IIT & NEET Foundation level of the selected class, not too advanced for the grade.' : ''}
 `;
@@ -3624,7 +4178,7 @@ ${fillBlankFormat}`.trim()
 );
   }
 
-  if (isAssertionReason) {
+   if (isAssertionReason) {
     return (
 `${header}
 ${levelBlock}
@@ -3633,7 +4187,23 @@ ${assertionReasonFormat}`.trim()
 );
   }
 
-    if (isMatchingMatrix) {
+  if (isNumericalValue) {
+    return (
+`${header}
+${levelBlock}
+${numericalValueFormat}`.trim()
+);
+  }
+
+  if (isMatchingList) {
+    return (
+`${header}
+${levelBlock}
+${matchingListFormat}`.trim()
+);
+  }
+
+  if (isMatchingMatrix) {
     return (
 `${header}
 ${levelBlock}
@@ -3959,13 +4529,20 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
     return out;
   }
 
-  const isMatchingMatrix = sessionParams.questionType === 'Matching Matrix';
+   const isMatchingMatrix =
+    sessionParams.questionType === 'Matching Matrix';
+
+  const isMatchingList =
+    sessionParams.questionType === 'Matching List';
+
+  const isMatchingStyle =
+    isMatchingMatrix || isMatchingList;
 
   const isMcqStyle =
     sessionParams.questionType.startsWith('MCQ') ||
     sessionParams.questionType.startsWith('Text Book') ||
     sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
-    isMatchingMatrix;
+    isMatchingStyle;
 
   for (const b of blocks) {
     const { meta, body } = __splitMetaAndBody(b);
@@ -3984,8 +4561,8 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       explanation: ''
     };
 
-    if (isMatchingMatrix) {
-      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
+       if (isMatchingStyle) {
+      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
 
       const bodyWithoutExplanation = explanationMatch
@@ -4124,7 +4701,10 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
         ? bodyWithoutExplanation.replace(/Answer\s*:\s*[\s\S]*$/i, '').trim()
         : bodyWithoutExplanation;
 
-      qData.question = bodyWithoutAnswer.split('\n')[0] || '';
+            qData.question =
+        sessionParams.questionType === 'Numerical Value'
+          ? bodyWithoutAnswer.trim()
+          : (bodyWithoutAnswer.split('\n')[0] || '');
       qData.options = [];
       qData.parsedAnswer = finalAnswerText ? `Answer: ${finalAnswerText}` : null;
       qData.parsedBody = bodyWithoutAnswer;
@@ -4148,26 +4728,49 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
     const m = out[i].parsedMeta;
     const lvl = (m.match(/Level\s*([1-3])/i) || [, '?'])[1];
 
-    const mkMatch = m.match(/(\d+)\s*Mark/i);
+   const isEntranceExamMode =
+  typeof __isEntranceExamBoard === 'function'
+    ? __isEntranceExamBoard(sessionParams.board)
+    : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
+        (sessionParams.board || '').trim()
+      );
+
+for (let i = 0; i < out.length; i++) {
+  const m = out[i].parsedMeta || '';
+
+  if (isEntranceExamMode) {
+
+    out[i].parsedMeta =
+      `Q${i + 1}: [${TYPE}]`;
+
+  } else {
+
+    const lvl =
+      (m.match(/Level\s*([1-3])/i) || [, '?'])[1];
+
+    const mkMatch =
+      m.match(/(\d+)\s*Mark/i);
 
     const marks = mkMatch
       ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}`
       : (
           TYPE.startsWith('MCQ') ||
           TYPE === 'Assertion and Reason (MCQ Single)' ||
-          TYPE === 'Matching Matrix'
+          TYPE === 'Matching Matrix' ||
+          TYPE === 'Matching List'
         )
         ? '1 Mark'
         : '';
 
-    out[i].parsedMeta = `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
-
-    out[i].fullText =
-      `${out[i].parsedMeta}\n${out[i].parsedBody}` +
-      `${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}` +
-      `${out[i].explanation ? `\nExplanation: ${out[i].explanation}` : ''}`;
+    out[i].parsedMeta =
+      `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
   }
 
+  out[i].fullText =
+    `${out[i].parsedMeta}\n${out[i].parsedBody}` +
+    `${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}` +
+    `${out[i].explanation ? `\nExplanation: ${out[i].explanation}` : ''}`;
+}
   return out;
 }
 /* ========== END FINAL SET parser ========== */
@@ -4199,13 +4802,20 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
 
   const fragment = document.createDocumentFragment();
 
-  const isMatchingMatrix = sessionParams.questionType === 'Matching Matrix';
+   const isMatchingMatrix =
+    sessionParams.questionType === 'Matching Matrix';
+
+  const isMatchingList =
+    sessionParams.questionType === 'Matching List';
+
+  const isMatchingStyle =
+    isMatchingMatrix || isMatchingList;
 
   const isMcqStyle =
     sessionParams.questionType.startsWith('MCQ') ||
     sessionParams.questionType.startsWith('Text Book') ||
     sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
-    isMatchingMatrix;
+    isMatchingStyle;
 
   questionBlocks.forEach((qText) => {
     const questionData = {
@@ -4226,16 +4836,7 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
 
     const originalMeta = metaMatch[1];
 
-    const levelMatch = originalMeta.match(/Level\s*([1-3])/i);
-    const level = levelMatch ? `Level ${levelMatch[1]}` : 'Level ?';
-
-    const marksMatch = originalMeta.match(/(\d+)\s*Mark/i);
-
-    const marks = marksMatch
-      ? `${marksMatch[1]} Mark${marksMatch[1] === '1' ? '' : 's'}`
-      : isMcqStyle
-        ? '1 Mark'
-        : '';
+       const originalMeta = metaMatch[1];
 
     const metaType =
       sessionParams.questionType === 'Text Book (MCQ Single)'
@@ -4244,13 +4845,43 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
           ? 'Text (Multiple)'
           : sessionParams.questionType;
 
-    questionData.parsedMeta =
-      `Q${currentSessionQuestions.length + 1}: ${level}, ${marks} [${metaType}]`;
+    const isEntranceExamMode =
+      typeof __isEntranceExamBoard === 'function'
+        ? __isEntranceExamBoard(sessionParams.board)
+        : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
+            (sessionParams.board || '').trim()
+          );
+
+    if (isEntranceExamMode) {
+
+      questionData.parsedMeta =
+        `Q${currentSessionQuestions.length + 1}: [${metaType}]`;
+
+    } else {
+
+      const levelMatch =
+        originalMeta.match(/Level\s*([1-3])/i);
+
+      const level =
+        levelMatch ? `Level ${levelMatch[1]}` : 'Level ?';
+
+      const marksMatch =
+        originalMeta.match(/(\d+)\s*Mark/i);
+
+      const marks = marksMatch
+        ? `${marksMatch[1]} Mark${marksMatch[1] === '1' ? '' : 's'}`
+        : isMcqStyle
+          ? '1 Mark'
+          : '';
+
+      questionData.parsedMeta =
+        `Q${currentSessionQuestions.length + 1}: ${level}, ${marks} [${metaType}]`;
+    }
 
     const rawBody = qText.substring(originalMeta.length).trim();
 
-    if (isMatchingMatrix) {
-      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
+        if (isMatchingStyle) {
+      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
 
       const bodyWithoutExplanation = explanationMatch
@@ -4380,7 +5011,10 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
         ? bodyWithoutExplanation.replace(/Answer\s*:\s*[\s\S]*$/i, '').trim()
         : bodyWithoutExplanation;
 
-      questionData.question = bodyWithoutAnswer.trim().split('\n')[0] || '';
+           questionData.question =
+        sessionParams.questionType === 'Numerical Value'
+          ? bodyWithoutAnswer.trim()
+          : (bodyWithoutAnswer.trim().split('\n')[0] || '');
       questionData.options = [];
       questionData.parsedAnswer = finalAnswerText ? `Answer: ${finalAnswerText}` : null;
       questionData.parsedBody = bodyWithoutAnswer.trim();
