@@ -776,9 +776,10 @@ const config = {
         "ICSE",
         "Olympiad",
         "IIT & NEET Foundation",
-        "JEE Mains",
-        "JEE Advance",
+               "JEE Main",
+        "JEE Advanced",
         "NEET",
+        "AP EAPCET",
         "AP State Board (SCERT)",
         "Other"
     ],
@@ -826,15 +827,20 @@ const config = {
     "Biology NEET",
     "Reasoning IIT & NEET"
   ],
-  "JEE Mains": [
-    "Physics (Mains)",
-    "Chemistry (Mains)",
-    "Mathematics (Mains)"
+    "JEE Main": [
+    "Physics (JEE Main)",
+    "Chemistry (JEE Main)",
+    "Mathematics (JEE Main)"
   ],
-  "JEE Advance": [
-    "Physics (Advance)",
-    "Chemistry (Advance)",
-    "Mathematics (Advance)"
+  "JEE Advanced": [
+    "Physics (JEE Advanced)",
+    "Chemistry (JEE Advanced)",
+    "Mathematics (JEE Advanced)"
+  ],
+  "AP EAPCET": [
+    "Mathematics (AP EAPCET)",
+    "Physics (AP EAPCET)",
+    "Chemistry (AP EAPCET)"
   ],
   "NEET": [
     "Physics (NEET)",
@@ -868,11 +874,62 @@ function getSelectedClass() {
 function getSelectedBoard() {
     return document.getElementById('board-dropdown')?.dataset?.value || '';
 }
+
+function __ebIsEntranceExamBoard(boardName) {
+    return [
+        'JEE Main',
+        'JEE Advanced',
+        'AP EAPCET'
+    ].includes(String(boardName || '').trim());
+}
+
+function __ebGetQuestionTypesForBoard(boardName) {
+    const board = String(boardName || '').trim();
+
+    if (board === 'JEE Main') {
+        return [
+            'MCQ (Single)',
+            'Numerical Value'
+        ];
+    }
+
+    if (board === 'JEE Advanced') {
+        return [
+            'MCQ (Single)',
+            'MCQ (Multiple)',
+            'Numerical Value',
+            'Matching List'
+        ];
+    }
+
+    if (board === 'AP EAPCET') {
+        return [
+            'MCQ (Single)'
+        ];
+    }
+
+    return [
+        'MCQ (Single)',
+        'MCQ (Multiple)',
+        'Assertion and Reason (MCQ Single)',
+        'Matching Matrix',
+        'Paragraph-Based MCQ (Single Correct)',
+        'Fill in the Blanks',
+        'Descriptive'
+    ];
+}
+
 function getSelectedDifficulty() {
     return 'Custom';
 }
 
 function getDifficultyDistribution() {
+    // Entrance questions do not use L1/L2/L3.
+    // This internal value only keeps the existing selection engine working.
+    if (__ebIsEntranceExamBoard(getSelectedBoard())) {
+        return { L1: 100, L2: 0, L3: 0 };
+    }
+
     const l1Checked = !!document.getElementById('diff-l1-check')?.checked;
     const l2Checked = !!document.getElementById('diff-l2-check')?.checked;
     const l3Checked = !!document.getElementById('diff-l3-check')?.checked;
@@ -885,6 +942,10 @@ function getDifficultyDistribution() {
 }
 
 function getAllowedDifficultyLevels() {
+    if (__ebIsEntranceExamBoard(getSelectedBoard())) {
+        return ['L1'];
+    }
+
     const out = [];
     if (document.getElementById('diff-l1-check')?.checked) out.push('L1');
     if (document.getElementById('diff-l2-check')?.checked) out.push('L2');
@@ -1255,8 +1316,11 @@ function prepareQuestionStemForKey(q) {
   raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
   raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');
 
-  if (isMatchingMatrix) {
-    raw = raw.replace(/\s*\bOptions\s*:\s*[\s\S]*$/i, '');
+   if (isMatchingStyle) {
+    raw = raw.replace(
+        /\s*\bOptions\s*:\s*[\s\S]*$/i,
+        ''
+    );
   } else if (!isAssertionReason) {
     raw = stripRealOptionBlockForKey(raw);
   }
@@ -1381,6 +1445,14 @@ function normalizeMcqType(s) {
     return 'Assertion and Reason (MCQ Single)';
   }
 
+   if (t.includes('numerical') && t.includes('value')) {
+    return 'Numerical Value';
+  }
+
+  if (t.includes('matching') && t.includes('list')) {
+    return 'Matching List';
+  }
+
   if (t.includes('matching') && t.includes('matrix')) {
     return 'Matching Matrix';
   }
@@ -1450,9 +1522,11 @@ function inferMcqType(d) {
   if (
     norm === 'Assertion and Reason (MCQ Single)' ||
     (
-      looksLikeAssertionReasonQuestion(d) &&
+           looksLikeAssertionReasonQuestion(d) &&
       norm !== 'MCQ (Multiple)' &&
+      norm !== 'Numerical Value' &&
       norm !== 'Matching Matrix' &&
+      norm !== 'Matching List' &&
       norm !== 'Paragraph-Based MCQ (Single Correct)' &&
       norm !== 'Fill in the Blanks'
     )
@@ -1461,10 +1535,12 @@ function inferMcqType(d) {
   }
 
   if (
-    norm === 'MCQ (Single)' ||
+        norm === 'MCQ (Single)' ||
     norm === 'MCQ (Multiple)' ||
+    norm === 'Numerical Value' ||
     norm === 'Fill in the Blanks' ||
     norm === 'Matching Matrix' ||
+    norm === 'Matching List' ||
     norm === 'Paragraph-Based MCQ (Single Correct)' ||
     norm === 'Descriptive'
   ) {
@@ -1653,6 +1729,10 @@ function _normDifficultyValue(s) {
 }
 
 function getQuestionDifficultyLevelKey(d) {
+  if (__ebIsEntranceExamBoard(d?.board)) {
+    return 'L1';
+  }
+
   const directCandidates = [
     d?.difficulty,
     d?.level,
@@ -1706,8 +1786,16 @@ function _isAllowedMcqType(doc, mcqType) {
     return typ === "Assertion and Reason (MCQ Single)";
   }
 
+    if (mcqType === "Numerical Value") {
+    return typ === "Numerical Value";
+  }
+
   if (mcqType === "Matching Matrix") {
     return typ === "Matching Matrix";
+  }
+
+  if (mcqType === "Matching List") {
+    return typ === "Matching List";
   }
 
   if (mcqType === "Paragraph-Based MCQ (Single Correct)") {
@@ -1763,21 +1851,62 @@ function filterQuestionsFromPool(pool, {
     rows = rows.filter(d => chapterSet.has(String(d.chapter || '').trim()));
   }
 
-  if (marksPerQuestion != null && marksPerQuestion !== '') {
+    const entrancePool =
+    rows.some(d => __ebIsEntranceExamBoard(d?.board));
+
+  // School/Foundation:
+  // use marks and difficulty stored with the question.
+  //
+  // Entrance Exam Mode:
+  // marks come from this Exam Builder section;
+  // questions have no stored L1/L2/L3.
+  if (
+    !entrancePool &&
+    marksPerQuestion != null &&
+    marksPerQuestion !== ''
+  ) {
     const wantedMarks = Number(marksPerQuestion);
-    rows = rows.filter(d => Number(d.marks) === wantedMarks);
+
+    rows = rows.filter(
+      d => Number(d.marks) === wantedMarks
+    );
   }
 
-  rows = rows.filter(d => _isAllowedMcqType(d, mcqType));
+  rows = rows.filter(
+    d => _isAllowedMcqType(d, mcqType)
+  );
 
-  if (forceDifficulty) {
-    const want = _normDifficultyValue(forceDifficulty);
-    rows = rows.filter(d => _normDifficultyValue(getQuestionDifficultyLabel(d)) === want);
-  } else if (Array.isArray(allowedDifficulties) && allowedDifficulties.length) {
-    const wants = allowedDifficulties.map(_normDifficultyValue);
-    rows = rows.filter(d => wants.includes(_normDifficultyValue(getQuestionDifficultyLabel(d))));
+  if (!entrancePool) {
+    if (forceDifficulty) {
+      const want =
+        _normDifficultyValue(forceDifficulty);
+
+      rows = rows.filter(
+        d =>
+          _normDifficultyValue(
+            getQuestionDifficultyLabel(d)
+          ) === want
+      );
+
+    } else if (
+      Array.isArray(allowedDifficulties) &&
+      allowedDifficulties.length
+    ) {
+      const wants =
+        allowedDifficulties.map(
+          _normDifficultyValue
+        );
+
+      rows = rows.filter(
+        d =>
+          wants.includes(
+            _normDifficultyValue(
+              getQuestionDifficultyLabel(d)
+            )
+          )
+      );
+    }
   }
-
   return uniqueByIdOrText(rows);
 }
 
@@ -2127,6 +2256,12 @@ function getMarksPerSelectedSubject() {
 }
 
 function getFixedPaperSectionPreset() {
+    // JEE Main, JEE Advanced and AP EAPCET are custom teacher-built tests here.
+    // Never force the full official-paper question count.
+    if (__ebIsEntranceExamBoard(getSelectedBoard())) {
+        return null;
+    }
+
     const paperType = getPaperType();
     const maxMarks = getMarksPerSelectedSubject();
 
@@ -2373,8 +2508,18 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
 
             const chapters = await db.getChapters(selectedClass, selectedBoard, subject);
 
-            if (chapters.length > 0) {
-                optionsContainer.innerHTML = chapters.map(opt => `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`).join('');
+                       if (chapters.length > 0) {
+                const allChaptersOption =
+                    __ebIsEntranceExamBoard(selectedBoard)
+                        ? `<div><label><input type="checkbox" value="__ALL__" class="all-chapters-check"> All Chapters</label></div>`
+                        : '';
+
+                optionsContainer.innerHTML =
+                    allChaptersOption +
+                    chapters.map(opt =>
+                        `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`
+                    ).join('');
+
                 display.textContent = 'Select one or more chapters';
             } else {
                 optionsContainer.innerHTML = '<div style="padding: 10px; font-style: italic;">No chapters found.</div>';
@@ -2383,10 +2528,49 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
 
             display.classList.add('placeholder');
 
-            chapterDropdown.addEventListener('click', function (e) {
+                        chapterDropdown.addEventListener('click', function (e) {
                 e.stopPropagation();
-                if (e.target.closest('.selected-chapters-display')) chapterDropdown.classList.toggle('open');
-                if (e.target.type === 'checkbox') updateSelectedChaptersDisplay(chapterDropdown);
+
+                if (e.target.closest('.selected-chapters-display')) {
+                    chapterDropdown.classList.toggle('open');
+                }
+
+                if (e.target.type === 'checkbox') {
+                    const changed = e.target;
+
+                    const allBox =
+                        chapterDropdown.querySelector(
+                            'input[value="__ALL__"]'
+                        );
+
+                    // If All Chapters is selected,
+                    // clear individual chapter selections.
+                    if (
+                        changed.value === '__ALL__' &&
+                        changed.checked
+                    ) {
+                        chapterDropdown
+                            .querySelectorAll(
+                                'input[type="checkbox"]:not([value="__ALL__"])'
+                            )
+                            .forEach(
+                                cb => cb.checked = false
+                            );
+
+                    // If an individual chapter is selected,
+                    // clear All Chapters.
+                    } else if (
+                        changed.value !== '__ALL__' &&
+                        changed.checked &&
+                        allBox
+                    ) {
+                        allBox.checked = false;
+                    }
+
+                    updateSelectedChaptersDisplay(
+                        chapterDropdown
+                    );
+                }
             });
         })();
 
@@ -2420,15 +2604,10 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     sectionLabelDropdown.style.width = "120px";
     sectionLabelDropdown.style.marginRight = "8px";
 
-    const mcqTypeOptions = [
-        "MCQ (Single)",
-        "MCQ (Multiple)",
-        "Assertion and Reason (MCQ Single)",
-        "Matching Matrix",
-        "Paragraph-Based MCQ (Single Correct)",
-        "Fill in the Blanks",
-        "Descriptive"
-    ];
+        const mcqTypeOptions =
+        __ebGetQuestionTypesForBoard(
+            getSelectedBoard()
+        );
 
     const selectedMcqType = preset?.mcqType || mcqTypeOptions[0];
 
@@ -2603,18 +2782,39 @@ function generateInternalPairs(sectionItem) {
 }
 
 function updateSelectedChaptersDisplay(chapterDropdown) {
-    const display = chapterDropdown.querySelector('.selected-chapters-display');
-    const checkedChapters = Array.from(chapterDropdown.querySelectorAll('input:checked')).map(cb => cb.value);
+    const display =
+        chapterDropdown.querySelector(
+            '.selected-chapters-display'
+        );
 
-    if (checkedChapters.length === 0) {
-        display.textContent = 'Select one or more chapters';
+    const allSelected =
+        !!chapterDropdown.querySelector(
+            'input[value="__ALL__"]:checked'
+        );
+
+    const checkedChapters = Array.from(
+        chapterDropdown.querySelectorAll(
+            'input[type="checkbox"]:checked:not([value="__ALL__"])'
+        )
+    ).map(cb => cb.value);
+
+    if (allSelected) {
+        display.textContent = 'All Chapters';
+        display.classList.remove('placeholder');
+
+    } else if (checkedChapters.length === 0) {
+        display.textContent =
+            'Select one or more chapters';
+
         display.classList.add('placeholder');
+
     } else {
-        display.textContent = checkedChapters.join(', ');
+        display.textContent =
+            checkedChapters.join(', ');
+
         display.classList.remove('placeholder');
     }
 }
-
 function buildSectionInstructions(sec) {
     if (sec.type === "all") {
         const n = Number(sec.numQuestions) || 0;
@@ -2807,14 +3007,18 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         };
     }
 
-    const stem = norm.question || '';
-    const isMatchingMatrix = sectionMcqType === "Matching Matrix";
+       const stem = norm.question || '';
+
+    const isMatchingStyle =
+        sectionMcqType === "Matching Matrix" ||
+        sectionMcqType === "Matching List";
 
     const isFourOptionType = (
         sectionMcqType === "MCQ (Single)" ||
         sectionMcqType === "MCQ (Multiple)" ||
         sectionMcqType === "Assertion and Reason (MCQ Single)" ||
-        sectionMcqType === "Matching Matrix"
+        sectionMcqType === "Matching Matrix" ||
+        sectionMcqType === "Matching List"
     );
 
     let options = [];
@@ -2847,7 +3051,7 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
     const clean = options.map(o => {
         const raw = String(o || '');
 
-        return isMatchingMatrix
+               return isMatchingStyle
             ? raw.replace(/^[A-D][).:]\s*/i, '').trim()
             : raw.replace(/^[A-D][).:\-]\s*/i, '').trim();
     });
@@ -2996,7 +3200,17 @@ function getSelectionMode() {
 }
 
 function getPaperType() {
-    return (document.getElementById('paper-type-dropdown')?.dataset?.value) || '';
+    const board = getSelectedBoard();
+
+    if (__ebIsEntranceExamBoard(board)) {
+        return `${board} Custom Test`;
+    }
+
+    return (
+        document.getElementById(
+            'paper-type-dropdown'
+        )?.dataset?.value
+    ) || '';
 }
 
 function __buildDynamicLevelCounts(totalQuestions, percentages) {
@@ -3098,6 +3312,10 @@ function __buildDynamicSectionLevelPlan({ paperType, mcqType, numQuestions }) {
 }
 
 function getFixedSectionLevelPlan({ paperType, maxMarks, mcqType, numQuestions, marksPerQuestion }) {
+    if (__ebIsEntranceExamBoard(getSelectedBoard())) {
+        return null;
+    }
+
     const totalMarks = Number(maxMarks || 0);
     const qCount = Number(numQuestions || 0);
     const mpq = Number(marksPerQuestion || 0);
@@ -3907,10 +4125,41 @@ refreshDifficultyTotalNote();
             updateSubjectsForBoardAndClass();
         });
 
-        document.getElementById('board-dropdown').addEventListener('change', function () {
-    updateSubjectsForBoardAndClass();
-});
+       function syncEntranceExamBuilderUI() {
+    const isEntrance =
+        __ebIsEntranceExamBoard(
+            getSelectedBoard()
+        );
 
+    const difficultyGroup =
+        document.getElementById(
+            'difficulty-config-group'
+        );
+
+    const paperTypeGroup =
+        document
+            .getElementById(
+                'paper-type-dropdown'
+            )
+            ?.closest('.form-group');
+
+    if (difficultyGroup) {
+        difficultyGroup.style.display =
+            isEntrance ? 'none' : '';
+    }
+
+    if (paperTypeGroup) {
+        paperTypeGroup.style.display =
+            isEntrance ? 'none' : '';
+    }
+}
+
+document
+    .getElementById('board-dropdown')
+    .addEventListener('change', function () {
+        syncEntranceExamBuilderUI();
+        updateSubjectsForBoardAndClass();
+    });
 function handleFixedPaperPresetChange() {
     applyPaperTypePreset();
     rebuildFixedPaperSectionsIfChanged();
@@ -3949,8 +4198,22 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
 
     if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
 
-    const diffGroup = document.getElementById('difficulty-config-group');
-    if (diffGroup) diffGroup.style.display = isBank ? '' : 'none';
+        const diffGroup =
+        document.getElementById(
+            'difficulty-config-group'
+        );
+
+    const isEntrance =
+        __ebIsEntranceExamBoard(
+            getSelectedBoard()
+        );
+
+    if (diffGroup) {
+        diffGroup.style.display =
+            (isBank && !isEntrance)
+                ? ''
+                : 'none';
+    }
 
     const selectionModeGroup = document.getElementById('selection-mode-dropdown')?.closest('.form-group');
     if (selectionModeGroup) selectionModeGroup.style.display = isBank ? '' : 'none';
@@ -4040,7 +4303,10 @@ const selectionMode = getSelectionMode();
                     btn.textContent = "Build Exam Draft";
                     return;
                 }
-                if (sourceTypeGlobal === 'Question Bank') {
+                               if (
+                    sourceTypeGlobal === 'Question Bank' &&
+                    !__ebIsEntranceExamBoard(selectedBoard)
+                ) {
     const totalDifficulty =
         (difficultyDistribution.L1 || 0) +
         (difficultyDistribution.L2 || 0) +
@@ -4070,12 +4336,52 @@ const selectionMode = getSelectionMode();
 
                 for (let sb of subjectBlocks) {
                     const subjectTitle = sb.dataset.subject;
-                    const chapterDropdown = sb.querySelector('.multi-select-dropdown');
-                    const chapters = chapterDropdown
-                        ? Array.from(chapterDropdown.querySelectorAll('input:checked')).map(cb => cb.value)
-                        : [];
+                                        const chapterDropdown =
+                        sb.querySelector(
+                            '.multi-select-dropdown'
+                        );
 
-                    const sectionsList = sb.querySelectorAll('.section-item');
+                    const allChaptersSelected =
+                        !!chapterDropdown?.querySelector(
+                            'input[value="__ALL__"]:checked'
+                        );
+
+                    const chapters =
+                        allChaptersSelected
+                            ? []
+                            : (
+                                chapterDropdown
+                                    ? Array.from(
+                                        chapterDropdown.querySelectorAll(
+                                            'input[type="checkbox"]:checked:not([value="__ALL__"])'
+                                        )
+                                      ).map(cb => cb.value)
+                                    : []
+                              );
+
+                    // For entrance Question Bank mode,
+                    // teacher must explicitly choose chapter(s)
+                    // or All Chapters.
+                    if (
+                        sourceTypeGlobal === 'Question Bank' &&
+                        __ebIsEntranceExamBoard(selectedBoard) &&
+                        !allChaptersSelected &&
+                        chapters.length === 0
+                    ) {
+                        showToast(
+                            `Please select one or more chapters, or choose All Chapters for ${subjectTitle}.`,
+                            'error'
+                        );
+
+                        btn.disabled = false;
+                        btn.textContent =
+                            "Build Exam Draft";
+
+                        return;
+                    }
+
+                    const sectionsList =
+                        sb.querySelectorAll('.section-item');
                     const sections = [];
 
                     for (let section of sectionsList) {
@@ -4109,9 +4415,10 @@ const selectionMode = getSelectionMode();
                         sections.push(sec);
                     }
 
-                    subjectsData.push({
+                                       subjectsData.push({
                         subject: subjectTitle,
                         chapters,
+                        allChapters: allChaptersSelected,
                         sections
                     });
                 }
@@ -4127,8 +4434,13 @@ const finalPaper = {
     date,
     time,
     maxMarks,
-    instructions,
-    difficultyDistribution,
+       instructions,
+
+    difficultyDistribution:
+        __ebIsEntranceExamBoard(selectedBoard)
+            ? null
+            : difficultyDistribution,
+
     subjects: []
 };
 
@@ -4343,19 +4655,67 @@ if (selectionMode === 'Manual Select') {
     allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
 });
 
-const manualPool = uniqueByIdOrText(manualPoolRaw).filter(d => {
-    const docMarks = Number(d?.marks || 0);
-    if (docMarks !== mPerQ) return false;
+const manualPool =
+    uniqueByIdOrText(manualPoolRaw)
+    .filter(d => {
 
-       const docType = inferMcqType(d);
+    const docMarks =
+        Number(d?.marks || 0);
 
-    if (sec.mcqType === "Descriptive" && docType !== "Descriptive") return false;
-    if (sec.mcqType === "MCQ (Single)" && docType !== "MCQ (Single)") return false;
-    if (sec.mcqType === "MCQ (Multiple)" && docType !== "MCQ (Multiple)") return false;
-    if (sec.mcqType === "Assertion and Reason (MCQ Single)" && docType !== "Assertion and Reason (MCQ Single)") return false;
-    if (sec.mcqType === "Matching Matrix" && docType !== "Matching Matrix") return false;
-    if (sec.mcqType === "Paragraph-Based MCQ (Single Correct)" && docType !== "Paragraph-Based MCQ (Single Correct)") return false;
-    if (sec.mcqType === "Fill in the Blanks" && docType !== "Fill in the Blanks") return false;
+    if (
+        !__ebIsEntranceExamBoard(selectedBoard) &&
+        docMarks !== mPerQ
+    ) {
+        return false;
+    }
+
+    const docType =
+        inferMcqType(d);
+
+    if (
+        sec.mcqType === "Descriptive" &&
+        docType !== "Descriptive"
+    ) return false;
+
+    if (
+        sec.mcqType === "MCQ (Single)" &&
+        docType !== "MCQ (Single)"
+    ) return false;
+
+    if (
+        sec.mcqType === "MCQ (Multiple)" &&
+        docType !== "MCQ (Multiple)"
+    ) return false;
+
+    if (
+        sec.mcqType === "Numerical Value" &&
+        docType !== "Numerical Value"
+    ) return false;
+
+    if (
+        sec.mcqType === "Assertion and Reason (MCQ Single)" &&
+        docType !== "Assertion and Reason (MCQ Single)"
+    ) return false;
+
+    if (
+        sec.mcqType === "Matching Matrix" &&
+        docType !== "Matching Matrix"
+    ) return false;
+
+    if (
+        sec.mcqType === "Matching List" &&
+        docType !== "Matching List"
+    ) return false;
+
+    if (
+        sec.mcqType === "Paragraph-Based MCQ (Single Correct)" &&
+        docType !== "Paragraph-Based MCQ (Single Correct)"
+    ) return false;
+
+    if (
+        sec.mcqType === "Fill in the Blanks" &&
+        docType !== "Fill in the Blanks"
+    ) return false;
 
     const k = makeStemKey({ text: getQuestionTextFromDoc(d), marks: mPerQ });
     return !(k && subjectSeenKeys.has(k));
@@ -4464,22 +4824,75 @@ const cleanPool = manualPool;
         step1_chapter = step1_chapter.filter(d => chapterSet.has(String(d.chapter || '').trim()));
     }
 
-    let step2_marks = step1_chapter.slice();
-    if (mPerQ != null && mPerQ !== '') {
-        step2_marks = step2_marks.filter(d => Number(d.marks) === Number(mPerQ));
+       let step2_marks =
+        step1_chapter.slice();
+
+    if (
+        !__ebIsEntranceExamBoard(selectedBoard) &&
+        mPerQ != null &&
+        mPerQ !== ''
+    ) {
+        step2_marks =
+            step2_marks.filter(
+                d =>
+                    Number(d.marks) ===
+                    Number(mPerQ)
+            );
     }
 
-    let step3_type = step2_marks.filter(d => _isAllowedMcqType(d, sec.mcqType));
+    let step3_type =
+        step2_marks.filter(
+            d =>
+                _isAllowedMcqType(
+                    d,
+                    sec.mcqType
+                )
+        );
 
-    let step4_level = step3_type.slice();
-    if (wantedLevel) {
-        const want = _normDifficultyValue(wantedLevel);
-        step4_level = step4_level.filter(d => _normDifficultyValue(getQuestionDifficultyLabel(d)) === want);
-    } else if (Array.isArray(wantedAllowedLevels) && wantedAllowedLevels.length) {
-        const wants = wantedAllowedLevels.map(_normDifficultyValue);
-        step4_level = step4_level.filter(d => wants.includes(_normDifficultyValue(getQuestionDifficultyLabel(d))));
+    let step4_level =
+        step3_type.slice();
+
+    if (
+        !__ebIsEntranceExamBoard(
+            selectedBoard
+        )
+    ) {
+        if (wantedLevel) {
+            const want =
+                _normDifficultyValue(
+                    wantedLevel
+                );
+
+            step4_level =
+                step4_level.filter(
+                    d =>
+                        _normDifficultyValue(
+                            getQuestionDifficultyLabel(d)
+                        ) === want
+                );
+
+        } else if (
+            Array.isArray(
+                wantedAllowedLevels
+            ) &&
+            wantedAllowedLevels.length
+        ) {
+            const wants =
+                wantedAllowedLevels.map(
+                    _normDifficultyValue
+                );
+
+            step4_level =
+                step4_level.filter(
+                    d =>
+                        wants.includes(
+                            _normDifficultyValue(
+                                getQuestionDifficultyLabel(d)
+                            )
+                        )
+                );
+        }
     }
-
     let rows = uniqueByIdOrText(step4_level);
 
     if (
@@ -4910,9 +5323,18 @@ if (cleanedErrors.length) {
                                 function _finalStemKey(raw, marks, mcqType = '') {
                     let t = String(raw || '');
 
-                    const isMatchingMatrix =
-                        normalizeMcqType(mcqType) === 'Matching Matrix' ||
-                        (/Column\s*I/i.test(t) && /Column\s*II/i.test(t));
+                     const normalizedType =
+    normalizeMcqType(
+        getRawQuestionType(q)
+    );
+
+  const isMatchingStyle =
+    normalizedType === 'Matching Matrix' ||
+    normalizedType === 'Matching List' ||
+    (/Column\s*I/i.test(raw) &&
+     /Column\s*II/i.test(raw)) ||
+    (/List-I/i.test(raw) &&
+     /List-II/i.test(raw));
 
                     t = t.replace(/^\s*(?:Q\.?\s*)?\d+\s*[:.)-]?\s*/i, '');
                     t = t.replace(/<img[^>]*>/gi, ' ')
