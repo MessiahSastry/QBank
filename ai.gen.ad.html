@@ -2912,8 +2912,8 @@ Provide ONLY the questions in this exact format. Do not add any other text, expl
 
       const selectedBoard = (sessionParams.board || '').trim().toLowerCase();
 
-const isCBSE = selectedBoard === 'cbse';
-const isICSE = selectedBoard === 'icse';
+const isCbse = selectedBoard === 'cbse';
+const isIcse = selectedBoard === 'icse';
 const isFoundation = selectedBoard === 'iit & neet foundation';
 const isOlympiad = selectedBoard === 'olympiad';
 const isJeeMains = selectedBoard === 'jee main';
@@ -3591,14 +3591,27 @@ const isCbse = selectedBoard === 'cbse';
 const isIcse = selectedBoard === 'icse';
 const isFoundation = selectedBoard === 'iit & neet foundation';
 const isOlympiad = selectedBoard === 'olympiad';
-const isJeeMains = selectedBoard === 'jee mains';
-const isJeeAdvance = selectedBoard === 'jee advance';
+const isJeeMains = selectedBoard === 'jee main';
+const isJeeAdvance = selectedBoard === 'jee advanced';
 const isNeet = selectedBoard === 'neet';
+const isApEapcet = selectedBoard === 'ap eapcet';
 const isApState = selectedBoard === 'ap state board (scert)';
 const isOtherBoard = selectedBoard === 'other';
 
 const isTextbookBoard = isCbse || isIcse || isApState;
-const isCompetitiveBoard = isFoundation || isOlympiad || isJeeMains || isJeeAdvance || isNeet;
+
+const isEntranceExamMode =
+  isJeeMains ||
+  isJeeAdvance ||
+  isApEapcet;
+
+const isCompetitiveBoard =
+  isFoundation ||
+  isOlympiad ||
+  isJeeMains ||
+  isJeeAdvance ||
+  isNeet ||
+  isApEapcet;
 
   // ---- COMMON headings ----
  const requestLine =
@@ -4561,8 +4574,8 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
       explanation: ''
     };
 
-       if (isMatchingStyle) {
-      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
+      if (isMatchingStyle) {
+      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
 
       const bodyWithoutExplanation = explanationMatch
@@ -4751,26 +4764,47 @@ for (let i = 0; i < out.length; i++) {
     const mkMatch =
       m.match(/(\d+)\s*Mark/i);
 
-    const marks = mkMatch
-      ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}`
-      : (
-          TYPE.startsWith('MCQ') ||
-          TYPE === 'Assertion and Reason (MCQ Single)' ||
-          TYPE === 'Matching Matrix' ||
-          TYPE === 'Matching List'
-        )
-        ? '1 Mark'
-        : '';
+      const isEntranceExamMode =
+    typeof __isEntranceExamBoard === 'function'
+      ? __isEntranceExamBoard(sessionParams.board)
+      : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
+          (sessionParams.board || '').trim()
+        );
 
-    out[i].parsedMeta =
-      `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
+  for (let i = 0; i < out.length; i++) {
+    const m = out[i].parsedMeta || '';
+
+    if (isEntranceExamMode) {
+      out[i].parsedMeta =
+        `Q${i + 1}: [${TYPE}]`;
+
+    } else {
+      const lvl =
+        (m.match(/Level\s*([1-3])/i) || [, '?'])[1];
+
+      const mkMatch =
+        m.match(/(\d+)\s*Mark/i);
+
+      const marks = mkMatch
+        ? `${mkMatch[1]} Mark${mkMatch[1] === '1' ? '' : 's'}`
+        : (
+            TYPE.startsWith('MCQ') ||
+            TYPE === 'Assertion and Reason (MCQ Single)' ||
+            TYPE === 'Matching Matrix' ||
+            TYPE === 'Matching List'
+          )
+          ? '1 Mark'
+          : '';
+
+      out[i].parsedMeta =
+        `Q${i + 1}: Level ${lvl}, ${marks} [${TYPE}]`;
+    }
+
+    out[i].fullText =
+      `${out[i].parsedMeta}\n${out[i].parsedBody}` +
+      `${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}` +
+      `${out[i].explanation ? `\nExplanation: ${out[i].explanation}` : ''}`;
   }
-
-  out[i].fullText =
-    `${out[i].parsedMeta}\n${out[i].parsedBody}` +
-    `${out[i].parsedAnswer ? `\n${out[i].parsedAnswer}` : ''}` +
-    `${out[i].explanation ? `\nExplanation: ${out[i].explanation}` : ''}`;
-}
   return out;
 }
 /* ========== END FINAL SET parser ========== */
@@ -4836,8 +4870,6 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
 
     const originalMeta = metaMatch[1];
 
-       const originalMeta = metaMatch[1];
-
     const metaType =
       sessionParams.questionType === 'Text Book (MCQ Single)'
         ? 'Text (Single)'
@@ -4880,8 +4912,8 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
 
     const rawBody = qText.substring(originalMeta.length).trim();
 
-        if (isMatchingStyle) {
-      const explanationMatch = body.match(/Explanation\s*:\s*([\s\S]*)$/i);
+           if (isMatchingStyle) {
+      const explanationMatch = rawBody.match(/Explanation\s*:\s*([\s\S]*)$/i);
       const explanationText = explanationMatch ? explanationMatch[1].trim() : '';
 
       const bodyWithoutExplanation = explanationMatch
