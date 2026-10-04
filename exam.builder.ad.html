@@ -283,27 +283,7 @@
 
                   
 
-    <label id="global-paste-label">Paste all questions (in order)</label>
-
-    <textarea
-        id="global-paste-area"
-        placeholder="Paste raw questions here, one per line or separated by blank lines."
-        style="
-            width:100%;
-            min-height:140px;
-            border:1.3px solid #bcd6ef;
-            border-radius:8px;
-            padding:10px;
-            background:#f7fafd;
-            box-sizing:border-box;
-        "></textarea>
-
-    <div
-        id="global-paste-count"
-        style="color:#54656f;font-size:.9em;margin-top:6px;">
-    </div>
-
-</div>
+    
 
                    <div class="form-group" id="global-upload-wrap" style="display:none;">
                     <label>Upload a .docx file (all questions in order)</label>
@@ -358,9 +338,7 @@
     </div>
 </div>
 
-                    <div id="subjects-sections-area">
-                    </div>
-        <div id="subjects-sections-area">
+ <div id="subjects-sections-area">
 </div>
 
 <div class="form-group" id="global-paste-wrap" style="display:none; margin-top:20px;">
@@ -4708,27 +4686,104 @@ GENERAL STANDARD:
 function __ebBuildAIFormatRules() {
 
     return `
-OUTPUT FORMAT — VERY IMPORTANT:
+DRAFT AND FINAL SET WORKFLOW — VERY IMPORTANT:
 
-The generated content will be pasted into an Exam Builder and parsed automatically.
+This conversation has TWO stages.
 
-Therefore:
+=========================================================
+STAGE 1 — FIRST RESPONSE = DRAFT
+=========================================================
 
-1. Output ONLY the questions.
-2. Do NOT write an introduction.
-3. Do NOT write subject headings.
-4. Do NOT write section headings.
-5. Do NOT write chapter headings.
-6. Do NOT write explanations.
-7. Number ALL generated question blocks continuously:
+For your FIRST response:
+
+- Generate the complete requested question set normally.
+- This is a DRAFT for teacher review.
+- Do NOT put the draft inside a code block.
+- Mathematical expressions may be shown normally and clearly in ChatGPT.
+- Give correct answers so the teacher can verify the questions.
+- For Mathematics, Physics and Chemistry numerical questions, give a clear solution/explanation where useful for checking correctness.
+- The teacher may ask you to correct, replace, strengthen, simplify or modify individual questions.
+- Keep all corrections within the same original blueprint.
+- Do not change the required number of questions or their order unless the teacher specifically asks.
+
+Number the draft questions continuously:
+
+Q1:
+Q2:
+Q3:
+...
+
+Do not restart numbering for another section or subject.
+
+IMPORTANT:
+Do NOT give the FINAL SET automatically.
+
+Wait until the teacher explicitly says something such as:
+
+"Give me the final set"
+"Final set"
+"Give final questions"
+
+=========================================================
+STAGE 2 — WHEN THE TEACHER ASKS FOR THE FINAL SET
+=========================================================
+
+Only when the teacher asks for the FINAL SET:
+
+1. Give ONLY the final questions.
+2. Put the complete final set inside ONE copy-code block.
+3. Do NOT add any introduction before the code block.
+4. Do NOT add any note, explanation or commentary after the code block.
+5. Do NOT write subject headings.
+6. Do NOT write section headings.
+7. Do NOT write chapter headings.
+8. Number all question blocks continuously:
    Q1:
    Q2:
    Q3:
    ...
-8. Keep the exact question order requested in the blueprint.
-9. Do not restart numbering for another section or subject.
+9. Keep the exact question order required by the original blueprint.
+10. Do not restart numbering between sections or subjects.
+
+FINAL SET MATHEMATICS FORMAT:
+
+- All genuine mathematical expressions must use inline LaTeX.
+- Use ONLY \\( ... \\).
+- Do NOT use \\[ ... \\].
+- Do NOT use $ ... $.
+- Do NOT use $$ ... $$.
+- Do NOT use display mathematics.
+- Preserve all LaTeX backslashes exactly.
+- Do not wrap ordinary words or plain sentences in LaTeX.
+- Plain text should remain plain text.
+
+Examples:
+
+Correct:
+If \\(x+3=8\\), find \\(x\\).
+
+Correct:
+\\(\\frac{3}{4}\\)
+
+Correct:
+\\(\\sqrt{72}\\)
+
+Correct:
+\\(2^{n+1}\\)
+
+For matrices use proper LaTeX:
+
+\\(\\begin{bmatrix}1 & 2 \\\\ 3 & 4\\end{bmatrix}\\)
+
+Do not write matrices as:
+[1 2 3 4]
+
+=========================================================
+FINAL SET QUESTION FORMAT
+=========================================================
 
 MCQ (Single):
+
 Q<num>:
 <Question>
 A) ...
@@ -4738,6 +4793,7 @@ D) ...
 Ans: <one correct letter>
 
 MCQ (Multiple):
+
 Q<num>:
 <Question>
 A) ...
@@ -4747,6 +4803,7 @@ D) ...
 Ans: <all correct letters separated by commas>
 
 Assertion and Reason (MCQ Single):
+
 Q<num>:
 Assertion: ...
 Reason: ...
@@ -4757,6 +4814,7 @@ D) ...
 Ans: <one correct letter>
 
 Matching Matrix / Matching List:
+
 Q<num>:
 <matching content>
 A) ...
@@ -4766,26 +4824,35 @@ D) ...
 Ans: <one correct letter>
 
 Numerical Value:
+
 Q<num>:
 <Question only>
 
 Fill in the Blanks:
+
 Q<num>:
 <Question only>
 
 Descriptive:
+
 Q<num>:
 <Question only>
 
 Paragraph-Based MCQ:
+
 - Treat each required item as ONE passage set.
 - Start each passage set with one Q<num>: line.
-- Put the passage and its sub-questions inside the same question block.
+- Put the passage and all its sub-questions inside that same question block.
 - Number sub-questions with (i), (ii), etc.
-- Do NOT use Q1/Q2 numbering for the sub-questions.
+- Do NOT use separate Q numbers for sub-questions.
 - Each MCQ sub-question must contain A), B), C), D).
 
-Do not include "Explanation:" anywhere.
+FINAL SET CLEAN-UP RULE:
+
+- Do NOT include Explanation: in the final set.
+- Do NOT include solutions in the final set.
+- Do NOT include Answer: for Descriptive, Numerical Value or Fill in the Blanks.
+- Keep Ans: only where required for MCQ-style questions so the Exam Builder can identify the correct option.
 `;
 }
 
@@ -5038,7 +5105,9 @@ ${__ebBuildAIFormatRules()}
 
 Before finalising, silently verify that the TOTAL NUMBER and ORDER of generated question blocks exactly match the blueprint.
 
-Now generate the complete set of questions.
+Now generate the DRAFT question set for teacher review.
+
+Do not give the FINAL SET until the teacher explicitly asks for it.
 `;
 
     return prompt.trim();
