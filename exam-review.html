@@ -433,16 +433,33 @@ function __erEscapeReviewHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function __erIsMatchingListQuestion(q = {}) {
+  const type = String(q.mcqType || q.type || '').trim().toLowerCase();
+  const rawText = String(q.text || q.body || q.question || '');
+
+  return (
+    (type.includes('matching') && type.includes('list')) ||
+    (
+      /List\s*[-–—]?\s*I\b/i.test(rawText) &&
+      /List\s*[-–—]?\s*II\b/i.test(rawText)
+    )
+  );
+}
+
+
 function __erIsMatchingMatrixQuestion(q = {}) {
   const type = String(q.mcqType || q.type || '').trim().toLowerCase();
   const rawText = String(q.text || q.body || q.question || '');
+
+  if (__erIsMatchingListQuestion(q)) {
+    return false;
+  }
 
   return (
     (type.includes('matching') && type.includes('matrix')) ||
     (/Column\s*I/i.test(rawText) && /Column\s*II/i.test(rawText))
   );
 }
-
 function __erGetMatchingMatrixRawText(q = {}) {
   return stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''))
     .replace(/<br\s*\/?>/gi, '\n')
@@ -658,6 +675,530 @@ function __erBuildMatchingMatrixReviewHtml(q = {}) {
     </div>
   `;
 }
+
+function __erGetMatchingListRawText(q = {}) {
+  return stripMetaTags(
+    stripMetaLine(
+      q.text ||
+      q.body ||
+      q.question ||
+      ''
+    )
+  )
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/div\s*>/gi, '\n')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+
+function __erParseMatchingList(q = {}) {
+
+  let raw =
+    __erGetMatchingListRawText(q)
+      .replace(
+        /\n\s*Options\s*:?\s*[\s\S]*$/i,
+        ''
+      )
+      .trim();
+
+
+  const normalized =
+    raw
+      .replace(
+        /\bList\s*[-–—]?\s*I\b/gi,
+        ' '
+      )
+      .replace(
+        /\bList\s*[-–—]?\s*II\b/gi,
+        ' '
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+
+
+  /*
+    Everything before P) is the introduction.
+  */
+
+  const firstRowMatch =
+    normalized.match(
+      /\bP[\)\.]\s*/i
+    );
+
+
+  let intro = '';
+  let listText = normalized;
+
+
+  if (
+    firstRowMatch &&
+    typeof firstRowMatch.index === 'number'
+  ) {
+
+    intro =
+      normalized
+        .slice(
+          0,
+          firstRowMatch.index
+        )
+        .trim();
+
+
+    listText =
+      normalized
+        .slice(
+          firstRowMatch.index
+        )
+        .trim();
+  }
+
+
+  /*
+    JEE Advanced Matching List:
+
+    List-I  = P Q R S
+    List-II = 1 2 3 4 5
+  */
+
+  const leftLabels =
+    ['P', 'Q', 'R', 'S'];
+
+  const rightLabels =
+    ['1', '2', '3', '4'];
+
+  const rows = [];
+
+
+  for (
+    let i = 0;
+    i < 4;
+    i++
+  ) {
+
+    const left =
+      leftLabels[i];
+
+    const right =
+      rightLabels[i];
+
+    const nextLeft =
+      leftLabels[i + 1];
+
+
+    const endLookahead =
+      nextLeft
+        ? `(?=\\s+${nextLeft}[\\)\\.]\\s*)`
+        : `(?=\\s+5[\\)\\.]\\s*|$)`;
+
+
+    const pattern =
+      new RegExp(
+        `${left}[\\)\\.]\\s*([\\s\\S]*?)\\s+${right}[\\)\\.]\\s*([\\s\\S]*?)${endLookahead}`,
+        'i'
+      );
+
+
+    const match =
+      listText.match(pattern);
+
+
+    if (match) {
+
+      rows.push({
+
+        leftLabel:
+          left,
+
+        leftText:
+          match[1]
+            .replace(/\s+/g, ' ')
+            .trim(),
+
+        rightLabel:
+          right,
+
+        rightText:
+          match[2]
+            .replace(/\s+/g, ' ')
+            .trim()
+      });
+    }
+  }
+
+
+  /*
+    Fallback if line wrapping is unusual.
+  */
+
+  if (!rows.length) {
+
+    const fallbackPattern =
+      /([P-S])[\)\.]\s*([\s\S]*?)\s+([1-4])[\)\.]\s*([\s\S]*?)(?=\s+[P-S][\)\.]|\s+5[\)\.]|$)/gi;
+
+    let match;
+
+
+    while (
+      (
+        match =
+          fallbackPattern.exec(
+            listText
+          )
+      ) !== null
+    ) {
+
+      rows.push({
+
+        leftLabel:
+          match[1].toUpperCase(),
+
+        leftText:
+          match[2]
+            .replace(/\s+/g, ' ')
+            .trim(),
+
+        rightLabel:
+          match[3],
+
+        rightText:
+          match[4]
+            .replace(/\s+/g, ' ')
+            .trim()
+      });
+    }
+  }
+
+
+  /*
+    Fifth List-II item.
+  */
+
+  let extraRightText = '';
+
+
+  const extraMatch =
+    listText.match(
+      /\s+5[\)\.]\s*([\s\S]*?)$/i
+    );
+
+
+  if (extraMatch) {
+
+    extraRightText =
+      extraMatch[1]
+        .replace(/\s+/g, ' ')
+        .trim();
+  }
+
+
+  return {
+    raw,
+    intro,
+    rows,
+    extraRightLabel: '5',
+    extraRightText
+  };
+}
+
+
+function __erBuildMatchingListReviewHtml(q = {}) {
+
+  const parsed =
+    __erParseMatchingList(q);
+
+
+  /*
+    Only use the structured editor if the
+    complete 4 × 5 structure was detected.
+  */
+
+  if (
+    parsed.rows.length !== 4 ||
+    !parsed.extraRightText
+  ) {
+
+    return `
+      <span
+        class="question-text"
+        contenteditable="true">
+        ${__erEscapeReviewHtml(parsed.raw)}
+      </span>
+    `;
+  }
+
+
+  return `
+    <div class="matching-list-review">
+
+      <div
+        class="matching-list-intro no-mjx"
+        contenteditable="true"
+        style="
+          border:1px dashed #bcd6ef;
+          border-radius:6px;
+          padding:5px 8px;
+          margin-bottom:10px;
+          white-space:pre-wrap;
+          color:#12416c;
+          font-weight:600;
+        ">
+        ${__erEscapeReviewHtml(parsed.intro)}
+      </div>
+
+
+      <table style="
+        width:100%;
+        border-collapse:collapse;
+        table-layout:fixed;
+        margin:4px 0 12px 0;
+        color:#12416c;
+      ">
+
+        <thead>
+
+          <tr>
+
+            <th style="
+              width:50%;
+              text-align:left;
+              padding:6px 10px 7px 6px;
+              border-bottom:1.5px solid #bcd6ef;
+              color:#0f3d6b;
+            ">
+              List-I
+            </th>
+
+            <th style="
+              width:50%;
+              text-align:left;
+              padding:6px 6px 7px 10px;
+              border-bottom:1.5px solid #bcd6ef;
+              color:#0f3d6b;
+            ">
+              List-II
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            parsed.rows.map(
+              (row, index) => `
+
+                <tr
+                  class="matching-list-row"
+                  data-row="${index}">
+
+                  <td style="
+                    vertical-align:top;
+                    padding:7px 10px 7px 6px;
+                  ">
+
+                    <div style="
+                      display:flex;
+                      align-items:flex-start;
+                      gap:6px;
+                    ">
+
+                      <span style="
+                        font-weight:700;
+                        color:#185496;
+                        min-width:20px;
+                      ">
+                        ${row.leftLabel})
+                      </span>
+
+                      <span
+                        class="matching-list-left no-mjx"
+                        contenteditable="true"
+                        style="
+                          flex:1;
+                          border:1px dashed #bcd6ef;
+                          border-radius:6px;
+                          padding:3px 6px;
+                          min-height:22px;
+                        ">
+                        ${__erEscapeReviewHtml(row.leftText)}
+                      </span>
+
+                    </div>
+
+                  </td>
+
+
+                  <td style="
+                    vertical-align:top;
+                    padding:7px 6px 7px 10px;
+                  ">
+
+                    <div style="
+                      display:flex;
+                      align-items:flex-start;
+                      gap:6px;
+                    ">
+
+                      <span style="
+                        font-weight:700;
+                        color:#185496;
+                        min-width:20px;
+                      ">
+                        ${row.rightLabel})
+                      </span>
+
+                      <span
+                        class="matching-list-right no-mjx"
+                        contenteditable="true"
+                        style="
+                          flex:1;
+                          border:1px dashed #bcd6ef;
+                          border-radius:6px;
+                          padding:3px 6px;
+                          min-height:22px;
+                        ">
+                        ${__erEscapeReviewHtml(row.rightText)}
+                      </span>
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              `
+            ).join('')
+          }
+
+
+          <tr class="matching-list-extra-row">
+
+            <td></td>
+
+            <td style="
+              vertical-align:top;
+              padding:7px 6px 7px 10px;
+            ">
+
+              <div style="
+                display:flex;
+                align-items:flex-start;
+                gap:6px;
+              ">
+
+                <span style="
+                  font-weight:700;
+                  color:#185496;
+                  min-width:20px;
+                ">
+                  5)
+                </span>
+
+                <span
+                  class="matching-list-extra-right no-mjx"
+                  contenteditable="true"
+                  style="
+                    flex:1;
+                    border:1px dashed #bcd6ef;
+                    border-radius:6px;
+                    padding:3px 6px;
+                    min-height:22px;
+                  ">
+                  ${__erEscapeReviewHtml(parsed.extraRightText)}
+                </span>
+
+              </div>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+  `;
+}
+
+
+function __erBuildMatchingListTextFromEditor(
+  questionRow
+) {
+
+  const intro =
+    __erReadMatchingValue(
+      questionRow.querySelector(
+        '.matching-list-intro'
+      )
+    );
+
+
+  const leftLabels =
+    ['P', 'Q', 'R', 'S'];
+
+  const rightLabels =
+    ['1', '2', '3', '4'];
+
+
+  const rows =
+    Array.from(
+      questionRow.querySelectorAll(
+        '.matching-list-row'
+      )
+    ).map(
+      (row, index) => {
+
+        const leftText =
+          __erReadMatchingValue(
+            row.querySelector(
+              '.matching-list-left'
+            )
+          );
+
+
+        const rightText =
+          __erReadMatchingValue(
+            row.querySelector(
+              '.matching-list-right'
+            )
+          );
+
+
+        return (
+          `${leftLabels[index]}) ${leftText}` +
+          `    ` +
+          `${rightLabels[index]}) ${rightText}`
+        );
+      }
+    );
+
+
+  const extraRight =
+    __erReadMatchingValue(
+      questionRow.querySelector(
+        '.matching-list-extra-right'
+      )
+    );
+
+
+  return [
+    intro,
+    'List-I    List-II',
+    ...rows,
+    `    5) ${extraRight}`
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
 
 function __erReadMatchingValue(el) {
   if (!el) return '';
@@ -968,17 +1509,52 @@ if (paper.instructions) {
 `;
                 (section.questions || []).forEach((q, qIdx) => {
         {
-           const __isParagraph = __erIsParagraphBasedQuestion(q);
-    const __isMatchingMatrix = !__isParagraph && __erIsMatchingMatrixQuestion(q);
-    const fullRaw = stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''));
+               const __isParagraph =
+      __erIsParagraphBasedQuestion(q);
 
-    const bodyHtml = __isParagraph
-      ? __erBuildParagraphReviewHtml(q)
-      : __isMatchingMatrix
-        ? __erBuildMatchingMatrixReviewHtml(q)
-        : `
-            <span class="question-text" contenteditable="true">${fullRaw}</span>
-          `;
+
+    const __isMatchingList =
+      !__isParagraph &&
+      __erIsMatchingListQuestion(q);
+
+
+    const __isMatchingMatrix =
+      !__isParagraph &&
+      !__isMatchingList &&
+      __erIsMatchingMatrixQuestion(q);
+
+
+    const fullRaw =
+      stripMetaTags(
+        stripMetaLine(
+          q.text ||
+          q.body ||
+          q.question ||
+          ''
+        )
+      );
+
+
+    const bodyHtml =
+      __isParagraph
+
+        ? __erBuildParagraphReviewHtml(q)
+
+        : __isMatchingList
+
+          ? __erBuildMatchingListReviewHtml(q)
+
+          : __isMatchingMatrix
+
+            ? __erBuildMatchingMatrixReviewHtml(q)
+
+            : `
+                <span
+                  class="question-text"
+                  contenteditable="true">
+                  ${fullRaw}
+                </span>
+              `;
 
   html += `<div class="question-row" data-subject="${subjIdx}" data-section="${sIdx}" data-question="${qIdx}">
     <span class="question-number">${(++qCounter)}.</span>
@@ -1098,10 +1674,11 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
   }
   if (!window.__attachMathEditors) {
     window.__attachMathEditors = function (root) {
-               const targets = root.querySelectorAll(
+                    const targets = root.querySelectorAll(
         '.question-text, .sub-text, .mcq-opt, .answer-box.rich-answer, .explanation-box.rich-explanation, ' +
         '.paragraph-passage-text, .paragraph-sub-text, .paragraph-mcq-opt, .paragraph-answer-box, .paragraph-explanation-box, ' +
-        '.matching-intro-text, .matching-col-i, .matching-col-ii'
+        '.matching-intro-text, .matching-col-i, .matching-col-ii, ' +
+        '.matching-list-intro, .matching-list-left, .matching-list-right, .matching-list-extra-right'
       );
       targets.forEach(el => {
         window.__makePreview(el);
@@ -1409,22 +1986,42 @@ const aNode = qr.querySelector('.subpart .sub-text');
 const bNode = qr.querySelectorAll('.subpart .sub-text')[1];
 let newText = '';
 
-if (__erIsMatchingMatrixQuestion(currentQuestion)) {
+if (
+  __erIsMatchingListQuestion(
+    currentQuestion
+  )
+) {
 
-  const matrixRows = qr.querySelectorAll(
-    '.matching-matrix-row'
-  );
+  const listRows =
+    qr.querySelectorAll(
+      '.matching-list-row'
+    );
+
+  const extraRight =
+    qr.querySelector(
+      '.matching-list-extra-right'
+    );
+
 
   /*
-    Save Matching Matrix only when all four
-    A-P, B-Q, C-R and D-S rows are present.
+    JEE Advanced Matching List:
 
-    This prevents an incomplete preview from
-    destroying the original stored question.
+    List-I  = P Q R S
+    List-II = 1 2 3 4 5
   */
-  if (matrixRows.length === 4) {
-    newText = __erBuildMatchingMatrixTextFromEditor(qr);
+
+  if (
+    listRows.length === 4 &&
+    extraRight
+  ) {
+
+    newText =
+      __erBuildMatchingListTextFromEditor(
+        qr
+      );
+
   } else {
+
     newText =
       currentQuestion.question ||
       currentQuestion.originalText ||
@@ -1433,29 +2030,120 @@ if (__erIsMatchingMatrixQuestion(currentQuestion)) {
       '';
   }
 
-} else if (aNode && bNode) {
-  const aRaw = (aNode.dataset?.raw || aNode.innerHTML || '').trim();
-  const bRaw = (bNode.dataset?.raw || bNode.innerHTML || '').trim();
-  newText = `(A) ${aRaw}\n\n(B) ${bRaw}`;
+
+} else if (
+  __erIsMatchingMatrixQuestion(
+    currentQuestion
+  )
+) {
+
+  const matrixRows =
+    qr.querySelectorAll(
+      '.matching-matrix-row'
+    );
+
+
+  /*
+    Foundation Matching Matrix:
+
+    Column I  = A B C D
+    Column II = P Q R S
+  */
+
+  if (
+    matrixRows.length === 4
+  ) {
+
+    newText =
+      __erBuildMatchingMatrixTextFromEditor(
+        qr
+      );
+
+  } else {
+
+    newText =
+      currentQuestion.question ||
+      currentQuestion.originalText ||
+      currentQuestion.text ||
+      currentQuestion.body ||
+      '';
+  }
+
+
+} else if (
+  aNode &&
+  bNode
+) {
+
+  const aRaw =
+    (
+      aNode.dataset?.raw ||
+      aNode.innerHTML ||
+      ''
+    ).trim();
+
+  const bRaw =
+    (
+      bNode.dataset?.raw ||
+      bNode.innerHTML ||
+      ''
+    ).trim();
+
+  newText =
+    `(A) ${aRaw}\n\n(B) ${bRaw}`;
+
+
 } else {
-  const qt = qr.querySelector('.question-text');
+
+  const qt =
+    qr.querySelector(
+      '.question-text'
+    );
+
 
   if (qt) {
+
     newText =
-      (qt.dataset?.raw || '').trim() ||
-      (qt.innerHTML || '').trim();
+      (
+        qt.dataset?.raw ||
+        ''
+      ).trim() ||
+      (
+        qt.innerHTML ||
+        ''
+      ).trim();
   }
 }
-
 if (newText) {
   // Keep every stored version of the question synchronized
   currentQuestion.text = newText;
   currentQuestion.question = newText;
   currentQuestion.body = newText;
 
-  if (__erIsMatchingMatrixQuestion(currentQuestion)) {
-    currentQuestion.type = 'Matching Matrix';
-    currentQuestion.mcqType = 'Matching Matrix';
+   if (
+    __erIsMatchingListQuestion(
+      currentQuestion
+    )
+  ) {
+
+    currentQuestion.type =
+      'Matching List';
+
+    currentQuestion.mcqType =
+      'Matching List';
+
+
+  } else if (
+    __erIsMatchingMatrixQuestion(
+      currentQuestion
+    )
+  ) {
+
+    currentQuestion.type =
+      'Matching Matrix';
+
+    currentQuestion.mcqType =
+      'Matching Matrix';
   }
 }
     const optNodes = qr.querySelectorAll('.mcq-opt');
