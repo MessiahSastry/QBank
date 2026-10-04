@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+<script src="chapters-iit-and-neet-foundation.js"></script>
 
     <style>
         :root {
@@ -816,9 +817,12 @@ function showConfirmPrompt(message) {
 }
 
 const config = {
-    classes: [
+        classes: [
         "3rd Class", "4th Class", "5th Class", "6th Class", "7th Class",
-        "8th Class", "9th Class", "10th Class", "11th Class", "12th Class"
+        "8th Class", "9th Class", "10th Class", "11th Class", "12th Class",
+        "JEE Main Entrance",
+        "JEE Advanced Entrance",
+        "NEET Entrance"
     ],
     boards: [
         "CBSE",
@@ -928,6 +932,7 @@ function __ebIsEntranceExamBoard(boardName) {
     return [
         'JEE Main',
         'JEE Advanced',
+        'NEET',
         'AP EAPCET'
     ].includes(String(boardName || '').trim());
 }
@@ -951,12 +956,17 @@ function __ebGetQuestionTypesForBoard(boardName) {
         ];
     }
 
-    if (board === 'AP EAPCET') {
+        if (board === 'NEET') {
         return [
             'MCQ (Single)'
         ];
     }
 
+    if (board === 'AP EAPCET') {
+        return [
+            'MCQ (Single)'
+        ];
+    }
     return [
         'MCQ (Single)',
         'MCQ (Multiple)',
@@ -3450,6 +3460,64 @@ function rebuildFixedPaperSectionsIfChanged() {
         setSubjectSectionsFromCurrentPaper(sIdx);
     });
 }
+function __ebGetMappedChapters(
+    selectedClass,
+    selectedBoard,
+    selectedSubject
+) {
+    const boardMap =
+        window.BOARD_CHAPTERS?.[selectedBoard];
+
+    const classMap =
+        boardMap?.[selectedClass];
+
+    const chapters =
+        classMap?.[selectedSubject];
+
+    if (!Array.isArray(chapters)) {
+        return [];
+    }
+
+    return Array.from(
+        new Set(
+            chapters
+                .map(ch => String(ch || '').trim())
+                .filter(Boolean)
+        )
+    );
+}
+
+
+async function __ebGetChaptersForCurrentSource(
+    selectedClass,
+    selectedBoard,
+    selectedSubject
+) {
+    const source =
+        getSourceTypeGlobal();
+
+    if (source === 'AI Generate') {
+
+        const mappedChapters =
+            __ebGetMappedChapters(
+                selectedClass,
+                selectedBoard,
+                selectedSubject
+            );
+
+        if (mappedChapters.length > 0) {
+            return mappedChapters;
+        }
+    }
+
+    return await db.getChapters(
+        selectedClass,
+        selectedBoard,
+        selectedSubject
+    );
+}
+
+
 function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     const area = document.getElementById('subjects-sections-area');
     area.innerHTML = '';
@@ -3484,7 +3552,12 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
             display.textContent = 'Loading chapters...';
             display.classList.add('placeholder');
 
-            const chapters = await db.getChapters(selectedClass, selectedBoard, subject);
+                        const chapters =
+                await __ebGetChaptersForCurrentSource(
+                    selectedClass,
+                    selectedBoard,
+                    subject
+                );
 
                        if (chapters.length > 0) {
                 const allChaptersOption =
@@ -4115,6 +4188,97 @@ function mapBankQuestionToBuilderQuestion(q, sectionMcqType, marksPerQuestion) {
         mcqType: sectionMcqType
     };
 }
+async function __ebReloadVisibleChapterDropdowns() {
+
+    const selectedClass =
+        getSelectedClass();
+
+    const selectedBoard =
+        getSelectedBoard();
+
+    if (!selectedClass || !selectedBoard) {
+        return;
+    }
+
+    const subjectBlocks =
+        Array.from(
+            document.querySelectorAll('.subject-block')
+        );
+
+    for (const subjectBlock of subjectBlocks) {
+
+        const subject =
+            subjectBlock.dataset.subject || '';
+
+        const chapterDropdown =
+            subjectBlock.querySelector(
+                '[id^="chapters-multiselect-"]'
+            );
+
+        if (!subject || !chapterDropdown) {
+            continue;
+        }
+
+        const optionsContainer =
+            chapterDropdown.querySelector(
+                '.dropdown-options'
+            );
+
+        const display =
+            chapterDropdown.querySelector(
+                '.selected-chapters-display'
+            );
+
+        if (!optionsContainer || !display) {
+            continue;
+        }
+
+        display.textContent =
+            'Loading chapters...';
+
+        display.classList.add(
+            'placeholder'
+        );
+
+        const chapters =
+            await __ebGetChaptersForCurrentSource(
+                selectedClass,
+                selectedBoard,
+                subject
+            );
+
+        if (chapters.length > 0) {
+
+            const allChaptersOption =
+                __ebIsEntranceExamBoard(selectedBoard)
+                    ? `<div><label><input type="checkbox" value="__ALL__" class="all-chapters-check"> All Chapters</label></div>`
+                    : '';
+
+            optionsContainer.innerHTML =
+                allChaptersOption +
+                chapters.map(opt =>
+                    `<div><label><input type="checkbox" value="${opt}"> ${opt}</label></div>`
+                ).join('');
+
+            display.textContent =
+                'Select one or more chapters';
+
+        } else {
+
+            optionsContainer.innerHTML =
+                '<div style="padding:10px;font-style:italic;">No chapters found.</div>';
+
+            display.textContent =
+                'No chapters found';
+        }
+
+        display.classList.add(
+            'placeholder'
+        );
+    }
+}
+
+
 function updateSubjectsForBoardAndClass() {
     const selectedClass = getSelectedClass();
     const selectedBoard = getSelectedBoard();
@@ -6413,7 +6577,45 @@ refreshDifficultyTotalNote();
 
         createMultiSelectDropdown('subjects-multiselect', [], 'Select class and board to see subjects', function(){});
 
-        document.getElementById('class-dropdown').addEventListener('change', function () {
+                document.getElementById('class-dropdown').addEventListener('change', function () {
+
+            const selectedClass =
+                getSelectedClass();
+
+            const entranceBoardMap = {
+                'JEE Main Entrance': 'JEE Main',
+                'JEE Advanced Entrance': 'JEE Advanced',
+                'NEET Entrance': 'NEET'
+            };
+
+            const requiredBoard =
+                entranceBoardMap[selectedClass] || '';
+
+            if (requiredBoard) {
+
+                const boardDropdown =
+                    document.getElementById('board-dropdown');
+
+                boardDropdown.dataset.value =
+                    requiredBoard;
+
+                const boardDisplay =
+                    boardDropdown.querySelector('.selected-option');
+
+                if (boardDisplay) {
+                    boardDisplay.textContent =
+                        requiredBoard;
+                }
+
+                boardDropdown.dispatchEvent(
+                    new Event('change', {
+                        bubbles: true
+                    })
+                );
+
+                return;
+            }
+
             updateSubjectsForBoardAndClass();
         });
 
@@ -6578,7 +6780,32 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
         });
 }
 
-            dd.addEventListener('change', toggle);
+                        let lastChapterSource =
+                dd.dataset.value ||
+                'Question Bank';
+
+            dd.addEventListener(
+                'change',
+                function () {
+
+                    const currentSource =
+                        dd.dataset.value ||
+                        'Question Bank';
+
+                    toggle();
+
+                    if (
+                        currentSource !==
+                        lastChapterSource
+                    ) {
+                        lastChapterSource =
+                            currentSource;
+
+                        __ebReloadVisibleChapterDropdowns();
+                    }
+                }
+            );
+
             toggle();
 
             if (chkSQ) chkSQ.addEventListener('change', () => { window._shuffleQuestions = !!chkSQ.checked; });
