@@ -1304,22 +1304,26 @@ function stripRealOptionBlockForKey(rawText) {
 function prepareQuestionStemForKey(q) {
   let raw = String(q?.question || q?.text || q?.body || '');
 
-  const isMatchingMatrix =
-    normalizeMcqType(getRawQuestionType(q)) === 'Matching Matrix' ||
-    (/Column\s*I/i.test(raw) && /Column\s*II/i.test(raw));
+  const normalizedType = normalizeMcqType(getRawQuestionType(q));
+
+  const isMatchingStyle =
+    normalizedType === 'Matching Matrix' ||
+    normalizedType === 'Matching List' ||
+    (/Column\s*I/i.test(raw) && /Column\s*II/i.test(raw)) ||
+    (/List-I/i.test(raw) && /List-II/i.test(raw));
 
   const isAssertionReason =
-    normalizeMcqType(getRawQuestionType(q)) === 'Assertion and Reason (MCQ Single)' ||
+    normalizedType === 'Assertion and Reason (MCQ Single)' ||
     looksLikeAssertionReasonQuestion(q);
 
   raw = raw.replace(/<[^>]+>/g, ' ');
   raw = raw.replace(/^Q\d+:\s*[^A-Za-z0-9]*[\[\]A-Za-z0-9, ]*\s*/i, '');
   raw = raw.replace(/\bAns?\s*:\s*.*$/i, '');
 
-   if (isMatchingStyle) {
+  if (isMatchingStyle) {
     raw = raw.replace(
-        /\s*\bOptions\s*:\s*[\s\S]*$/i,
-        ''
+      /\s*\bOptions\s*:\s*[\s\S]*$/i,
+      ''
     );
   } else if (!isAssertionReason) {
     raw = stripRealOptionBlockForKey(raw);
@@ -5321,46 +5325,41 @@ if (cleanedErrors.length) {
                 }
 
                                 function _finalStemKey(raw, marks, mcqType = '') {
-                    let t = String(raw || '');
+    let t = String(raw || '');
 
-                     const normalizedType =
-    normalizeMcqType(
-        getRawQuestionType(q)
-    );
+    const normalizedType = normalizeMcqType(mcqType);
 
-  const isMatchingStyle =
-    normalizedType === 'Matching Matrix' ||
-    normalizedType === 'Matching List' ||
-    (/Column\s*I/i.test(raw) &&
-     /Column\s*II/i.test(raw)) ||
-    (/List-I/i.test(raw) &&
-     /List-II/i.test(raw));
+    const isMatchingStyle =
+        normalizedType === 'Matching Matrix' ||
+        normalizedType === 'Matching List' ||
+        (/Column\s*I/i.test(raw) && /Column\s*II/i.test(raw)) ||
+        (/List-I/i.test(raw) && /List-II/i.test(raw));
 
-                    t = t.replace(/^\s*(?:Q\.?\s*)?\d+\s*[:.)-]?\s*/i, '');
-                    t = t.replace(/<img[^>]*>/gi, ' ')
-                         .replace(/<[^>]+>/g, ' ')
-                         .replace(/\bAns?\s*:\s*.*$/i, '');
+    t = t.replace(/^\s*(?:Q\.?\s*)?\d+\s*[:.)-]?\s*/i, '');
+    t = t.replace(/<img[^>]*>/gi, ' ')
+         .replace(/<[^>]+>/g, ' ')
+         .replace(/\bAns?\s*:\s*.*$/i, '');
 
-                    if (isMatchingMatrix) {
-                        t = t.replace(/\s*\bOptions\s*:\s*[\s\S]*$/i, '');
-                    } else {
-                        t = t.replace(/\s+[A-D][).:][\s\S]*$/i, '');
-                    }
+    if (isMatchingStyle) {
+        t = t.replace(/\s*\bOptions\s*:\s*[\s\S]*$/i, '');
+    } else {
+        t = t.replace(/\s+[A-D][).:][\s\S]*$/i, '');
+    }
 
-                    try { t = t.normalize('NFKC'); } catch (e) {}
+    try { t = t.normalize('NFKC'); } catch (e) {}
 
-                    t = t.replace(/[\u200B-\u200D\uFEFF]/g, '')
-                         .replace(/[\u2010-\u2015\u2212]/g, '-')
-                         .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
-                         .replace(/[\u201C\u201D\u2033]/g, '"')
-                         .replace(/\u00A0/g, ' ')
-                         .replace(/\s+/g, ' ')
-                         .trim()
-                         .toLowerCase()
-                         .replace(/[.,;:!?]+$/g, '');
+    t = t.replace(/[\u200B-\u200D\uFEFF]/g, '')
+         .replace(/[\u2010-\u2015\u2212]/g, '-')
+         .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+         .replace(/[\u201C\u201D\u2033]/g, '"')
+         .replace(/\u00A0/g, ' ')
+         .replace(/\s+/g, ' ')
+         .trim()
+         .toLowerCase()
+         .replace(/[.,;:!?]+$/g, '');
 
-                    return t ? (t + '||m=' + (marks ?? '')) : '';
-                }
+    return t ? (t + '||m=' + (marks ?? '')) : '';
+}
                 try {
                     if (sourceTypeGlobal === 'Question Bank') {
                         (finalPaper.subjects || []).forEach(s => {
