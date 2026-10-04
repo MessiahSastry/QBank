@@ -398,11 +398,485 @@
         "Management of Natural Resources"
       ]
     }
+   };
+
+
+  /* =========================================================
+     JEE MAIN
+     Class 11 + Class 12 + Full JEE Main Entrance
+     ========================================================= */
+
+  const JEE_MAIN_11TH_CHAPTERS = {
+
+    "Physics (JEE Main)": [
+      "Units and Measurements",
+      "Kinematics",
+      "Laws of Motion",
+      "Work, Energy and Power",
+      "Rotational Motion",
+      "Gravitation",
+      "Properties of Solids and Liquids",
+      "Thermodynamics",
+      "Kinetic Theory of Gases",
+      "Oscillations and Waves"
+    ],
+
+    "Chemistry (JEE Main)": [
+      "Some Basic Concepts in Chemistry",
+      "Atomic Structure",
+      "Chemical Bonding and Molecular Structure",
+      "Chemical Thermodynamics",
+      "Equilibrium",
+      "Redox Reactions",
+      "Classification of Elements and Periodicity in Properties",
+      "Purification and Characterisation of Organic Compounds",
+      "Some Basic Principles of Organic Chemistry",
+      "Hydrocarbons"
+    ],
+
+    "Mathematics (JEE Main)": [
+      "Sets",
+      "Relations and Functions",
+      "Trigonometric Functions",
+      "Complex Numbers and Quadratic Equations",
+      "Permutations and Combinations",
+      "Binomial Theorem",
+      "Sequences and Series",
+      "Straight Lines",
+      "Circle and Conic Sections",
+      "Statistics"
+    ]
   };
 
-  window.BOARD_CHAPTERS = window.BOARD_CHAPTERS || {};
-  window.BOARD_CHAPTERS["IIT & NEET Foundation"] = IIT_AND_NEET_FOUNDATION_CHAPTERS;
-  window.BOARD_CHAPTERS["IIT and NEET Foundation"] = IIT_AND_NEET_FOUNDATION_CHAPTERS;
 
-  window.CHAPTERS_IIT_AND_NEET_FOUNDATION = IIT_AND_NEET_FOUNDATION_CHAPTERS;
+  const JEE_MAIN_12TH_CHAPTERS = {
+
+    "Physics (JEE Main)": [
+      "Electrostatics",
+      "Current Electricity",
+      "Magnetic Effects of Current and Magnetism",
+      "Electromagnetic Induction and Alternating Currents",
+      "Electromagnetic Waves",
+      "Optics",
+      "Dual Nature of Matter and Radiation",
+      "Atoms and Nuclei",
+      "Electronic Devices",
+      "Experimental Skills"
+    ],
+
+    "Chemistry (JEE Main)": [
+      "Solutions",
+      "Electrochemistry",
+      "Chemical Kinetics",
+      "p-Block Elements",
+      "d- and f-Block Elements",
+      "Coordination Compounds",
+      "Organic Compounds Containing Halogens",
+      "Organic Compounds Containing Oxygen",
+      "Organic Compounds Containing Nitrogen",
+      "Biomolecules",
+      "Principles Related to Practical Chemistry"
+    ],
+
+    "Mathematics (JEE Main)": [
+      "Relations and Functions",
+      "Inverse Trigonometric Functions",
+      "Matrices and Determinants",
+      "Limits, Continuity and Differentiability",
+      "Applications of Derivatives",
+      "Integral Calculus",
+      "Applications of Integrals",
+      "Differential Equations",
+      "Vector Algebra",
+      "Three Dimensional Geometry",
+      "Probability"
+    ]
+  };
+
+
+  const JEE_MAIN_ENTRANCE_CHAPTERS = {
+
+    "Physics (JEE Main)": Array.from(
+      new Set([
+        ...JEE_MAIN_11TH_CHAPTERS["Physics (JEE Main)"],
+        ...JEE_MAIN_12TH_CHAPTERS["Physics (JEE Main)"]
+      ])
+    ),
+
+    "Chemistry (JEE Main)": Array.from(
+      new Set([
+        ...JEE_MAIN_11TH_CHAPTERS["Chemistry (JEE Main)"],
+        ...JEE_MAIN_12TH_CHAPTERS["Chemistry (JEE Main)"]
+      ])
+    ),
+
+    "Mathematics (JEE Main)": Array.from(
+      new Set([
+        ...JEE_MAIN_11TH_CHAPTERS["Mathematics (JEE Main)"],
+        ...JEE_MAIN_12TH_CHAPTERS["Mathematics (JEE Main)"]
+      ])
+    )
+  };
+
+
+  const JEE_MAIN_CHAPTERS = {
+
+    "11th Class":
+      JEE_MAIN_11TH_CHAPTERS,
+
+    "12th Class":
+      JEE_MAIN_12TH_CHAPTERS,
+
+    "JEE Main Entrance":
+      JEE_MAIN_ENTRANCE_CHAPTERS
+  };
+
+
+    /* =========================================================
+     JEE ADVANCED
+     Class 11 + Class 12 + Full JEE Advanced Entrance
+     ========================================================= */
+
+  const JEE_ADVANCED_11TH_CHAPTERS = {
+
+    "Physics (JEE Advanced)": [
+      "Units and Measurements",
+      "Kinematics",
+      "Laws of Motion and Friction",
+      "Work, Energy and Power",
+      "System of Particles and Centre of Mass",
+      "Rotational Motion",
+      "Gravitation",
+      "Mechanical Properties of Solids and Fluids",
+      "Oscillations",
+      "Waves",
+      "Thermal Physics"
+    ],
+
+    "Chemistry (JEE Advanced)": [
+      "Some Basic Concepts in Chemistry",
+      "States of Matter: Gases and Liquids",
+      "Atomic Structure",
+      "Chemical Bonding and Molecular Structure",
+      "Chemical Thermodynamics",
+      "Chemical and Ionic Equilibrium",
+      "Classification of Elements and Periodicity in Properties",
+      "Hydrogen",
+      "s-Block Elements",
+      "Basic Principles of Organic Chemistry",
+      "Alkanes",
+      "Alkenes and Alkynes",
+      "Benzene",
+      "Environmental Chemistry"
+    ],
+
+    "Mathematics (JEE Advanced)": [
+      "Sets, Relations and Functions",
+      "Complex Numbers",
+      "Quadratic Equations",
+      "Sequences and Series",
+      "Logarithms",
+      "Permutations and Combinations",
+      "Binomial Theorem",
+      "Probability and Statistics",
+      "Trigonometry",
+      "Straight Lines",
+      "Circle",
+      "Parabola",
+      "Ellipse",
+      "Hyperbola",
+      "Limits and Derivatives"
+    ]
+  };
+
+
+  const JEE_ADVANCED_12TH_CHAPTERS = {
+
+    "Physics (JEE Advanced)": [
+      "Electrostatics",
+      "Capacitance",
+      "Current Electricity",
+      "Magnetic Effects of Current and Magnetism",
+      "Electromagnetic Induction",
+      "Alternating Current",
+      "Electromagnetic Waves",
+      "Ray Optics",
+      "Wave Optics",
+      "Modern Physics",
+      "Experimental Physics"
+    ],
+
+    "Chemistry (JEE Advanced)": [
+      "Electrochemistry",
+      "Chemical Kinetics",
+      "Solid State",
+      "Solutions",
+      "Surface Chemistry",
+      "p-Block Elements",
+      "d-Block Elements",
+      "f-Block Elements",
+      "Coordination Compounds",
+      "Isolation of Metals",
+      "Principles of Qualitative Analysis",
+      "Phenols",
+      "Alkyl Halides",
+      "Alcohols",
+      "Ethers",
+      "Aldehydes and Ketones",
+      "Carboxylic Acids",
+      "Amines",
+      "Haloarenes",
+      "Biomolecules",
+      "Polymers",
+      "Chemistry in Everyday Life",
+      "Practical Organic Chemistry"
+    ],
+
+    "Mathematics (JEE Advanced)": [
+      "Matrices and Determinants",
+      "Probability",
+      "Inverse Trigonometric Functions",
+      "Differential Calculus",
+      "Applications of Derivatives",
+      "Integral Calculus",
+      "Applications of Integrals",
+      "Differential Equations",
+      "Vectors",
+      "Three Dimensional Geometry"
+    ]
+  };
+
+
+  const JEE_ADVANCED_ENTRANCE_CHAPTERS = {
+
+    "Physics (JEE Advanced)": Array.from(
+      new Set([
+        ...JEE_ADVANCED_11TH_CHAPTERS["Physics (JEE Advanced)"],
+        ...JEE_ADVANCED_12TH_CHAPTERS["Physics (JEE Advanced)"]
+      ])
+    ),
+
+    "Chemistry (JEE Advanced)": Array.from(
+      new Set([
+        ...JEE_ADVANCED_11TH_CHAPTERS["Chemistry (JEE Advanced)"],
+        ...JEE_ADVANCED_12TH_CHAPTERS["Chemistry (JEE Advanced)"]
+      ])
+    ),
+
+    "Mathematics (JEE Advanced)": Array.from(
+      new Set([
+        ...JEE_ADVANCED_11TH_CHAPTERS["Mathematics (JEE Advanced)"],
+        ...JEE_ADVANCED_12TH_CHAPTERS["Mathematics (JEE Advanced)"]
+      ])
+    )
+  };
+
+
+  const JEE_ADVANCED_CHAPTERS = {
+
+    "11th Class":
+      JEE_ADVANCED_11TH_CHAPTERS,
+
+    "12th Class":
+      JEE_ADVANCED_12TH_CHAPTERS,
+
+    "JEE Advanced Entrance":
+      JEE_ADVANCED_ENTRANCE_CHAPTERS
+  };
+
+
+   /* =========================================================
+     NEET
+     Class 11 + Class 12 + Full NEET Entrance
+     ========================================================= */
+
+  const NEET_11TH_CHAPTERS = {
+
+    "Physics (NEET)": [
+      "Physics and Measurement",
+      "Kinematics",
+      "Laws of Motion",
+      "Work, Energy and Power",
+      "Rotational Motion",
+      "Gravitation",
+      "Properties of Solids and Liquids",
+      "Thermodynamics",
+      "Kinetic Theory of Gases",
+      "Oscillations and Waves"
+    ],
+
+    "Chemistry (NEET)": [
+      "Some Basic Concepts in Chemistry",
+      "Atomic Structure",
+      "Chemical Bonding and Molecular Structure",
+      "Chemical Thermodynamics",
+      "Equilibrium",
+      "Redox Reactions",
+      "Classification of Elements and Periodicity in Properties",
+      "Purification and Characterisation of Organic Compounds",
+      "Some Basic Principles of Organic Chemistry",
+      "Hydrocarbons"
+    ],
+
+    "Biology (NEET)": [
+      "The Living World",
+      "Biological Classification",
+      "Plant Kingdom",
+      "Animal Kingdom",
+      "Morphology of Flowering Plants",
+      "Anatomy of Flowering Plants",
+      "Structural Organisation in Animals",
+      "Cell: The Unit of Life",
+      "Biomolecules",
+      "Cell Cycle and Cell Division",
+      "Photosynthesis in Higher Plants",
+      "Respiration in Plants",
+      "Plant Growth and Development",
+      "Breathing and Exchange of Gases",
+      "Body Fluids and Circulation",
+      "Excretory Products and Their Elimination",
+      "Locomotion and Movement",
+      "Neural Control and Coordination",
+      "Chemical Coordination and Integration"
+    ]
+  };
+
+
+  const NEET_12TH_CHAPTERS = {
+
+    "Physics (NEET)": [
+      "Electrostatics",
+      "Current Electricity",
+      "Magnetic Effects of Current and Magnetism",
+      "Electromagnetic Induction and Alternating Currents",
+      "Electromagnetic Waves",
+      "Optics",
+      "Dual Nature of Matter and Radiation",
+      "Atoms and Nuclei",
+      "Electronic Devices",
+      "Experimental Skills"
+    ],
+
+    "Chemistry (NEET)": [
+      "Solutions",
+      "Electrochemistry",
+      "Chemical Kinetics",
+      "p-Block Elements",
+      "d- and f-Block Elements",
+      "Coordination Compounds",
+      "Organic Compounds Containing Halogens",
+      "Organic Compounds Containing Oxygen",
+      "Organic Compounds Containing Nitrogen",
+      "Biomolecules",
+      "Principles Related to Practical Chemistry"
+    ],
+
+    "Biology (NEET)": [
+      "Sexual Reproduction in Flowering Plants",
+      "Human Reproduction",
+      "Reproductive Health",
+      "Principles of Inheritance and Variation",
+      "Molecular Basis of Inheritance",
+      "Evolution",
+      "Human Health and Disease",
+      "Microbes in Human Welfare",
+      "Biotechnology: Principles and Processes",
+      "Biotechnology and Its Applications",
+      "Organisms and Populations",
+      "Ecosystem",
+      "Biodiversity and Conservation"
+    ]
+  };
+
+
+  const NEET_ENTRANCE_CHAPTERS = {
+
+    "Physics (NEET)": Array.from(
+      new Set([
+        ...NEET_11TH_CHAPTERS["Physics (NEET)"],
+        ...NEET_12TH_CHAPTERS["Physics (NEET)"]
+      ])
+    ),
+
+    "Chemistry (NEET)": Array.from(
+      new Set([
+        ...NEET_11TH_CHAPTERS["Chemistry (NEET)"],
+        ...NEET_12TH_CHAPTERS["Chemistry (NEET)"]
+      ])
+    ),
+
+    "Biology (NEET)": Array.from(
+      new Set([
+        ...NEET_11TH_CHAPTERS["Biology (NEET)"],
+        ...NEET_12TH_CHAPTERS["Biology (NEET)"]
+      ])
+    )
+  };
+
+
+  const NEET_CHAPTERS = {
+
+    "11th Class":
+      NEET_11TH_CHAPTERS,
+
+    "12th Class":
+      NEET_12TH_CHAPTERS,
+
+    "NEET Entrance":
+      NEET_ENTRANCE_CHAPTERS
+  };
+
+
+  /* =========================================================
+     REGISTER CHAPTER MAPS
+     ========================================================= */
+  window.BOARD_CHAPTERS =
+    window.BOARD_CHAPTERS || {};
+
+
+  window.BOARD_CHAPTERS[
+    "IIT & NEET Foundation"
+  ] =
+    IIT_AND_NEET_FOUNDATION_CHAPTERS;
+
+
+  window.BOARD_CHAPTERS[
+    "IIT and NEET Foundation"
+  ] =
+    IIT_AND_NEET_FOUNDATION_CHAPTERS;
+
+
+   window.BOARD_CHAPTERS[
+    "JEE Main"
+  ] =
+    JEE_MAIN_CHAPTERS;
+
+
+   window.BOARD_CHAPTERS[
+    "JEE Advanced"
+  ] =
+    JEE_ADVANCED_CHAPTERS;
+
+
+  window.BOARD_CHAPTERS[
+    "NEET"
+  ] =
+    NEET_CHAPTERS;
+
+
+   window.CHAPTERS_IIT_AND_NEET_FOUNDATION =
+    IIT_AND_NEET_FOUNDATION_CHAPTERS;
+
+
+    window.CHAPTERS_JEE_MAIN =
+    JEE_MAIN_CHAPTERS;
+
+
+   window.CHAPTERS_JEE_ADVANCED =
+    JEE_ADVANCED_CHAPTERS;
+
+
+  window.CHAPTERS_NEET =
+    NEET_CHAPTERS;
+
 })();
