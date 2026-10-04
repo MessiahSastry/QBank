@@ -4159,6 +4159,934 @@ function getGlobalShuffleOptions() {
     return !!window._shuffleOptions;
 }
 
+/* =========================================================
+   AI GENERATE — EXAM BUILDER PROMPT HELPERS
+   ========================================================= */
+
+function __ebCollectAIBlueprint() {
+
+    const errors = [];
+
+    const selectedClass = getSelectedClass();
+    const selectedBoard = getSelectedBoard();
+    const selectedSubjects = getSelectedSubjects();
+
+    const examName =
+        (document.getElementById('exam-name-input')?.value || '').trim();
+
+    const maxMarks =
+        Number(document.getElementById('max-marks-input')?.value || 0);
+
+    const time =
+        Number(document.getElementById('time-input')?.value || 0);
+
+    const date =
+        document.getElementById('date-input')?.value || '';
+
+    const instructions =
+        (document.getElementById('instructions-input')?.value || '').trim();
+
+    const paperType = getPaperType();
+
+    const difficultyDistribution =
+        getDifficultyDistribution();
+
+    if (!selectedClass) {
+        errors.push('Please select Class.');
+    }
+
+    if (!selectedBoard) {
+        errors.push('Please select Board.');
+    }
+
+    if (!selectedSubjects.length) {
+        errors.push('Please select at least one Subject.');
+    }
+
+    if (!__ebIsEntranceExamBoard(selectedBoard)) {
+
+        const totalDifficulty =
+            Number(difficultyDistribution.L1 || 0) +
+            Number(difficultyDistribution.L2 || 0) +
+            Number(difficultyDistribution.L3 || 0);
+
+        const checkedLevels =
+            getAllowedDifficultyLevels();
+
+        if (!checkedLevels.length) {
+            errors.push(
+                'Please select at least one difficulty level.'
+            );
+        }
+
+        if (totalDifficulty !== 100) {
+            errors.push(
+                'Difficulty percentages must total 100%.'
+            );
+        }
+    }
+
+    const subjects = [];
+
+    document
+        .querySelectorAll('.subject-block')
+        .forEach((subjectBlock) => {
+
+            const subject =
+                subjectBlock.dataset.subject || '';
+
+            const chapterDropdown =
+                subjectBlock.querySelector(
+                    '[id^="chapters-multiselect-"]'
+                );
+
+            const allChapters =
+                !!chapterDropdown?.querySelector(
+                    'input[value="__ALL__"]:checked'
+                );
+
+            const chapters =
+                allChapters
+                    ? []
+                    : Array.from(
+                        chapterDropdown?.querySelectorAll(
+                            'input[type="checkbox"]:checked:not([value="__ALL__"])'
+                        ) || []
+                    ).map(cb => cb.value);
+
+            if (!allChapters && chapters.length === 0) {
+                errors.push(
+                    `Please select at least one chapter for ${subject}.`
+                );
+            }
+
+            const sections = [];
+
+            subjectBlock
+                .querySelectorAll('.section-item')
+                .forEach((sectionItem) => {
+
+                    const label =
+                        sectionItem
+                            .querySelector(
+                                '.section-label-dropdown'
+                            )
+                            ?.dataset?.value || '';
+
+                    const mcqType =
+                        sectionItem
+                            .querySelector(
+                                '.mcq-type-dropdown'
+                            )
+                            ?.dataset?.value || '';
+
+                    const typeLabel =
+                        sectionItem
+                            .querySelector(
+                                '.section-type-dropdown'
+                            )
+                            ?.dataset?.value || '';
+
+                    const typeIndex =
+                        config.sectionTypes.indexOf(
+                            typeLabel
+                        );
+
+                    const type =
+                        config.sectionTypeKeys[
+                            typeIndex
+                        ] || '';
+
+                    const section = {
+                        label,
+                        mcqType,
+                        type
+                    };
+
+                    if (!label) {
+                        errors.push(
+                            `${subject}: Select section label.`
+                        );
+                    }
+
+                    if (!mcqType) {
+                        errors.push(
+                            `${subject} - ${label || 'Section'}: Select question type.`
+                        );
+                    }
+
+                    if (type === 'all') {
+
+                        section.numQuestions =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.num-questions-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        section.marksPerQuestion =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.marks-per-question-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        if (section.numQuestions < 1) {
+                            errors.push(
+                                `${subject} - ${label}: Number of questions must be at least 1.`
+                            );
+                        }
+
+                        if (section.marksPerQuestion < 1) {
+                            errors.push(
+                                `${subject} - ${label}: Marks per question must be at least 1.`
+                            );
+                        }
+
+                    } else if (type === 'any') {
+
+                        section.numQuestions =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.num-questions-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        section.attemptAny =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.attempt-any-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        section.marksPerQuestion =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.marks-per-question-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        if (section.numQuestions < 1) {
+                            errors.push(
+                                `${subject} - ${label}: Number of questions must be at least 1.`
+                            );
+                        }
+
+                        if (
+                            section.attemptAny < 1 ||
+                            section.attemptAny >
+                            section.numQuestions
+                        ) {
+                            errors.push(
+                                `${subject} - ${label}: Check the "Attempt any" value.`
+                            );
+                        }
+
+                        if (section.marksPerQuestion < 1) {
+                            errors.push(
+                                `${subject} - ${label}: Marks per question must be at least 1.`
+                            );
+                        }
+
+                    } else if (type === 'internal') {
+
+                        section.numPairs =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.num-pairs-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        section.marksPerQuestion =
+                            Number(
+                                sectionItem
+                                    .querySelector(
+                                        '.marks-per-question-input'
+                                    )
+                                    ?.value || 0
+                            );
+
+                        section.pairs = [];
+
+                        sectionItem
+                            .querySelectorAll(
+                                '.internal-choice-pairs > div'
+                            )
+                            .forEach((pairDiv) => {
+
+                                const chapterA =
+                                    (
+                                        pairDiv
+                                            .querySelector(
+                                                '.pair-chapter-a'
+                                            )
+                                            ?.value || ''
+                                    ).trim();
+
+                                const chapterB =
+                                    (
+                                        pairDiv
+                                            .querySelector(
+                                                '.pair-chapter-b'
+                                            )
+                                            ?.value || ''
+                                    ).trim();
+
+                                section.pairs.push({
+                                    chapterA,
+                                    chapterB
+                                });
+                            });
+
+                        if (section.numPairs < 1) {
+                            errors.push(
+                                `${subject} - ${label}: Number of internal-choice pairs must be at least 1.`
+                            );
+                        }
+
+                        if (section.marksPerQuestion < 1) {
+                            errors.push(
+                                `${subject} - ${label}: Marks per pair must be at least 1.`
+                            );
+                        }
+                    }
+
+                    sections.push(section);
+                });
+
+            if (!sections.length) {
+                errors.push(
+                    `Please add at least one section for ${subject}.`
+                );
+            }
+
+            subjects.push({
+                subject,
+                chapters,
+                allChapters,
+                sections
+            });
+        });
+
+    return {
+        errors,
+
+        blueprint: {
+            className: selectedClass,
+            board: selectedBoard,
+            subjects,
+            examName,
+            maxMarks,
+            time,
+            date,
+            paperType,
+            instructions,
+            difficultyDistribution
+        }
+    };
+}
+
+
+/* =========================================================
+   BOARD-SPECIFIC AI STANDARD
+   ========================================================= */
+
+function __ebBuildAIBoardRules(board) {
+
+    const b =
+        String(board || '')
+            .trim()
+            .toLowerCase();
+
+    if (b === 'iit & neet foundation') {
+
+        return `
+IIT & NEET FOUNDATION STANDARD:
+
+Use these difficulty definitions strictly:
+
+Level 1:
+- Foundation Easy and Medium.
+- Basic concept, recall or straightforward application.
+- Usually single-concept.
+- Competitive/Foundation style, not merely school-textbook drill.
+
+Level 2:
+- Difficult and Very Difficult Foundation standard.
+- Application, interpretation and reasoning.
+- May combine two related concepts.
+- Should be clearly more challenging than Level 1.
+
+Level 3:
+- Challenging Foundation / Olympiad / NTSE / IIT Foundation Advanced style.
+- Multi-step reasoning.
+- Non-routine application.
+- May combine multiple concepts.
+- Do not require higher-class methods outside the selected syllabus.
+
+All questions must remain appropriate to the selected class and selected chapters.
+`;
+    }
+
+
+    if (b === 'cbse') {
+
+        return `
+CBSE STANDARD:
+
+- Generate questions strictly from the selected CBSE/NCERT chapter content.
+- Use correct NCERT terminology, facts, data and concepts.
+- Do not introduce content outside the selected chapter(s).
+- Cover the selected chapter concepts appropriately.
+
+Difficulty:
+Level 1 = Knowledge / Recall / direct understanding.
+Level 2 = Application / Interpretation.
+Level 3 = HOTS / Analysis / Evaluation / Synthesis within the prescribed syllabus.
+`;
+    }
+
+
+    if (b === 'icse') {
+
+        return `
+ICSE STANDARD:
+
+- Follow the selected ICSE class, subject and chapter content.
+- Use concept-rich and language-accurate questions.
+- Keep every question within the prescribed syllabus.
+
+Difficulty:
+Level 1 = Knowledge / direct understanding.
+Level 2 = Application / interpretation.
+Level 3 = Analytical / HOTS.
+`;
+    }
+
+
+    if (b === 'ap state board (scert)') {
+
+        return `
+AP STATE BOARD (SCERT) STANDARD:
+
+- Generate questions only from the selected AP SCERT chapter content.
+- Follow textbook terminology and syllabus level.
+- Do not introduce higher-class material.
+
+Difficulty:
+Level 1 = Knowledge / Recall.
+Level 2 = Application / Interpretation.
+Level 3 = Higher-order thinking within the syllabus.
+`;
+    }
+
+
+    if (b === 'jee main') {
+
+        return `
+JEE MAIN STANDARD — STRICT:
+
+- Generate ORIGINAL JEE Main-standard questions.
+- Do not copy previous-year questions.
+- Match JEE Main conceptual depth, solving style and examination speed.
+- Do not convert simple school questions into JEE questions merely by making numbers larger.
+- Avoid unnecessary lengthy calculations.
+- Stay strictly within the selected chapters.
+
+For MCQ (Single):
+- Exactly one option must be correct.
+
+For Numerical Value:
+- The problem must naturally lead to a numerical response.
+
+Do not print Level 1 / Level 2 / Level 3 labels in the output.
+`;
+    }
+
+
+    if (b === 'jee advanced') {
+
+        return `
+JEE ADVANCED STANDARD — STRICT:
+
+- Generate ORIGINAL JEE Advanced-standard questions.
+- Do not copy or closely reproduce previous-year questions.
+- Questions must require genuine conceptual and analytical reasoning.
+- Prefer linked concepts, hidden constraints, case analysis or non-obvious reasoning where appropriate.
+- Do not create artificial tricks or unnecessary computation.
+- Stay strictly within the selected chapters.
+
+MCQ (Single):
+- Exactly one correct option.
+
+MCQ (Multiple):
+- One or more options may be correct naturally.
+
+Numerical Value:
+- Must naturally require a numerical response.
+
+Matching List:
+- Every relationship must be independently correct.
+
+Do not print Level 1 / Level 2 / Level 3 labels in the output.
+`;
+    }
+
+
+    if (b === 'ap eapcet') {
+
+        return `
+AP EAPCET ENGINEERING STANDARD — STRICT:
+
+- Generate original AP EAPCET-standard questions.
+- Questions must be objective, syllabus-bound and suitable for examination-speed solving.
+- Do not make them JEE Advanced-style.
+- Stay within the selected chapter(s).
+- For MCQ, exactly one option must be correct.
+
+Do not print Level 1 / Level 2 / Level 3 labels in the output.
+`;
+    }
+
+
+    if (b === 'neet') {
+
+        return `
+NEET STANDARD:
+
+- Generate original NEET-standard questions.
+- Follow the selected syllabus and chapters strictly.
+- Focus on conceptual accuracy, application and standard NEET objective-question style.
+- Exactly one option must be correct for single-correct MCQs.
+- Avoid material outside the selected syllabus.
+`;
+    }
+
+
+    if (b === 'olympiad') {
+
+        return `
+OLYMPIAD STANDARD:
+
+- Generate class-appropriate Olympiad questions.
+- Emphasise conceptual clarity, reasoning, application and non-routine thinking.
+- Stay within the selected chapter scope.
+- Avoid higher-class methods unless the selected syllabus itself requires them.
+`;
+    }
+
+
+    return `
+GENERAL STANDARD:
+
+- Generate clear, accurate and unambiguous questions.
+- Stay strictly within the selected class, subject and chapter scope.
+- Check every question, calculation, fact and option before finalising.
+`;
+}
+
+
+/* =========================================================
+   AI OUTPUT FORMAT RULES
+   ========================================================= */
+
+function __ebBuildAIFormatRules() {
+
+    return `
+OUTPUT FORMAT — VERY IMPORTANT:
+
+The generated content will be pasted into an Exam Builder and parsed automatically.
+
+Therefore:
+
+1. Output ONLY the questions.
+2. Do NOT write an introduction.
+3. Do NOT write subject headings.
+4. Do NOT write section headings.
+5. Do NOT write chapter headings.
+6. Do NOT write explanations.
+7. Number ALL generated question blocks continuously:
+   Q1:
+   Q2:
+   Q3:
+   ...
+8. Keep the exact question order requested in the blueprint.
+9. Do not restart numbering for another section or subject.
+
+MCQ (Single):
+Q<num>:
+<Question>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <one correct letter>
+
+MCQ (Multiple):
+Q<num>:
+<Question>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <all correct letters separated by commas>
+
+Assertion and Reason (MCQ Single):
+Q<num>:
+Assertion: ...
+Reason: ...
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <one correct letter>
+
+Matching Matrix / Matching List:
+Q<num>:
+<matching content>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <one correct letter>
+
+Numerical Value:
+Q<num>:
+<Question only>
+
+Fill in the Blanks:
+Q<num>:
+<Question only>
+
+Descriptive:
+Q<num>:
+<Question only>
+
+Paragraph-Based MCQ:
+- Treat each required item as ONE passage set.
+- Start each passage set with one Q<num>: line.
+- Put the passage and its sub-questions inside the same question block.
+- Number sub-questions with (i), (ii), etc.
+- Do NOT use Q1/Q2 numbering for the sub-questions.
+- Each MCQ sub-question must contain A), B), C), D).
+
+Do not include "Explanation:" anywhere.
+`;
+}
+
+
+/* =========================================================
+   BUILD COMPLETE EXAM-BLUEPRINT PROMPT
+   ========================================================= */
+
+function __ebBuildAIExamPrompt(blueprint) {
+
+    const {
+        className,
+        board,
+        subjects,
+        examName,
+        maxMarks,
+        time,
+        date,
+        paperType,
+        instructions,
+        difficultyDistribution
+    } = blueprint;
+
+    const entranceMode =
+        __ebIsEntranceExamBoard(board);
+
+    let prompt = `
+You are generating QUESTIONS ONLY for an examination.
+
+Do NOT create the visual question-paper layout.
+Do NOT add school headers, decorative formatting or paper styling.
+
+The generated questions will be pasted back into an Exam Builder.
+The Exam Builder will handle:
+- sections,
+- numbering in the final paper,
+- instructions,
+- Exam Review,
+- Preview,
+- paper layout and styling.
+
+EXAM DETAILS
+
+Class: ${className}
+Board: ${board}
+Exam Name: ${examName || 'Not specified'}
+Paper Type: ${paperType || 'Custom Paper'}
+Maximum Marks: ${maxMarks || 'Not specified'}
+Time: ${time ? `${time} minutes` : 'Not specified'}
+Date: ${date || 'Not specified'}
+
+${__ebBuildAIBoardRules(board)}
+`;
+
+    if (!entranceMode) {
+
+        prompt += `
+
+OVERALL DIFFICULTY DISTRIBUTION:
+
+Level 1: ${Number(difficultyDistribution.L1 || 0)}%
+Level 2: ${Number(difficultyDistribution.L2 || 0)}%
+Level 3: ${Number(difficultyDistribution.L3 || 0)}%
+
+Use this distribution across the generated questions unless an exact section-level plan is given below.
+`;
+    }
+
+    prompt += `
+
+QUESTION BLUEPRINT — FOLLOW THIS ORDER EXACTLY
+`;
+
+    let sequenceNumber = 1;
+
+    subjects.forEach((subjectData) => {
+
+        const chapterText =
+            subjectData.allChapters
+                ? 'All Chapters'
+                : subjectData.chapters.join(', ');
+
+        subjectData.sections.forEach((section) => {
+
+            const generatedCount =
+                section.type === 'internal'
+                    ? Number(section.numPairs || 0) * 2
+                    : Number(section.numQuestions || 0);
+
+            let attemptInstruction = '';
+
+            if (section.type === 'all') {
+
+                attemptInstruction =
+                    `Generate ${section.numQuestions} question(s).`;
+
+            } else if (section.type === 'any') {
+
+                attemptInstruction =
+                    `Generate ${section.numQuestions} question(s). Students will attempt any ${section.attemptAny}.`;
+
+            } else if (section.type === 'internal') {
+
+                attemptInstruction =
+                    `Generate ${section.numPairs} internal-choice pair(s). ` +
+                    `Each pair requires TWO separate question blocks: Alternative A followed immediately by Alternative B. ` +
+                    `Therefore generate ${generatedCount} question blocks for this section.`;
+            }
+
+            let levelPlanText = '';
+
+            if (!entranceMode) {
+
+                try {
+
+                    const planCount =
+                        section.type === 'internal'
+                            ? generatedCount
+                            : Number(
+                                section.numQuestions || 0
+                            );
+
+                    const fixedPlan =
+                        getFixedSectionLevelPlan({
+                            paperType,
+                            maxMarks,
+                            mcqType: section.mcqType,
+                            numQuestions: planCount,
+                            marksPerQuestion:
+                                section.marksPerQuestion
+                        });
+
+                    if (
+                        Array.isArray(fixedPlan) &&
+                        fixedPlan.length === planCount
+                    ) {
+
+                        levelPlanText =
+                            `\nExact difficulty order for this section: ` +
+                            fixedPlan
+                                .map(x =>
+                                    x === 'L1'
+                                        ? 'Level 1'
+                                        : x === 'L2'
+                                            ? 'Level 2'
+                                            : 'Level 3'
+                                )
+                                .join(', ') +
+                            '.';
+                    }
+
+                } catch (err) {
+                    console.warn(
+                        'Could not build fixed level plan',
+                        err
+                    );
+                }
+            }
+
+            let internalPairText = '';
+
+            if (
+                section.type === 'internal' &&
+                Array.isArray(section.pairs) &&
+                section.pairs.length
+            ) {
+
+                const pairLines =
+                    section.pairs
+                        .map((pair, index) => {
+
+                            const a =
+                                pair.chapterA ||
+                                'selected chapter(s)';
+
+                            const b =
+                                pair.chapterB ||
+                                'selected chapter(s)';
+
+                            return (
+                                `Pair ${index + 1}: ` +
+                                `Alternative A from "${a}"; ` +
+                                `Alternative B from "${b}".`
+                            );
+                        })
+                        .join('\n');
+
+                internalPairText =
+                    `\nInternal-choice chapter guidance:\n${pairLines}`;
+            }
+
+            let paragraphNote = '';
+
+            if (
+                section.mcqType ===
+                'Paragraph-Based MCQ (Single Correct)'
+            ) {
+
+                paragraphNote =
+                    `\nFor each required question, generate one passage set with 2 single-correct MCQ sub-questions.`;
+            }
+
+            prompt += `
+
+${sequenceNumber}. SUBJECT: ${subjectData.subject}
+SECTION: ${section.label}
+CHAPTERS: ${chapterText}
+QUESTION TYPE: ${section.mcqType}
+SECTION RULE: ${attemptInstruction}
+MARKS: ${section.marksPerQuestion} mark(s) per ${
+    section.type === 'internal'
+        ? 'internal-choice pair'
+        : 'question'
+}.${levelPlanText}${internalPairText}${paragraphNote}
+`;
+
+            sequenceNumber++;
+        });
+    });
+
+
+    if (instructions) {
+
+        prompt += `
+
+ADDITIONAL TEACHER INSTRUCTIONS:
+
+${instructions}
+`;
+    }
+
+
+    prompt += `
+
+STRICT QUALITY CHECK:
+
+- Every question must be academically correct.
+- Verify calculations, facts, options and answers before output.
+- Do not create ambiguous questions.
+- Do not repeat the same question.
+- Do not generate questions outside the selected chapters.
+- Keep the standard appropriate to the selected board.
+- Follow the requested question type exactly.
+- For MCQ (Single), exactly one option must be correct.
+- For MCQ (Multiple), at least one option must be correct.
+- Keep distractors plausible.
+- Preserve mathematical notation clearly.
+
+${__ebBuildAIFormatRules()}
+
+Before finalising, silently verify that the TOTAL NUMBER and ORDER of generated question blocks exactly match the blueprint.
+
+Now generate the complete set of questions.
+`;
+
+    return prompt.trim();
+}
+
+
+/* =========================================================
+   OPEN AI USING SAME CHATGPT HANDOFF METHOD
+   ========================================================= */
+
+function __ebOpenAIQuestionGenerator(prompt) {
+
+    try {
+        navigator.clipboard
+            ?.writeText(prompt)
+            .catch(() => {});
+    } catch (_) {
+        // Clipboard is optional.
+    }
+
+    const url =
+        new URL('https://chatgpt.com/?');
+
+    url.searchParams.set(
+        'q',
+        prompt
+    );
+
+    const opened =
+        window.open(
+            url.toString(),
+            '_blank',
+            'noopener'
+        );
+
+    if (!opened) {
+        showToast(
+            'Popup blocked. Please allow popups and click Get Questions again.',
+            'error'
+        );
+
+        return;
+    }
+
+    showToast(
+        'AI question request opened. Generate the questions and paste them back here.',
+        'success'
+    );
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     auth.onAuthStateChanged(function(user) {
         if (!user) {
@@ -4404,7 +5332,79 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
                     docxStatus.textContent = `Read failed: ${err}`;
                 }
             });
-        })();
+               })();
+
+
+        /* =====================================================
+           AI GENERATE — GET QUESTIONS BUTTON
+           ===================================================== */
+
+        const aiGetQuestionsBtn =
+            document.getElementById(
+                'ai-get-questions-btn'
+            );
+
+        if (aiGetQuestionsBtn) {
+
+            aiGetQuestionsBtn.addEventListener(
+                'click',
+                function () {
+
+                    if (
+                        getSourceTypeGlobal() !==
+                        'AI Generate'
+                    ) {
+                        return;
+                    }
+
+                    const {
+                        errors,
+                        blueprint
+                    } =
+                        __ebCollectAIBlueprint();
+
+                    if (
+                        Array.isArray(errors) &&
+                        errors.length
+                    ) {
+
+                        showModalPrompt(
+                            `<b>Please complete the AI Generate setup:</b><br><br>` +
+                            `<ul style="text-align:left;">` +
+                            errors
+                                .map(
+                                    err =>
+                                        `<li>${err}</li>`
+                                )
+                                .join('') +
+                            `</ul>`
+                        );
+
+                        return;
+                    }
+
+                    const prompt =
+                        __ebBuildAIExamPrompt(
+                            blueprint
+                        );
+
+                    if (!prompt) {
+
+                        showToast(
+                            'Could not prepare the AI question request.',
+                            'error'
+                        );
+
+                        return;
+                    }
+
+                    __ebOpenAIQuestionGenerator(
+                        prompt
+                    );
+                }
+            );
+        }
+
 
         document.getElementById('exam-setup-form').addEventListener('submit', async function(event) {
             event.preventDefault();
