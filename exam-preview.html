@@ -1441,8 +1441,9 @@ function __epIsParagraphBasedQuestion(q = {}) {
   );
 }
 
-function __epIsMatchingMatrixQuestion(q = {}) {
+function __epIsMatchingListQuestion(q = {}) {
   const type = __epGetQuestionType(q);
+
   const rawText = String(
     q.question ||
     q.text ||
@@ -1453,6 +1454,34 @@ function __epIsMatchingMatrixQuestion(q = {}) {
     q.formattedHTML ||
     ''
   );
+
+  return (
+    (type.includes('matching') && type.includes('list')) ||
+    (
+      /List\s*[-–—]?\s*I\b/i.test(rawText) &&
+      /List\s*[-–—]?\s*II\b/i.test(rawText)
+    )
+  );
+}
+
+
+function __epIsMatchingMatrixQuestion(q = {}) {
+  const type = __epGetQuestionType(q);
+
+  const rawText = String(
+    q.question ||
+    q.text ||
+    q.body ||
+    q.html ||
+    q.renderedHTML ||
+    q.finalHTML ||
+    q.formattedHTML ||
+    ''
+  );
+
+  if (__epIsMatchingListQuestion(q)) {
+    return false;
+  }
 
   return (
     (type.includes('matching') && type.includes('matrix')) ||
@@ -1671,6 +1700,317 @@ function __epGetPlainQuestionText(q = {}) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+
+function __epParseMatchingList(q = {}) {
+
+  const cleaned =
+    __epGetPlainQuestionText(q)
+      .replace(
+        /\s*\bOptions\s*:?\s*[\s\S]*$/i,
+        ''
+      )
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+
+  const normalized =
+    cleaned
+      .replace(
+        /\bList\s*[-–—]?\s*I\b/gi,
+        ' '
+      )
+      .replace(
+        /\bList\s*[-–—]?\s*II\b/gi,
+        ' '
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+
+
+  const firstRowMatch =
+    normalized.match(
+      /\bP[\)\.:\-]\s*/i
+    );
+
+
+  let intro = '';
+  let listText = normalized;
+
+
+  if (
+    firstRowMatch &&
+    typeof firstRowMatch.index === 'number'
+  ) {
+
+    intro =
+      normalized
+        .slice(
+          0,
+          firstRowMatch.index
+        )
+        .trim();
+
+
+    listText =
+      normalized
+        .slice(
+          firstRowMatch.index
+        )
+        .trim();
+  }
+
+
+  /*
+    JEE Advanced Matching List:
+
+    List-I  = P Q R S
+    List-II = 1 2 3 4 5
+  */
+
+  const leftLabels =
+    ['P', 'Q', 'R', 'S'];
+
+  const rightLabels =
+    ['1', '2', '3', '4'];
+
+  const rows = [];
+
+
+  for (let i = 0; i < 4; i++) {
+
+    const left =
+      leftLabels[i];
+
+    const right =
+      rightLabels[i];
+
+    const nextLeft =
+      leftLabels[i + 1];
+
+
+    const endLookahead =
+      nextLeft
+        ? `(?=\\s+${nextLeft}[\\)\\.\\:\\-]\\s*)`
+        : `(?=\\s+5[\\)\\.\\:\\-]\\s*|$)`;
+
+
+    const pattern =
+      new RegExp(
+        `${left}[\\)\\.\\:\\-]\\s*([\\s\\S]*?)\\s+${right}[\\)\\.\\:\\-]\\s*([\\s\\S]*?)${endLookahead}`,
+        'i'
+      );
+
+
+    const match =
+      listText.match(pattern);
+
+
+    if (match) {
+
+      rows.push({
+
+        leftLabel:
+          left,
+
+        leftText:
+          match[1]
+            .replace(/\s+/g, ' ')
+            .trim(),
+
+        rightLabel:
+          right,
+
+        rightText:
+          match[2]
+            .replace(/\s+/g, ' ')
+            .trim()
+      });
+    }
+  }
+
+
+  /*
+    Fallback for unusual line wrapping.
+  */
+
+  if (!rows.length) {
+
+    const fallbackPattern =
+      /([P-S])[\)\.:\-]\s*([\s\S]*?)\s+([1-4])[\)\.:\-]\s*([\s\S]*?)(?=\s+[P-S][\)\.:\-]|\s+5[\)\.:\-]|$)/gi;
+
+
+    let match;
+
+
+    while (
+      (
+        match =
+          fallbackPattern.exec(
+            listText
+          )
+      ) !== null
+    ) {
+
+      rows.push({
+
+        leftLabel:
+          match[1].toUpperCase(),
+
+        leftText:
+          match[2]
+            .replace(/\s+/g, ' ')
+            .trim(),
+
+        rightLabel:
+          match[3],
+
+        rightText:
+          match[4]
+            .replace(/\s+/g, ' ')
+            .trim()
+      });
+    }
+  }
+
+
+  /*
+    Extra fifth entry in List-II.
+  */
+
+  let extraRightText = '';
+
+
+  const extraMatch =
+    listText.match(
+      /\s+5[\)\.:\-]\s*([\s\S]*?)$/i
+    );
+
+
+  if (extraMatch) {
+
+    extraRightText =
+      extraMatch[1]
+        .replace(/\s+/g, ' ')
+        .trim();
+  }
+
+
+  return {
+    intro,
+    rows,
+    extraRightLabel: '5',
+    extraRightText,
+    raw: cleaned
+  };
+}
+
+
+function __epRenderMatchingListBody(q = {}) {
+
+  const parsed =
+    __epParseMatchingList(q);
+
+
+  if (
+    parsed.rows.length !== 4 ||
+    !parsed.extraRightText
+  ) {
+
+    return `
+      <div class="matching-matrix-intro">
+        ${__epSafeText(parsed.raw)}
+      </div>
+    `;
+  }
+
+
+  return `
+    ${
+      parsed.intro
+        ? `
+          <div class="matching-matrix-intro">
+            ${__epSafeText(parsed.intro)}
+          </div>
+        `
+        : ''
+    }
+
+    <table class="matching-matrix-table">
+
+      <thead>
+        <tr>
+          <th>List-I</th>
+          <th>List-II</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        ${
+          parsed.rows.map(row => `
+            <tr>
+
+              <td>
+                <div class="matching-matrix-cell">
+
+                  <span class="matching-matrix-label">
+                    ${escapeHtml(row.leftLabel)})
+                  </span>
+
+                  <span class="matching-matrix-text">
+                    ${__epSafeText(row.leftText)}
+                  </span>
+
+                </div>
+              </td>
+
+              <td>
+                <div class="matching-matrix-cell">
+
+                  <span class="matching-matrix-label">
+                    ${escapeHtml(row.rightLabel)})
+                  </span>
+
+                  <span class="matching-matrix-text">
+                    ${__epSafeText(row.rightText)}
+                  </span>
+
+                </div>
+              </td>
+
+            </tr>
+          `).join('')
+        }
+
+
+        <tr>
+
+          <td></td>
+
+          <td>
+            <div class="matching-matrix-cell">
+
+              <span class="matching-matrix-label">
+                5)
+              </span>
+
+              <span class="matching-matrix-text">
+                ${__epSafeText(
+                  parsed.extraRightText
+                )}
+              </span>
+
+            </div>
+          </td>
+
+        </tr>
+
+      </tbody>
+
+    </table>
+  `;
+}
+
 
 function __epParseMatchingMatrix(q = {}) {
   const cleaned = __epGetPlainQuestionText(q)
@@ -2266,6 +2606,257 @@ function __epBuildParagraphPreviewQuestionHtml(
     </div>
   `;
 }
+function __epBuildMatchingListPreviewQuestionHtml(
+  q = {},
+  currentQNum = ''
+) {
+
+  const parsed =
+    __epParseMatchingList(q);
+
+
+  const optionLines =
+    __epBuildOptionLines(
+      q.options
+    );
+
+
+  const introText =
+    parsed.rows.length
+      ? parsed.intro
+      : parsed.raw;
+
+
+  const firstRow =
+    parsed.rows.length
+      ? parsed.rows[0]
+      : null;
+
+
+  const remainingRows =
+    parsed.rows.length > 1
+      ? parsed.rows.slice(1)
+      : [];
+
+
+  function renderListRow(row) {
+
+    return `
+      <div class="matching-flow-row">
+
+        <div class="matching-flow-cell">
+
+          <span class="matching-matrix-label">
+            ${escapeHtml(row.leftLabel)})
+          </span>
+
+          <span class="matching-matrix-text">
+            ${__epSafeText(row.leftText)}
+          </span>
+
+        </div>
+
+
+        <div class="matching-flow-cell">
+
+          <span class="matching-matrix-label">
+            ${escapeHtml(row.rightLabel)})
+          </span>
+
+          <span class="matching-matrix-text">
+            ${__epSafeText(row.rightText)}
+          </span>
+
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  function renderExtraListII() {
+
+    if (!parsed.extraRightText) {
+      return '';
+    }
+
+    return `
+      <div class="matching-flow-row">
+
+        <div class="matching-flow-cell"></div>
+
+        <div class="matching-flow-cell">
+
+          <span class="matching-matrix-label">
+            5)
+          </span>
+
+          <span class="matching-matrix-text">
+            ${__epSafeText(
+              parsed.extraRightText
+            )}
+          </span>
+
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  const imageHTML =
+    q.image
+      ? `
+        <div
+          class="
+            matching-image-piece
+            exam-flow-piece
+          "
+          data-exam-flow-piece="matching-image">
+
+          <div class="question-img-block">
+
+            <img
+              class="question-img"
+              src="${q.image}"
+              alt="Question Image">
+
+          </div>
+
+        </div>
+      `
+      : '';
+
+
+  return `
+    <div
+      class="
+        matching-set-preview
+        exam-splittable-flow
+      ">
+
+
+      <div
+        class="
+          matching-first-piece
+          exam-flow-piece
+        "
+        data-exam-flow-piece="matching-first">
+
+
+        <div class="question-number">
+          ${currentQNum}.
+        </div>
+
+
+        <div class="question-body">
+
+          ${
+            introText
+              ? `
+                <div class="matching-matrix-intro">
+                  ${__epSafeText(introText)}
+                </div>
+              `
+              : ''
+          }
+
+
+          ${
+            parsed.rows.length
+              ? `
+                <div class="matching-flow-head">
+                  <div>List-I</div>
+                  <div>List-II</div>
+                </div>
+
+                ${renderListRow(firstRow)}
+              `
+              : ''
+          }
+
+        </div>
+
+      </div>
+
+
+      ${
+        remainingRows.map(
+          row => `
+            <div
+              class="
+                matching-row-piece
+                exam-flow-piece
+              "
+              data-exam-flow-piece="matching-row">
+
+              ${renderListRow(row)}
+
+            </div>
+          `
+        ).join('')
+      }
+
+
+      ${
+        parsed.extraRightText
+          ? `
+            <div
+              class="
+                matching-row-piece
+                exam-flow-piece
+              "
+              data-exam-flow-piece="matching-row">
+
+              ${renderExtraListII()}
+
+            </div>
+          `
+          : ''
+      }
+
+
+      ${imageHTML}
+
+
+      ${
+        optionLines.length
+          ? `
+            <div
+              class="
+                matching-options-label-piece
+                exam-flow-piece
+              "
+              data-exam-flow-piece="matching-options-label">
+
+              Options:
+
+            </div>
+
+
+            <div
+              class="
+                matching-options-piece
+                options-block
+                exam-flow-piece
+              "
+              data-exam-flow-piece="matching-options"
+
+              data-options="${
+                encodeURIComponent(
+                  JSON.stringify(optionLines)
+                )
+              }">
+            </div>
+          `
+          : ''
+      }
+
+    </div>
+  `;
+}
+
+
 function __epBuildMatchingMatrixPreviewQuestionHtml(
   q = {},
   currentQNum = ''
@@ -2466,6 +3057,134 @@ function __epBuildParagraphAnswerKeyHtml(q = {}, subjectName = '') {
     </div>
   `;
 }
+
+function __epBuildMatchingListAnswerKeyHtml(
+  q = {},
+  subjectName = ''
+) {
+
+  const qNo =
+    String(
+      q.number || ''
+    ).replace(/\.$/, '');
+
+
+  const optionLines =
+    __epBuildOptionLines(
+      q.options
+    );
+
+
+  const answerHTML =
+    formatAnswerKeyAnswerHtml(
+      q.answer,
+      subjectName
+    );
+
+
+  const explanationHTML =
+    formatAnswerKeyExplanationHtml(
+      q.explanation,
+      q.answer,
+      subjectName
+    );
+
+
+  return `
+    <div
+      class="question-container"
+      style="margin-bottom:16px;">
+
+      <div class="question-number">
+        ${qNo ? qNo + '.' : ''}
+      </div>
+
+
+      <div class="question-body">
+
+        ${__epRenderMatchingListBody(q)}
+
+
+        ${
+          optionLines.length
+            ? `
+              <div style="
+                font-weight:700;
+                color:#163A63;
+                margin:4px 0 3px 0;
+              ">
+                Options:
+              </div>
+
+              <div
+                class="options-block"
+                data-options="${
+                  encodeURIComponent(
+                    JSON.stringify(
+                      optionLines
+                    )
+                  )
+                }">
+              </div>
+            `
+            : ''
+        }
+
+
+        ${
+          answerHTML
+            ? `
+              <div style="
+                margin-top:6px;
+                color:#7A2230;
+                font-weight:700;
+                font-size:1.04em;
+              ">
+
+                Answer:
+                <span style="
+                  color:#111111;
+                  font-weight:400;
+                ">
+                  ${answerHTML}
+                </span>
+
+              </div>
+            `
+            : ''
+        }
+
+
+        ${
+          explanationHTML
+            ? `
+              <div style="
+                margin-top:6px;
+                color:#7A2230;
+                font-weight:700;
+                font-size:1.04em;
+              ">
+                Explanation:
+              </div>
+
+              <div style="
+                margin-top:2px;
+                line-height:1.35;
+                color:#111111;
+                padding-left:22px;
+              ">
+                ${explanationHTML}
+              </div>
+            `
+            : ''
+        }
+
+      </div>
+
+    </div>
+  `;
+}
+
 
 function __epBuildMatchingMatrixAnswerKeyHtml(q = {}, subjectName = '') {
   const qNo = String(q.number || '').replace(/\.$/, '');
@@ -2950,12 +3669,42 @@ function buildAnswerKeyQuestionHtml(q, subjectName = '') {
     mcqType: q.mcqType || q.type || q.questionType || ''
   };
 
-  if (__epIsParagraphBasedQuestion(qForRender)) {
-    return __epBuildParagraphAnswerKeyHtml(qForRender, subjectName);
+    if (
+    __epIsParagraphBasedQuestion(
+      qForRender
+    )
+  ) {
+
+    return __epBuildParagraphAnswerKeyHtml(
+      qForRender,
+      subjectName
+    );
   }
 
-  if (__epIsMatchingMatrixQuestion(qForRender)) {
-    return __epBuildMatchingMatrixAnswerKeyHtml(qForRender, subjectName);
+
+  if (
+    __epIsMatchingListQuestion(
+      qForRender
+    )
+  ) {
+
+    return __epBuildMatchingListAnswerKeyHtml(
+      qForRender,
+      subjectName
+    );
+  }
+
+
+  if (
+    __epIsMatchingMatrixQuestion(
+      qForRender
+    )
+  ) {
+
+    return __epBuildMatchingMatrixAnswerKeyHtml(
+      qForRender,
+      subjectName
+    );
   }
 
   const qNo = String(q.number || '').replace(/\.$/, '');
@@ -4671,11 +5420,32 @@ function renderPrintPreview() {
       return html;
     }
 
-    if (__epIsMatchingMatrixQuestion(q)) {
-      qNum = currentQNum + 1;
-      return __epBuildMatchingMatrixPreviewQuestionHtml(q, currentQNum);
+       if (
+      __epIsMatchingListQuestion(q)
+    ) {
+
+      qNum =
+        currentQNum + 1;
+
+      return __epBuildMatchingListPreviewQuestionHtml(
+        q,
+        currentQNum
+      );
     }
 
+
+    if (
+      __epIsMatchingMatrixQuestion(q)
+    ) {
+
+      qNum =
+        currentQNum + 1;
+
+      return __epBuildMatchingMatrixPreviewQuestionHtml(
+        q,
+        currentQNum
+      );
+    }
     qNum = currentQNum + 1;
 
     let questionContentHTML = '';
@@ -4828,9 +5598,35 @@ if (section.questions && section.questions.length > 0) {
       return html;
     }
 
-    if (__epIsMatchingMatrixQuestion(qForPreviewRender)) {
-      qNum = currentQNum + 1;
-      return __epBuildMatchingMatrixPreviewQuestionHtml(qForPreviewRender, currentQNum);
+        if (
+      __epIsMatchingListQuestion(
+        qForPreviewRender
+      )
+    ) {
+
+      qNum =
+        currentQNum + 1;
+
+      return __epBuildMatchingListPreviewQuestionHtml(
+        qForPreviewRender,
+        currentQNum
+      );
+    }
+
+
+    if (
+      __epIsMatchingMatrixQuestion(
+        qForPreviewRender
+      )
+    ) {
+
+      qNum =
+        currentQNum + 1;
+
+      return __epBuildMatchingMatrixPreviewQuestionHtml(
+        qForPreviewRender,
+        currentQNum
+      );
     }
 
     qNum = currentQNum + 1;
