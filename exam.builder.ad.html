@@ -1340,6 +1340,541 @@ function allocateSequentiallyAcrossSections(
   }
 
 
+   /* =====================================================
+     PARAGRAPH-BASED MCQ PARSER
+     ===================================================== */
+
+  function parseParagraphFinalBlock(
+    input,
+    marks,
+    shouldShuffleOptions
+  ) {
+
+    let raw = stripLead(input)
+      .replace(/```(?:text|plaintext|latex|tex)?/gi, '')
+      .replace(/```/g, '')
+      .replace(/\r/g, '')
+      .trim();
+
+
+    /* -----------------------------------------
+       FIND SUB-QUESTION MARKERS
+       ----------------------------------------- */
+
+    let markerRegex =
+      /^\s*Sub-question\s*\(([ivx]+|\d+)\)\s*:\s*/gmi;
+
+    let markers =
+      Array.from(
+        raw.matchAll(markerRegex)
+      );
+
+
+    /* Fallback: allow plain (i), (ii), etc. */
+
+    if (!markers.length) {
+
+      markerRegex =
+        /^\s*\(([ivx]+|\d+)\)\s*/gmi;
+
+      markers =
+        Array.from(
+          raw.matchAll(markerRegex)
+        );
+    }
+
+
+    if (!markers.length) {
+      return null;
+    }
+
+
+    /* -----------------------------------------
+       PASSAGE
+       ----------------------------------------- */
+
+    let passage =
+      raw
+        .slice(
+          0,
+          markers[0].index
+        )
+        .trim();
+
+
+    passage = passage
+      .replace(
+        /^\s*Read\s+the\s+following\s+passage\s+and\s+answer\s+the\s+questions\s*:?\s*/i,
+        ''
+      )
+      .replace(
+        /^\s*Passage\s*:\s*/i,
+        ''
+      )
+      .trim();
+
+
+    if (!passage) {
+      return null;
+    }
+
+
+    /* -----------------------------------------
+       SUB-QUESTIONS
+       ----------------------------------------- */
+
+    const mcqs = [];
+
+
+    markers.forEach(
+      (marker, subIndex) => {
+
+        const start =
+          marker.index +
+          marker[0].length;
+
+        const end =
+          subIndex + 1 < markers.length
+            ? markers[subIndex + 1].index
+            : raw.length;
+
+
+        const block =
+          raw
+            .slice(start, end)
+            .trim();
+
+
+        if (!block) {
+          return;
+        }
+
+
+        const parsed =
+          parseFinalQuestionBlock(
+            block
+          );
+
+
+        if (
+          !parsed ||
+          !parsed.stem ||
+          !Array.isArray(parsed.options) ||
+          parsed.options.length !== 4
+        ) {
+          return;
+        }
+
+
+        let subOptions =
+          parsed.options.slice();
+
+        let subAnswerLetters =
+          parsed.answerLetters.slice();
+
+
+        /* -------------------------------------
+           SHUFFLE EACH SUB-QUESTION'S OPTIONS
+           ------------------------------------- */
+
+        if (shouldShuffleOptions) {
+
+          const shuffled =
+            shuffleMCQQuestion({
+              question: parsed.stem,
+              options: subOptions,
+              answer: subAnswerLetters
+            });
+
+
+          if (
+            Array.isArray(shuffled.options) &&
+            shuffled.options.length === 4
+          ) {
+            subOptions =
+              shuffled.options;
+          }
+
+
+          subAnswerLetters =
+            extractAnswerLetters(
+              shuffled.answer
+            );
+        }
+
+
+        const subAnswer =
+          (subAnswerLetters || [])
+            .join(',');
+
+
+        mcqs.push({
+
+          question:
+            parsed.stem,
+
+          text:
+            parsed.stem,
+
+          body: [
+            parsed.stem,
+            ...subOptions.map(
+              (option, optionIndex) =>
+                `${String.fromCharCode(65 + optionIndex)}) ${option}`
+            )
+          ].join('\n'),
+
+          options:
+            subOptions,
+
+          answer:
+            subAnswer,
+
+          parsedAnswer:
+            subAnswer,
+
+          finalAnswer:
+            subAnswer,
+
+          explanation:
+            parsed.explanation,
+
+          solution:
+            parsed.explanation
+        });
+      }
+    );
+
+
+    if (
+      !mcqs.length ||
+      mcqs.length !== markers.length
+    ) {
+      return null;
+    }
+
+
+    const paragraphRecord = {
+      passage,
+      mcqs
+    };
+
+
+    const plainText =
+      typeof __ebBuildParagraphPlainText === 'function'
+        ? __ebBuildParagraphPlainText(
+            paragraphRecord
+          )
+        : [
+            'Read the following passage and answer the questions:',
+            'Passage:',
+            passage,
+            '',
+            ...mcqs.flatMap(
+              (mcq, subIndex) => [
+                `(${subIndex + 1}) ${mcq.question}`,
+                ...mcq.options.map(
+                  (option, optionIndex) =>
+                    `${String.fromCharCode(65 + optionIndex)}) ${option}`
+                ),
+                ''
+              ]
+            )
+          ].join('\n').trim();
+
+
+    return {
+
+      number: 0,
+
+      text:
+        plainText,
+
+      question:
+        plainText,
+
+      body:
+        plainText,
+
+      passage,
+
+      mcqs,
+
+      marks:
+        marks,
+
+      options:
+        [],
+
+      answer:
+        '',
+
+      parsedAnswer:
+        '',
+
+      finalAnswer:
+        '',
+
+      explanation:
+        '',
+
+      solution:
+        '',
+
+      type:
+        'Paragraph-Based MCQ (Single Correct)',
+
+      mcqType:
+        'Paragraph-Based MCQ (Single Correct)'
+    };
+  }
+
+
+  /* =====================================================
+     MATCHING MATRIX / MATCHING LIST PARSER
+     ===================================================== */
+
+  function parseMatchingFinalBlock(
+    input,
+    matchingType,
+    marks,
+    shouldShuffleOptions
+  ) {
+
+    let raw = stripLead(input)
+      .replace(/```(?:text|plaintext|latex|tex)?/gi, '')
+      .replace(/```/g, '')
+      .replace(/\r/g, '')
+      .trim();
+
+
+    let explanation = '';
+    let answerLetters = [];
+
+
+    /* -----------------------------------------
+       EXPLANATION
+       ----------------------------------------- */
+
+    const explanationMatch =
+      raw.match(
+        /(?:^|\n)\s*Explanation\s*:\s*([\s\S]*)$/i
+      );
+
+
+    if (explanationMatch) {
+
+      explanation =
+        explanationMatch[1]
+          .trim();
+
+
+      raw =
+        raw
+          .slice(
+            0,
+            explanationMatch.index
+          )
+          .trim();
+    }
+
+
+    /* -----------------------------------------
+       ANSWER
+       ----------------------------------------- */
+
+    const answerMatch =
+      raw.match(
+        /(?:^|\n)\s*Ans(?:wer)?\s*:\s*([A-D](?:\s*,\s*[A-D])*)\s*$/i
+      );
+
+
+    if (answerMatch) {
+
+      answerLetters =
+        extractAnswerLetters(
+          answerMatch[1]
+        );
+
+
+      raw =
+        raw
+          .slice(
+            0,
+            answerMatch.index
+          )
+          .trim();
+    }
+
+
+    /* -----------------------------------------
+       OPTIONS MARKER
+       ----------------------------------------- */
+
+    const optionsMarker =
+      raw.match(
+        /(?:^|\n)\s*Options\s*:\s*/i
+      );
+
+
+    if (!optionsMarker) {
+      return null;
+    }
+
+
+    const stem =
+      raw
+        .slice(
+          0,
+          optionsMarker.index
+        )
+        .trim();
+
+
+    const optionsRegion =
+      raw
+        .slice(
+          optionsMarker.index +
+          optionsMarker[0].length
+        )
+        .trim();
+
+
+    if (!stem || !optionsRegion) {
+      return null;
+    }
+
+
+    /* -----------------------------------------
+       IMPORTANT:
+       Extract A-D ONLY from the Options region.
+
+       This prevents Column-I A-D labels from
+       being mistaken for answer choices.
+       ----------------------------------------- */
+
+    const extracted =
+      extractMCQOptions({
+        question:
+          optionsRegion
+      });
+
+
+    if (
+      !Array.isArray(extracted) ||
+      extracted.length !== 4
+    ) {
+      return null;
+    }
+
+
+    let options =
+      extracted.map(
+        cleanOption
+      );
+
+
+    let outAnswerLetters =
+      answerLetters.slice();
+
+
+    /* -----------------------------------------
+       SHUFFLE ANSWER CHOICES SAFELY
+       ----------------------------------------- */
+
+    if (shouldShuffleOptions) {
+
+      const shuffled =
+        shuffleMCQQuestion({
+          question:
+            stem,
+
+          options:
+            options,
+
+          answer:
+            outAnswerLetters
+        });
+
+
+      if (
+        Array.isArray(shuffled.options) &&
+        shuffled.options.length === 4
+      ) {
+        options =
+          shuffled.options;
+      }
+
+
+      outAnswerLetters =
+        extractAnswerLetters(
+          shuffled.answer
+        );
+    }
+
+
+    const answer =
+      (outAnswerLetters || [])
+        .join(',');
+
+
+    return {
+
+      number: 0,
+
+      text:
+        stem,
+
+      question:
+        stem,
+
+      body: [
+        stem,
+        'Options:',
+        ...options.map(
+          (option, optionIndex) =>
+            `${String.fromCharCode(65 + optionIndex)}) ${option}`
+        )
+      ].join('\n'),
+
+      marks:
+        marks,
+
+      options:
+        options,
+
+      answer:
+        answer,
+
+      parsedAnswer:
+        answer,
+
+      finalAnswer:
+        answer,
+
+      explanation:
+        toReviewHtml(
+          explanation
+        ),
+
+      solution:
+        toReviewHtml(
+          explanation
+        ),
+
+      type:
+        matchingType,
+
+      mcqType:
+        matchingType
+    };
+  }
+
+
+  /* =====================================================
+     INTERNAL CHOICE DISPLAY
+     ===================================================== */
+
   function buildInternalAlternativeText(parsed) {
 
     if (
@@ -1496,10 +2031,101 @@ function allocateSequentiallyAcrossSections(
         }
 
 
-        const parsed = parseFinalQuestionBlock(
-          pool[index++]
-        );
+               const rawSourceBlock =
+          pool[index++];
 
+
+        /* ========================================
+           PARAGRAPH-BASED MCQ
+           ======================================== */
+
+        if (
+          sec.mcqType ===
+          'Paragraph-Based MCQ (Single Correct)'
+        ) {
+
+          const paragraphQuestion =
+            parseParagraphFinalBlock(
+              rawSourceBlock,
+              marks,
+              shuffleOptions
+            );
+
+
+          if (!paragraphQuestion) {
+
+            errors.push(
+              `${subj.subject} - ${sec.label}: ` +
+              `Paragraph-Based MCQ could not be parsed. ` +
+              `Use Passage:, Sub-question (i):, A-D, Ans: and Explanation:.`
+            );
+
+            continue;
+          }
+
+
+          paragraphQuestion.number =
+            i + 1;
+
+
+          pick.push(
+            paragraphQuestion
+          );
+
+          continue;
+        }
+
+
+        /* ========================================
+           MATCHING MATRIX / MATCHING LIST
+           ======================================== */
+
+        if (
+          sec.mcqType === 'Matching Matrix' ||
+          sec.mcqType === 'Matching List'
+        ) {
+
+          const matchingQuestion =
+            parseMatchingFinalBlock(
+              rawSourceBlock,
+              sec.mcqType,
+              marks,
+              shuffleOptions
+            );
+
+
+          if (!matchingQuestion) {
+
+            errors.push(
+              `${subj.subject} - ${sec.label}: ` +
+              `${sec.mcqType} could not be parsed. ` +
+              `The final set must contain an Options: line followed by four A-D choices.`
+            );
+
+            continue;
+          }
+
+
+          matchingQuestion.number =
+            i + 1;
+
+
+          pick.push(
+            matchingQuestion
+          );
+
+          continue;
+        }
+
+
+        /* ========================================
+           ALL NORMAL QUESTION TYPES
+           ======================================== */
+
+        const parsed =
+          parseFinalQuestionBlock(
+            rawSourceBlock
+          );
 
         /* ========================================
            MCQ
@@ -4870,57 +5496,94 @@ Level 3 = Higher-order thinking within the syllabus.
     }
 
 
-    if (b === 'jee main') {
+      if (b === 'jee main') {
 
         return `
 JEE MAIN STANDARD — STRICT:
 
 - Generate ORIGINAL JEE Main-standard questions.
-- Do not copy previous-year questions.
-- Match JEE Main conceptual depth, solving style and examination speed.
-- Do not convert simple school questions into JEE questions merely by making numbers larger.
-- Avoid unnecessary lengthy calculations.
-- Stay strictly within the selected chapters.
+- Do not copy or closely reproduce previous-year questions.
+- Match genuine JEE Main conceptual depth, solving style and examination speed.
+- Questions must require appropriate JEE Main-level understanding and application.
+- Do not convert simple school questions into JEE questions merely by increasing the numerical values.
+- Avoid artificial tricks.
+- Avoid unnecessarily lengthy calculations.
+- Stay strictly within the selected chapter(s).
 
-For MCQ (Single):
-- Exactly one option must be correct.
+MCQ (Single):
+- Exactly four options A), B), C), D).
+- Exactly ONE option must be correct.
+- Distractors must be plausible and based on likely conceptual or calculation errors.
+- Do not make the correct option obvious by wording, length or structure.
 
-For Numerical Value:
-- The problem must naturally lead to a numerical response.
+Numerical Value:
+- The question must naturally require a numerical response.
+- Do NOT convert an ordinary MCQ into Numerical Value merely by removing the options.
+- Solve the question completely before fixing the answer.
+- For JEE Main 2026 style, the final numerical response must be rounded to the nearest integer where required.
+- The final Answer: field must contain only the required integer value.
+- Do not include units, explanation or extra words in the Answer: field.
+- Put all working under Explanation:.
 
-Do not print Level 1 / Level 2 / Level 3 labels in the output.
+IMPORTANT:
+- Do not use Level 1 / Level 2 / Level 3 terminology for JEE Main.
+- Do not print difficulty labels in the generated questions.
 `;
     }
 
 
-    if (b === 'jee advanced') {
+       if (b === 'jee advanced') {
 
         return `
 JEE ADVANCED STANDARD — STRICT:
 
 - Generate ORIGINAL JEE Advanced-standard questions.
 - Do not copy or closely reproduce previous-year questions.
-- Questions must require genuine conceptual and analytical reasoning.
-- Prefer linked concepts, hidden constraints, case analysis or non-obvious reasoning where appropriate.
-- Do not create artificial tricks or unnecessary computation.
-- Stay strictly within the selected chapters.
+- Questions must require genuine conceptual depth, analytical reasoning and non-routine application.
+- Prefer linked concepts, hidden constraints, case analysis, multiple conditions or non-obvious reasoning where naturally appropriate.
+- A difficult question must be difficult because of reasoning, not because of unnecessarily large calculations.
+- Do not create artificial tricks.
+- Stay strictly within the selected chapter(s).
 
 MCQ (Single):
-- Exactly one correct option.
+- Exactly four options A), B), C), D).
+- Exactly ONE option must be correct.
+- Distractors must be technically plausible.
 
 MCQ (Multiple):
-- One or more options may be correct naturally.
+- Exactly four options A), B), C), D).
+- ONE OR MORE options may be correct.
+- The number of correct options must arise naturally from the concept.
+- Do not artificially force multiple correct answers.
+- Verify every option independently before deciding the final answer.
 
 Numerical Value:
-- Must naturally require a numerical response.
+- The problem must naturally require a numerical response.
+- Do NOT create an ordinary MCQ and merely remove its options.
+- Follow the numerical-answer requirement stated in the question.
+- The Answer: field must contain only the required final numerical value.
+- Put all reasoning and calculation under Explanation:.
 
 Matching List:
-- Every relationship must be independently correct.
+- Use JEE Advanced-style Matching List only.
+- List-I must contain exactly FOUR entries:
+  P), Q), R), S).
+- List-II must contain exactly FIVE entries:
+  1), 2), 3), 4), 5).
+- The fifth List-II entry is compulsory.
+- List-II is therefore intentionally ONE ITEM LONGER than List-I.
+- Each P/Q/R/S item must match exactly one appropriate List-II entry for this question model.
+- Give exactly four answer choices A), B), C), D).
+- Every answer choice must give a COMPLETE matching combination for P, Q, R and S.
+- Exactly ONE of the four complete combinations must be correct.
+- Every individual relationship must be verified before finalising the answer.
+- Distractor combinations must be plausible.
 
-Do not print Level 1 / Level 2 / Level 3 labels in the output.
+IMPORTANT:
+- Do not use Level 1 / Level 2 / Level 3 terminology for JEE Advanced.
+- Do not print difficulty labels in the generated questions.
 `;
     }
-
 
     if (b === 'ap eapcet') {
 
@@ -5148,20 +5811,102 @@ Explanation:
 <Explanation>
 
 =========================================================
-MATCHING MATRIX / MATCHING LIST
+MATCHING MATRIX
 =========================================================
+
+Matching Matrix is the Foundation / normal 4 × 4 matching format.
 
 Use exactly:
 
 Q<num>:
-<matching content>
-A) ...
-B) ...
-C) ...
-D) ...
-Ans: <one correct letter>
+Match the following:
+Column I                    Column II
+A) <Item A>                 P) <Item P>
+B) <Item B>                 Q) <Item Q>
+C) <Item C>                 R) <Item R>
+D) <Item D>                 S) <Item S>
+
+Options:
+A) A-P, B-Q, C-R, D-S
+B) A-<letter>, B-<letter>, C-<letter>, D-<letter>
+C) A-<letter>, B-<letter>, C-<letter>, D-<letter>
+D) A-<letter>, B-<letter>, C-<letter>, D-<letter>
+
+Ans: <one correct option letter>
 Explanation:
 <Explanation>
+
+MATCHING MATRIX RULES:
+
+- Column I must contain exactly A), B), C), D).
+- Column II must contain exactly P), Q), R), S).
+- This is a 4 × 4 matching structure.
+- Do NOT add a fifth item to Column II.
+- The line "Options:" is compulsory.
+- Put "Options:" on its own line.
+- The A), B), C), D) before Options: are Column-I row labels.
+- The A), B), C), D) after Options: are answer-choice labels.
+- Give exactly four complete answer choices.
+- Exactly ONE answer choice must be correct.
+- Ans: must contain only the correct option letter.
+- Explanation: must explain the correct relationships.
+
+=========================================================
+MATCHING LIST — JEE ADVANCED
+=========================================================
+
+Matching List is DIFFERENT from Matching Matrix.
+
+It uses FOUR items in List-I and FIVE items in List-II.
+
+Use exactly:
+
+Q<num>:
+Match the following:
+List-I                      List-II
+P) <Item P>                 1) <Item 1>
+Q) <Item Q>                 2) <Item 2>
+R) <Item R>                 3) <Item 3>
+S) <Item S>                 4) <Item 4>
+                            5) <Item 5>
+
+Options:
+A) P-<number>, Q-<number>, R-<number>, S-<number>
+B) P-<number>, Q-<number>, R-<number>, S-<number>
+C) P-<number>, Q-<number>, R-<number>, S-<number>
+D) P-<number>, Q-<number>, R-<number>, S-<number>
+
+Ans: <one correct option letter>
+Explanation:
+<Explanation>
+
+MATCHING LIST RULES:
+
+- Use this format for JEE Advanced Matching List.
+- List-I must contain exactly:
+  P), Q), R), S).
+- List-II must contain exactly:
+  1), 2), 3), 4), 5).
+- List-II must have FIVE entries.
+- The fifth entry 5) is compulsory.
+- Do NOT reduce List-II to four entries.
+- Do NOT use A), B), C), D) as List-I labels.
+- Do NOT use P), Q), R), S) as List-II labels.
+- A), B), C), D) must be used ONLY for the four answer choices after "Options:".
+- Every answer choice must contain a complete mapping of P, Q, R and S.
+- A mapping may use any appropriate item from 1), 2), 3), 4), 5).
+- Exactly ONE complete answer combination must be correct.
+- Distractor combinations must be plausible.
+- Verify every P/Q/R/S relationship independently.
+- Ans: must contain only the correct answer-choice letter.
+- Explanation: must explain the correct matching relationships.
+
+IMPORTANT FOR BOTH FORMATS:
+
+- "Options:" must always appear on its own line.
+- Do not mix the matching data with the answer choices.
+- Do not omit Ans:.
+- Do not omit Explanation:.
 
 =========================================================
 NUMERICAL VALUE
@@ -5206,13 +5951,52 @@ Explanation:
 PARAGRAPH-BASED MCQ
 =========================================================
 
-- Treat each required passage set as ONE main Q<num> block.
-- Put the passage and all its sub-questions inside the same main question block.
-- Do NOT create new Q<num> numbers for the sub-questions.
-- Use (i), (ii), (iii), etc. for sub-questions.
-- Each sub-question must contain A), B), C), D).
-- Each sub-question must contain its Ans: line.
-- Each sub-question must contain its Explanation: line.
+Treat each complete passage set as ONE main Q<num> block.
+
+Use exactly this structure:
+
+Q<num>:
+Passage:
+<complete passage>
+
+Sub-question (i):
+<question>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <one correct letter>
+Explanation:
+<Explanation>
+
+Sub-question (ii):
+<question>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <one correct letter>
+Explanation:
+<Explanation>
+
+If more sub-questions are required, continue with:
+
+Sub-question (iii):
+Sub-question (iv):
+
+and so on.
+
+IMPORTANT:
+
+- Use only ONE main Q<num>: for the entire passage set.
+- Do NOT give Q numbers to the sub-questions.
+- "Passage:" must appear on its own line.
+- Write "Sub-question (i):", "Sub-question (ii):", etc. exactly.
+- Every sub-question must have exactly four options A), B), C), D).
+- Every sub-question must have its own Ans:.
+- Every sub-question must have its own Explanation:.
+- Do NOT give one common Answer or Explanation for the whole passage.
+- Each paragraph MCQ sub-question is single-correct unless the blueprint says otherwise.
 
 =========================================================
 EXPLANATION RULES
