@@ -1150,8 +1150,14 @@ function parsePastedQuestionsToPool(raw) {
   } else {
     text = text.replace(/\r/g, '').trim();
   }
-  if (!text) return [];
 
+  // Remove Markdown copy-code fences without touching LaTeX.
+  text = text
+    .replace(/```(?:text|plaintext|latex|tex)?\s*/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  if (!text) return [];
   const lines = text.split('\n');
   const merged = [];
   for (let i = 0; i < lines.length; i++) {
@@ -1186,138 +1192,428 @@ function parsePastedQuestionsToPool(raw) {
   return blocks;
 }
 
-function allocateSequentiallyAcrossSections(subjectsData, pool, { shuffleQuestions = true, shuffleOptions = true } = {}) {
+function allocateSequentiallyAcrossSections(
+  subjectsData,
+  pool,
+  {
+    shuffleQuestions = true,
+    shuffleOptions = true
+  } = {}
+) {
+
   const errors = [];
   let index = 0;
+
   const stripLead = s =>
     String(s || '')
-        .replace(/^\s*(?:Q\.?\s*)?\d+(?:[.:)]|\s)\s*/, '')
+      .replace(/^\s*(?:Q\.?\s*)?\d+(?:[.:)]|\s)\s*/, '')
+      .trim();
+
+
+  function toReviewHtml(value) {
+    return String(value || '')
+      .replace(/\r/g, '')
+      .replace(/```(?:text|plaintext|latex|tex)?/gi, '')
+      .replace(/```/g, '')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .join('<br>');
+  }
+
+
+  function cleanOption(option) {
+    return String(option || '')
+      .replace(/^[A-D][)\.]\s*/i, '')
+      .replace(/\s+[A-D][)\.]?\s*$/i, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+
+  function parseFinalQuestionBlock(input) {
+
+    let raw = stripLead(input)
+      .replace(/```(?:text|plaintext|latex|tex)?/gi, '')
+      .replace(/```/g, '')
+      .trim();
+
+    let explanation = '';
+    let answerText = '';
+    let answerLetters = [];
+
+
+    /* ==========================================
+       EXPLANATION
+       ========================================== */
+
+    const explanationMatch = raw.match(
+      /(?:^|\n)\s*Explanation\s*:\s*([\s\S]*)$/i
+    );
+
+    if (explanationMatch) {
+      explanation = explanationMatch[1].trim();
+
+      raw = raw
+        .slice(0, explanationMatch.index)
+        .trim();
+    }
+
+
+    /* ==========================================
+       MCQ ANSWER
+       ========================================== */
+
+    const mcqAnswerMatch = raw.match(
+      /(?:^|\n)\s*Ans(?:wer)?\s*:\s*([A-D](?:\s*,\s*[A-D])*)\s*$/i
+    );
+
+    if (mcqAnswerMatch) {
+
+      answerLetters = extractAnswerLetters(
+        mcqAnswerMatch[1]
+      );
+
+      raw = raw
+        .slice(0, mcqAnswerMatch.index)
         .trim();
 
+    } else {
+
+      /* ========================================
+         DESCRIPTIVE / NUMERICAL / FILL ANSWER
+         ======================================== */
+
+      const textAnswerMatch = raw.match(
+        /(?:^|\n)\s*Answer\s*:\s*([\s\S]*)$/i
+      );
+
+      if (textAnswerMatch) {
+
+        answerText = textAnswerMatch[1].trim();
+
+        raw = raw
+          .slice(0, textAnswerMatch.index)
+          .trim();
+      }
+    }
+
+
+    /* ==========================================
+       OPTIONS
+       ========================================== */
+
+    const extracted = extractMCQOptions({
+      question: raw
+    });
+
+    let stem = raw;
+    let options = [];
+
+
+    if (
+      Array.isArray(extracted) &&
+      extracted.length === 4
+    ) {
+
+      options = extracted.map(cleanOption);
+
+      const optionStart = stem.search(
+        /(^|\s)A[)\.]\s/i
+      );
+
+      if (optionStart !== -1) {
+        stem = stem
+          .slice(0, optionStart)
+          .trim();
+      }
+    }
+
+
+    return {
+      stem,
+      options,
+      answerLetters,
+      answerText: toReviewHtml(answerText),
+      explanation: toReviewHtml(explanation)
+    };
+  }
+
+
+  function buildInternalAlternativeText(parsed) {
+
+    if (
+      !Array.isArray(parsed.options) ||
+      parsed.options.length !== 4
+    ) {
+      return parsed.stem;
+    }
+
+    return [
+      parsed.stem,
+      `A) ${parsed.options[0]}`,
+      `B) ${parsed.options[1]}`,
+      `C) ${parsed.options[2]}`,
+      `D) ${parsed.options[3]}`
+    ].join('<br>');
+  }
+
+
   for (const subj of subjectsData) {
+
     for (const sec of subj.sections) {
+
+
+      /* ==========================================
+         INTERNAL CHOICE
+         ========================================== */
+
       if (sec.type === 'internal') {
-        const needPairs = Number(sec.numPairs || 0);
-        const marks = Number(sec.marksPerQuestion || 0);
+
+        const needPairs = Number(
+          sec.numPairs || 0
+        );
+
+        const marks = Number(
+          sec.marksPerQuestion || 0
+        );
+
         const pairs = [];
 
-        const takeCleanStem = () => {
-          if (index >= pool.length) return null;
-          const rawBlock = stripLead(pool[index++]) || '';
-          let stem = rawBlock.replace(/\bAns?\s*:\s*.*$/i, '').trim();
 
-          const extracted = extractMCQOptions({ question: rawBlock });
-          if (Array.isArray(extracted) && extracted.length === 4) {
-            const aLabelIdx = stem.search(/(^|\s)A[)\.]\s/i);
-            if (aLabelIdx !== -1) stem = stem.slice(0, aLabelIdx).trim();
+        const takeParsedBlock = () => {
+
+          if (index >= pool.length) {
+            return null;
           }
 
-          stem = stem.replace(/^\s*(?:\(?[Aa]\)?[.)]|(?:\(A\))|A[.)])\s+/, '');
-          stem = stem.replace(/^\s*[aA][.)]\s+/, '');
-          return stem || null;
+          return parseFinalQuestionBlock(
+            pool[index++]
+          );
         };
 
-        for (let p = 0; p < needPairs; p++) {
-          const aStem = takeCleanStem();
-          const bStem = takeCleanStem();
-          if (!aStem || !bStem) break;
 
-          const htmlPair =
-            `(A) ${aStem}<br>` +
+        for (
+          let p = 0;
+          p < needPairs;
+          p++
+        ) {
+
+          const a = takeParsedBlock();
+          const b = takeParsedBlock();
+
+          if (!a || !b) {
+            break;
+          }
+
+
+          const aQuestion =
+            buildInternalAlternativeText(a);
+
+          const bQuestion =
+            buildInternalAlternativeText(b);
+
+
+          const aAnswer =
+            a.answerLetters.length
+              ? a.answerLetters.join(',')
+              : a.answerText;
+
+          const bAnswer =
+            b.answerLetters.length
+              ? b.answerLetters.join(',')
+              : b.answerText;
+
+
+          const questionHtml =
+            `(A) ${aQuestion}<br>` +
             `<div style="text-align:center;"><b>(OR)</b></div>` +
-            `(B) ${bStem}`;
+            `(B) ${bQuestion}`;
+
+
+          const answerHtml =
+            `(A) ${aAnswer || ''}<br>` +
+            `<div style="text-align:center;"><b>(OR)</b></div>` +
+            `(B) ${bAnswer || ''}`;
+
+
+          const explanationHtml =
+            `(A) ${a.explanation || ''}<br>` +
+            `<div style="text-align:center;"><b>(OR)</b></div>` +
+            `(B) ${b.explanation || ''}`;
+
 
           pairs.push({
             number: p + 1,
-            text: htmlPair,
+            text: questionHtml,
             marks: marks,
             options: [],
-            answer: ""
+            answer: answerHtml,
+            parsedAnswer: answerHtml,
+            finalAnswer: answerHtml,
+            explanation: explanationHtml,
+            solution: explanationHtml
           });
         }
 
+
         if (pairs.length < needPairs) {
-          errors.push(`${subj.subject} - ${sec.label}: Only ${pairs.length} of ${needPairs} pairs available from source.`);
+          errors.push(
+            `${subj.subject} - ${sec.label}: ` +
+            `Only ${pairs.length} of ${needPairs} pairs available from source.`
+          );
         }
+
 
         sec.questions = pairs;
         continue;
       }
 
-      const need = Number(sec.numQuestions || 0);
-      const marks = Number(sec.marksPerQuestion || 0);
+
+      /* ==========================================
+         NORMAL SECTION
+         ========================================== */
+
+      const need = Number(
+        sec.numQuestions || 0
+      );
+
+      const marks = Number(
+        sec.marksPerQuestion || 0
+      );
+
       const pick = [];
 
-      for (let i = 0; i < need; i++) {
-        if (index >= pool.length) break;
 
-        const rawBlock = stripLead(pool[index++]) || '';
-        let stemNoAns = rawBlock.replace(/\bAns?\s*:\s*.*$/i, '').trim();
-        const extracted = extractMCQOptions({ question: rawBlock });
+      for (
+        let i = 0;
+        i < need;
+        i++
+      ) {
 
-        if (Array.isArray(extracted) && extracted.length === 4) {
-          const aLabelIdx = stemNoAns.search(/(^|\s)A[)\.]\s/i);
-          if (aLabelIdx !== -1) {
-            stemNoAns = stemNoAns.slice(0, aLabelIdx).trim();
-          }
+        if (index >= pool.length) {
+          break;
         }
 
-        if (Array.isArray(extracted) && extracted.length === 4) {
-          const cleanOpts = extracted.map(o => String(o)
-            .replace(/^[A-D][)\.]\s*/i, '')
-            .replace(/\s+[A-D][)\.]?\s*$/i, '')
-            .replace(/\s{2,}/g, ' ')
-            .trim()
-          );
 
-          const ansMatch = String(rawBlock).toUpperCase().match(/\bANS?\s*:\s*([A-D](?:\s*,\s*[A-D])*)/);
-          const ansLetters = ansMatch ? ansMatch[1].match(/[A-D]/g) : [];
+        const parsed = parseFinalQuestionBlock(
+          pool[index++]
+        );
 
-          let outOptions = cleanOpts.slice();
-          let outAnswerLetters = (ansLetters && ansLetters.length) ? ansLetters.slice() : [];
+
+        /* ========================================
+           MCQ
+           ======================================== */
+
+        if (
+          Array.isArray(parsed.options) &&
+          parsed.options.length === 4
+        ) {
+
+          let outOptions =
+            parsed.options.slice();
+
+          let outAnswerLetters =
+            parsed.answerLetters.slice();
+
 
           if (shuffleOptions) {
+
             const shuffled = shuffleMCQQuestion({
-              question: stemNoAns,
-              options: cleanOpts,
+              question: parsed.stem,
+              options: outOptions,
               answer: outAnswerLetters
             });
-            outOptions = shuffled.options || cleanOpts;
-            outAnswerLetters = extractAnswerLetters(shuffled.answer);
+
+
+            outOptions =
+              Array.isArray(shuffled.options)
+                ? shuffled.options
+                : outOptions;
+
+
+            outAnswerLetters =
+              extractAnswerLetters(
+                shuffled.answer
+              );
           }
 
-          const letterAns = (outAnswerLetters || []).join(',');
+
+          const answer =
+            (outAnswerLetters || [])
+              .join(',');
+
 
           pick.push({
             number: i + 1,
-            text: stemNoAns,
+            text: parsed.stem,
+            question: parsed.stem,
+            body: [
+              parsed.stem,
+              ...outOptions.map(
+                (option, optionIndex) =>
+                  `${String.fromCharCode(65 + optionIndex)}) ${option}`
+              )
+            ].join('\n'),
             marks: marks,
             options: outOptions,
-            answer: letterAns
+            answer: answer,
+            parsedAnswer: answer,
+            finalAnswer: answer,
+            explanation: parsed.explanation,
+            solution: parsed.explanation,
+            mcqType: sec.mcqType || ''
           });
+
+
+        /* ========================================
+           DESCRIPTIVE / NUMERICAL / FILL BLANK
+           ======================================== */
+
         } else {
+
           pick.push({
             number: i + 1,
-            text: stemNoAns,
+            text: parsed.stem,
+            question: parsed.stem,
+            body: parsed.stem,
             marks: marks,
             options: [],
-            answer: ""
+            answer: parsed.answerText,
+            parsedAnswer: parsed.answerText,
+            finalAnswer: parsed.answerText,
+            explanation: parsed.explanation,
+            solution: parsed.explanation,
+            mcqType: sec.mcqType || ''
           });
         }
       }
 
+
       if (pick.length < need) {
-        errors.push(`${subj.subject} - ${sec.label}: Only ${pick.length} of ${need} questions available from source.`);
+        errors.push(
+          `${subj.subject} - ${sec.label}: ` +
+          `Only ${pick.length} of ${need} questions available from source.`
+        );
       }
 
-      if (shuffleQuestions && pick.length > 1) {
+
+      if (
+        shuffleQuestions &&
+        pick.length > 1
+      ) {
         shuffleArray(pick);
       }
+
 
       sec.questions = pick;
     }
   }
-  return { errors };
+
+
+  return {
+    errors
+  };
 }
 
 function normalizeText(s) {
@@ -4694,17 +4990,17 @@ This conversation has TWO stages.
 STAGE 1 — FIRST RESPONSE = DRAFT
 =========================================================
 
-For your FIRST response:
+For the FIRST response:
 
 - Generate the complete requested question set normally.
 - This is a DRAFT for teacher review.
 - Do NOT put the draft inside a code block.
-- Mathematical expressions may be shown normally and clearly in ChatGPT.
-- Give correct answers so the teacher can verify the questions.
-- For Mathematics, Physics and Chemistry numerical questions, give a clear solution/explanation where useful for checking correctness.
+- Give the correct Answer for EVERY question.
+- Give the Explanation / Solution for EVERY question.
+- Mathematical expressions may be displayed normally and clearly in the draft.
 - The teacher may ask you to correct, replace, strengthen, simplify or modify individual questions.
-- Keep all corrections within the same original blueprint.
-- Do not change the required number of questions or their order unless the teacher specifically asks.
+- Keep all corrections within the original examination blueprint.
+- Do not change the required number, type or order of questions unless the teacher specifically asks.
 
 Number the draft questions continuously:
 
@@ -4713,76 +5009,92 @@ Q2:
 Q3:
 ...
 
-Do not restart numbering for another section or subject.
+Do not restart numbering between sections or subjects.
 
 IMPORTANT:
+
 Do NOT give the FINAL SET automatically.
 
-Wait until the teacher explicitly says something such as:
+Wait until the teacher explicitly asks:
 
 "Give me the final set"
-"Final set"
-"Give final questions"
+
+or gives another instruction clearly asking for the final set.
 
 =========================================================
-STAGE 2 — WHEN THE TEACHER ASKS FOR THE FINAL SET
+STAGE 2 — FINAL SET
 =========================================================
 
 Only when the teacher asks for the FINAL SET:
 
-1. Give ONLY the final questions.
-2. Put the complete final set inside ONE copy-code block.
-3. Do NOT add any introduction before the code block.
-4. Do NOT add any note, explanation or commentary after the code block.
-5. Do NOT write subject headings.
-6. Do NOT write section headings.
-7. Do NOT write chapter headings.
-8. Number all question blocks continuously:
-   Q1:
-   Q2:
-   Q3:
-   ...
-9. Keep the exact question order required by the original blueprint.
-10. Do not restart numbering between sections or subjects.
+- Give ONLY the final question set.
+- Put the complete final set inside ONE copy-code block.
+- Do NOT write anything before the code block.
+- Do NOT write anything after the code block.
+- Do NOT write subject headings.
+- Do NOT write section headings.
+- Do NOT write chapter headings.
+- Keep exactly the same order required by the original blueprint.
 
-FINAL SET MATHEMATICS FORMAT:
+Number all MAIN question blocks continuously:
 
-- All genuine mathematical expressions must use inline LaTeX.
-- Use ONLY \\( ... \\).
+Q1:
+Q2:
+Q3:
+...
+
+Do not restart numbering between sections or subjects.
+
+Every final question MUST contain:
+
+1. Question
+2. Answer
+3. Explanation
+
+The Exam Builder will separate these and store them in Exam Review.
+
+=========================================================
+FINAL SET LATEX RULES
+=========================================================
+
+For all mathematical expressions:
+
+- Use ONLY inline LaTeX delimiters: \\( ... \\).
 - Do NOT use \\[ ... \\].
 - Do NOT use $ ... $.
 - Do NOT use $$ ... $$.
 - Do NOT use display mathematics.
-- Preserve all LaTeX backslashes exactly.
-- Do not wrap ordinary words or plain sentences in LaTeX.
-- Plain text should remain plain text.
+- Preserve every LaTeX backslash exactly.
+- Keep ordinary words and sentences outside LaTeX.
+- Do not replace proper mathematical notation with Unicode approximations.
 
 Examples:
 
-Correct:
-If \\(x+3=8\\), find \\(x\\).
+\\(x^2+5x+6=0\\)
 
-Correct:
 \\(\\frac{3}{4}\\)
 
-Correct:
 \\(\\sqrt{72}\\)
 
-Correct:
 \\(2^{n+1}\\)
 
-For matrices use proper LaTeX:
+\\(\\frac{x+3}{x-2}\\)
+
+Matrices must use proper LaTeX.
+
+Example:
 
 \\(\\begin{bmatrix}1 & 2 \\\\ 3 & 4\\end{bmatrix}\\)
 
-Do not write matrices as:
-[1 2 3 4]
+Use:
+- & between matrix columns
+- \\\\ between matrix rows
 
 =========================================================
-FINAL SET QUESTION FORMAT
+MCQ SINGLE
 =========================================================
 
-MCQ (Single):
+Use exactly:
 
 Q<num>:
 <Question>
@@ -4791,8 +5103,16 @@ B) ...
 C) ...
 D) ...
 Ans: <one correct letter>
+Explanation:
+<Explanation>
 
-MCQ (Multiple):
+Exactly ONE option must be correct.
+
+=========================================================
+MCQ MULTIPLE
+=========================================================
+
+Use exactly:
 
 Q<num>:
 <Question>
@@ -4800,9 +5120,21 @@ A) ...
 B) ...
 C) ...
 D) ...
-Ans: <all correct letters separated by commas>
+Ans: <correct letters separated by commas>
+Explanation:
+<Explanation>
 
-Assertion and Reason (MCQ Single):
+Example:
+
+Ans: A,C
+
+At least one option must be correct.
+
+=========================================================
+ASSERTION AND REASON
+=========================================================
+
+Use exactly:
 
 Q<num>:
 Assertion: ...
@@ -4812,8 +5144,14 @@ B) ...
 C) ...
 D) ...
 Ans: <one correct letter>
+Explanation:
+<Explanation>
 
-Matching Matrix / Matching List:
+=========================================================
+MATCHING MATRIX / MATCHING LIST
+=========================================================
+
+Use exactly:
 
 Q<num>:
 <matching content>
@@ -4822,37 +5160,128 @@ B) ...
 C) ...
 D) ...
 Ans: <one correct letter>
+Explanation:
+<Explanation>
 
-Numerical Value:
+=========================================================
+NUMERICAL VALUE
+=========================================================
 
-Q<num>:
-<Question only>
-
-Fill in the Blanks:
-
-Q<num>:
-<Question only>
-
-Descriptive:
+Use exactly:
 
 Q<num>:
-<Question only>
+<Question>
+Answer:
+<Final answer>
+Explanation:
+<Complete solution>
 
-Paragraph-Based MCQ:
+=========================================================
+FILL IN THE BLANKS
+=========================================================
 
-- Treat each required item as ONE passage set.
-- Start each passage set with one Q<num>: line.
-- Put the passage and all its sub-questions inside that same question block.
-- Number sub-questions with (i), (ii), etc.
-- Do NOT use separate Q numbers for sub-questions.
-- Each MCQ sub-question must contain A), B), C), D).
+Use exactly:
 
-FINAL SET CLEAN-UP RULE:
+Q<num>:
+<Question>
+Answer:
+<Correct answer>
+Explanation:
+<Short explanation>
 
-- Do NOT include Explanation: in the final set.
-- Do NOT include solutions in the final set.
-- Do NOT include Answer: for Descriptive, Numerical Value or Fill in the Blanks.
-- Keep Ans: only where required for MCQ-style questions so the Exam Builder can identify the correct option.
+=========================================================
+DESCRIPTIVE
+=========================================================
+
+Use exactly:
+
+Q<num>:
+<Question>
+Answer:
+<Final answer>
+Explanation:
+<Complete explanation / solution>
+
+=========================================================
+PARAGRAPH-BASED MCQ
+=========================================================
+
+- Treat each required passage set as ONE main Q<num> block.
+- Put the passage and all its sub-questions inside the same main question block.
+- Do NOT create new Q<num> numbers for the sub-questions.
+- Use (i), (ii), (iii), etc. for sub-questions.
+- Each sub-question must contain A), B), C), D).
+- Each sub-question must contain its Ans: line.
+- Each sub-question must contain its Explanation: line.
+
+=========================================================
+EXPLANATION RULES
+=========================================================
+
+For Mathematics and calculation-based Physics / Chemistry:
+
+- Give complete working.
+- Put ONE calculation or reasoning statement on each separate line.
+- Do NOT write "Step 1", "Step 2", "Step 3", etc.
+- Do NOT combine all working into one paragraph.
+- Keep the final answer separately under Ans: or Answer:.
+- Use inline LaTeX \\( ... \\).
+- Do NOT use display mathematics.
+
+Example:
+
+Answer:
+\\(x=5\\)
+
+Explanation:
+\\(3x+7=22\\)
+\\(3x=15\\)
+\\(x=5\\)
+
+For non-mathematical / conceptual questions:
+
+- Give the explanation point-wise.
+- Put ONE point on each separate line.
+- Start each point with a hyphen.
+- Do NOT number explanation points as 1., 2., 3., etc.
+- Do NOT use Q1, Q2, Q3 inside explanations.
+
+Example:
+
+Explanation:
+- Photosynthesis enables plants to prepare food.
+- It converts light energy into chemical energy.
+- It releases oxygen into the atmosphere.
+
+IMPORTANT:
+
+Never use numbered explanation points such as:
+
+1. ...
+2. ...
+3. ...
+
+because numbered lines are reserved for question parsing.
+
+=========================================================
+FINAL CHECK
+=========================================================
+
+Before giving the FINAL SET, silently verify:
+
+- Total number of questions is correct.
+- Question order is correct.
+- Question types are correct.
+- Every question belongs to the selected chapter(s).
+- Every MCQ has exactly four options.
+- Every MCQ answer agrees with its options.
+- Every question has an Answer or Ans:.
+- Every question has an Explanation:.
+- Mathematical calculations are correct.
+- Answer and explanation agree.
+- Inline LaTeX is used correctly.
+- No display mathematics is used.
+- No extra headings or commentary are inside the final set.
 `;
 }
 
