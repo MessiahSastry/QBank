@@ -1186,7 +1186,7 @@ function parsePastedQuestionsToPool(raw) {
   }
   const norm = merged.join('\n');
 
-  const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[\.\)]|\s)\s*/gmi;
+  const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[.:)]|\s)\s*/gmi;
   const starts = [];
   let m;
   while ((m = headerRe.exec(norm)) !== null) {
@@ -1202,7 +1202,7 @@ function parsePastedQuestionsToPool(raw) {
     const start = starts[i];
     const end = i + 1 < starts.length ? starts[i + 1] : norm.length;
     const slice = norm.slice(start, end);
-    const cleaned = slice.replace(/^[ \t]*(?:Q\.?\s*)?\d+(?:[\.\)]|\s)\s*/, '').trim();
+    const cleaned = slice.replace(/^[ \t]*(?:Q\.?\s*)?\d+(?:[.:)]|\s)\s*/, '').trim();
     if (cleaned) blocks.push(cleaned);
   }
   return blocks;
@@ -1211,7 +1211,10 @@ function parsePastedQuestionsToPool(raw) {
 function allocateSequentiallyAcrossSections(subjectsData, pool, { shuffleQuestions = true, shuffleOptions = true } = {}) {
   const errors = [];
   let index = 0;
-  const stripLead = s => String(s || '').replace(/^\s*(?:Q?\s*\d+[\.\)]\s*)/, '').trim();
+  const stripLead = s =>
+    String(s || '')
+        .replace(/^\s*(?:Q\.?\s*)?\d+(?:[.:)]|\s)\s*/, '')
+        .trim();
 
   for (const subj of subjectsData) {
     for (const sec of subj.sections) {
@@ -5301,7 +5304,7 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
 
             pasteArea?.addEventListener('input', () => {
                 const t = (pasteArea.value || '').trim();
-                const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[\.\)]|\s)\s*/gmi;
+                const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[.:)]|\s)\s*/gmi;
                 const nums = [];
                 let m;
                 while ((m = headerRe.exec(t)) !== null) nums.push(parseInt(m[1], 10));
@@ -5444,10 +5447,13 @@ const selectionMode = getSelectionMode();
                     btn.textContent = "Build Exam Draft";
                     return;
                 }
-                               if (
-                    sourceTypeGlobal === 'Question Bank' &&
-                    !__ebIsEntranceExamBoard(selectedBoard)
-                ) {
+                              if (
+    (
+        sourceTypeGlobal === 'Question Bank' ||
+        sourceTypeGlobal === 'AI Generate'
+    ) &&
+    !__ebIsEntranceExamBoard(selectedBoard)
+) {
     const totalDifficulty =
         (difficultyDistribution.L1 || 0) +
         (difficultyDistribution.L2 || 0) +
@@ -5500,26 +5506,29 @@ const selectionMode = getSelectionMode();
                                     : []
                               );
 
-                    // For entrance Question Bank mode,
-                    // teacher must explicitly choose chapter(s)
-                    // or All Chapters.
-                    if (
-                        sourceTypeGlobal === 'Question Bank' &&
-                        __ebIsEntranceExamBoard(selectedBoard) &&
-                        !allChaptersSelected &&
-                        chapters.length === 0
-                    ) {
-                        showToast(
-                            `Please select one or more chapters, or choose All Chapters for ${subjectTitle}.`,
-                            'error'
-                        );
+                   // Chapters are compulsory for AI Generate.
+// Entrance Question Bank mode also requires explicit chapter selection.
+const mustChooseChapters =
+    sourceTypeGlobal === 'AI Generate' ||
+    (
+        sourceTypeGlobal === 'Question Bank' &&
+        __ebIsEntranceExamBoard(selectedBoard)
+    );
 
-                        btn.disabled = false;
-                        btn.textContent =
-                            "Build Exam Draft";
+if (
+    mustChooseChapters &&
+    !allChaptersSelected &&
+    chapters.length === 0
+) {
+    showToast(
+        `Please select one or more chapters${__ebIsEntranceExamBoard(selectedBoard) ? ', or choose All Chapters' : ''} for ${subjectTitle}.`,
+        'error'
+    );
 
-                        return;
-                    }
+    btn.disabled = false;
+    btn.textContent = "Build Exam Draft";
+    return;
+}
 
                     const sectionsList =
                         sb.querySelectorAll('.section-item');
@@ -6292,63 +6301,201 @@ questions.push({
                     }
                 } else {
                     let rawText = '';
-                    const pasteText = (document.getElementById('global-paste-area')?.value || '').trim();
-                    const hasPaste = pasteText.length > 0;
-                    const hasDocx  = !!window._globalDocxArrayBuffer;
-                    let effective  = sourceTypeGlobal;
 
-                    if (effective === 'Upload .docx' && !hasDocx && hasPaste) effective = 'Paste';
-                    if (effective === 'Paste' && !hasPaste && hasDocx) effective = 'Upload .docx';
+const pasteText =
+    (
+        document.getElementById('global-paste-area')
+            ?.value || ''
+    ).trim();
 
-                    if (effective === 'Paste') {
-                        rawText = pasteText;
-                    } else if (effective === 'Upload .docx') {
-                        if (!hasDocx) {
-                            allSectionErrors.push('No .docx file selected.');
-                        } else {
-                            try {
-                                const result = await window.mammoth.convertToHtml(
-                                    { arrayBuffer: window._globalDocxArrayBuffer },
-                                    {
-                                        convertImage: mammoth.images.inline(img =>
-                                            img.read("base64").then(b64 => ({
-                                                src: `data:${img.contentType};base64,${b64}`
-                                            }))
-                                        )
-                                    }
-                                );
-                                rawText = htmlToPlainText(result?.value || '');
-                            } catch {
-                                allSectionErrors.push('Failed to read .docx file.');
-                            }
-                        }
-                    }
+const hasPaste =
+    pasteText.length > 0;
 
-                    if ((effective === 'Paste' || effective === 'Upload .docx') && !rawText) {
-                        allSectionErrors.push('No questions detected in the provided source.');
-                    }
+const hasDocx =
+    !!window._globalDocxArrayBuffer;
 
-                    const pool = parsePastedQuestionsToPool(rawText);
+let effective =
+    sourceTypeGlobal;
 
-                    const { errors: allocErrors } = allocateSequentiallyAcrossSections(
-                        subjectsData,
-                        pool,
+
+/* ============================================
+   AI GENERATE
+   Uses exactly the same parser as Paste,
+   but must come from the AI paste box.
+   ============================================ */
+
+if (effective === 'AI Generate') {
+
+    if (!hasPaste) {
+
+        allSectionErrors.push(
+            'Please generate the questions and paste the AI-generated questions before building the exam.'
+        );
+
+    } else {
+
+        rawText = pasteText;
+    }
+
+
+/* ============================================
+   NORMAL PASTE / DOCX
+   ============================================ */
+
+} else {
+
+    if (
+        effective === 'Upload .docx' &&
+        !hasDocx &&
+        hasPaste
+    ) {
+        effective = 'Paste';
+    }
+
+    if (
+        effective === 'Paste' &&
+        !hasPaste &&
+        hasDocx
+    ) {
+        effective = 'Upload .docx';
+    }
+
+    if (effective === 'Paste') {
+
+        rawText =
+            pasteText;
+
+    } else if (
+        effective === 'Upload .docx'
+    ) {
+
+        if (!hasDocx) {
+
+            allSectionErrors.push(
+                'No .docx file selected.'
+            );
+
+        } else {
+
+            try {
+
+                const result =
+                    await window.mammoth.convertToHtml(
                         {
-                            shuffleQuestions: getGlobalShuffleQuestions(),
-                            shuffleOptions:  getGlobalShuffleOptions()
+                            arrayBuffer:
+                                window._globalDocxArrayBuffer
+                        },
+                        {
+                            convertImage:
+                                mammoth.images.inline(
+                                    img =>
+                                        img
+                                            .read("base64")
+                                            .then(
+                                                b64 => ({
+                                                    src:
+                                                        `data:${img.contentType};base64,${b64}`
+                                                })
+                                            )
+                                )
                         }
                     );
 
-                    if (allocErrors?.length) {
-                        allSectionErrors = allSectionErrors.concat(allocErrors);
-                    }
+                rawText =
+                    htmlToPlainText(
+                        result?.value || ''
+                    );
+
+            } catch {
+
+                allSectionErrors.push(
+                    'Failed to read .docx file.'
+                );
+            }
+        }
+    }
+
+    if (
+        (
+            effective === 'Paste' ||
+            effective === 'Upload .docx'
+        ) &&
+        !rawText
+    ) {
+        allSectionErrors.push(
+            'No questions detected in the provided source.'
+        );
+    }
+}
+
+
+/* ============================================
+   PARSE + ALLOCATE
+   ============================================ */
+
+if (rawText) {
+
+    const pool =
+        parsePastedQuestionsToPool(
+            rawText
+        );
+
+    if (!pool.length) {
+
+        allSectionErrors.push(
+            'No valid question blocks were detected.'
+        );
+
+    } else {
+
+        const {
+            errors: allocErrors
+        } =
+            allocateSequentiallyAcrossSections(
+                subjectsData,
+                pool,
+                {
+                    shuffleQuestions:
+                        getGlobalShuffleQuestions(),
+
+                    shuffleOptions:
+                        getGlobalShuffleOptions()
+                }
+            );
+
+        if (
+            Array.isArray(allocErrors) &&
+            allocErrors.length
+        ) {
+
+            allSectionErrors =
+                allSectionErrors.concat(
+                    allocErrors
+                );
+        }
+    }
+}
 
                     for (const subjData of subjectsData) {
-                        const subjectBlock = {
-                            subject: subjData.subject,
-                            chapters: [],
-                            sections: []
-                        };
+                       const subjectBlock = {
+    subject: subjData.subject,
+
+    chapters:
+        sourceTypeGlobal === 'AI Generate'
+            ? (
+                Array.isArray(subjData.chapters)
+                    ? subjData.chapters.slice()
+                    : []
+            )
+            : [],
+
+    allChapters:
+        sourceTypeGlobal === 'AI Generate'
+            ? !!subjData.allChapters
+            : false,
+
+    sections: []
+};
 
                         for (const sec of subjData.sections) {
                             const patched = { ...sec };
