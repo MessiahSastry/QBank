@@ -281,12 +281,58 @@
     <div id="paper-type-dropdown" class="custom-dropdown"></div>
 </div>
 
-                    <div class="form-group" id="global-paste-wrap" style="display:none;">
-                        <label>Paste all questions (in order)</label>
-                        <textarea id="global-paste-area" placeholder="Paste raw questions here, one per line or separated by blank lines."
-                                  style="width:100%;min-height:140px;border:1.3px solid #bcd6ef;border-radius:8px;padding:10px;background:#f7fafd;"></textarea>
-                        <div id="global-paste-count" style="color:#54656f;font-size:.9em;margin-top:6px;"></div>
-                    </div>
+                   <div class="form-group" id="global-paste-wrap" style="display:none;">
+
+    <div id="ai-generate-tools" style="display:none; margin-bottom:15px;">
+        <button
+            type="button"
+            id="ai-get-questions-btn"
+            style="
+                width:100%;
+                box-sizing:border-box;
+                padding:13px 0;
+                border:none;
+                border-radius:8px;
+                background:linear-gradient(90deg,#1762a7,#0f3d6b);
+                color:#fff;
+                font-size:1.05em;
+                font-weight:700;
+                cursor:pointer;
+            ">
+            <i class="fas fa-wand-magic-sparkles"></i> Get Questions
+        </button>
+
+        <div style="
+            margin-top:8px;
+            font-size:.9em;
+            line-height:1.45;
+            color:#54656f;
+        ">
+            Generate the required questions using AI, then paste the generated questions below.
+        </div>
+    </div>
+
+    <label id="global-paste-label">Paste all questions (in order)</label>
+
+    <textarea
+        id="global-paste-area"
+        placeholder="Paste raw questions here, one per line or separated by blank lines."
+        style="
+            width:100%;
+            min-height:140px;
+            border:1.3px solid #bcd6ef;
+            border-radius:8px;
+            padding:10px;
+            background:#f7fafd;
+            box-sizing:border-box;
+        "></textarea>
+
+    <div
+        id="global-paste-count"
+        style="color:#54656f;font-size:.9em;margin-top:6px;">
+    </div>
+
+</div>
 
                    <div class="form-group" id="global-upload-wrap" style="display:none;">
                     <label>Upload a .docx file (all questions in order)</label>
@@ -4099,7 +4145,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         createDropdown('class-dropdown', config.classes, 'Select Class');
         createDropdown('board-dropdown', config.boards, 'Select Board');
-        createDropdown('exam-source-dropdown', ["Question Bank", "Paste", "Upload .docx"], 'Question Bank');
+        createDropdown(
+    'exam-source-dropdown',
+    ["Question Bank", "AI Generate", "Paste", "Upload .docx"],
+    'Question Bank'
+);
 createDropdown('selection-mode-dropdown', ["Auto Select", "Manual Select"], 'Auto Select');
 createDropdown(
     'paper-type-dropdown',
@@ -4191,18 +4241,58 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
             window._shuffleOptions = true;
             window._globalDocxArrayBuffer = null;
 
-            function toggle() {
+           function toggle() {
     const v = dd.dataset.value || 'Question Bank';
+
     const isBank  = (v === 'Question Bank');
+    const isAI    = (v === 'AI Generate');
     const isPaste = (v === 'Paste');
     const isWord  = (v === 'Upload .docx');
 
-    pasteWrap.style.display  = isPaste ? 'block' : 'none';
-    uploadWrap.style.display = isWord ? 'block' : 'none';
+    const aiTools =
+        document.getElementById('ai-generate-tools');
 
-    if (shuffleBlock) shuffleBlock.style.display = (isPaste || isWord) ? 'block' : 'none';
+    const pasteLabel =
+        document.getElementById('global-paste-label');
 
-        const diffGroup =
+    // AI Generate and Paste both use the existing question text area
+    pasteWrap.style.display =
+        (isAI || isPaste) ? 'block' : 'none';
+
+    uploadWrap.style.display =
+        isWord ? 'block' : 'none';
+
+    // Get Questions button appears only for AI Generate
+    if (aiTools) {
+        aiTools.style.display =
+            isAI ? 'block' : 'none';
+    }
+
+    // Change label depending on source
+    if (pasteLabel) {
+        pasteLabel.textContent =
+            isAI
+                ? 'Paste AI-Generated Questions Here'
+                : 'Paste all questions (in order)';
+    }
+
+    // Change placeholder depending on source
+    if (pasteArea) {
+        pasteArea.placeholder =
+            isAI
+                ? 'After generating the questions, paste the AI-generated questions here...'
+                : 'Paste raw questions here, one per line or separated by blank lines.';
+    }
+
+    // Arrangement controls are useful for AI, Paste and DOCX
+    if (shuffleBlock) {
+        shuffleBlock.style.display =
+            (isAI || isPaste || isWord)
+                ? 'block'
+                : 'none';
+    }
+
+    const diffGroup =
         document.getElementById(
             'difficulty-config-group'
         );
@@ -4212,20 +4302,42 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
             getSelectedBoard()
         );
 
+    // Difficulty:
+    // Question Bank = show
+    // AI Generate = show
+    // Paste/DOCX = hide
+    // Entrance exams = hide because their difficulty rules are handled separately
     if (diffGroup) {
         diffGroup.style.display =
-            (isBank && !isEntrance)
+            ((isBank || isAI) && !isEntrance)
                 ? ''
                 : 'none';
     }
 
-    const selectionModeGroup = document.getElementById('selection-mode-dropdown')?.closest('.form-group');
-    if (selectionModeGroup) selectionModeGroup.style.display = isBank ? '' : 'none';
+    // Selection Mode belongs only to Question Bank
+    const selectionModeGroup =
+        document
+            .getElementById('selection-mode-dropdown')
+            ?.closest('.form-group');
 
-    document.querySelectorAll('[id^="chapters-multiselect-"]').forEach(el => {
-        const grp = el.closest('.form-group');
-        if (grp) grp.style.display = isBank ? '' : 'none';
-    });
+    if (selectionModeGroup) {
+        selectionModeGroup.style.display =
+            isBank ? '' : 'none';
+    }
+
+    // Chapters required for Question Bank AND AI Generate
+    document
+        .querySelectorAll('[id^="chapters-multiselect-"]')
+        .forEach(el => {
+            const grp = el.closest('.form-group');
+
+            if (grp) {
+                grp.style.display =
+                    (isBank || isAI)
+                        ? ''
+                        : 'none';
+            }
+        });
 }
 
             dd.addEventListener('change', toggle);
