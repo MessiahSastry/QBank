@@ -3351,8 +3351,28 @@ function buildAnswerKeyDoc(examData) {
           html: q.html || q.renderedHTML || q.finalHTML || q.formattedHTML || '',
           options: Array.isArray(q.options) ? q.options : [],
           image: q.image || '',
-          answer: q.answer || '',
-          explanation: q.explanation || '',
+                    answer:
+            q.answer ||
+            q.parsedAnswer ||
+            q.finalAnswer ||
+            '',
+
+          parsedAnswer:
+            q.parsedAnswer ||
+            q.answer ||
+            q.finalAnswer ||
+            '',
+
+          finalAnswer:
+            q.finalAnswer ||
+            q.answer ||
+            q.parsedAnswer ||
+            '',
+
+          explanation:
+            q.explanation ||
+            q.solution ||
+            '',,
           questionType: q.questionType || q.type || q.mcqType || '',
           type: q.type || q.mcqType || q.questionType || '',
           mcqType: q.mcqType || q.type || q.questionType || '',
