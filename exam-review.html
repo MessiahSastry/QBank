@@ -303,6 +303,46 @@ function __erNormalizeMcqAnswer(answer) {
   return letters.join(',');
 }
 
+function __erGetStoredAnswer(q = {}) {
+  const candidates = [
+    q.answer,
+    q.parsedAnswer,
+    q.finalAnswer,
+    q.parsedAns,
+    q.correctAnswer,
+    q.correct_answer,
+    q.correct_option,
+    q.correctOption,
+    q.ans,
+    q.correct,
+    q.answerKey
+  ];
+
+  for (const value of candidates) {
+
+    if (Array.isArray(value)) {
+      const cleaned = value
+        .map(v => String(v == null ? '' : v).trim())
+        .filter(Boolean);
+
+      if (cleaned.length) {
+        return cleaned.join(',');
+      }
+
+      continue;
+    }
+
+    if (value !== undefined && value !== null) {
+      const cleaned = String(value).trim();
+
+      if (cleaned) {
+        return cleaned;
+      }
+    }
+  }
+
+  return '';
+}
 function __erBuildParagraphPlainText(q = {}) {
   const blocks = [
     'Read the following passage and answer the questions:',
@@ -1575,21 +1615,12 @@ if (paper.instructions) {
               </div>
             `).join('')}
             <div class="mcq-ans-row" style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-              <span class="marks-label" style="min-width:62px;">Answer</span>
-              <span class="answer-box no-mjx" data-answer-type="mcq" contenteditable="plaintext-only" tabindex="0" style="border:1px solid #bcd6ef;border-radius:6px;padding:3px 8px;min-width:80px;">
-               ${(
-  q.answer ||
-  q.parsedAnswer ||
-  q.finalAnswer ||
-  q.parsedAns ||
-  q.correctAnswer ||
-  q.correct_option ||
-  q.correctOption ||
-  ''
-).toString()}
-              </span>
-              <span class="marks-label" style="opacity:.8;">(use letters like A or A,C)</span>
-            </div>
+  <span class="marks-label" style="min-width:62px;">Answer</span>
+  <span class="answer-box no-mjx" data-answer-type="mcq" contenteditable="plaintext-only" tabindex="0" style="border:1px solid #bcd6ef;border-radius:6px;padding:3px 8px;min-width:80px;">
+    ${__erGetStoredAnswer(q)}
+  </span>
+  <span class="marks-label" style="opacity:.8;">(use letters like A or A,C)</span>
+</div>
             <div class="desc-exp-row" style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
               <span class="marks-label" style="min-width:62px;">Explanation</span>
               <div class="explanation-box rich-explanation" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
@@ -1600,20 +1631,11 @@ if (paper.instructions) {
         `
         : `
           <div class="desc-ans-row" style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
-            <span class="marks-label" style="min-width:62px;">Answer</span>
-            <div class="answer-box rich-answer" data-answer-type="text" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
-              ${(
-  q.answer ||
-  q.parsedAnswer ||
-  q.finalAnswer ||
-  q.parsedAns ||
-  q.correctAnswer ||
-  q.correct_option ||
-  q.correctOption ||
-  ''
-).toString()}
-            </div>
-          </div>
+  <span class="marks-label" style="min-width:62px;">Answer</span>
+  <div class="answer-box rich-answer" data-answer-type="text" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
+    ${__erGetStoredAnswer(q)}
+  </div>
+</div>
           <div class="desc-exp-row" style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;">
             <span class="marks-label" style="min-width:62px;">Explanation</span>
             <div class="explanation-box rich-explanation" contenteditable="true" style="flex:1 1 auto;border:1px dashed #bcd6ef;border-radius:6px;padding:6px 8px;min-height:26px;">
