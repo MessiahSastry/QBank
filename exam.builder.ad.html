@@ -1241,71 +1241,167 @@ function allocateSequentiallyAcrossSections(
   }
 
 
-  function parseFinalQuestionBlock(input) {
+   function parseFinalQuestionBlock(input) {
 
     let raw = stripLead(input)
       .replace(/```(?:text|plaintext|latex|tex)?/gi, '')
       .replace(/```/g, '')
+      .replace(/\r/g, '')
       .trim();
 
     let explanation = '';
     let answerText = '';
     let answerLetters = [];
+    let rawAnswer = '';
+
+
+    /* ==========================================
+       READ ANSWER + EXPLANATION LINES ROBUSTLY
+       ========================================== */
+
+    const lines = raw.split('\n');
+
+    function cleanMetaLine(line) {
+      return String(line || '')
+        .replace(/^\s*[-•]\s*/, '')
+        .replace(/\*\*/g, '')
+        .replace(/__/g, '')
+        .trim();
+    }
+
+
+    const answerLineIndex = lines.findIndex(line => {
+      const cleaned = cleanMetaLine(line);
+
+      return /^(?:Ans(?:wer)?|Correct\s+Answer)\s*[:\-]/i.test(
+        cleaned
+      );
+    });
+
+
+    const explanationLineIndex = lines.findIndex(line => {
+      const cleaned = cleanMetaLine(line);
+
+      return /^Explanation\s*:/i.test(
+        cleaned
+      );
+    });
+
+
+    /* ==========================================
+       ANSWER
+       ========================================== */
+
+    if (answerLineIndex !== -1) {
+
+      const cleanedAnswerLine =
+        cleanMetaLine(
+          lines[answerLineIndex]
+        );
+
+      rawAnswer =
+        cleanedAnswerLine
+          .replace(
+            /^(?:Ans(?:wer)?|Correct\s+Answer)\s*[:\-]\s*/i,
+            ''
+          )
+          .trim();
+
+
+      const answerEnd =
+        (
+          explanationLineIndex > answerLineIndex
+        )
+          ? explanationLineIndex
+          : lines.length;
+
+
+      const extraAnswerLines =
+        lines
+          .slice(
+            answerLineIndex + 1,
+            answerEnd
+          )
+          .join('\n')
+          .trim();
+
+
+      if (extraAnswerLines) {
+        rawAnswer =
+          [rawAnswer, extraAnswerLines]
+            .filter(Boolean)
+            .join('\n');
+      }
+    }
 
 
     /* ==========================================
        EXPLANATION
        ========================================== */
 
-    const explanationMatch = raw.match(
-      /(?:^|\n)\s*Explanation\s*:\s*([\s\S]*)$/i
-    );
+    if (explanationLineIndex !== -1) {
 
-    if (explanationMatch) {
-      explanation = explanationMatch[1].trim();
+      const cleanedExplanationLine =
+        cleanMetaLine(
+          lines[explanationLineIndex]
+        );
 
-      raw = raw
-        .slice(0, explanationMatch.index)
-        .trim();
+      explanation =
+        cleanedExplanationLine
+          .replace(
+            /^Explanation\s*:\s*/i,
+            ''
+          )
+          .trim();
+
+
+      const explanationEnd =
+        (
+          answerLineIndex > explanationLineIndex
+        )
+          ? answerLineIndex
+          : lines.length;
+
+
+      const extraExplanationLines =
+        lines
+          .slice(
+            explanationLineIndex + 1,
+            explanationEnd
+          )
+          .join('\n')
+          .trim();
+
+
+      if (extraExplanationLines) {
+        explanation =
+          [explanation, extraExplanationLines]
+            .filter(Boolean)
+            .join('\n');
+      }
     }
 
 
     /* ==========================================
-       MCQ ANSWER
+       REMOVE ANSWER / EXPLANATION FROM QUESTION
        ========================================== */
 
-    const mcqAnswerMatch = raw.match(
-      /(?:^|\n)\s*Ans(?:wer)?\s*:\s*([A-D](?:\s*,\s*[A-D])*)\s*$/i
-    );
+    const metaIndexes = [
+      answerLineIndex,
+      explanationLineIndex
+    ].filter(index => index >= 0);
 
-    if (mcqAnswerMatch) {
 
-      answerLetters = extractAnswerLetters(
-        mcqAnswerMatch[1]
-      );
+    if (metaIndexes.length) {
 
-      raw = raw
-        .slice(0, mcqAnswerMatch.index)
-        .trim();
+      const firstMetaIndex =
+        Math.min(...metaIndexes);
 
-    } else {
-
-      /* ========================================
-         DESCRIPTIVE / NUMERICAL / FILL ANSWER
-         ======================================== */
-
-      const textAnswerMatch = raw.match(
-        /(?:^|\n)\s*Answer\s*:\s*([\s\S]*)$/i
-      );
-
-      if (textAnswerMatch) {
-
-        answerText = textAnswerMatch[1].trim();
-
-        raw = raw
-          .slice(0, textAnswerMatch.index)
+      raw =
+        lines
+          .slice(0, firstMetaIndex)
+          .join('\n')
           .trim();
-      }
     }
 
 
@@ -1326,17 +1422,89 @@ function allocateSequentiallyAcrossSections(
       extracted.length === 4
     ) {
 
-      options = extracted.map(cleanOption);
+      options =
+        extracted.map(cleanOption);
 
-      const optionStart = stem.search(
-        /(^|\s)A[)\.]\s/i
-      );
+      const optionStart =
+        stem.search(
+          /(^|\s)A[)\.]\s/i
+        );
 
       if (optionStart !== -1) {
-        stem = stem
-          .slice(0, optionStart)
-          .trim();
+
+        stem =
+          stem
+            .slice(0, optionStart)
+            .trim();
       }
+    }
+
+
+    /* ==========================================
+       DECIDE MCQ ANSWER OR TEXT ANSWER
+       ========================================== */
+
+    if (options.length === 4) {
+
+      const cleanedRawAnswer =
+        String(rawAnswer || '')
+          .replace(/\*\*/g, '')
+          .replace(/__/g, '')
+          .trim();
+
+
+      /*
+        Accept:
+        C
+        C)
+        C.
+        Option C
+        A,C
+        A, C
+        A/C
+        A & C
+        C) option text
+      */
+
+      const answerPrefix =
+        cleanedRawAnswer.match(
+          /^\s*(?:Option\s*)?[\[(]?\s*([A-D](?:\s*[,/&+]\s*[A-D])*)/i
+        );
+
+
+      if (answerPrefix) {
+
+        const seen =
+          new Set();
+
+        answerLetters =
+          (
+            answerPrefix[1]
+              .toUpperCase()
+              .match(/[A-D]/g) || []
+          )
+            .filter(letter => {
+
+              if (seen.has(letter)) {
+                return false;
+              }
+
+              seen.add(letter);
+              return true;
+            });
+
+      } else {
+
+        answerLetters =
+          extractAnswerLetters(
+            cleanedRawAnswer
+          );
+      }
+
+    } else {
+
+      answerText =
+        rawAnswer;
     }
 
 
@@ -1348,7 +1516,6 @@ function allocateSequentiallyAcrossSections(
       explanation: toReviewHtml(explanation)
     };
   }
-
 
    /* =====================================================
      PARAGRAPH-BASED MCQ PARSER
