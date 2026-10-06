@@ -401,108 +401,46 @@
     }
     .toolbar button:hover { background: #0f3d6b; }
 
-    /* ---- CONSOLIDATED & CORRECTED PRINT STYLES ---- */
-   /* ---- FINAL CORRECTED PRINT STYLES ---- */
+   /* ===== PRINT: PRESERVE EXACT PAGE-WISE WEB LAYOUT ===== */
 @media print {
-    body, html {
-        background: #fff !important;
+    html,
+    body {
+        background: #ffffff !important;
     }
-    .toolbar {
+
+    .toolbar,
+    #floating-settings-btn {
         display: none !important;
     }
+
     #page-container {
         padding: 0 !important;
         margin: 0 !important;
     }
 
-    /* The page layout for printing. The padding is set via style attribute */
-    .a4-page {
-        width: 100% !important;
-        min-height: auto !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
+    /*
+      Do NOT change question spacing, A4 padding,
+      footer spacing or content positions here.
+      The page-wise preview has already calculated
+      the exact A4 layout on screen.
+    */
+
+    mjx-container {
+        display: inline-block !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        vertical-align: middle !important;
         margin: 0 !important;
-        box-sizing: border-box !important;
-        page-break-after: always;
-        /* Do not set padding here—handled by JS style */
-    }
-
-    /* Spacer at end of the page */
-    .print-footer-spacer {
-        height: 3cm; /* Creates 3cm of empty space */
-    }
-
-    .footer-row {
-        position: static !important;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        text-align: center;
-        background: #fff;
-        font-size: 0.9em;
-        z-index: 99;
-        padding: 5mm 0 5mm 0;
-        box-sizing: border-box;
-        border-top: 1px solid #000;
-        page-break-after: always;
-    }
-
-    /* Make the question gap and page margin print-consistent */
-        .question-container {
-        margin-bottom: var(--question-gap, 12px) !important;
-    }
-    .question-text{
-        margin-bottom: 6px !important;
-        line-height: 1.25 !important;
-    }
-    .options-block{
-        margin-top: 2px !important;
-        line-height: 1.22 !important;
-    }
-    .a4-page {
-        padding: var(--page-margin, 1.5cm) !important;
-    }
-
-    /* Minor print adjustments */
-    .question-item div,
-    .question-item span,
-    .question-item {
-        margin-top: 0;
-        margin-bottom: 0;
-    }
-
-   /* ✅ FIX: keep MathJax inline everywhere (screen + print) so options don't break lines */
-mjx-container {
-  display: inline-block !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  vertical-align: middle !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-mjx-container svg {
-  display: inline-block !important;
-}
-
-/* keep same in print too */
-@media print {
-  mjx-container {
-    display: inline-block !important;
-    vertical-align: middle !important;
-  }
-  mjx-container svg {
-    display: inline-block !important;
-  }
-}
-
-    /* ✅ FIX 1: force text weight normal in print */
-    html, body, .a4-page, #page-container,
-    .question-item, .question-text, .question-body, .options-block {
+        padding: 0 !important;
         font-weight: normal !important;
     }
 
-    /* ✅ FIX 2: force MathJax SVG weight normal in print */
-    mjx-container, mjx-container * {
+    mjx-container svg {
+        display: inline-block !important;
+    }
+
+    mjx-container,
+    mjx-container * {
         font-weight: normal !important;
     }
 }
