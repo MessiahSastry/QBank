@@ -2781,8 +2781,8 @@ function chunk(arr, size) {
   return out;
 }
 function buildMarksFallbackOrder(wanted) {
-  const w = parseInt(wanted || 0);
-  const universe = [1,2,3,4,5,6,8,10];
+  const w = parseFloat(wanted || 0);
+  const universe = [0.5,1,2,3,4,5,6,8,10];
   if (!w || !universe.includes(w)) return universe;
   const rest = universe.filter(m => m !== w).sort((a,b) => Math.abs(a-w) - Math.abs(b-w));
   return [w, ...rest];
@@ -3103,7 +3103,7 @@ async function fetchQuestionsWithMarksFallback({
 }) {
   const pool = await getSubjectQuestionPool(selectedClass, selectedBoard, selectedSubject);
 
-  const wantedMarks = parseInt(marksPerQuestion);
+  const wantedMarks = parseFloat(marksPerQuestion);
   const marksOrder = buildMarksFallbackOrder(wantedMarks);
 
   const picked = [];
@@ -3964,7 +3964,7 @@ function updateSectionLogicFields(sectionItem, typeKey) {
             </label>
             <label style="font-size:0.97em; margin-left:14px;">
                 Marks per question:
-                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+                <input type="number" class="marks-per-question-input" min="0.5" step="0.5" value="1" style="width:50px; margin-left:6px;">
             </label>
         `;
     } else if (typeKey === 'any') {
@@ -3979,7 +3979,7 @@ function updateSectionLogicFields(sectionItem, typeKey) {
             </label>
             <label style="font-size:0.97em; margin-left:14px;">
                 Marks per question:
-                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+                <input type="number" class="marks-per-question-input" min="0.5" step="0.5" value="1" style="width:50px; margin-left:6px;">
             </label>
         `;
     } else if (typeKey === 'internal') {
@@ -3990,7 +3990,7 @@ function updateSectionLogicFields(sectionItem, typeKey) {
             </label>
             <label style="font-size:0.97em; margin-left:14px;">
                 Marks per pair:
-                <input type="number" class="marks-per-question-input" min="1" value="1" style="width:50px; margin-left:6px;">
+                <input type="number" class="marks-per-question-input" min="0.5" step="0.5" value="1" style="width:50px; margin-left:6px;">
             </label>
             <div class="internal-choice-pairs"></div>
         `;
@@ -7332,14 +7332,14 @@ const selectionMode = getSelectionMode();
 
                         if (type === "all") {
                             sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
-                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                            sec.marksPerQuestion = parseFloat(section.querySelector('.marks-per-question-input').value);
                         } else if (type === "any") {
                             sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
                             sec.attemptAny = parseInt(section.querySelector('.attempt-any-input').value);
-                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                            sec.marksPerQuestion = parseFloat(section.querySelector('.marks-per-question-input').value);
                         } else if (type === "internal") {
                             sec.numPairs = parseInt(section.querySelector('.num-pairs-input').value);
-                            sec.marksPerQuestion = parseInt(section.querySelector('.marks-per-question-input').value);
+                            sec.marksPerQuestion = parseFloat(section.querySelector('.marks-per-question-input').value);
                             sec.pairs = [];
                             const pairDivs = section.querySelectorAll('.internal-choice-pairs > div');
                             pairDivs.forEach(div => {
