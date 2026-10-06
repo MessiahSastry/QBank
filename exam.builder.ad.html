@@ -3696,13 +3696,30 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
 
         subjectDiv.innerHTML = `
             <h3 style="color:#185496;margin-bottom:10px;font-size:1.1em;"><i class="fas fa-book"></i> ${subject}</h3>
-            <div class="form-group">
-                <label>Chapters (select one or more)</label>
+                        <div class="form-group">
+                <label>Chapters / Lessons (select one or more)</label>
                 <div id="chapters-multiselect-${sIdx}" class="multi-select-dropdown custom-dropdown" data-sidx="${sIdx}">
                     <div class="selected-chapters-display placeholder">Select subject to see chapters</div>
                     <div class="dropdown-options"></div>
                 </div>
             </div>
+
+            <div
+                class="form-group ai-manual-chapters-group"
+                style="margin-top:10px; display:${getSourceTypeGlobal() === 'AI Generate' ? 'block' : 'none'};"
+            >
+                <label>Enter Lesson / Chapter Name(s)</label>
+                <input
+                    type="text"
+                    class="ai-manual-chapters-input"
+                    placeholder="e.g., Madam Rides the Bus, The Necklace"
+                    autocomplete="off"
+                >
+                <div style="font-size:.86em;color:#6b7c8c;margin-top:5px;">
+                    You may select above, enter names here, or use both. Separate multiple names with commas.
+                </div>
+            </div>
+
             <div class="form-group" style="margin-top:14px;">
                 <label>Sections (Add, set type, and drag to reorder)</label>
                 <div class="subject-sections-list" id="sections-list-${sIdx}"></div>
@@ -5474,23 +5491,58 @@ function __ebCollectAIBlueprint() {
                     '[id^="chapters-multiselect-"]'
                 );
 
-            const allChapters =
+                        const allChapters =
                 !!chapterDropdown?.querySelector(
                     'input[value="__ALL__"]:checked'
                 );
 
-            const chapters =
+            const selectedChapters =
                 allChapters
                     ? []
                     : Array.from(
                         chapterDropdown?.querySelectorAll(
                             'input[type="checkbox"]:checked:not([value="__ALL__"])'
                         ) || []
-                    ).map(cb => cb.value);
+                    )
+                    .map(cb => String(cb.value || '').trim())
+                    .filter(Boolean);
 
-            if (!allChapters && chapters.length === 0) {
+            const manualChapterText =
+                (
+                    subjectBlock.querySelector(
+                        '.ai-manual-chapters-input'
+                    )?.value || ''
+                ).trim();
+
+            const manualChapters =
+                manualChapterText
+                    .split(/[,;\n]+/)
+                    .map(name => name.trim())
+                    .filter(Boolean);
+
+            const chapters = [];
+
+            [...selectedChapters, ...manualChapters]
+                .forEach(name => {
+
+                    const alreadyExists =
+                        chapters.some(
+                            existing =>
+                                existing.toLowerCase() ===
+                                name.toLowerCase()
+                        );
+
+                    if (!alreadyExists) {
+                        chapters.push(name);
+                    }
+                });
+
+            if (
+                !allChapters &&
+                chapters.length === 0
+            ) {
                 errors.push(
-                    `Please select at least one chapter for ${subject}.`
+                    `Please select or enter at least one chapter / lesson for ${subject}.`
                 );
             }
 
@@ -6474,9 +6526,14 @@ QUESTION BLUEPRINT — FOLLOW THIS ORDER EXACTLY
 
     subjects.forEach((subjectData) => {
 
-        const chapterText =
+                const chapterText =
             subjectData.allChapters
-                ? 'All Chapters'
+                ? (
+                    subjectData.chapters &&
+                    subjectData.chapters.length
+                        ? `All Chapters; Additional Lesson / Chapter Names: ${subjectData.chapters.join(', ')}`
+                        : 'All Chapters'
+                  )
                 : subjectData.chapters.join(', ');
 
         subjectData.sections.forEach((section) => {
@@ -6932,7 +6989,7 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
             isBank ? '' : 'none';
     }
 
-    // Chapters required for Question Bank AND AI Generate
+       // Chapter dropdown is used by Question Bank AND AI Generate
     document
         .querySelectorAll('[id^="chapters-multiselect-"]')
         .forEach(el => {
@@ -6945,8 +7002,17 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
                         : 'none';
             }
         });
-}
 
+    // Manual lesson/chapter entry belongs only to AI Generate
+    document
+        .querySelectorAll('.ai-manual-chapters-group')
+        .forEach(grp => {
+            grp.style.display =
+                isAI
+                    ? 'block'
+                    : 'none';
+        });
+}
                         let lastChapterSource =
                 dd.dataset.value ||
                 'Question Bank';
@@ -7164,12 +7230,12 @@ const selectionMode = getSelectionMode();
                             '.multi-select-dropdown'
                         );
 
-                    const allChaptersSelected =
+                                       const allChaptersSelected =
                         !!chapterDropdown?.querySelector(
                             'input[value="__ALL__"]:checked'
                         );
 
-                    const chapters =
+                    const selectedChapters =
                         allChaptersSelected
                             ? []
                             : (
@@ -7178,34 +7244,79 @@ const selectionMode = getSelectionMode();
                                         chapterDropdown.querySelectorAll(
                                             'input[type="checkbox"]:checked:not([value="__ALL__"])'
                                         )
-                                      ).map(cb => cb.value)
+                                      )
+                                      .map(
+                                          cb =>
+                                              String(
+                                                  cb.value || ''
+                                              ).trim()
+                                      )
+                                      .filter(Boolean)
                                     : []
                               );
 
-                   // Chapters are compulsory for AI Generate.
-// Entrance Question Bank mode also requires explicit chapter selection.
-const mustChooseChapters =
-    sourceTypeGlobal === 'AI Generate' ||
-    (
-        sourceTypeGlobal === 'Question Bank' &&
-        __ebIsEntranceExamBoard(selectedBoard)
-    );
+                    const manualChapterText =
+                        sourceTypeGlobal === 'AI Generate'
+                            ? (
+                                sb.querySelector(
+                                    '.ai-manual-chapters-input'
+                                )?.value || ''
+                              ).trim()
+                            : '';
 
-if (
-    mustChooseChapters &&
-    !allChaptersSelected &&
-    chapters.length === 0
-) {
-    showToast(
-        `Please select one or more chapters${__ebIsEntranceExamBoard(selectedBoard) ? ', or choose All Chapters' : ''} for ${subjectTitle}.`,
-        'error'
-    );
+                    const manualChapters =
+                        manualChapterText
+                            .split(/[,;\n]+/)
+                            .map(name => name.trim())
+                            .filter(Boolean);
 
-    btn.disabled = false;
-    btn.textContent = "Build Exam Draft";
-    return;
-}
+                    const chapters = [];
 
+                    [
+                        ...selectedChapters,
+                        ...manualChapters
+                    ].forEach(name => {
+
+                        const alreadyExists =
+                            chapters.some(
+                                existing =>
+                                    existing.toLowerCase() ===
+                                    name.toLowerCase()
+                            );
+
+                        if (!alreadyExists) {
+                            chapters.push(name);
+                        }
+                    });
+
+                    // AI Generate:
+                    // dropdown OR manual entry OR both are accepted.
+                    //
+                    // Entrance Question Bank:
+                    // existing chapter selection rule remains unchanged.
+                    const mustChooseChapters =
+                        sourceTypeGlobal === 'AI Generate' ||
+                        (
+                            sourceTypeGlobal === 'Question Bank' &&
+                            __ebIsEntranceExamBoard(selectedBoard)
+                        );
+
+                    if (
+                        mustChooseChapters &&
+                        !allChaptersSelected &&
+                        chapters.length === 0
+                    ) {
+                        showToast(
+                            sourceTypeGlobal === 'AI Generate'
+                                ? `Please select or enter at least one chapter / lesson for ${subjectTitle}.`
+                                : `Please select one or more chapters, or choose All Chapters for ${subjectTitle}.`,
+                            'error'
+                        );
+
+                        btn.disabled = false;
+                        btn.textContent = "Build Exam Draft";
+                        return;
+                    }
                     const sectionsList =
                         sb.querySelectorAll('.section-item');
                     const sections = [];
