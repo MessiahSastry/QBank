@@ -142,7 +142,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 110px;
+  min-height: 136px;
   margin-top: 0;
   margin-bottom: 0;
   padding: 0 120px;
@@ -5343,6 +5343,26 @@ refreshExamPagePicker(totalPages);
     });
 }
 
+function formatMarksForPrint(value) {
+  const n = Number(value);
+
+  if (Math.abs(n - 0.5) < 0.000001) {
+    return '\\(\\frac{1}{2}\\)';
+  }
+
+  return Number.isInteger(n)
+    ? String(n)
+    : String(n);
+}
+
+function formatSectionTotal(value) {
+  const n = Number(value);
+
+  return Number.isInteger(n)
+    ? String(n)
+    : String(n);
+}
+
 function renderPrintPreview() {
   const renderId = ++window.__examPreviewRenderId;
 
@@ -5432,10 +5452,14 @@ function renderPrintPreview() {
   }
 </span>
               <span style="flex:0 0 auto;text-align:right;margin-left:30px;">
-                ${
-                  section.type === 'all'      ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
-                  section.type === 'any'      ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
-                  section.type === 'internal' ? `${section.numPairs} x ${section.marksPerQuestion} = ${section.numPairs * section.marksPerQuestion} Marks` : ''
+                               ${
+                  section.type === 'all'
+                    ? `${section.numQuestions} × ${formatMarksForPrint(section.marksPerQuestion)} = ${formatSectionTotal(section.numQuestions * section.marksPerQuestion)} Marks`
+                    : section.type === 'any'
+                    ? `${section.attemptAny || section.numQuestions} × ${formatMarksForPrint(section.marksPerQuestion)} = ${formatSectionTotal((section.attemptAny || section.numQuestions) * section.marksPerQuestion)} Marks`
+                    : section.type === 'internal'
+                    ? `${section.numPairs} × ${formatMarksForPrint(section.marksPerQuestion)} = ${formatSectionTotal(section.numPairs * section.marksPerQuestion)} Marks`
+                    : ''
                 }
               </span>
             </div>
@@ -5604,10 +5628,14 @@ function renderPrintPreview() {
               }
             </span>
               <span style="flex:0 0 auto;text-align:right;margin-left:30px;color:#111111;">
-                ${
-                  section.type === 'all'      ? `${section.numQuestions} x ${section.marksPerQuestion} = ${section.numQuestions * section.marksPerQuestion} Marks` :
-                  section.type === 'any'      ? `${section.attemptAny || section.numQuestions} x ${section.marksPerQuestion} = ${(section.attemptAny || section.numQuestions) * section.marksPerQuestion} Marks` :
-                  section.type === 'internal' ? `${section.numPairs} x ${section.marksPerQuestion} = ${section.numPairs * section.marksPerQuestion} Marks` : ''
+                                ${
+                  section.type === 'all'
+                    ? `${section.numQuestions} × ${formatMarksForPrint(section.marksPerQuestion)} = ${formatSectionTotal(section.numQuestions * section.marksPerQuestion)} Marks`
+                    : section.type === 'any'
+                    ? `${section.attemptAny || section.numQuestions} × ${formatMarksForPrint(section.marksPerQuestion)} = ${formatSectionTotal((section.attemptAny || section.numQuestions) * section.marksPerQuestion)} Marks`
+                    : section.type === 'internal'
+                    ? `${section.numPairs} × ${formatMarksForPrint(section.marksPerQuestion)} = ${formatSectionTotal(section.numPairs * section.marksPerQuestion)} Marks`
+                    : ''
                 }
               </span>
             </div>
