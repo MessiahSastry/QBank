@@ -136,13 +136,13 @@
   }
 }
 
-   .heading-row {
+  .heading-row {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 136px;
+  min-height: 190px;
   margin-top: 0;
   margin-bottom: 0;
   padding: 0 120px;
@@ -194,7 +194,7 @@
   min-width:92px;
 }
 
-#answer-key-qr{
+
   width:96px;
   height:96px;
   background:#ffffff;
@@ -207,16 +207,41 @@
   justify-content:center;
 }
 
-#answer-key-qr canvas{
-  display:none !important;
+.qr-side-box{
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-width:152px;
 }
 
-#answer-key-qr img{
-  width:84px !important;
-  height:84px !important;
+#answer-key-qr{
+  width:152px;
+  height:152px;
+  background:#ffffff;
+  border:none;
+  border-radius:0;
+  padding:12px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#answer-key-qr canvas{
+  width:128px !important;
+  height:128px !important;
   display:block !important;
   background:#ffffff !important;
   image-rendering:pixelated;
+}
+
+#answer-key-qr img{
+  display:none !important;
 }
 
 .qr-caption{
@@ -240,7 +265,7 @@
     min-width:72px;
     right:0;
   }
-  #answer-key-qr{
+  
     width:64px;
     height:64px;
   }
@@ -250,7 +275,7 @@
 }
 
 @media print{
-  #answer-key-qr{
+  
     border:1px solid #000 !important;
     background:#fff !important;
   }
@@ -3476,10 +3501,10 @@ qrLink.removeAttribute('data-qr-link');
     qrLink.target = '_blank';
     qrLink.setAttribute('data-qr-link', answerKeyUrl);
 
-       new QRCode(qrBox, {
+          new QRCode(qrBox, {
       text: answerKeyUrl,
-      width: 256,
-      height: 256,
+      width: 128,
+      height: 128,
       colorDark: '#000000',
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M
