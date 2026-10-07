@@ -819,14 +819,16 @@ const questionsDb = stpatricksApp.firestore();
         ]
       },
             questionTypes: [
-        "MCQ (Single)",
-        "MCQ (Multiple)",
-        "Assertion and Reason (MCQ Single)",
-        "Matching Matrix",
-        "Paragraph-Based MCQ (Single Correct)",
-        "Fill in the Blanks",
-        "Descriptive"
-      ],
+  "MCQ (Single)",
+  "MCQ (Multiple)",
+  "Assertion and Reason (MCQ Single)",
+  "Matching Matrix",
+  "Paragraph-Based MCQ (Single Correct)",
+  "Fill in the Blanks",
+  "Descriptive",
+  "Case Based",
+  "Map"
+],
       marks: Array.from({ length: 10 }, (_, i) => i + 1),
             levels: ["Level 1", "Level 2", "Level 3"]
     };
@@ -5151,56 +5153,88 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       ).trim();
     }
 
-        function __qbNormalizeQuestionType(data = {}) {
-      const rawType = __qbGetRawQuestionType(data);
-      const lowerType = rawType.toLowerCase();
+       function __qbNormalizeQuestionType(data = {}) {
+  const rawType = __qbGetRawQuestionType(data);
+  const lowerType = rawType.toLowerCase();
 
-      if (
-        lowerType === 'comprehensive' ||
-        (lowerType.includes('paragraph') && lowerType.includes('mcq'))
-      ) {
-        return 'Paragraph-Based MCQ (Single Correct)';
-      }
-      if (lowerType.includes('assertion') && lowerType.includes('reason')) {
-        return 'Assertion and Reason (MCQ Single)';
-      }
-      if (lowerType.includes('fill') && lowerType.includes('blank')) {
-        return 'Fill in the Blanks';
-      }
-            if (
-        lowerType.includes('numerical') &&
-        lowerType.includes('value')
-      ) {
-        return 'Numerical Value';
-      }
+  if (
+    lowerType === 'comprehensive' ||
+    (lowerType.includes('paragraph') && lowerType.includes('mcq'))
+  ) {
+    return 'Paragraph-Based MCQ (Single Correct)';
+  }
 
-      if (
-        lowerType.includes('matching') &&
-        lowerType.includes('list')
-      ) {
-        return 'Matching List';
-      }
+  if (
+    lowerType.includes('assertion') &&
+    lowerType.includes('reason')
+  ) {
+    return 'Assertion and Reason (MCQ Single)';
+  }
 
-      if (
-        lowerType.includes('matching') &&
-        lowerType.includes('matrix')
-      ) {
-        return 'Matching Matrix';
-      }
+  if (
+    lowerType.includes('case based') ||
+    lowerType.includes('case-based') ||
+    lowerType === 'case based'
+  ) {
+    return 'Case Based';
+  }
 
-      if (lowerType.includes('multiple')) {
-        return 'MCQ (Multiple)';
-      }
-      if (lowerType.includes('single') || lowerType === 'mcq') {
-        return 'MCQ (Single)';
-      }
-      if (lowerType === 'descriptive') {
-        return 'Descriptive';
-      }
+  if (
+    lowerType === 'map' ||
+    lowerType.includes('map based') ||
+    lowerType.includes('map-based')
+  ) {
+    return 'Map';
+  }
 
-      return Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive';
-    }
+  if (
+    lowerType.includes('fill') &&
+    lowerType.includes('blank')
+  ) {
+    return 'Fill in the Blanks';
+  }
 
+  if (
+    lowerType.includes('numerical') &&
+    lowerType.includes('value')
+  ) {
+    return 'Numerical Value';
+  }
+
+  if (
+    lowerType.includes('matching') &&
+    lowerType.includes('list')
+  ) {
+    return 'Matching List';
+  }
+
+  if (
+    lowerType.includes('matching') &&
+    lowerType.includes('matrix')
+  ) {
+    return 'Matching Matrix';
+  }
+
+  if (lowerType.includes('multiple')) {
+    return 'MCQ (Multiple)';
+  }
+
+  if (
+    lowerType.includes('single') ||
+    lowerType === 'mcq'
+  ) {
+    return 'MCQ (Single)';
+  }
+
+  if (lowerType === 'descriptive') {
+    return 'Descriptive';
+  }
+
+  return Array.isArray(data.options) &&
+    data.options.length === 4
+      ? 'MCQ (Single)'
+      : 'Descriptive';
+}
     function __qbIsParagraphBasedQuestion(data = {}) {
       return __qbNormalizeQuestionType(data) === 'Paragraph-Based MCQ (Single Correct)';
     }
@@ -5466,12 +5500,19 @@ questionsHTML += `
               </div>
 
                                                        <div class="question-meta">
-                ${
-                  __isEntranceExam
-                    ? `Q${__savedQNo}: [${__normType}]`
-                    : `Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s) [${__normType}]`
-                }
-              </div>
+  ${
+    data.bankMode === 'chapter'
+      ? (
+          `Q${__savedQNo}: ${data.marks ?? 'N/A'} Mark${Number(data.marks) === 1 ? '' : 's'} [${__normType}]` +
+          `${data.category ? ` [Category: ${data.category}]` : ''}` +
+          `${data.modelType ? ` [Model: ${data.modelType}]` : ''}` +
+          `${data.subjectArea ? ` [Area: ${data.subjectArea}]` : ''}`
+        )
+      : __isEntranceExam
+        ? `Q${__savedQNo}: [${__normType}]`
+        : `Q${__savedQNo}: ${(data.difficulty || data.level || 'N/A')}, ${(data.marks ?? 'N/A')} Mark(s) [${__normType}]`
+  }
+</div>
               <div class="question-text">
                                ${
                   __qbIsParagraphBasedQuestion(data)
