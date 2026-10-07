@@ -1213,67 +1213,136 @@ const subjectsHTML = initialSubjectsWithOther
     </div>
   </div>
           
-                      <div class="form-group">
+                                <div class="form-group">
+            <label>Name of the Board:</label>
+            <div id="board-dropdown-ai" class="custom-dropdown">
+              <input
+                type="hidden"
+                id="board-value-ai"
+                value="${(aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : ''}"
+              >
+              <div class="selected-option">
+                ${(aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : 'Select Board'}
+              </div>
+              <div class="dropdown-options">${boardsHTML}</div>
+            </div>
+
+            <div id="board-other-wrap" style="display:none;margin-top:10px;">
+              <label style="font-size:0.95em;">Type Board Name:</label>
+              <input
+                type="text"
+                id="board-other-input"
+                placeholder="Enter Board Name"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
             <label>Generation Mode:</label>
             <div id="generation-mode-dropdown-ai" class="custom-dropdown">
-              <input type="hidden" id="generation-mode-value-ai" value="normal">
-              <div class="selected-option">Normal Question Generation</div>
+              <input
+                type="hidden"
+                id="generation-mode-value-ai"
+                value="normal"
+              >
+              <div class="selected-option">
+                Normal Question Generation
+              </div>
+
               <div class="dropdown-options">
-                <div data-value="normal">Normal Question Generation</div>
-                <div data-value="chapter-bank">Complete Chapter Bank</div>
+                <div data-value="normal">
+                  Normal Question Generation
+                </div>
+
+                <div data-value="chapter-bank">
+                  Complete Chapter Bank
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="form-group" id="normal-qtype-wrap-ai">
+          <div class="form-group">
+            <label>Subject:</label>
+
+            <div id="subject-dropdown-ai" class="custom-dropdown">
+              <input
+                type="hidden"
+                id="subject-value-ai"
+                value="${(initialSubjectsWithOther[0] || '')}"
+              >
+
+              <div class="selected-option">
+                ${(initialSubjectsWithOther[0] || 'Select Subject')}
+              </div>
+
+              <div class="dropdown-options">
+                ${subjectsHTML}
+              </div>
+            </div>
+
+            <div
+              id="subject-other-wrap"
+              style="display:none;margin-top:10px;"
+            >
+              <label style="font-size:0.95em;">
+                Type Subject Name:
+              </label>
+
+              <input
+                type="text"
+                id="subject-other-input"
+                placeholder="Enter Subject Name"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Chapter Name:</label>
+
+            <div id="chapter-dropdown-ai" class="custom-dropdown">
+              <input
+                type="hidden"
+                id="chapter-value-ai"
+                value=""
+              >
+
+              <div class="selected-option">
+                Select Chapter
+              </div>
+
+              <div class="dropdown-options">
+                <div data-value="">
+                  No chapters available
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="form-group"
+            id="normal-qtype-wrap-ai"
+          >
             <label>Question Type:</label>
-            <div id="qtype-dropdown-ai" class="custom-dropdown">
-              <input type="hidden" id="qtype-value-ai" value="${aiGeneratorConfig.questionTypes[0]}">
-              <div class="selected-option">${aiGeneratorConfig.questionTypes[0]}</div>
-              <div class="dropdown-options">${qTypesHTML}</div>
+
+            <div
+              id="qtype-dropdown-ai"
+              class="custom-dropdown"
+            >
+              <input
+                type="hidden"
+                id="qtype-value-ai"
+                value="${aiGeneratorConfig.questionTypes[0]}"
+              >
+
+              <div class="selected-option">
+                ${aiGeneratorConfig.questionTypes[0]}
+              </div>
+
+              <div class="dropdown-options">
+                ${qTypesHTML}
+              </div>
             </div>
           </div>
-
-            <!-- NEW: show only when Board = Other -->
-            <div id="board-other-wrap" style="display:none;margin-top:10px;">
-              <label style="font-size:0.95em;">Type Board Name:</label>
-              <input type="text" id="board-other-input" placeholder="Enter Board Name" />
-            </div>
-          </div>
-
-            <div class="form-group">
-      <label>Subject:</label>
-      <div id="subject-dropdown-ai" class="custom-dropdown">
-    <input type="hidden" id="subject-value-ai" value="${(initialSubjectsWithOther[0] || '')}">
-    <div class="selected-option">${(initialSubjectsWithOther[0] || 'Select Subject')}</div>
-    <div class="dropdown-options">${subjectsHTML}</div>
-      </div>
-
-  <!-- NEW: show only when Subject = Other -->
-  <div id="subject-other-wrap" style="display:none;margin-top:10px;">
-    <label style="font-size:0.95em;">Type Subject Name:</label>
-    <input type="text" id="subject-other-input" placeholder="Enter Subject Name" />
-  </div>
-</div>
- <div class="form-group">
-  <label>Chapter Name:</label>
-  <div id="chapter-dropdown-ai" class="custom-dropdown">
-    <input type="hidden" id="chapter-value-ai" value="">
-    <div class="selected-option">Select Chapter</div>
-    <div class="dropdown-options">
-      <div data-value="">No chapters available</div>
-    </div>
-  </div>
-</div>
-              <div class="form-group">
-            <label>Question Type:</label>
-            <div id="qtype-dropdown-ai" class="custom-dropdown">
-              <input type="hidden" id="qtype-value-ai" value="${aiGeneratorConfig.questionTypes[0]}">
-              <div class="selected-option">${aiGeneratorConfig.questionTypes[0]}</div>
-              <div class="dropdown-options">${qTypesHTML}</div>
-            </div>
-          </div>
-
          
    <!-- NEW: Levels (L1/L2/L3) + Total (auto) -->
 <div class="form-group" id="levels-wrap-ai">
