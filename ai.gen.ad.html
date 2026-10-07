@@ -1522,7 +1522,9 @@ window.__syncGenerationModeUI = function () {
 
   const isChapterBank = mode === 'chapter-bank';
 
-  const qtypeWrap = document.getElementById('normal-qtype-wrap-ai');
+const qtypeWrap =
+  document.getElementById('normal-qtype-wrap-ai') ||
+  document.getElementById('qtype-dropdown-ai')?.closest('.form-group');
   const levelsWrap = document.getElementById('levels-wrap-ai');
 
   const mcqWrap = document.getElementById('mcq-levels-wrap-ai');
