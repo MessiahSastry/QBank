@@ -5145,13 +5145,66 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     displayArea.innerHTML = '<p class="no-questions-message">Failed to load chapters.</p>';
   }
 }
-    function __qbGetRawQuestionType(data = {}) {
-      return String(
-        data.mcqType ||
-        data.type ||
-        (Array.isArray(data.options) && data.options.length === 4 ? 'MCQ (Single)' : 'Descriptive')
-      ).trim();
-    }
+   function __qbGetRawQuestionType(data = {}) {
+
+  const storedMcqType =
+    String(data.mcqType || '').trim();
+
+  const storedType =
+    String(data.type || '').trim();
+
+  const metaLine =
+    String(data.metaLine || '').trim();
+
+  /* =====================================================
+     COMPLETE CHAPTER BANK
+     Recover the real type from the meta line if necessary.
+  ===================================================== */
+
+  const metaTypeMatch = metaLine.match(
+    /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Fill in the Blanks|Matching Matrix|Matching List|Numerical Value|Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i
+  );
+
+  const metaType =
+    metaTypeMatch
+      ? metaTypeMatch[1].trim()
+      : '';
+
+  /*
+     For Chapter Bank records the meta line is authoritative.
+     This also repairs display of records that may have been
+     saved earlier with a generic type.
+  */
+  const isChapterBank =
+    data.bankMode === 'chapter' ||
+    data.generationMode === 'chapter-bank' ||
+    /\[Model:\s*[^\]]+\]/i.test(metaLine) ||
+    /\[Category:\s*(VSA|SA|LA)\]/i.test(metaLine);
+
+  if (isChapterBank && metaType) {
+    return metaType;
+  }
+
+  if (storedMcqType) {
+    return storedMcqType;
+  }
+
+  if (
+    storedType &&
+    storedType !== 'Complete Chapter Bank'
+  ) {
+    return storedType;
+  }
+
+  if (metaType) {
+    return metaType;
+  }
+
+  return Array.isArray(data.options) &&
+    data.options.length === 4
+      ? 'MCQ (Single)'
+      : 'Descriptive';
+}
 
        function __qbNormalizeQuestionType(data = {}) {
   const rawType = __qbGetRawQuestionType(data);
@@ -5443,9 +5496,23 @@ if (selChapters.length > 1) {
 }
 
 // Level
-// Entrance-exam questions do not use stored Level.
-if (!__isEntranceExam && selLevels.length > 0) {
-  const lv = (data.difficulty || data.level || '').trim();
+// Entrance-exam questions and Complete Chapter Bank questions
+// do not use Level 1 / Level 2 / Level 3.
+
+const __isChapterBankQuestion =
+  data.bankMode === 'chapter' ||
+  data.generationMode === 'chapter-bank' ||
+  /\[Model:\s*[^\]]+\]/i.test(String(data.metaLine || '')) ||
+  /\[Category:\s*(VSA|SA|LA)\]/i.test(String(data.metaLine || ''));
+
+if (
+  !__isEntranceExam &&
+  !__isChapterBankQuestion &&
+  selLevels.length > 0
+) {
+  const lv =
+    String(data.difficulty || data.level || '').trim();
+
   if (!lv || !selLevels.includes(lv)) return;
 }
 
