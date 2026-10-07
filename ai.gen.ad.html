@@ -3724,8 +3724,566 @@ async function openInChatGptWithPrefill(prompt) {
 
 /* === end helpers === */
 
+/* =========================================================
+   COMPLETE CHAPTER BANK — SUBJECT-WISE PROMPT BUILDER
+========================================================= */
+
+function buildCompleteChapterBankPrompt(sessionParams = {}) {
+  const cls = String(sessionParams.class || '').trim();
+  const board = String(sessionParams.board || '').trim();
+  const subj = String(sessionParams.subject || '').trim();
+  const chap = String(sessionParams.chapter || '').trim();
+
+  const classNum =
+    parseInt((cls.match(/\d+/) || ['0'])[0], 10) || 0;
+
+  const subjectKey = subj.toLowerCase();
+  const boardKey = board.toLowerCase();
+
+  const isMath =
+    /mathematics|math/.test(subjectKey);
+
+  const isScience =
+    /science|physics|chemistry|biology/.test(subjectKey);
+
+  const isSocial =
+    /social science|social studies|history|geography|civics|political science|economics/.test(subjectKey);
+
+  const isEnglish =
+    subjectKey === 'english' ||
+    subjectKey.includes('english language') ||
+    subjectKey.includes('english literature');
+
+  const isLanguage =
+    /hindi|telugu|sanskrit|second language/.test(subjectKey);
+
+  const isComputer =
+    /computer|information technology|ict|cyber|\bit\b/.test(subjectKey);
+
+  let subjectPlan = '';
+  let specialRules = '';
+  let socialAreaRule = '';
+
+  /* =====================================================
+     MATHEMATICS
+  ===================================================== */
+  if (isMath) {
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records for this chapter.
+
+A. OBJECTIVE / MCQ — 20 questions
+• 6 Direct Concept / Understanding MCQs
+• 5 Application MCQs
+• 4 Competency / Real-life / Situation-based MCQs
+• 3 Assertion–Reason questions
+• 2 Statement / Multiple-statement reasoning MCQs
+
+B. VSA — 10 questions
+• 2 Marks each
+• Include direct application, reasoning and short problem-solving models.
+
+C. SA — 8 questions
+• 3 Marks each
+• Include application, multi-step solving, reasoning and interpretation.
+
+D. LA — 6 questions
+• 5 Marks each
+• Include deeper problem solving, analysis and multi-concept application.
+
+E. CASE / COMPETENCY-BASED — 6 sets
+• 4 Marks each
+• Use meaningful mathematical situations, data, tables, diagrams or real-life contexts where suitable.
+
+TOTAL BANK RECORDS: 50
+`;
+
+    specialRules = `
+MATHEMATICS-SPECIFIC RULES:
+
+• Every mathematical question must be solvable using concepts appropriate to the selected class and chapter.
+• Do not introduce higher-class methods.
+• Use proper mathematical notation and inline LaTeX using \\( \\).
+• Do not use display-math delimiters.
+• Give a correct final answer for every question.
+• Every descriptive answer must include a clear step-by-step solution.
+• Do not end a solution line with an unnecessary "=".
+• For MCQs, exactly one option must be correct unless the question model explicitly says otherwise.
+• Distractors must be mathematically plausible.
+• Avoid generating the same mathematical model repeatedly with only changed numbers.
+`;
+  }
+
+  /* =====================================================
+     SCIENCE
+  ===================================================== */
+  else if (isScience) {
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records for this chapter.
+
+A. OBJECTIVE / MCQ — 20 questions
+• 6 Direct Concept / Understanding MCQs
+• 4 Statement-based MCQs
+• 4 Assertion–Reason questions
+• 4 Competency / Application MCQs
+• 2 Diagram / Data / Observation / Experiment-based MCQs where applicable
+
+B. VSA — 10 questions
+• 2 Marks each
+• Definitions, reasons, observations, distinctions, short applications and concept checks.
+
+C. SA — 8 questions
+• 3 Marks each
+• Explain, compare, reason, apply, interpret data/experiments and analyse simple situations.
+
+D. LA — 6 questions
+• 5 Marks each
+• Detailed explanation, analysis, processes, reasoning, experiment/application and interconnected concepts.
+
+E. CASE / SOURCE / COMPETENCY-BASED — 6 sets
+• 4 Marks each
+• Use experiment, observation, data, real-life situation, scientific passage or diagram context where appropriate.
+
+TOTAL BANK RECORDS: 50
+`;
+
+    specialRules = `
+SCIENCE-SPECIFIC RULES:
+
+• Use correct scientific terminology from the selected board/textbook.
+• Stay strictly within the selected chapter.
+• Include experiment, observation, diagram, data and real-life application models only where appropriate.
+• Do not require an unseen diagram unless the question itself contains enough information to answer.
+• Numerical questions must include correct units and calculations.
+• Biology answers should use scientifically accurate terminology.
+• Physics answers should show formula, substitution, calculation and unit where required.
+• Chemistry equations, symbols, formulae and reactions must be correct.
+• Descriptive answers should be point-wise where suitable.
+`;
+  }
+
+  /* =====================================================
+     SOCIAL SCIENCE
+  ===================================================== */
+  else if (isSocial) {
+
+    if (classNum >= 9 && classNum <= 10) {
+      socialAreaRule = `
+SOCIAL SCIENCE AREA RULE:
+
+This is Class ${classNum} Social Science.
+
+The chapter belongs to ONE of these four areas:
+• History
+• Geography
+• Political Science
+• Economics
+
+Identify the correct area from the selected chapter.
+
+For EVERY generated question include:
+[Area: History]
+or
+[Area: Geography]
+or
+[Area: Political Science]
+or
+[Area: Economics]
+
+Use only the correct area for this chapter.
+`;
+    } else if (classNum >= 6 && classNum <= 8) {
+      socialAreaRule = `
+SOCIAL SCIENCE AREA RULE:
+
+For Classes 6, 7 and 8, treat Social Science as ONE INTEGRATED SUBJECT for this Question Bank.
+
+Do NOT force the chapter into separate History / Geography / Political Science / Economics paper sections.
+
+Do NOT print an [Area: ...] tag.
+`;
+    }
+
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records for this chapter.
+
+A. OBJECTIVE / MCQ — 20 questions
+• 5 Direct Concept / Text Understanding
+• 4 Statement / Combination
+• 3 Assertion–Reason
+• 3 Match / Chronology / Sequence / Identification
+• 5 Competency / Application / Source / Data / Situation-based
+
+B. VSA — 10 questions
+• 2 Marks each
+• Include state, mention, give reasons, identify, distinguish and brief explanation models.
+
+C. SA — 8 questions
+• 3 Marks each
+• Use a MIX of:
+  - Explain
+  - Describe
+  - Give Reasons
+  - Compare
+  - Analyse
+  - Justify
+  - Competency / Application
+
+D. LA — 6 questions
+• 5 Marks each
+• Use a MIX of:
+  - Explain comprehensively
+  - Examine
+  - Analyse
+  - Evaluate
+  - Compare
+  - Justify with arguments
+
+E. CASE / SOURCE-BASED — 4 sets
+• 4 Marks each
+• Each set must contain a meaningful source/case/passage and properly structured sub-questions.
+
+F. MAP / SOURCE / VISUAL SPECIAL — 2 questions
+• Use Map questions only where map work genuinely applies to this chapter.
+• If map work does NOT apply, replace these 2 with competency/source/data/visual questions.
+
+TOTAL BANK RECORDS: 50
+`;
+
+    specialRules = `
+SOCIAL SCIENCE-SPECIFIC RULES:
+
+• Use correct textbook terminology, facts, names, chronology and concepts.
+• Do not invent historical facts, locations, statistics or constitutional/economic details.
+• History: include chronology, cause-effect, source interpretation and significance where suitable.
+• Geography: include resources, maps, data, location, environment and application where suitable.
+• Political Science: include democratic principles, situations, comparison, reasoning and case application.
+• Economics: include situations, data, indicators, sectors, money/banking/globalisation/application where relevant.
+• Do NOT create the same concept repeatedly as a 2-mark, 3-mark and 5-mark question with only slight wording changes.
+• Descriptive questions must use varied question models.
+${socialAreaRule}
+`;
+  }
+
+  /* =====================================================
+     ENGLISH
+  ===================================================== */
+  else if (isEnglish) {
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records appropriate to this selected English chapter/lesson.
+
+A. OBJECTIVE / MCQ — 15 questions
+• Direct understanding
+• Inference
+• Vocabulary in context
+• Character / event / idea understanding
+• Competency / interpretation
+
+B. EXTRACT-BASED — 5 sets
+• Use meaningful extracts from, or faithful short references to, the selected lesson/poem where legally and educationally appropriate.
+• Each set should test comprehension, inference, vocabulary/literary understanding and interpretation.
+
+C. SHORT-ANSWER — 15 questions
+• Use the marks appropriate to the selected class/board pattern.
+• Include factual understanding, inference, reasons, character, theme, event and interpretation.
+
+D. LONG-ANSWER — 10 questions
+• Use the marks appropriate to the selected class/board pattern.
+• Include theme, character, message, comparison, analysis, evaluation and extended response.
+
+E. HIGHER-ORDER / COMPETENCY LITERATURE — 5 questions
+• Situation-based, interpretive, evaluative or cross-idea questions based strictly on the selected chapter.
+
+TOTAL BANK RECORDS: 50
+`;
+
+    specialRules = `
+ENGLISH-SPECIFIC RULES:
+
+• If the selected chapter is Literature, generate Literature questions only.
+• Do NOT add unrelated grammar or writing-section questions to a literature chapter.
+• If the selected chapter itself is Grammar or Writing, generate questions appropriate to that selected topic.
+• Keep language natural, grammatically correct and class-appropriate.
+• Avoid questions that can be answered without reading/understanding the chapter.
+• Use a balanced mix of literal comprehension, inference, interpretation, theme, character and competency.
+• Do not reproduce long copyrighted textbook passages.
+• Answers must be accurate and concise, with marking points where appropriate.
+`;
+  }
+
+  /* =====================================================
+     HINDI / TELUGU / SANSKRIT / OTHER LANGUAGE
+  ===================================================== */
+  else if (isLanguage) {
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records appropriate to this selected language chapter.
+
+A. OBJECTIVE / MCQ — 15 questions
+B. TEXT / EXTRACT-BASED — 5 sets
+C. VERY SHORT / SHORT ANSWER — 15 questions
+D. LONG ANSWER — 10 questions
+E. VOCABULARY / LANGUAGE / LITERARY-DEVICE QUESTIONS — 5 questions where relevant
+
+TOTAL BANK RECORDS: 50
+`;
+
+    specialRules = `
+LANGUAGE-SUBJECT RULES:
+
+• Follow the selected board, class and textbook terminology.
+• If this is a prose/poetry lesson, keep the bank lesson-specific.
+• Do NOT insert unrelated grammar merely to complete the count.
+• Grammar/vocabulary may be included only when it is part of the selected chapter/topic or naturally tested from the lesson.
+• Maintain correct spelling, script and grammar of the selected language.
+• Include comprehension, meaning, inference, theme, vocabulary and appropriate literary understanding.
+`;
+  }
+
+  /* =====================================================
+     COMPUTER / IT
+  ===================================================== */
+  else if (isComputer) {
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records for this chapter.
+
+A. MCQ / OBJECTIVE — 20 questions
+B. VSA — 10 questions of 2 Marks
+C. SA — 8 questions of 3 Marks
+D. LA — 6 questions of 5 Marks
+E. CASE / APPLICATION / PRACTICAL-SITUATION — 6 sets of 4 Marks
+
+TOTAL BANK RECORDS: 50
+`;
+
+    specialRules = `
+COMPUTER / IT-SPECIFIC RULES:
+
+• Stay strictly within the selected class, board and chapter.
+• Include terminology, concept understanding, application and practical situations.
+• Use code only when coding is genuinely part of the selected chapter.
+• Code, syntax, commands and outputs must be correct.
+• Do not introduce software, languages or concepts outside the prescribed syllabus.
+`;
+  }
+
+  /* =====================================================
+     FALLBACK SUBJECT
+  ===================================================== */
+  else {
+    subjectPlan = `
+TARGET CHAPTER BANK INVENTORY:
+
+Generate 50 reusable question-bank records covering the entire selected chapter.
+
+Use an appropriate subject-specific mix of:
+• Objective / MCQ
+• Very Short Answer
+• Short Answer
+• Long Answer
+• Competency / Application
+• Case / Source / Data / Practical questions where suitable
+
+Assign marks appropriate to the selected board, class, subject and question model.
+`;
+
+    specialRules = `
+SUBJECT-SPECIFIC RULE:
+
+First identify the normal examination question models appropriate to this selected Board + Class + Subject.
+
+Generate a balanced chapter bank using those models.
+
+Do not force Mathematics, Science or Social Science question models onto an unrelated subject.
+`;
+  }
+
+  return `
+You are creating a COMPLETE CHAPTER-WISE QUESTION BANK for later use by an Exam Builder.
+
+THIS IS NOT A QUESTION PAPER.
+
+BOARD: ${board}
+CLASS: ${cls}
+SUBJECT: ${subj}
+CHAPTER: ${chap}
+
+PURPOSE:
+Create a reusable master inventory of high-quality questions from this ONE chapter.
+Later, an Exam Builder will select suitable questions from this bank to construct 20-mark, 40-mark, 80-mark or other papers.
+
+IMPORTANT:
+• Cover the WHOLE chapter appropriately.
+• Stay strictly within the selected Board, Class, Subject and Chapter.
+• Use correct textbook/syllabus terminology.
+• Do not introduce higher-class or out-of-syllabus concepts.
+• Avoid duplicate questions and superficial rewording.
+• Every question must be usable independently in a future examination.
+• Do NOT assign Level 1, Level 2 or Level 3.
+• Do NOT print Easy / Medium / Hard.
+• Marks and question model MUST be specified for every question.
+• Carefully verify every question, answer, option, fact, calculation and explanation before output.
+• If a question is ambiguous or has more than one unintended answer, correct it before output.
+
+${subjectPlan}
+
+${specialRules}
+
+=========================================================
+MANDATORY META FORMAT
+=========================================================
+
+Every bank record MUST start with:
+
+Q<num>: <Marks> [<Question Type>] [Model: <Model Type>]
+
+For Social Science Class 9 or 10, append:
+[Area: <History/Geography/Political Science/Economics>]
+
+Examples:
+
+Q1: 1 Mark [MCQ (Single)] [Model: Direct Concept]
+
+Q2: 1 Mark [Assertion and Reason (MCQ Single)] [Model: Assertion and Reason]
+
+Q21: 2 Marks [Descriptive] [Category: VSA] [Model: Give Reasons]
+
+Q31: 3 Marks [Descriptive] [Category: SA] [Model: Analyse]
+
+Q39: 5 Marks [Descriptive] [Category: LA] [Model: Evaluate]
+
+Q45: 4 Marks [Case Based] [Model: Source Based]
+
+Q49: 1 Mark [Map] [Model: Locate/Identify]
+
+=========================================================
+MCQ FORMAT
+=========================================================
+
+Q<num>: 1 Mark [MCQ (Single)] [Model: <model>]
+<Question>
+A) ...
+B) ...
+C) ...
+D) ...
+Ans: <A), B), C), or D)>
+Explanation:
+<clear correct explanation>
+Answer:
+<correct answer text>
+
+IMPORTANT FOR MCQs:
+• Exactly one option must be correct for MCQ (Single).
+• Distribute correct answers naturally across A, B, C and D.
+• Do not produce long runs of the same correct option.
+• Distractors must be plausible.
+• Do not reveal the answer in the wording of the question.
+
+=========================================================
+DESCRIPTIVE FORMAT
+=========================================================
+
+Q<num>: <Marks> [Descriptive] [Category: <VSA/SA/LA>] [Model: <model>]
+<Question>
+Answer:
+<correct answer / marking points>
+Explanation:
+<include only where useful; Mathematics must always include step-by-step solution>
+
+Do not use the same descriptive model repeatedly.
+Use suitable models such as:
+Direct
+Explain
+Describe
+Give Reasons
+Differentiate
+Compare
+Analyse
+Justify
+Examine
+Evaluate
+Competency/Application
+
+=========================================================
+CASE / SOURCE-BASED FORMAT
+=========================================================
+
+Q<num>: 4 Marks [Case Based] [Model: <model>]
+Case/Source:
+<case, situation, data or short source>
+
+Sub-question 1 (1 Mark):
+...
+
+Sub-question 2 (1 Mark):
+...
+
+Sub-question 3 (2 Marks):
+...
+
+Answers:
+1. ...
+2. ...
+3. ...
+
+=========================================================
+MAP FORMAT
+=========================================================
+
+Q<num>: <Marks> [Map] [Model: Locate/Identify/Label]
+<Question/instruction>
+Answer:
+<correct location/item>
+
+Only generate Map questions when they genuinely apply to this chapter.
+
+=========================================================
+FINAL QUALITY CHECK
+=========================================================
+
+Before output:
+1. Recheck every question.
+2. Recheck every answer.
+3. Recheck all MCQ options.
+4. Recheck marks and question category.
+5. Recheck that the entire chapter has reasonable concept coverage.
+6. Recheck there is no unnecessary repetition.
+7. Recheck that descriptive question models are varied.
+8. Recheck that questions are suitable for the selected class.
+9. Recheck that no Level 1/2/3 labels appear.
+10. Recheck numbering continuously from Q1 onward.
+
+OUTPUT ONLY THE QUESTION BANK RECORDS.
+Do not add an introduction, headings, summary or closing note.
+`;
+}
+
+
 /* === Prompt builder for initial generation in ChatGPT (FOUNDATION + CBSE modes, strict rules) === */
 function buildChatGptGenerationPrompt(sessionParams) {
+
+  /* COMPLETE CHAPTER BANK uses its own subject-wise prompt */
+  if (
+    sessionParams &&
+    (
+      sessionParams.generationMode === 'chapter-bank' ||
+      sessionParams.bankMode === 'chapter' ||
+      sessionParams.questionType === 'Complete Chapter Bank'
+    )
+  ) {
+    return buildCompleteChapterBankPrompt(sessionParams);
+  }
+
    const cls   = sessionParams.class || '';
   const board = sessionParams.board || '';
   const subj  = sessionParams.subject || '';
