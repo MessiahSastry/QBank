@@ -244,11 +244,42 @@
           </div>
         </form>
 
-        <div id="export-btns">
-          <button id="download-pdf-btn"><i class="fa-solid fa-file-pdf"></i> Download Worksheet</button>
-          <button id="create-quiz-btn" class="main-btn" style="margin-top:16px;"><i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz</button>
-<button id="manage-students-btn" class="main-btn" style="margin-top:12px; background:#0f8b6d;"><i class="fa-solid fa-users"></i> Manage Classes & Students</button>
-        </div>
+       <div id="export-btns">
+  <button id="download-pdf-btn">
+    <i class="fa-solid fa-file-pdf"></i> Download Worksheet
+  </button>
+
+  <button
+    id="create-quiz-btn"
+    class="main-btn"
+    style="margin-top:16px;"
+  >
+    <i class="fa-solid fa-pen-to-square"></i> Create Practice Quiz
+  </button>
+
+  <button
+    id="manage-students-btn"
+    class="main-btn"
+    style="margin-top:12px; background:#0f8b6d;"
+  >
+    <i class="fa-solid fa-users"></i> Manage Classes & Students
+  </button>
+
+  <button
+    type="button"
+    id="delete-chapter-bank-btn"
+    class="main-btn"
+    onclick="__qbDeleteSelectedChapterBankSet()"
+    style="
+      margin-top:12px;
+      background:#b3261e;
+      color:#fff;
+    "
+  >
+    <i class="fa-solid fa-trash"></i>
+    Delete Chapter Bank Set
+  </button>
+</div>
       </div>
 
       <div id="manual-quiz-toolbar" style="display:none; width:100%; max-width:650px; margin:0 auto 12px auto; background:#fff; border:1.5px solid #d9e8f7; border-radius:14px; box-shadow:0 2px 12px rgba(0,27,68,0.06); padding:12px 14px; box-sizing:border-box;">
@@ -5857,8 +5888,250 @@ function autoLatexAll(str) {
       return str;
     }
 
-    // 3-dot menu actions for each question in Question Bank
-    function setupQuestionActionMenus() {
+    /* =========================================================
+   DELETE COMPLETE CHAPTER BANK SET
+   Deletes only chapter-bank-style records for the exact
+   selected Class + Board + Subject + ONE Chapter.
+========================================================= */
+
+async function __qbDeleteSelectedChapterBankSet() {
+
+  const classVal =
+    String(document.getElementById('class-value')?.value || '').trim();
+
+  const boardVal =
+    String(document.getElementById('board-value')?.value || '').trim();
+
+  const subjectVal =
+    String(document.getElementById('subject-value')?.value || '').trim();
+
+  const selectedChapters =
+    typeof getMultiSelected === 'function'
+      ? getMultiSelected('chapter')
+      : [];
+
+  /* =====================================================
+     VALIDATION
+  ===================================================== */
+
+  if (
+    !classVal ||
+    classVal === 'All' ||
+    classVal === 'Select Class'
+  ) {
+    await appInfo('Please select one Class first.');
+    return;
+  }
+
+  if (
+    !boardVal ||
+    boardVal === 'All' ||
+    boardVal === 'Select Board'
+  ) {
+    await appInfo('Please select one Board first.');
+    return;
+  }
+
+  if (
+    !subjectVal ||
+    subjectVal === 'All' ||
+    subjectVal === 'Select Subject'
+  ) {
+    await appInfo('Please select one Subject first.');
+    return;
+  }
+
+  if (selectedChapters.length !== 1) {
+    await appInfo(
+      'Please select exactly ONE Chapter before deleting a Chapter Bank set.'
+    );
+    return;
+  }
+
+  const chapterVal =
+    String(selectedChapters[0] || '').trim();
+
+  if (!chapterVal) {
+    await appInfo('Please select one Chapter first.');
+    return;
+  }
+
+  const btn =
+    document.getElementById('delete-chapter-bank-btn');
+
+  const oldBtnHtml =
+    btn ? btn.innerHTML : '';
+
+  try {
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Checking Chapter Bank...';
+    }
+
+    /* =====================================================
+       FETCH ONLY THE EXACT SELECTED CHAPTER
+    ===================================================== */
+
+    const snapshot =
+      await questionsDb
+        .collection('questions')
+        .where('class', '==', classVal)
+        .where('board', '==', boardVal)
+        .where('subject', '==', subjectVal)
+        .where('chapter', '==', chapterVal)
+        .get();
+
+    if (snapshot.empty) {
+      await appInfo(
+        'No questions were found for the selected chapter.'
+      );
+      return;
+    }
+
+    /* =====================================================
+       IDENTIFY ONLY COMPLETE CHAPTER BANK RECORDS
+
+       This intentionally does NOT delete ordinary questions
+       from the same chapter.
+
+       It recognises:
+       - bankMode = chapter
+       - generationMode = chapter-bank
+       - [Model: ...]
+       - [Category: VSA/SA/LA]
+       - Case Based / Map chapter-bank metadata
+    ===================================================== */
+
+    const docsToDelete =
+      snapshot.docs.filter(doc => {
+
+        const data =
+          doc.data() || {};
+
+        const metaLine =
+          String(data.metaLine || '');
+
+        const isChapterBankRecord =
+          data.bankMode === 'chapter' ||
+
+          data.generationMode === 'chapter-bank' ||
+
+          /\[Model:\s*[^\]]+\]/i.test(metaLine) ||
+
+          /\[Category:\s*(VSA|SA|LA)\]/i.test(metaLine) ||
+
+          /\[(Case Based|Map)\]/i.test(metaLine);
+
+        return isChapterBankRecord;
+      });
+
+    if (!docsToDelete.length) {
+      await appInfo(
+        'No Complete Chapter Bank records were found for this selected chapter. Ordinary Question Bank questions were not touched.'
+      );
+      return;
+    }
+
+    /* =====================================================
+       CONFIRM EXACT TARGET
+    ===================================================== */
+
+    const ok =
+      await appConfirm(
+        `Delete this Complete Chapter Bank set?\n\n` +
+        `Class: ${classVal}\n` +
+        `Board: ${boardVal}\n` +
+        `Subject: ${subjectVal}\n` +
+        `Chapter: ${chapterVal}\n\n` +
+        `Chapter Bank records to delete: ${docsToDelete.length}\n\n` +
+        `Ordinary Question Bank questions in this chapter will NOT be deleted.\n\n` +
+        `This cannot be undone.`
+      );
+
+    if (!ok) return;
+
+    if (btn) {
+      btn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+    }
+
+    /* =====================================================
+       DELETE IN SAFE FIRESTORE BATCHES
+       Firestore batches must stay below the operation limit.
+    ===================================================== */
+
+    const CHUNK_SIZE = 400;
+    let deletedCount = 0;
+
+    for (
+      let start = 0;
+      start < docsToDelete.length;
+      start += CHUNK_SIZE
+    ) {
+
+      const chunk =
+        docsToDelete.slice(
+          start,
+          start + CHUNK_SIZE
+        );
+
+      const batch =
+        questionsDb.batch();
+
+      chunk.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+
+      deletedCount +=
+        chunk.length;
+    }
+
+    await appInfo(
+      `${deletedCount} Chapter Bank question(s) deleted successfully.\n\n` +
+      `${classVal} / ${boardVal} / ${subjectVal}\n` +
+      `${chapterVal}`
+    );
+
+    /* =====================================================
+       REFRESH BANK
+    ===================================================== */
+
+    if (
+      typeof fetchAndDisplayQuestions === 'function'
+    ) {
+      await fetchAndDisplayQuestions();
+    }
+
+  } catch (err) {
+
+    console.error(
+      'DELETE CHAPTER BANK SET FAILED',
+      err
+    );
+
+    await appInfo(
+      'Delete failed: ' +
+      (err.message || err)
+    );
+
+  } finally {
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML =
+        oldBtnHtml ||
+        '<i class="fa-solid fa-trash"></i> Delete Chapter Bank Set';
+    }
+  }
+}
+
+
+// 3-dot menu actions for each question in Question Bank
+function setupQuestionActionMenus() {
       document.querySelectorAll('.q-action-btn').forEach((btn) => {
         btn.onclick = function(e) {
           e.stopPropagation();
