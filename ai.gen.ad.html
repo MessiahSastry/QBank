@@ -2178,8 +2178,22 @@ if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)' && ses
       }
 
       // --- Paste panel minimal helpers (scoped to this chat) ---
-      const _pzExpected = document.getElementById('pz-expected-n');
-      if (_pzExpected) _pzExpected.textContent = String(sessionParams.numQuestions || 20);
+     const _pzExpected = document.getElementById('pz-expected-n');
+
+if (_pzExpected) {
+  const isChapterBank =
+    sessionParams &&
+    (
+      sessionParams.generationMode === 'chapter-bank' ||
+      sessionParams.bankMode === 'chapter' ||
+      sessionParams.questionType === 'Complete Chapter Bank'
+    );
+
+  _pzExpected.textContent =
+    isChapterBank
+      ? '50'
+      : String(sessionParams.numQuestions || 20);
+}
 
       const _pzText = document.getElementById('paste-zone-text');
       if (_pzText) {
@@ -5331,7 +5345,317 @@ function __qbParseParagraphSetBlock(block, sessionParams) {
   return qData;
 }
 
+/* =========================================================
+   COMPLETE CHAPTER BANK — MIXED QUESTION PARSER
+========================================================= */
+
+function parseCompleteChapterBankQuestions(text, sessionParams = {}) {
+  const startIdx = text.search(/\bQ\s*1\s*:/i);
+  const cleaned = startIdx >= 0 ? text.slice(startIdx) : text;
+
+  const blocks = cleaned
+    .split(/\n(?=Q\s*\d+\s*:)/g)
+    .map(s => s.trim())
+    .filter(s => /^Q\s*\d+\s*:/i.test(s));
+
+  const out = [];
+
+  blocks.forEach((block, index) => {
+    const lines = block.split('\n');
+    const rawMeta = (lines.shift() || '').trim();
+    const body = lines.join('\n').trim();
+
+    const marksMatch = rawMeta.match(/(\d+)\s*Mark(?:s)?/i);
+    const marks = marksMatch ? parseInt(marksMatch[1], 10) : 0;
+
+    const typeMatch = rawMeta.match(
+      /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map)\]/i
+    );
+
+    let questionType = typeMatch
+      ? typeMatch[1].trim()
+      : 'Descriptive';
+
+    const categoryMatch =
+      rawMeta.match(/\[Category:\s*([^\]]+)\]/i);
+
+    const modelMatch =
+      rawMeta.match(/\[Model:\s*([^\]]+)\]/i);
+
+    const areaMatch =
+      rawMeta.match(/\[Area:\s*([^\]]+)\]/i);
+
+    const category =
+      categoryMatch ? categoryMatch[1].trim() : '';
+
+    const modelType =
+      modelMatch ? modelMatch[1].trim() : '';
+
+    const subjectArea =
+      areaMatch ? areaMatch[1].trim() : '';
+
+    const isMcq =
+      questionType === 'MCQ (Single)' ||
+      questionType === 'MCQ (Multiple)' ||
+      questionType === 'Assertion and Reason (MCQ Single)';
+
+    const qData = {
+      bankMode: 'chapter',
+      generationMode: 'chapter-bank',
+
+      class: sessionParams.class || '',
+      board: sessionParams.board || '',
+      subject: sessionParams.subject || '',
+      chapter: sessionParams.chapter || '',
+
+      type: questionType,
+      mcqType: isMcq ? questionType : '',
+
+      marks: marks,
+      category: category,
+      descriptiveType:
+        questionType === 'Descriptive'
+          ? category
+          : '',
+
+      modelType: modelType,
+      subjectArea: subjectArea,
+
+      difficulty: null,
+      level: null,
+
+      parsedMeta: rawMeta.replace(
+        /^Q\s*\d+\s*:/i,
+        `Q${index + 1}:`
+      ),
+
+      question: '',
+      options: [],
+      parsedAnswer: '',
+      parsedBody: '',
+      explanation: '',
+      finalAnswer: '',
+      fullText: block
+    };
+
+    /* =====================================================
+       MCQ / ASSERTION-REASON
+    ===================================================== */
+
+    if (isMcq) {
+      const ansMatch =
+        body.match(/^\s*Ans\s*:\s*(.+)$/im);
+
+      const answerLetters = ansMatch
+        ? __extractAnswerLetters(ansMatch[0])
+        : [];
+
+      qData.parsedAnswer = answerLetters.length
+        ? `Ans: ${answerLetters.map(x => `${x})`).join(', ')}`
+        : '';
+
+      const explanationMatch =
+        body.match(
+          /Explanation\s*:\s*([\s\S]*?)(?=\n\s*Answer\s*:|$)/i
+        );
+
+      qData.explanation = explanationMatch
+        ? explanationMatch[1].trim()
+        : '';
+
+      const finalAnswerMatch =
+        body.match(
+          /\n\s*Answer\s*:\s*([\s\S]*)$/i
+        );
+
+      qData.finalAnswer = finalAnswerMatch
+        ? finalAnswerMatch[1].trim()
+        : '';
+
+      let questionPart = body
+        .replace(/^\s*Ans\s*:\s*.+$/gim, '')
+        .replace(
+          /Explanation\s*:\s*[\s\S]*?(?=\n\s*Answer\s*:|$)/i,
+          ''
+        )
+        .replace(
+          /\n\s*Answer\s*:\s*[\s\S]*$/i,
+          ''
+        )
+        .trim();
+
+      questionPart = __forceOptionLines(questionPart);
+
+      const qLines = questionPart
+        .split('\n')
+        .map(x => x.trim())
+        .filter(Boolean);
+
+      const optionStart =
+        qLines.findIndex(x => /^[A-D]\)/i.test(x));
+
+      const stemLines =
+        optionStart >= 0
+          ? qLines.slice(0, optionStart)
+          : qLines;
+
+      const optionLines =
+        optionStart >= 0
+          ? qLines.slice(optionStart)
+          : [];
+
+      qData.question =
+        stemLines.join('\n').trim();
+
+      const A =
+        optionLines.find(x => /^A\)/i.test(x)) || 'A) ';
+      const B =
+        optionLines.find(x => /^B\)/i.test(x)) || 'B) ';
+      const C =
+        optionLines.find(x => /^C\)/i.test(x)) || 'C) ';
+      const D =
+        optionLines.find(x => /^D\)/i.test(x)) || 'D) ';
+
+      qData.options = [A, B, C, D].map(x =>
+        x.replace(/^[A-D]\)\s*/i, '').trim()
+      );
+
+      qData.parsedBody = [
+        qData.question,
+        `A) ${qData.options[0]}`,
+        `B) ${qData.options[1]}`,
+        `C) ${qData.options[2]}`,
+        `D) ${qData.options[3]}`
+      ].join('\n');
+
+      qData.fullText =
+        `${qData.parsedMeta}\n${qData.parsedBody}` +
+        `${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}` +
+        `${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}` +
+        `${qData.finalAnswer ? `\nAnswer: ${qData.finalAnswer}` : ''}`;
+    }
+
+    /* =====================================================
+       CASE BASED
+    ===================================================== */
+
+    else if (questionType === 'Case Based') {
+      const answersMatch =
+        body.match(/\n\s*Answers?\s*:\s*([\s\S]*)$/i);
+
+      const answerText =
+        answersMatch ? answersMatch[1].trim() : '';
+
+      const bodyWithoutAnswers =
+        answersMatch
+          ? body.replace(
+              /\n\s*Answers?\s*:\s*[\s\S]*$/i,
+              ''
+            ).trim()
+          : body.trim();
+
+      qData.question =
+        bodyWithoutAnswers.split('\n')[0] || '';
+
+      qData.parsedBody =
+        bodyWithoutAnswers;
+
+      qData.parsedAnswer =
+        answerText
+          ? `Answer: ${answerText}`
+          : '';
+
+      qData.fullText =
+        `${qData.parsedMeta}\n${qData.parsedBody}` +
+        `${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}`;
+    }
+
+    /* =====================================================
+       DESCRIPTIVE / MAP / OTHER
+    ===================================================== */
+
+    else {
+      const explanationMatch =
+        body.match(
+          /Explanation\s*:\s*([\s\S]*)$/i
+        );
+
+      qData.explanation =
+        explanationMatch
+          ? explanationMatch[1].trim()
+          : '';
+
+      const bodyWithoutExplanation =
+        explanationMatch
+          ? body.replace(
+              /Explanation\s*:\s*[\s\S]*$/i,
+              ''
+            ).trim()
+          : body.trim();
+
+      const answerMatch =
+        bodyWithoutExplanation.match(
+          /\n\s*Answer\s*:\s*([\s\S]*)$/i
+        );
+
+      const answerText =
+        answerMatch
+          ? answerMatch[1].trim()
+          : '';
+
+      const questionBody =
+        answerMatch
+          ? bodyWithoutExplanation.replace(
+              /\n\s*Answer\s*:\s*[\s\S]*$/i,
+              ''
+            ).trim()
+          : bodyWithoutExplanation;
+
+      qData.question =
+        (questionBody.split('\n')[0] || '').trim();
+
+      qData.parsedBody =
+        questionBody;
+
+      qData.parsedAnswer =
+        answerText
+          ? `Answer: ${answerText}`
+          : '';
+
+      qData.fullText =
+        `${qData.parsedMeta}\n${qData.parsedBody}` +
+        `${qData.parsedAnswer ? `\n${qData.parsedAnswer}` : ''}` +
+        `${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
+    }
+
+    out.push(qData);
+  });
+
+  return out;
+}
+
+
 function parseFinalSetIntoQuestions(text, sessionParams) {
+
+  /* =====================================================
+     COMPLETE CHAPTER BANK
+     Each pasted question carries its own type and marks.
+  ===================================================== */
+
+  const isChapterBank =
+    sessionParams &&
+    (
+      sessionParams.generationMode === 'chapter-bank' ||
+      sessionParams.bankMode === 'chapter' ||
+      sessionParams.questionType === 'Complete Chapter Bank'
+    );
+
+  if (isChapterBank) {
+    return parseCompleteChapterBankQuestions(
+      text,
+      sessionParams
+    );
+  }
   // keep only from first Qn onward (ignore any chatty intro)
   const startIdx = text.search(/\bQ\s*1\s*:/i);
   const cleaned = startIdx >= 0 ? text.slice(startIdx) : text;
