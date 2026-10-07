@@ -789,9 +789,64 @@ function __qbGetSectionKeyForSave({
   rawType = '',
   marks = 0,
   level = '',
-  board = ''
+  board = '',
+  bankMode = '',
+  category = '',
+  modelType = ''
 } = {}) {
-  const type = __qbNormalizeTypeForSection(rawType);
+
+  const type =
+    __qbNormalizeTypeForSection(rawType);
+
+  const isChapterBank =
+    String(bankMode || '').trim() === 'chapter';
+
+  /* =====================================================
+     COMPLETE CHAPTER BANK
+     No Level 1 / Level 2 / Level 3 grouping
+  ===================================================== */
+
+  if (isChapterBank) {
+
+    const cleanCategory =
+      String(category || '')
+        .replace(/[^A-Za-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .toUpperCase();
+
+    if (type === 'MCQ (Single)') {
+      return 'CHAPTER_BANK_MCQ_SINGLE';
+    }
+
+    if (type === 'MCQ (Multiple)') {
+      return 'CHAPTER_BANK_MCQ_MULTIPLE';
+    }
+
+    if (type === 'Assertion and Reason (MCQ Single)') {
+      return 'CHAPTER_BANK_ASSERTION_REASON';
+    }
+
+    if (type === 'Descriptive') {
+      return `CHAPTER_BANK_DESCRIPTIVE_${cleanCategory || 'GENERAL'}_${Number(marks || 0)}`;
+    }
+
+    if (type === 'Case Based') {
+      return `CHAPTER_BANK_CASE_BASED_${Number(marks || 0)}`;
+    }
+
+    if (type === 'Map') {
+      return `CHAPTER_BANK_MAP_${Number(marks || 0)}`;
+    }
+
+    return `CHAPTER_BANK_${String(type || 'QUESTION')
+      .replace(/[^A-Za-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toUpperCase()}_${Number(marks || 0)}`;
+  }
+
+  /* =====================================================
+     EXISTING ENTRANCE EXAM LOGIC
+  ===================================================== */
 
   const isEntrance =
     typeof __isEntranceExamBoard === 'function'
@@ -800,8 +855,6 @@ function __qbGetSectionKeyForSave({
           String(board || '').trim()
         );
 
-  // Entrance-exam questions are grouped only by question type.
-  // No Level and no Marks belong to the stored question.
   if (isEntrance) {
     if (type === 'MCQ (Single)') return 'MCQ_SINGLE';
     if (type === 'MCQ (Multiple)') return 'MCQ_MULTIPLE';
@@ -813,6 +866,10 @@ function __qbGetSectionKeyForSave({
       .replace(/^_+|_+$/g, '')
       .toUpperCase()}`;
   }
+
+  /* =====================================================
+     EXISTING NORMAL GENERATION LOGIC
+  ===================================================== */
 
   const levelText =
     String(level || 'Level 1').trim() || 'Level 1';
@@ -833,56 +890,108 @@ function __qbGetSectionKeyForSave({
   return `DESCRIPTIVE_${Number(marks || 0)}_${levelKey}`;
 }
 
-function __qbBuildSeedFromQuestion(qData = {}, sessionQuestionType = '') {
-  const meta = parseMetaLine(qData.parsedMeta || '');
+function __qbBuildSeedFromQuestion(
+  qData = {},
+  sessionQuestionType = ''
+) {
+
+  const meta =
+    parseMetaLine(qData.parsedMeta || '');
+
+  const isChapterBank =
+    qData.bankMode === 'chapter' ||
+    qData.generationMode === 'chapter-bank';
 
   const rawType =
-    (qData.parsedMeta && /\[Paragraph-Based MCQ \(Single Correct\)\]/i.test(qData.parsedMeta))
+    (qData.parsedMeta &&
+     /\[Paragraph-Based MCQ \(Single Correct\)\]/i.test(qData.parsedMeta))
       ? 'Paragraph-Based MCQ (Single Correct)'
-      : (qData.parsedMeta && /\[Comprehensive\]/i.test(qData.parsedMeta))
-        ? 'Comprehensive'
-        : (qData.type || qData.mcqType || sessionQuestionType || 'Descriptive');
 
-   const boardText =
+      : (qData.parsedMeta &&
+         /\[Comprehensive\]/i.test(qData.parsedMeta))
+        ? 'Comprehensive'
+
+        : (
+            qData.type ||
+            qData.mcqType ||
+            meta.type ||
+            sessionQuestionType ||
+            'Descriptive'
+          );
+
+  const boardText =
     String(qData.board || '').trim();
 
   const isEntrance =
     typeof __isEntranceExamBoard === 'function'
       ? __isEntranceExamBoard(boardText)
-      : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(boardText);
+      : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
+          boardText
+        );
 
-  const levelText = isEntrance
-    ? ''
-    : (
-        String(
-          qData.difficulty ||
-          qData.level ||
-          meta.difficulty ||
-          'Level 1'
-        ).trim() || 'Level 1'
-      );
+  let levelText = '';
 
-  const marksValue = isEntrance
-    ? 0
-    : Number(
-        qData.marks ||
-        meta.marks ||
-        0
-      );
+  if (!isEntrance && !isChapterBank) {
+    levelText =
+      String(
+        qData.difficulty ||
+        qData.level ||
+        meta.difficulty ||
+        'Level 1'
+      ).trim() || 'Level 1';
+  }
+
+  const marksValue =
+    isEntrance
+      ? 0
+      : Number(
+          qData.marks ||
+          meta.marks ||
+          0
+        );
 
   const seed = {
-    class: String(qData.class || '').trim(),
-    board: boardText,
-    subject: String(qData.subject || '').trim(),
-    chapter: String(qData.chapter || '').trim(),
-    rawType,
-    marks: marksValue,
-    level: levelText
+    class:
+      String(qData.class || '').trim(),
+
+    board:
+      boardText,
+
+    subject:
+      String(qData.subject || '').trim(),
+
+    chapter:
+      String(qData.chapter || '').trim(),
+
+    rawType:
+      rawType,
+
+    marks:
+      marksValue,
+
+    level:
+      levelText,
+
+    bankMode:
+      isChapterBank ? 'chapter' : '',
+
+    category:
+      qData.category ||
+      qData.descriptiveType ||
+      meta.category ||
+      '',
+
+    modelType:
+      qData.modelType ||
+      meta.modelType ||
+      ''
   };
-  seed.sectionKey = __qbGetSectionKeyForSave(seed);
+
+  seed.sectionKey =
+    __qbGetSectionKeyForSave(seed);
+
   return seed;
 }
-
 function __qbSeedGroupKey(seed = {}) {
   return [
     String(seed.class || '').trim(),
@@ -3556,59 +3665,196 @@ async function saveSessionQuestions(sessionParams) {
       const wrappedBody      = __wrap(qData.parsedBody || '');
       const wrappedFullText  = __wrap(qData.fullText || '');
 
-                const isEntranceExamQuestion =
+                 const isEntranceExamQuestion =
         typeof __isEntranceExamBoard === 'function'
           ? __isEntranceExamBoard(qData.board)
           : ['JEE Main', 'JEE Advanced', 'AP EAPCET'].includes(
               String(qData.board || '').trim()
             );
 
+      const isChapterBankQuestion =
+        qData.bankMode === 'chapter' ||
+        qData.generationMode === 'chapter-bank' ||
+        sessionParams.generationMode === 'chapter-bank' ||
+        sessionParams.bankMode === 'chapter' ||
+        sessionParams.questionType === 'Complete Chapter Bank';
+
+      /* =====================================================
+         IMPORTANT:
+         In Chapter Bank mode use EACH QUESTION'S OWN TYPE.
+         In Normal mode keep the old session question type.
+      ===================================================== */
+
+      const actualQuestionType =
+        isChapterBankQuestion
+          ? (
+              qData.type ||
+              meta.type ||
+              'Descriptive'
+            )
+          : sessionParams.questionType;
+
+      const actualMarks =
+        isEntranceExamQuestion
+          ? null
+          : Number(
+              qData.marks ||
+              meta.marks ||
+              0
+            );
+
+      const actualCategory =
+        qData.category ||
+        qData.descriptiveType ||
+        meta.category ||
+        '';
+
+      const actualModelType =
+        qData.modelType ||
+        meta.modelType ||
+        '';
+
+      const actualSubjectArea =
+        qData.subjectArea ||
+        meta.subjectArea ||
+        '';
+
       let toSave = {
-        metaLine: qData.parsedMeta,
+        metaLine:
+          qData.parsedMeta,
 
-        difficulty: isEntranceExamQuestion
-          ? null
-          : meta.difficulty,
+        bankMode:
+          isChapterBankQuestion
+            ? 'chapter'
+            : null,
 
-        level: isEntranceExamQuestion
-          ? null
-          : meta.level,
+        generationMode:
+          isChapterBankQuestion
+            ? 'chapter-bank'
+            : 'normal',
 
-        marks: isEntranceExamQuestion
-          ? null
-          : meta.marks,
+        difficulty:
+          (isEntranceExamQuestion || isChapterBankQuestion)
+            ? null
+            : meta.difficulty,
 
-        examMode: isEntranceExamQuestion,
+        level:
+          (isEntranceExamQuestion || isChapterBankQuestion)
+            ? null
+            : meta.level,
 
-        questionNumber: currentQuestionNumber,
-        sectionKey: seed.sectionKey,
-        class: qData.class,
-        board: qData.board,
-        subject: qData.subject,
-        chapter: qData.chapter,
-        explanation: __wrap(qData.explanation || ''),
-        createdBy: currentUserProfile.uid,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        marks:
+          actualMarks,
+
+        category:
+          actualCategory || null,
+
+        descriptiveType:
+          actualQuestionType === 'Descriptive'
+            ? (actualCategory || null)
+            : null,
+
+        modelType:
+          actualModelType || null,
+
+        subjectArea:
+          actualSubjectArea || null,
+
+        examMode:
+          isEntranceExamQuestion,
+
+        questionNumber:
+          currentQuestionNumber,
+
+        sectionKey:
+          seed.sectionKey,
+
+        class:
+          qData.class,
+
+        board:
+          qData.board,
+
+        subject:
+          qData.subject,
+
+        chapter:
+          qData.chapter,
+
+        explanation:
+          __wrap(qData.explanation || ''),
+
+        createdBy:
+          currentUserProfile.uid,
+
+        timestamp:
+          firebase.firestore.FieldValue.serverTimestamp()
       };
-                            if (
-            sessionParams.questionType.startsWith('MCQ') ||
-            sessionParams.questionType.startsWith('Text Book') ||
-            sessionParams.questionType === 'Assertion and Reason (MCQ Single)' ||
-            sessionParams.questionType === 'Matching Matrix' ||
-            sessionParams.questionType === 'Matching List'
-          ) {
-        toSave.type = sessionParams.questionType;
-        toSave.question = wrappedQuestion;
-        toSave.options  = wrappedOptions;
-        toSave.answer   = qData.parsedAnswer;
-        toSave.parsedAnswer = qData.parsedAnswer;
-        toSave.mcqType  = sessionParams.questionType;
-      } else {
-        toSave.text   = wrappedFullText;
-        toSave.body   = wrappedBody;
-        toSave.answer = qData.parsedAnswer;
-        toSave.parsedAnswer = qData.parsedAnswer;
-        toSave.type = sessionParams.questionType;
+
+      /* =====================================================
+         MCQ-LIKE QUESTION
+      ===================================================== */
+
+      const isMcqLike =
+        actualQuestionType === 'MCQ (Single)' ||
+        actualQuestionType === 'MCQ (Multiple)' ||
+        actualQuestionType === 'Assertion and Reason (MCQ Single)' ||
+        actualQuestionType === 'Matching Matrix' ||
+        actualQuestionType === 'Matching List' ||
+        actualQuestionType === 'Text Book (MCQ Single)' ||
+        actualQuestionType === 'Text Book (MCQ Multiple)';
+
+      if (isMcqLike) {
+
+        toSave.type =
+          actualQuestionType;
+
+        toSave.mcqType =
+          actualQuestionType;
+
+        toSave.question =
+          wrappedQuestion;
+
+        toSave.options =
+          wrappedOptions;
+
+        toSave.answer =
+          qData.parsedAnswer || '';
+
+        toSave.parsedAnswer =
+          qData.parsedAnswer || '';
+
+        toSave.finalAnswer =
+          __wrap(qData.finalAnswer || '');
+
+      }
+
+      /* =====================================================
+         DESCRIPTIVE / CASE / MAP / OTHER
+      ===================================================== */
+
+      else {
+
+        toSave.type =
+          actualQuestionType;
+
+        toSave.text =
+          wrappedFullText;
+
+        toSave.body =
+          wrappedBody;
+
+        toSave.question =
+          wrappedQuestion;
+
+        toSave.answer =
+          qData.parsedAnswer || '';
+
+        toSave.parsedAnswer =
+          qData.parsedAnswer || '';
+
+        toSave.finalAnswer =
+          __wrap(qData.finalAnswer || '');
       }
      console.log("ADDING NORMAL QUESTION", i, toSave);
 
@@ -6564,18 +6810,70 @@ rerenderAllQuestions();
 }
 
 function parseMetaLine(metaLine) {
-  const meta = { difficulty: null, level: null, marks: null };
+  const text = String(metaLine || '');
 
-  const levelMatch = metaLine.match(/Level\s*(\d+)/i);
-  const marksMatch = metaLine.match(/(\d+)\s*Mark(s?)/i);
+  const meta = {
+    difficulty: null,
+    level: null,
+    marks: null,
+
+    type: '',
+    category: '',
+    modelType: '',
+    subjectArea: ''
+  };
+
+  const levelMatch =
+    text.match(/Level\s*(\d+)/i);
+
+  const marksMatch =
+    text.match(/(\d+(?:\.\d+)?)\s*Mark(?:s)?/i);
+
+  const categoryMatch =
+    text.match(/\[Category:\s*([^\]]+)\]/i);
+
+  const modelMatch =
+    text.match(/\[Model:\s*([^\]]+)\]/i);
+
+  const areaMatch =
+    text.match(/\[Area:\s*([^\]]+)\]/i);
+
+  const typeMatch =
+    text.match(
+      /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Fill in the Blanks|Matching Matrix|Matching List|Numerical Value|Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i
+    );
 
   if (levelMatch) {
-    meta.level = parseInt(levelMatch[1], 10);
-    meta.difficulty = `Level ${levelMatch[1]}`;
+    meta.level =
+      parseInt(levelMatch[1], 10);
+
+    meta.difficulty =
+      `Level ${levelMatch[1]}`;
   }
 
   if (marksMatch) {
-    meta.marks = parseInt(marksMatch[1], 10);
+    meta.marks =
+      parseFloat(marksMatch[1]);
+  }
+
+  if (typeMatch) {
+    meta.type =
+      typeMatch[1].trim();
+  }
+
+  if (categoryMatch) {
+    meta.category =
+      categoryMatch[1].trim();
+  }
+
+  if (modelMatch) {
+    meta.modelType =
+      modelMatch[1].trim();
+  }
+
+  if (areaMatch) {
+    meta.subjectArea =
+      areaMatch[1].trim();
   }
 
   return meta;
