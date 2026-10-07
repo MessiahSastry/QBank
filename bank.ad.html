@@ -6110,18 +6110,185 @@ overlay.innerHTML = `
   });
 }
 
-          document.querySelectorAll('.question-img-btn').forEach(btn => {
+         /* =========================================================
+   COMPRESS QUESTION PICTURE BEFORE FIRESTORE SAVE
+========================================================= */
+
+async function __qbCompressQuestionPicture(file) {
+
+  if (!file || !String(file.type || '').startsWith('image/')) {
+    throw new Error('Please select a valid image file.');
+  }
+
+  const TARGET_DATA_URL_SIZE = 420 * 1024; // about 420 KB
+  const MAX_DIMENSION = 1400;
+
+  const imageUrl =
+    URL.createObjectURL(file);
+
+  try {
+
+    const img =
+      await new Promise((resolve, reject) => {
+
+        const image =
+          new Image();
+
+        image.onload =
+          () => resolve(image);
+
+        image.onerror =
+          () => reject(
+            new Error('Could not read the selected image.')
+          );
+
+        image.src =
+          imageUrl;
+      });
+
+    let width =
+      img.naturalWidth || img.width;
+
+    let height =
+      img.naturalHeight || img.height;
+
+    if (!width || !height) {
+      throw new Error(
+        'The selected image has invalid dimensions.'
+      );
+    }
+
+    if (
+      width > MAX_DIMENSION ||
+      height > MAX_DIMENSION
+    ) {
+
+      const scale =
+        Math.min(
+          MAX_DIMENSION / width,
+          MAX_DIMENSION / height
+        );
+
+      width =
+        Math.round(width * scale);
+
+      height =
+        Math.round(height * scale);
+    }
+
+    let quality = 0.88;
+
+    for (let attempt = 0; attempt < 12; attempt++) {
+
+      const canvas =
+        document.createElement('canvas');
+
+      canvas.width =
+        Math.max(1, Math.round(width));
+
+      canvas.height =
+        Math.max(1, Math.round(height));
+
+      const ctx =
+        canvas.getContext('2d');
+
+      /*
+        White background is better for maps,
+        diagrams, textbook pictures and graphs.
+      */
+      ctx.fillStyle = '#ffffff';
+
+      ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      ctx.drawImage(
+        img,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      let imageData =
+        canvas.toDataURL(
+          'image/webp',
+          quality
+        );
+
+      /*
+        Fallback for browsers without WebP canvas support.
+      */
+      if (
+        !imageData.startsWith(
+          'data:image/webp'
+        )
+      ) {
+
+        imageData =
+          canvas.toDataURL(
+            'image/jpeg',
+            quality
+          );
+      }
+
+      if (
+        imageData.length <=
+        TARGET_DATA_URL_SIZE
+      ) {
+
+        return imageData;
+      }
+
+      /*
+        First reduce quality.
+        Then reduce dimensions gradually.
+      */
+      if (quality > 0.55) {
+
+        quality -= 0.08;
+
+      } else {
+
+        width =
+          Math.round(width * 0.85);
+
+        height =
+          Math.round(height * 0.85);
+
+        quality = 0.72;
+      }
+    }
+
+    throw new Error(
+      'This picture is still too large after compression. Please use a smaller image.'
+    );
+
+  } finally {
+
+    URL.revokeObjectURL(
+      imageUrl
+    );
+  }
+}
+
+
+document.querySelectorAll('.question-img-btn').forEach(btn => {
             btn.onclick = function() {
               const container = btn.closest('.question-item');
               const input = container.querySelector('.question-image-input');
               input.click();
             };
           });
-         document.querySelectorAll('.question-image-input').forEach(input => {
+        document.querySelectorAll('.question-image-input').forEach(input => {
 
   input.onchange = async function() {
 
-    const file = input.files && input.files[0];
+    const file =
+      input.files && input.files[0];
 
     if (!file) return;
 
@@ -6134,63 +6301,51 @@ overlay.innerHTML = `
         : '';
 
     if (!docId) {
-      alert('Could not identify this question.');
+
+      await appInfo(
+        'Could not identify this question.'
+      );
+
       input.value = '';
       return;
     }
 
     const uploadBtn =
-      card.querySelector('.question-img-btn');
+      card.querySelector(
+        '.question-img-btn'
+      );
 
     const oldBtnHtml =
       uploadBtn
         ? uploadBtn.innerHTML
         : '';
 
-    if (uploadBtn) {
-      uploadBtn.disabled = true;
-      uploadBtn.innerHTML =
-        '<i class="fas fa-spinner fa-spin"></i> Saving Picture...';
-    }
-
     try {
 
-      const imageData =
-        await new Promise((resolve, reject) => {
+      if (uploadBtn) {
 
-          const reader =
-            new FileReader();
+        uploadBtn.disabled = true;
 
-          reader.onload = function(e) {
-            resolve(
-              String(
-                e.target.result || ''
-              )
-            );
-          };
-
-          reader.onerror = function() {
-            reject(
-              new Error(
-                'Could not read the selected picture.'
-              )
-            );
-          };
-
-          reader.readAsDataURL(file);
-
-        });
-
-      if (!imageData) {
-        throw new Error(
-          'The selected picture could not be read.'
-        );
+        uploadBtn.innerHTML =
+          '<i class="fas fa-spinner fa-spin"></i> Compressing Picture...';
       }
 
       /*
-        Save FIRST.
-        Do not show a fake local preview before
-        Firestore confirms the save.
+        Compress automatically before saving.
+      */
+      const imageData =
+        await __qbCompressQuestionPicture(
+          file
+        );
+
+      if (uploadBtn) {
+
+        uploadBtn.innerHTML =
+          '<i class="fas fa-spinner fa-spin"></i> Saving Picture...';
+      }
+
+      /*
+        Save only the compressed picture.
       */
       await questionsDb
         .collection('questions')
@@ -6200,12 +6355,8 @@ overlay.innerHTML = `
         });
 
       /*
-        Reload the question from Firestore.
-        Now data.image will be available and the
-        card will automatically show:
-
+        Reload from Firestore so the status becomes:
         ✅ Picture Added
-        Replace Picture
       */
       await fetchAndDisplayQuestions();
 
@@ -6233,11 +6384,12 @@ overlay.innerHTML = `
         uploadBtn &&
         document.body.contains(uploadBtn)
       ) {
+
         uploadBtn.disabled = false;
+
         uploadBtn.innerHTML =
           oldBtnHtml;
       }
-
     }
   };
 });
