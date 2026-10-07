@@ -1213,13 +1213,26 @@ const subjectsHTML = initialSubjectsWithOther
     </div>
   </div>
           
-            <div class="form-group">
-            <label>Name of the Board:</label>
-            <div id="board-dropdown-ai" class="custom-dropdown">
-              <input type="hidden" id="board-value-ai" value="${(aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : ''}">
-              <div class="selected-option">${(aiGeneratorConfig.boards && aiGeneratorConfig.boards[0]) ? aiGeneratorConfig.boards[0] : 'Select Board'}</div>
-              <div class="dropdown-options">${boardsHTML}</div>
+                      <div class="form-group">
+            <label>Generation Mode:</label>
+            <div id="generation-mode-dropdown-ai" class="custom-dropdown">
+              <input type="hidden" id="generation-mode-value-ai" value="normal">
+              <div class="selected-option">Normal Question Generation</div>
+              <div class="dropdown-options">
+                <div data-value="normal">Normal Question Generation</div>
+                <div data-value="chapter-bank">Complete Chapter Bank</div>
+              </div>
             </div>
+          </div>
+
+          <div class="form-group" id="normal-qtype-wrap-ai">
+            <label>Question Type:</label>
+            <div id="qtype-dropdown-ai" class="custom-dropdown">
+              <input type="hidden" id="qtype-value-ai" value="${aiGeneratorConfig.questionTypes[0]}">
+              <div class="selected-option">${aiGeneratorConfig.questionTypes[0]}</div>
+              <div class="dropdown-options">${qTypesHTML}</div>
+            </div>
+          </div>
 
             <!-- NEW: show only when Board = Other -->
             <div id="board-other-wrap" style="display:none;margin-top:10px;">
@@ -1498,11 +1511,94 @@ if (__subOpts) {
   __subOpts.addEventListener('click', () => setTimeout(__syncOtherToggles, 0));
 }
 
-        setupCustomDropdownsForForm();
-    updateChapterDropdown(
-      document.getElementById('class-value-ai')?.value || '',
-      document.getElementById('subject-value-ai')?.value || ''
-    );
+       /* =========================================================
+   GENERATION MODE
+   Normal Question Generation / Complete Chapter Bank
+========================================================= */
+
+window.__syncGenerationModeUI = function () {
+  const mode =
+    (document.getElementById('generation-mode-value-ai')?.value || 'normal').trim();
+
+  const isChapterBank = mode === 'chapter-bank';
+
+  const qtypeWrap = document.getElementById('normal-qtype-wrap-ai');
+  const levelsWrap = document.getElementById('levels-wrap-ai');
+
+  const mcqWrap = document.getElementById('mcq-levels-wrap-ai');
+  const descWrap = document.getElementById('desc-levels-wrap-ai');
+  const paragraphWrap = document.getElementById('paragraph-questions-wrap-ai');
+
+  const submitBtn =
+    document.querySelector('#ai-setup-form button[type="submit"]');
+
+  if (isChapterBank) {
+
+    // Complete Chapter Bank needs only:
+    // Class + Board + Subject + Chapter
+    if (qtypeWrap) qtypeWrap.style.display = 'none';
+    if (levelsWrap) levelsWrap.style.display = 'none';
+
+    if (submitBtn) {
+      submitBtn.textContent = 'Generate Complete Chapter Bank';
+    }
+
+  } else {
+
+    // Restore existing Normal Question Generation
+    if (qtypeWrap) qtypeWrap.style.display = '';
+    if (levelsWrap) levelsWrap.style.display = '';
+
+    if (submitBtn) {
+      submitBtn.textContent = 'Start Generating';
+    }
+
+    const board =
+      document.getElementById('board-value-ai')?.value || '';
+
+    syncEntranceExamUI(board);
+
+    // For normal school-board generation,
+    // restore MCQ / Descriptive controls correctly.
+    if (!__isEntranceExamBoard(board)) {
+      const qv =
+        (document.getElementById('qtype-value-ai')?.value || '').trim();
+
+      const isDesc = qv === 'Descriptive';
+      const isParagraph =
+        qv === 'Paragraph-Based MCQ (Single Correct)';
+
+      if (mcqWrap) {
+        mcqWrap.style.display = isDesc ? 'none' : 'flex';
+      }
+
+      if (descWrap) {
+        descWrap.style.display = isDesc ? 'flex' : 'none';
+      }
+
+      if (paragraphWrap) {
+        paragraphWrap.style.display = isParagraph ? 'flex' : 'none';
+      }
+    }
+  }
+};
+
+setupCustomDropdownsForForm();
+
+setupCustomDropdown(
+  'generation-mode-dropdown-ai',
+  'generation-mode-value-ai',
+  () => {
+    window.__syncGenerationModeUI();
+  }
+);
+
+window.__syncGenerationModeUI();
+
+updateChapterDropdown(
+  document.getElementById('class-value-ai')?.value || '',
+  document.getElementById('subject-value-ai')?.value || ''
+);
 
 /* NEW: Descriptive “Add another set” + Total across sets */
 (function () {
@@ -1708,10 +1804,103 @@ __syncMarksCleanup();
 const __qtypeOpts = document.querySelector('#qtype-dropdown-ai .dropdown-options');
 if (__qtypeOpts) __qtypeOpts.addEventListener('click', () => setTimeout(__syncMarksCleanup, 0));
 
-      document.getElementById("ai-setup-form").onsubmit = (e) => {
+           document.getElementById("ai-setup-form").onsubmit = (e) => {
         e.preventDefault();
 
-      let qTypeFinal = document.getElementById('qtype-value-ai').value;
+const generationMode =
+  (document.getElementById('generation-mode-value-ai')?.value || 'normal').trim();
+
+const isChapterBankMode =
+  generationMode === 'chapter-bank';
+
+/* =========================================================
+   COMPLETE CHAPTER BANK MODE
+   No Question Type / Level / Marks / Count selection
+========================================================= */
+if (isChapterBankMode) {
+
+  const rawBoard =
+    document.getElementById('board-value-ai')?.value || '';
+
+  const otherBoard =
+    (document.getElementById('board-other-input')?.value || '').trim();
+
+  const finalBoard =
+    rawBoard === 'Other'
+      ? (otherBoard || 'Other')
+      : rawBoard;
+
+  const rawSubject =
+    document.getElementById('subject-value-ai')?.value || '';
+
+  const otherSubject =
+    (document.getElementById('subject-other-input')?.value || '').trim();
+
+  const finalSubject =
+    rawSubject === 'Other'
+      ? (otherSubject || 'Other')
+      : rawSubject;
+
+  const selectedClass =
+    (document.getElementById('class-value-ai')?.value || '').trim();
+
+  const selectedChapter =
+    (document.getElementById('chapter-value-ai')?.value || '').trim();
+
+  if (!selectedClass) {
+    __qb_toast('Please select Class.');
+    return;
+  }
+
+  if (!finalBoard) {
+    __qb_toast('Please select Board.');
+    return;
+  }
+
+  if (!finalSubject) {
+    __qb_toast('Please select Subject.');
+    return;
+  }
+
+  if (!selectedChapter) {
+    __qb_toast('Please select Chapter.');
+    return;
+  }
+
+  const sessionParams = {
+    generationMode: 'chapter-bank',
+    bankMode: 'chapter',
+
+    class: selectedClass,
+    board: finalBoard,
+    subject: finalSubject,
+    chapter: selectedChapter,
+
+    // Chapter Bank contains mixed question types.
+    questionType: 'Complete Chapter Bank',
+
+    // These are deliberately unused in Chapter Bank mode.
+    levelPlan: '',
+    numQuestions: 0,
+    questionsPerPassage: 0,
+    marks: 0
+  };
+
+  history.pushState(
+    { page: 'chat', sessionParams: sessionParams },
+    'Chat',
+    '#chat'
+  );
+
+  loadAiChatInterface(sessionParams);
+  return;
+}
+
+/* =========================================================
+   EXISTING NORMAL GENERATION
+========================================================= */
+
+let qTypeFinal = document.getElementById('qtype-value-ai').value;
 let derivedCount = 0;
 let planRaw = '';
 
