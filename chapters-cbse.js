@@ -42,10 +42,21 @@
         "Writing Skills",
         "Reading Comprehension"
       ],
-      "Social Science": [
-        "History",
-        "Geography",
-        "Social and Political Life"
+            "Social Science": [
+        "Locating Places on the Earth",
+        "Oceans and Continents",
+        "Landforms and Life",
+        "Timeline and Sources of History",
+        "India, That Is Bharat",
+        "The Beginnings of Indian Civilisation",
+        "India's Cultural Roots",
+        "Unity in Diversity, or 'Many in the One'",
+        "Family and Community",
+        "Grassroots Democracy — Part 1: Governance",
+        "Grassroots Democracy — Part 2: Local Government in Rural Areas",
+        "Grassroots Democracy — Part 3: Local Government in Urban Areas",
+        "The Value of Work",
+        "Economic Activities Around Us"
       ],
       "Hindi": [
         "पाठ 1",
@@ -99,10 +110,27 @@
         "Writing Skills",
         "Reading Comprehension"
       ],
-      "Social Science": [
-        "History",
-        "Geography",
-        "Social and Political Life"
+           "Social Science": [
+        "Geographical Diversity of India",
+        "Understanding the Weather",
+        "Climates of India",
+        "New Beginnings: Cities and States",
+        "The Rise of Empires",
+        "The Age of Reorganisation",
+        "The Gupta Era: An Age of Tireless Creativity",
+        "How the Land Becomes Sacred",
+        "From the Rulers to the Ruled: Types of Governments",
+        "The Constitution of India — An Introduction",
+        "From Barter to Money",
+        "Understanding Markets",
+        "The Story of Indian Farming",
+        "India and Her Neighbours",
+        "Empires and Kingdoms: 6th to 10th Centuries",
+        "Turning Tides: 11th and 12th Centuries",
+        "India, a Home to Many",
+        "The State, the Government, and You",
+        "Infrastructure: Engine of India's Development",
+        "Banks and the Magic of Finance"
       ],
       "Hindi": [
         "पाठ 1",
@@ -157,10 +185,22 @@
         "Writing Skills",
         "Reading Comprehension"
       ],
-      "Social Science": [
-        "History",
-        "Geography",
-        "Social and Political Life"
+           "Social Science": [
+        "Natural Resources and Their Use",
+        "Reshaping India's Political Map",
+        "The Rise of the Marathas",
+        "The Colonial Era in India",
+        "Universal Franchise and India's Electoral System",
+        "The Parliamentary System: Legislature and Executive",
+        "Factors of Production",
+        "World Geography: Some Glimpses",
+        "India's Long Road to Independence",
+        "A Journey Through Indian Architecture",
+        "The Role of the Judiciary in Our Society",
+        "Citizenship: Rights and Duties",
+        "Dynamics of Population",
+        "India's Urban Landscape",
+        "Cultural Currents: 13th to 17th Centuries"
       ],
       "Hindi": [
         "पाठ 1",
@@ -211,11 +251,16 @@
         "Writing Skills",
         "Reading Comprehension"
       ],
-      "Social Science": [
-        "History",
-        "Geography",
-        "Political Science",
-        "Economics"
+           "Social Science": [
+        "Understanding Social Science",
+        "Shaping of the Earth's Surface",
+        "Atmosphere and Climate",
+        "Early Humans and Beginning of Civilisation",
+        "State and Society up to 1000 CE",
+        "Democracy",
+        "Elections",
+        "Building Blocks in Economics: The Problem of Choice",
+        "The Price Puzzle: What Drives the Market"
       ],
       "Hindi": [
         "पाठ 1",
@@ -264,11 +309,32 @@
         "Writing Skills",
         "Reading Comprehension"
       ],
-      "Social Science": [
-        "History",
-        "Geography",
-        "Political Science",
-        "Economics"
+            "Social Science": [
+        "The Rise of Nationalism in Europe",
+        "Nationalism in India",
+        "The Making of a Global World",
+        "The Age of Industrialisation",
+        "Print Culture and the Modern World",
+
+        "Resources and Development",
+        "Forest and Wildlife Resources",
+        "Water Resources",
+        "Agriculture",
+        "Minerals and Energy Resources",
+        "Manufacturing Industries",
+        "Lifelines of National Economy",
+
+        "Power-sharing",
+        "Federalism",
+        "Gender, Religion and Caste",
+        "Political Parties",
+        "Outcomes of Democracy",
+
+        "Development",
+        "Sectors of the Indian Economy",
+        "Money and Credit",
+        "Globalisation and the Indian Economy",
+        "Consumer Rights"
       ],
       "Hindi": [
         "पाठ 1",
