@@ -5633,7 +5633,41 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       );
     }
 
-    async function fetchAndDisplayQuestions() {
+   /* =========================================================
+   PICTURE-NEEDED SUPPORT
+========================================================= */
+
+function __qbNeedsPicture(data = {}) {
+
+  if (data.pictureNeeded === true) {
+    return true;
+  }
+
+  const combinedText = [
+    data.metaLine,
+    data.question,
+    data.body,
+    data.text,
+    data.answer,
+    data.parsedAnswer,
+    data.finalAnswer,
+    data.explanation
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  return /\[Picture Needed:\s*Yes\]/i.test(combinedText);
+}
+
+
+function __qbStripPictureNeededTag(value = '') {
+  return String(value || '')
+    .replace(/\s*\[Picture Needed:\s*Yes\]\s*/gi, '')
+    .trim();
+}
+
+
+async function fetchAndDisplayQuestions() {
       if (!currentUser) return;
 
       const displayArea = document.getElementById('questions-display-area');
@@ -5836,13 +5870,73 @@ questionsHTML += `
                         `
                       : (data.body || data.text || data.question || '')
                 }
-                ${
+                               ${
                   data.image
                     ? `<img src="${data.image}">
-                       <button type="button" class="delete-img-btn" style="margin-left:12px; color:#c82333; background:none; border:none; cursor:pointer;">❌ Delete Image</button>`
+                       <button
+                         type="button"
+                         class="delete-img-btn"
+                         style="
+                           margin-left:12px;
+                           color:#c82333;
+                           background:none;
+                           border:none;
+                           cursor:pointer;
+                         "
+                       >
+                         ❌ Delete Image
+                       </button>`
                     : ''
                 }
               </div>
+
+              ${
+                __qbNeedsPicture(data)
+                  ? `
+                    <div style="
+                      margin-top:12px;
+                      padding:10px 12px;
+                      border-radius:10px;
+                      background:${data.image ? '#eaf8ef' : '#fff3e0'};
+                      border:1px solid ${data.image ? '#84c99a' : '#f2b66d'};
+                    ">
+
+                      <div style="
+                        font-weight:700;
+                        color:${data.image ? '#157347' : '#b45309'};
+                        margin-bottom:8px;
+                      ">
+                        ${
+                          data.image
+                            ? '✅ Picture Added'
+                            : '⚠ Picture Needed — Not Uploaded'
+                        }
+                      </div>
+
+                      <button
+                        type="button"
+                        class="question-img-btn"
+                      >
+                        <i class="fas fa-image"></i>
+                        ${
+                          data.image
+                            ? 'Replace Picture'
+                            : 'Upload Picture'
+                        }
+                      </button>
+
+                      <input
+                        type="file"
+                        class="question-image-input"
+                        accept="image/*"
+                        style="display:none;"
+                      >
+
+                    </div>
+                  `
+                  : ''
+              }
+
               <div class="question-actions">
                 <button class="q-action-btn" title="Options"><i class="fas fa-ellipsis-v"></i></button>
               </div>
@@ -6002,8 +6096,16 @@ overlay.innerHTML = `
                 }
                 img.src = e.target.result;
                 const docId = input.closest('.question-item').getAttribute('data-id');
-                await questionsDb.collection('questions').doc(docId).update({ image: e.target.result });
-                alert('Image saved!');
+                await questionsDb
+  .collection('questions')
+  .doc(docId)
+  .update({
+    image: e.target.result
+  });
+
+alert('Picture saved successfully!');
+
+await fetchAndDisplayQuestions();
               };
               reader.readAsDataURL(file);
             };
@@ -8089,10 +8191,20 @@ function __qbGetWorkbookOptions(data) {
 }
 
 function __qbGetWorkbookAnswer(data) {
+
+  let answer = '';
+
   if (__qbHasWorkbookShuffle(data)) {
-    return String(data.workbookShuffledAnswer || '').trim();
+    answer =
+      String(
+        data.workbookShuffledAnswer || ''
+      ).trim();
+  } else {
+    answer =
+      __qbGetOriginalAnswer(data);
   }
-  return __qbGetOriginalAnswer(data);
+
+  return __qbStripPictureNeededTag(answer);
 }
 
 function __qbPickWeighted(weights) {
