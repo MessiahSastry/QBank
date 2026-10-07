@@ -6117,35 +6117,130 @@ overlay.innerHTML = `
               input.click();
             };
           });
-          document.querySelectorAll('.question-image-input').forEach(input => {
-            input.onchange = async function() {
-              const file = input.files[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = async function(e) {
-                let img = input.closest('.question-item').querySelector('img');
-                if (!img) {
-                  img = document.createElement('img');
-                  img.style.maxWidth = '100%';
-                  img.style.marginTop = '8px';
-                  input.closest('.question-item').appendChild(img);
-                }
-                img.src = e.target.result;
-                const docId = input.closest('.question-item').getAttribute('data-id');
-                await questionsDb
-  .collection('questions')
-  .doc(docId)
-  .update({
-    image: e.target.result
-  });
+         document.querySelectorAll('.question-image-input').forEach(input => {
 
-alert('Picture saved successfully!');
+  input.onchange = async function() {
 
-await fetchAndDisplayQuestions();
-              };
-              reader.readAsDataURL(file);
-            };
-          });
+    const file = input.files && input.files[0];
+
+    if (!file) return;
+
+    const card =
+      input.closest('.question-item');
+
+    const docId =
+      card
+        ? card.getAttribute('data-id')
+        : '';
+
+    if (!docId) {
+      alert('Could not identify this question.');
+      input.value = '';
+      return;
+    }
+
+    const uploadBtn =
+      card.querySelector('.question-img-btn');
+
+    const oldBtnHtml =
+      uploadBtn
+        ? uploadBtn.innerHTML
+        : '';
+
+    if (uploadBtn) {
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Saving Picture...';
+    }
+
+    try {
+
+      const imageData =
+        await new Promise((resolve, reject) => {
+
+          const reader =
+            new FileReader();
+
+          reader.onload = function(e) {
+            resolve(
+              String(
+                e.target.result || ''
+              )
+            );
+          };
+
+          reader.onerror = function() {
+            reject(
+              new Error(
+                'Could not read the selected picture.'
+              )
+            );
+          };
+
+          reader.readAsDataURL(file);
+
+        });
+
+      if (!imageData) {
+        throw new Error(
+          'The selected picture could not be read.'
+        );
+      }
+
+      /*
+        Save FIRST.
+        Do not show a fake local preview before
+        Firestore confirms the save.
+      */
+      await questionsDb
+        .collection('questions')
+        .doc(docId)
+        .update({
+          image: imageData
+        });
+
+      /*
+        Reload the question from Firestore.
+        Now data.image will be available and the
+        card will automatically show:
+
+        ✅ Picture Added
+        Replace Picture
+      */
+      await fetchAndDisplayQuestions();
+
+      await appInfo(
+        'Picture saved successfully!'
+      );
+
+    } catch (err) {
+
+      console.error(
+        'PICTURE SAVE FAILED',
+        err
+      );
+
+      await appInfo(
+        'Picture could not be saved.\n\n' +
+        (err.message || String(err))
+      );
+
+    } finally {
+
+      input.value = '';
+
+      if (
+        uploadBtn &&
+        document.body.contains(uploadBtn)
+      ) {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML =
+          oldBtnHtml;
+      }
+
+    }
+  };
+});
 
           document.querySelectorAll('.delete-img-btn').forEach(btn => {
             btn.onclick = async function() {
