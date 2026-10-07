@@ -1754,6 +1754,61 @@ function __qbRenderMatchingMatrixOptions(options, availableWidth) {
   `;
 }
 
+/* =========================================================
+   FORMAT QUESTION TEXT FOR WORKSHEET / ANSWER KEY
+
+   Handles:
+   - Statement-based MCQs
+   - Assertion & Reason
+   - Case Based multi-line content
+========================================================= */
+
+function __qbFormatQuestionTextForPrint(text, data = {}) {
+  let out = String(text || '').trim();
+
+  if (!out) return '';
+
+  const modelType =
+    String(data.modelType || '').trim().toLowerCase();
+
+  const metaLine =
+    String(data.metaLine || '');
+
+  const isStatementQuestion =
+    modelType.includes('statement') ||
+    /\[Model:\s*Statement/i.test(metaLine) ||
+    /consider\s+the\s+following\s+statements/i.test(out) ||
+    /study\s+the\s+following\s+statements/i.test(out);
+
+  if (isStatementQuestion) {
+
+    /* Put Statement 1, 2, 3... on separate lines */
+    out = out.replace(
+      /\s+(?=\d+\.\s+)/g,
+      '\n'
+    );
+
+    /* Put the final instruction on a new line */
+    out = out.replace(
+      /\s+(?=(?:Which\s+option|Which\s+of\s+the\s+following|Choose\s+the\s+correct|Select\s+the\s+correct)\b)/gi,
+      '\n'
+    );
+  }
+
+  /* Assertion and Reason */
+  out = out.replace(
+    /\s*Reason\s*\(R\)\s*:/gi,
+    '\nReason (R): '
+  );
+
+  /* Preserve existing Case Based / descriptive line breaks */
+  return out
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n/g, '<br>');
+}
+
+
 // helper to build one question's HTML (kept from your original)
 function buildQuestionHTML(item, __parent = printable) {
   const clone = item.cloneNode(true);
@@ -1923,10 +1978,34 @@ function buildQuestionHTML(item, __parent = printable) {
   let options = [];
 
   // ✅ FIRST use clean source data, not already-rendered DOM
-  if (source) {
-    questionLine = String(source.question || source.body || source.text || '').trim();
-    options = __qbNormalizeOptions(__qbGetWorkbookOptions(source));
+if (source) {
+
+  const __sourceType =
+    __qbNormalizeQuestionType(source);
+
+  if (__sourceType === 'Case Based') {
+    questionLine =
+      String(
+        source.body ||
+        source.text ||
+        source.question ||
+        ''
+      ).trim();
+  } else {
+    questionLine =
+      String(
+        source.question ||
+        source.body ||
+        source.text ||
+        ''
+      ).trim();
   }
+
+  options =
+    __qbNormalizeOptions(
+      __qbGetWorkbookOptions(source)
+    );
+}
 
   // ✅ fallback only if source data is missing
   if (!questionLine) {
@@ -1980,11 +2059,12 @@ const __theme = __pdfTheme;
     isMatchingMatrix
       ? __qbRenderMatchingMatrixTable(questionLine, __theme)
       : `
-        <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__theme.questionColor};font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">
-          ${String(questionLine || '')
-            .replace(/^\s+/, '')
-            .replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ')}
-        </div>
+       <div class="question-text" style="line-height:1.35;font-size:12pt;color:${__theme.questionColor};font-weight:700;margin-bottom:8px;word-break:normal;overflow-wrap:normal;">
+  ${__qbFormatQuestionTextForPrint(
+    String(questionLine || '').replace(/^\s+/, ''),
+    source || {}
+  )}
+</div>
       `
   }
 
@@ -2734,10 +2814,34 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   let questionLine = '';
   let options = [];
   // ✅ FIRST use clean source data
-  if (source) {
-    questionLine = String(source.question || source.body || source.text || '').trim();
-    options = __qbNormalizeOptions(__qbGetWorkbookOptions(source));
+if (source) {
+
+  const __sourceType =
+    __qbNormalizeQuestionType(source);
+
+  if (__sourceType === 'Case Based') {
+    questionLine =
+      String(
+        source.body ||
+        source.text ||
+        source.question ||
+        ''
+      ).trim();
+  } else {
+    questionLine =
+      String(
+        source.question ||
+        source.body ||
+        source.text ||
+        ''
+      ).trim();
   }
+
+  options =
+    __qbNormalizeOptions(
+      __qbGetWorkbookOptions(source)
+    );
+}
 
   // ✅ fallback only if source data is missing
   if (!questionLine) {
@@ -2850,7 +2954,10 @@ qTextDiv.style.cssText = `flex:1; min-width:0; color:${__theme.questionColor}; f
 
 qTextDiv.innerHTML = isMatchingMatrix
   ? __qbRenderMatchingMatrixTable(questionLine, __theme)
-  : String(questionLine || '').replace(/\s*Reason\s*\(R\)\s*:/gi, '<br>Reason (R): ');
+  : __qbFormatQuestionTextForPrint(
+      questionLine,
+      source || {}
+    );
 
   qRow.appendChild(qNoDiv);
   qRow.appendChild(qTextDiv);
@@ -2999,8 +3106,8 @@ if (includeWorksheet) {
   // Level 2 -> all selected question types
   // Level 3 -> all selected question types
 
-    const __worksheetTypesOrder = [
-        'MCQ (Single)',
+   const __worksheetTypesOrder = [
+    'MCQ (Single)',
     'MCQ (Multiple)',
     'Numerical Value',
     'Assertion and Reason (MCQ Single)',
@@ -3008,7 +3115,9 @@ if (includeWorksheet) {
     'Matching List',
     'Paragraph-Based MCQ (Single Correct)',
     'Fill in the Blanks',
-    'Descriptive'
+    'Descriptive',
+    'Case Based',
+    'Map'
   ];
   const __wantedWorksheetTypes = (selectedQtypes.length === 0)
     ? __worksheetTypesOrder
@@ -3022,31 +3131,85 @@ if (includeWorksheet) {
     return __sec;
   }
 
-    function __qbGetLevelBuckets(listScope) {
-    if (__pdfIsEntranceExam) {
-      return [{
-        name: '',
-        items: listScope
-      }];
-    }
+   function __qbGetLevelBuckets(listScope) {
 
-    const buckets = levelsOrder.map(lvl => ({
-      name: lvl,
-      items: listScope.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-    }));
-
-    const unspecified = listScope.filter(n => !(n.getAttribute('data-level') || '').trim());
-
-    if (unspecified.length) {
-      buckets.push({
-        name: 'Unspecified Level',
-        items: unspecified
-      });
-    }
-
-    return buckets.filter(b => b.items.length);
+  /* =====================================================
+     ENTRANCE EXAM
+     No Level heading
+  ===================================================== */
+  if (__pdfIsEntranceExam) {
+    return [{
+      name: '',
+      items: listScope
+    }];
   }
 
+  /* =====================================================
+     COMPLETE CHAPTER BANK
+     No Level 1 / 2 / 3 and no "Unspecified Level"
+  ===================================================== */
+
+  const isChapterBankList =
+    Array.isArray(listScope) &&
+    listScope.length > 0 &&
+    listScope.every(node => {
+
+      const id =
+        node.getAttribute('data-id');
+
+      const data =
+        (window.__pdfQuestionDataMap && id)
+          ? window.__pdfQuestionDataMap[id]
+          : {};
+
+      const metaLine =
+        String(data.metaLine || '');
+
+      return (
+        data.bankMode === 'chapter' ||
+        data.generationMode === 'chapter-bank' ||
+        /\[Model:\s*[^\]]+\]/i.test(metaLine) ||
+        /\[Category:\s*(VSA|SA|LA)\]/i.test(metaLine)
+      );
+    });
+
+  if (isChapterBankList) {
+    return [{
+      name: '',
+      items: listScope
+    }];
+  }
+
+  /* =====================================================
+     EXISTING NORMAL QUESTION BANK
+  ===================================================== */
+
+  const buckets =
+    levelsOrder.map(lvl => ({
+      name: lvl,
+      items: listScope.filter(
+        n =>
+          (n.getAttribute('data-level') || '').trim() === lvl
+      )
+    }));
+
+  const unspecified =
+    listScope.filter(
+      n =>
+        !(n.getAttribute('data-level') || '').trim()
+    );
+
+  if (unspecified.length) {
+    buckets.push({
+      name: 'Unspecified Level',
+      items: unspecified
+    });
+  }
+
+  return buckets.filter(
+    b => b.items.length
+  );
+}
   function __qbRenderNormalTypeQuestions(typeLabel, items) {
     if (!items.length) return;
 
@@ -3198,8 +3361,8 @@ if (includeKey) {
   // Level 2 -> all selected question types
   // Level 3 -> all selected question types
 
-    const __keyTypesOrder = [
-        'MCQ (Single)',
+   const __keyTypesOrder = [
+    'MCQ (Single)',
     'MCQ (Multiple)',
     'Numerical Value',
     'Assertion and Reason (MCQ Single)',
@@ -3207,7 +3370,9 @@ if (includeKey) {
     'Matching List',
     'Paragraph-Based MCQ (Single Correct)',
     'Fill in the Blanks',
-    'Descriptive'
+    'Descriptive',
+    'Case Based',
+    'Map'
   ];
 
   const __wantedKeyTypes = (selectedQtypes.length === 0)
@@ -3222,31 +3387,75 @@ if (includeKey) {
     return __sec;
   }
 
-    function __qbGetKeyLevelBuckets(listScope) {
-    if (__pdfIsEntranceExam) {
-      return [{
-        name: '',
-        items: listScope
-      }];
-    }
+   function __qbGetKeyLevelBuckets(listScope) {
 
-    const buckets = levelsOrder.map(lvl => ({
-      name: lvl,
-      items: listScope.filter(n => (n.getAttribute('data-level') || '').trim() === lvl)
-    }));
-
-    const unspecified = listScope.filter(n => !(n.getAttribute('data-level') || '').trim());
-
-    if (unspecified.length) {
-      buckets.push({
-        name: 'Unspecified Level',
-        items: unspecified
-      });
-    }
-
-    return buckets.filter(b => b.items.length);
+  /* Entrance Exam */
+  if (__pdfIsEntranceExam) {
+    return [{
+      name: '',
+      items: listScope
+    }];
   }
 
+  /* Complete Chapter Bank */
+  const isChapterBankList =
+    Array.isArray(listScope) &&
+    listScope.length > 0 &&
+    listScope.every(node => {
+
+      const id =
+        node.getAttribute('data-id');
+
+      const data =
+        (window.__pdfQuestionDataMap && id)
+          ? window.__pdfQuestionDataMap[id]
+          : {};
+
+      const metaLine =
+        String(data.metaLine || '');
+
+      return (
+        data.bankMode === 'chapter' ||
+        data.generationMode === 'chapter-bank' ||
+        /\[Model:\s*[^\]]+\]/i.test(metaLine) ||
+        /\[Category:\s*(VSA|SA|LA)\]/i.test(metaLine)
+      );
+    });
+
+  if (isChapterBankList) {
+    return [{
+      name: '',
+      items: listScope
+    }];
+  }
+
+  /* Existing normal question-bank behaviour */
+  const buckets =
+    levelsOrder.map(lvl => ({
+      name: lvl,
+      items: listScope.filter(
+        n =>
+          (n.getAttribute('data-level') || '').trim() === lvl
+      )
+    }));
+
+  const unspecified =
+    listScope.filter(
+      n =>
+        !(n.getAttribute('data-level') || '').trim()
+    );
+
+  if (unspecified.length) {
+    buckets.push({
+      name: 'Unspecified Level',
+      items: unspecified
+    });
+  }
+
+  return buckets.filter(
+    b => b.items.length
+  );
+}
   function __qbRenderKeyNormalTypeQuestions(typeLabel, items) {
     if (!items.length) return;
 
