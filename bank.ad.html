@@ -279,6 +279,20 @@
     <i class="fa-solid fa-trash"></i>
     Delete Chapter Bank Set
   </button>
+         <button
+  type="button"
+  id="chapter-bank-trash-btn"
+  class="main-btn"
+  onclick="__qbOpenChapterBankTrash()"
+  style="
+    margin-top:12px;
+    background:#5c677d;
+    color:#fff;
+  "
+>
+  <i class="fa-solid fa-trash-can-arrow-up"></i>
+  Trash / Restore
+</button>
 </div>
       </div>
 
@@ -5366,9 +5380,23 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     const chapters = new Set();
 
     snapshot.forEach(doc => {
-      const ch = doc.data().chapter;
-      if (ch) chapters.add(ch);
-    });
+
+  const data =
+    doc.data() || {};
+
+  /* Deleted questions must not appear
+     in the normal Question Bank */
+  if (data.deleted === true) {
+    return;
+  }
+
+  const ch =
+    data.chapter;
+
+  if (ch) {
+    chapters.add(ch);
+  }
+});
 
     const list = Array.from(chapters).sort();
 
@@ -5744,7 +5772,15 @@ let questionsHTML = '';
 let questionCount = 0;
 
 docs.forEach(doc => {
-          const data = doc.data();
+
+  const data =
+    doc.data() || {};
+
+  /* Do not show Trash items
+     in the normal Question Bank */
+  if (data.deleted === true) {
+    return;
+  }
 if (Array.isArray(data.options)) {
   console.log("Options for", doc.id, data.options);
 }
@@ -6221,33 +6257,17 @@ async function __qbDeleteSelectedChapterBankSet() {
       ? getMultiSelected('chapter')
       : [];
 
-  /* =====================================================
-     VALIDATION
-  ===================================================== */
-
-  if (
-    !classVal ||
-    classVal === 'All' ||
-    classVal === 'Select Class'
-  ) {
+  if (!classVal || classVal === 'All') {
     await appInfo('Please select one Class first.');
     return;
   }
 
-  if (
-    !boardVal ||
-    boardVal === 'All' ||
-    boardVal === 'Select Board'
-  ) {
+  if (!boardVal || boardVal === 'All') {
     await appInfo('Please select one Board first.');
     return;
   }
 
-  if (
-    !subjectVal ||
-    subjectVal === 'All' ||
-    subjectVal === 'Select Subject'
-  ) {
+  if (!subjectVal || subjectVal === 'All') {
     await appInfo('Please select one Subject first.');
     return;
   }
@@ -6262,11 +6282,6 @@ async function __qbDeleteSelectedChapterBankSet() {
   const chapterVal =
     String(selectedChapters[0] || '').trim();
 
-  if (!chapterVal) {
-    await appInfo('Please select one Chapter first.');
-    return;
-  }
-
   const btn =
     document.getElementById('delete-chapter-bank-btn');
 
@@ -6278,12 +6293,8 @@ async function __qbDeleteSelectedChapterBankSet() {
     if (btn) {
       btn.disabled = true;
       btn.innerHTML =
-        '<i class="fas fa-spinner fa-spin"></i> Checking Chapter Bank...';
+        '<i class="fas fa-spinner fa-spin"></i> Checking...';
     }
-
-    /* =====================================================
-       FETCH ONLY THE EXACT SELECTED CHAPTER
-    ===================================================== */
 
     const snapshot =
       await questionsDb
@@ -6294,87 +6305,71 @@ async function __qbDeleteSelectedChapterBankSet() {
         .where('chapter', '==', chapterVal)
         .get();
 
-    if (snapshot.empty) {
-      await appInfo(
-        'No questions were found for the selected chapter.'
-      );
-      return;
-    }
-
-    /* =====================================================
-       IDENTIFY ONLY COMPLETE CHAPTER BANK RECORDS
-
-       This intentionally does NOT delete ordinary questions
-       from the same chapter.
-
-       It recognises:
-       - bankMode = chapter
-       - generationMode = chapter-bank
-       - [Model: ...]
-       - [Category: VSA/SA/LA]
-       - Case Based / Map chapter-bank metadata
-    ===================================================== */
-
     const docsToDelete =
       snapshot.docs.filter(doc => {
 
         const data =
           doc.data() || {};
 
+        if (data.deleted === true) {
+          return false;
+        }
+
         const metaLine =
           String(data.metaLine || '');
 
-        const isChapterBankRecord =
+        return (
           data.bankMode === 'chapter' ||
-
           data.generationMode === 'chapter-bank' ||
-
           /\[Model:\s*[^\]]+\]/i.test(metaLine) ||
-
-          /\[Category:\s*(VSA|SA|LA)\]/i.test(metaLine) ||
-
-          /\[(Case Based|Map)\]/i.test(metaLine);
-
-        return isChapterBankRecord;
+          /\[Category:\s*(VSA|SA|LA)\]/i.test(metaLine)
+        );
       });
 
     if (!docsToDelete.length) {
       await appInfo(
-        'No Complete Chapter Bank records were found for this selected chapter. Ordinary Question Bank questions were not touched.'
+        'No active Complete Chapter Bank records were found for this chapter.'
       );
       return;
     }
 
-    /* =====================================================
-       CONFIRM EXACT TARGET
-    ===================================================== */
+    /* FIRST CONFIRMATION */
 
-    const ok =
+    const firstConfirm =
       await appConfirm(
-        `Delete this Complete Chapter Bank set?\n\n` +
+        `Are you sure you want to delete this Chapter Bank set?\n\n` +
         `Class: ${classVal}\n` +
         `Board: ${boardVal}\n` +
         `Subject: ${subjectVal}\n` +
         `Chapter: ${chapterVal}\n\n` +
-        `Chapter Bank records to delete: ${docsToDelete.length}\n\n` +
-        `Ordinary Question Bank questions in this chapter will NOT be deleted.\n\n` +
-        `This cannot be undone.`
+        `Questions: ${docsToDelete.length}\n\n` +
+        `The set will be moved to Trash and can be restored.`
       );
 
-    if (!ok) return;
+    if (!firstConfirm) return;
+
+    /* SECOND CONFIRMATION */
+
+    const secondConfirm =
+      await appConfirm(
+        `FINAL CONFIRMATION\n\n` +
+        `Move ${docsToDelete.length} question(s) from:\n\n` +
+        `${chapterVal}\n\n` +
+        `to Trash?\n\n` +
+        `You can restore them later from Trash.`
+      );
+
+    if (!secondConfirm) return;
 
     if (btn) {
       btn.innerHTML =
-        '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        '<i class="fas fa-spinner fa-spin"></i> Moving to Trash...';
     }
 
-    /* =====================================================
-       DELETE IN SAFE FIRESTORE BATCHES
-       Firestore batches must stay below the operation limit.
-    ===================================================== */
+    const deletedBatchId =
+      questionsDb.collection('questions').doc().id;
 
     const CHUNK_SIZE = 400;
-    let deletedCount = 0;
 
     for (
       let start = 0;
@@ -6392,40 +6387,59 @@ async function __qbDeleteSelectedChapterBankSet() {
         questionsDb.batch();
 
       chunk.forEach(doc => {
-        batch.delete(doc.ref);
+
+        batch.update(doc.ref, {
+
+          deleted: true,
+
+          deletedAt:
+            firebase.firestore.FieldValue.serverTimestamp(),
+
+          deletedBy:
+            currentUser
+              ? currentUser.uid
+              : null,
+
+          deletedReason:
+            'chapter-bank-set',
+
+          deletedBatchId:
+            deletedBatchId,
+
+          deletedSetClass:
+            classVal,
+
+          deletedSetBoard:
+            boardVal,
+
+          deletedSetSubject:
+            subjectVal,
+
+          deletedSetChapter:
+            chapterVal
+        });
+
       });
 
       await batch.commit();
-
-      deletedCount +=
-        chunk.length;
     }
 
     await appInfo(
-      `${deletedCount} Chapter Bank question(s) deleted successfully.\n\n` +
-      `${classVal} / ${boardVal} / ${subjectVal}\n` +
-      `${chapterVal}`
+      `${docsToDelete.length} Chapter Bank question(s) moved to Trash.\n\n` +
+      `They can be restored later.`
     );
 
-    /* =====================================================
-       REFRESH BANK
-    ===================================================== */
-
-    if (
-      typeof fetchAndDisplayQuestions === 'function'
-    ) {
-      await fetchAndDisplayQuestions();
-    }
+    await updateChapterDropdown();
 
   } catch (err) {
 
     console.error(
-      'DELETE CHAPTER BANK SET FAILED',
+      'MOVE CHAPTER BANK TO TRASH FAILED',
       err
     );
 
     await appInfo(
-      'Delete failed: ' +
+      'Could not move questions to Trash: ' +
       (err.message || err)
     );
 
@@ -6438,6 +6452,540 @@ async function __qbDeleteSelectedChapterBankSet() {
         '<i class="fa-solid fa-trash"></i> Delete Chapter Bank Set';
     }
   }
+}
+
+
+/* =========================================================
+   CHAPTER BANK TRASH
+========================================================= */
+
+async function __qbOpenChapterBankTrash() {
+
+  document
+    .querySelectorAll('.chapter-bank-trash-overlay')
+    .forEach(el => el.remove());
+
+  const overlay =
+    document.createElement('div');
+
+  overlay.className =
+    'chapter-bank-trash-overlay';
+
+  overlay.innerHTML = `
+    <div style="
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.55);
+      z-index:100000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      box-sizing:border-box;
+    ">
+
+      <div style="
+        width:100%;
+        max-width:760px;
+        max-height:88vh;
+        overflow:auto;
+        background:#fff;
+        border-radius:18px;
+        padding:20px;
+        box-sizing:border-box;
+        box-shadow:0 10px 35px rgba(0,0,0,0.25);
+      ">
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:12px;
+          margin-bottom:16px;
+        ">
+
+          <div style="
+            font-size:1.25em;
+            font-weight:800;
+            color:#0f3d6b;
+          ">
+            Chapter Bank Trash
+          </div>
+
+          <button
+            type="button"
+            id="chapter-trash-close-btn"
+            style="
+              border:none;
+              background:#eef3f9;
+              color:#35506b;
+              border-radius:8px;
+              padding:8px 12px;
+              cursor:pointer;
+              font-weight:700;
+            "
+          >
+            Close
+          </button>
+
+        </div>
+
+        <div
+          id="chapter-trash-content"
+          style="color:#334155;"
+        >
+          Loading deleted Chapter Banks...
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(
+    overlay
+  );
+
+  document
+    .getElementById('chapter-trash-close-btn')
+    .onclick = () => overlay.remove();
+
+  const content =
+    document.getElementById(
+      'chapter-trash-content'
+    );
+
+  try {
+
+    const snapshot =
+      await questionsDb
+        .collection('questions')
+        .where('deleted', '==', true)
+        .get();
+
+    const groups =
+      new Map();
+
+    snapshot.docs.forEach(doc => {
+
+      const data =
+        doc.data() || {};
+
+      if (
+        data.deletedReason !==
+        'chapter-bank-set'
+      ) {
+        return;
+      }
+
+      const batchId =
+        data.deletedBatchId ||
+        doc.id;
+
+      if (!groups.has(batchId)) {
+
+        groups.set(batchId, {
+          batchId,
+          docs: [],
+          className:
+            data.deletedSetClass ||
+            data.class ||
+            '',
+          board:
+            data.deletedSetBoard ||
+            data.board ||
+            '',
+          subject:
+            data.deletedSetSubject ||
+            data.subject ||
+            '',
+          chapter:
+            data.deletedSetChapter ||
+            data.chapter ||
+            '',
+          deletedAt:
+            data.deletedAt || null
+        });
+
+      }
+
+      groups.get(batchId).docs.push(
+        doc
+      );
+    });
+
+    const sets =
+      Array.from(groups.values());
+
+    sets.sort((a, b) => {
+
+      const ta =
+        a.deletedAt &&
+        typeof a.deletedAt.toMillis === 'function'
+          ? a.deletedAt.toMillis()
+          : 0;
+
+      const tb =
+        b.deletedAt &&
+        typeof b.deletedAt.toMillis === 'function'
+          ? b.deletedAt.toMillis()
+          : 0;
+
+      return tb - ta;
+    });
+
+    if (!sets.length) {
+
+      content.innerHTML = `
+        <div style="
+          padding:28px;
+          text-align:center;
+          color:#64748b;
+        ">
+          Trash is empty.
+        </div>
+      `;
+
+      return;
+    }
+
+    content.innerHTML =
+      sets.map(set => {
+
+        let dateText =
+          'Recently deleted';
+
+        if (
+          set.deletedAt &&
+          typeof set.deletedAt.toDate ===
+            'function'
+        ) {
+
+          dateText =
+            set.deletedAt
+              .toDate()
+              .toLocaleString();
+        }
+
+        return `
+          <div style="
+            border:1.5px solid #d9e5f0;
+            border-radius:14px;
+            padding:14px;
+            margin-bottom:12px;
+            background:#fafcff;
+          ">
+
+            <div style="
+              font-size:1.08em;
+              font-weight:800;
+              color:#0f3d6b;
+              margin-bottom:7px;
+            ">
+              ${__qbEscapeHtml(set.chapter)}
+            </div>
+
+            <div style="
+              font-size:0.94em;
+              line-height:1.55;
+              color:#475569;
+            ">
+              ${__qbEscapeHtml(set.className)}
+              •
+              ${__qbEscapeHtml(set.board)}
+              •
+              ${__qbEscapeHtml(set.subject)}
+            </div>
+
+            <div style="
+              margin-top:5px;
+              color:#475569;
+            ">
+              Questions:
+              <b>${set.docs.length}</b>
+            </div>
+
+            <div style="
+              margin-top:3px;
+              color:#64748b;
+              font-size:0.9em;
+            ">
+              Deleted: ${__qbEscapeHtml(dateText)}
+            </div>
+
+            <div style="
+              display:flex;
+              gap:8px;
+              flex-wrap:wrap;
+              margin-top:12px;
+            ">
+
+              <button
+                type="button"
+                onclick="__qbRestoreChapterBankTrash('${set.batchId}')"
+                style="
+                  border:none;
+                  border-radius:9px;
+                  padding:9px 14px;
+                  background:#198754;
+                  color:#fff;
+                  font-weight:700;
+                  cursor:pointer;
+                "
+              >
+                <i class="fas fa-rotate-left"></i>
+                Restore
+              </button>
+
+              <button
+                type="button"
+                onclick="__qbPermanentlyDeleteChapterBankTrash('${set.batchId}')"
+                style="
+                  border:none;
+                  border-radius:9px;
+                  padding:9px 14px;
+                  background:#b3261e;
+                  color:#fff;
+                  font-weight:700;
+                  cursor:pointer;
+                "
+              >
+                <i class="fas fa-trash"></i>
+                Delete Permanently
+              </button>
+
+            </div>
+
+          </div>
+        `;
+
+      }).join('');
+
+  } catch (err) {
+
+    console.error(
+      'LOAD TRASH FAILED',
+      err
+    );
+
+    content.innerHTML = `
+      <div style="color:#b3261e;">
+        Could not load Trash:
+        ${__qbEscapeHtml(
+          err.message || String(err)
+        )}
+      </div>
+    `;
+  }
+}
+
+
+/* =========================================================
+   RESTORE CHAPTER BANK
+========================================================= */
+
+async function __qbRestoreChapterBankTrash(
+  batchId
+) {
+
+  if (!batchId) return;
+
+  const snapshot =
+    await questionsDb
+      .collection('questions')
+      .where(
+        'deletedBatchId',
+        '==',
+        batchId
+      )
+      .get();
+
+  const docs =
+    snapshot.docs.filter(doc =>
+      doc.data()?.deleted === true
+    );
+
+  if (!docs.length) {
+
+    await appInfo(
+      'This Chapter Bank is no longer in Trash.'
+    );
+
+    __qbOpenChapterBankTrash();
+    return;
+  }
+
+  const sample =
+    docs[0].data() || {};
+
+  const chapter =
+    sample.deletedSetChapter ||
+    sample.chapter ||
+    'this chapter';
+
+  const ok =
+    await appConfirm(
+      `Restore this Chapter Bank?\n\n` +
+      `Chapter: ${chapter}\n` +
+      `Questions: ${docs.length}`
+    );
+
+  if (!ok) return;
+
+  const CHUNK_SIZE = 400;
+
+  for (
+    let start = 0;
+    start < docs.length;
+    start += CHUNK_SIZE
+  ) {
+
+    const batch =
+      questionsDb.batch();
+
+    docs
+      .slice(
+        start,
+        start + CHUNK_SIZE
+      )
+      .forEach(doc => {
+
+        batch.update(doc.ref, {
+
+          deleted: false,
+
+          deletedAt:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedBy:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedReason:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedBatchId:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedSetClass:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedSetBoard:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedSetSubject:
+            firebase.firestore.FieldValue.delete(),
+
+          deletedSetChapter:
+            firebase.firestore.FieldValue.delete()
+        });
+
+      });
+
+    await batch.commit();
+  }
+
+  await appInfo(
+    `${docs.length} question(s) restored successfully.`
+  );
+
+  document
+    .querySelectorAll('.chapter-bank-trash-overlay')
+    .forEach(el => el.remove());
+
+  await updateChapterDropdown();
+}
+
+
+/* =========================================================
+   PERMANENTLY DELETE FROM TRASH
+========================================================= */
+
+async function __qbPermanentlyDeleteChapterBankTrash(
+  batchId
+) {
+
+  if (!batchId) return;
+
+  const snapshot =
+    await questionsDb
+      .collection('questions')
+      .where(
+        'deletedBatchId',
+        '==',
+        batchId
+      )
+      .get();
+
+  const docs =
+    snapshot.docs.filter(doc =>
+      doc.data()?.deleted === true
+    );
+
+  if (!docs.length) {
+
+    await appInfo(
+      'No deleted questions were found.'
+    );
+
+    __qbOpenChapterBankTrash();
+    return;
+  }
+
+  const sample =
+    docs[0].data() || {};
+
+  const chapter =
+    sample.deletedSetChapter ||
+    sample.chapter ||
+    'this chapter';
+
+  const first =
+    await appConfirm(
+      `Permanently delete this Chapter Bank?\n\n` +
+      `Chapter: ${chapter}\n` +
+      `Questions: ${docs.length}\n\n` +
+      `It will no longer be restorable.`
+    );
+
+  if (!first) return;
+
+  const second =
+    await appConfirm(
+      `FINAL WARNING\n\n` +
+      `Are you absolutely sure?\n\n` +
+      `${docs.length} question(s) will be permanently deleted.\n\n` +
+      `This action CANNOT be undone.`
+    );
+
+  if (!second) return;
+
+  const CHUNK_SIZE = 400;
+
+  for (
+    let start = 0;
+    start < docs.length;
+    start += CHUNK_SIZE
+  ) {
+
+    const batch =
+      questionsDb.batch();
+
+    docs
+      .slice(
+        start,
+        start + CHUNK_SIZE
+      )
+      .forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+    await batch.commit();
+  }
+
+  await appInfo(
+    `${docs.length} question(s) permanently deleted.`
+  );
+
+  __qbOpenChapterBankTrash();
 }
 
 
