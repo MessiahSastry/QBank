@@ -5522,24 +5522,55 @@ function __splitMetaAndBody(block) {
 
 /** Ensure options are split into 4 lines starting with A) B) C) D) */
 function __forceOptionLines(body) {
-  // already line-broken?
-  if ((body.match(/^[A-D]\)/gm) || []).length >= 3) return body;
+  let text = String(body || '').trim();
 
-  // try to split inline A)…B)…C)…D)…
-  if (/A\).+B\).+C\).+D\)/.test(body)) {
-    const m = body.match(/A\)([^B]+)B\)([^C]+)C\)([^D]+)D\)(.+)/s);
-    if (m) {
-      return [
-        `A) ${m[1].trim()}`,
-        `B) ${m[2].trim()}`,
-        `C) ${m[3].trim()}`,
-        `D) ${m[4].trim()}`
-      ].join('\n');
-    }
-    return body.replace(/([A-D]\))/g, '\n$1').replace(/^\n/, '');
+  if (!text) return text;
+
+  /* =====================================================
+     ALREADY PROPERLY LINE-BROKEN
+  ===================================================== */
+  const existingOptionLines =
+    text.match(/^[ \t]*[A-D]\)[ \t]*/gm) || [];
+
+  if (existingOptionLines.length >= 4) {
+    return text;
   }
 
-  return body;
+  /* =====================================================
+     INLINE OPTIONS
+     Preserve the question stem and split:
+     A) ... B) ... C) ... D) ...
+  ===================================================== */
+
+  const match = text.match(
+    /^([\s\S]*?)\bA\)\s*([\s\S]*?)\s+\bB\)\s*([\s\S]*?)\s+\bC\)\s*([\s\S]*?)\s+\bD\)\s*([\s\S]*)$/i
+  );
+
+  if (match) {
+    const stem = String(match[1] || '').trim();
+    const optA = String(match[2] || '').trim();
+    const optB = String(match[3] || '').trim();
+    const optC = String(match[4] || '').trim();
+    const optD = String(match[5] || '').trim();
+
+    return [
+      stem,
+      `A) ${optA}`,
+      `B) ${optB}`,
+      `C) ${optC}`,
+      `D) ${optD}`
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  /* =====================================================
+     FALLBACK
+  ===================================================== */
+
+  return text
+    .replace(/\s+(?=[A-D]\)\s*)/g, '\n')
+    .trim();
 }
 
 /**
