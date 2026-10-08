@@ -8823,6 +8823,46 @@ if (cleanedErrors.length) {
     const year = variant === 'telugu' ? '2025–26; the 2026–27 index has no active Telugu AP paper link' : '2026–27';
     return { variant, marks, rows, custom: false, referenceMarks, source: sourceURL(variant), note: marks === referenceMarks ? `Class 10 reference structure (${year}). For Classes 6–9 this is a school-selected use of that structure; content stays within the selected class.` : `School adaptation of the Class 10 ${referenceMarks}-mark structure (${year}). Counts and choices are adjusted explicitly to ${marks} marks.` };
   }
+  function buildChapterPreset(variant, marks = 80, settings = {}) {
+    const bp = buildPreset(variant, marks);
+    if (!['science', 'social'].includes(variant)) return bp;
+    const includeMaps = settings.includeMaps !== false;
+    const groups = new Map();
+    // Keep the reference question inventory, but remove full-syllabus branch quotas.
+    // OR positions must move with their original questions when groups are merged.
+    for (const original of bp.rows) {
+      const r = clone(original);
+      r.area = '';
+      if (r.type === 'Map' && !includeMaps) {
+        r.type = r.marks === 1 ? MCQ : D;
+        r.pattern = null;
+        r.models = modelWeights(variant, r.type);
+      }
+      const signature = JSON.stringify([r.type, r.marks, r.pattern, r.models, r.modelFilter || '', r.grouped, r.attempt === r.count ? '' : r.id]);
+      if (!groups.has(signature)) groups.set(signature, { ...r, count: 0, attempt: 0, orCount: 0, orPositions: [] });
+      const combined = groups.get(signature);
+      const positions = r.orPositions?.length === r.orCount ? r.orPositions : Array.from({ length: r.orCount }, (_, i) => i);
+      combined.orPositions.push(...positions.map(i => i + combined.count));
+      combined.count += r.count;
+      combined.attempt += r.attempt;
+      combined.orCount += r.orCount;
+    }
+    const sectionName = r => [MCQ, AR].includes(r.type) ? 'Objective Questions' : r.type === C ? 'Case / Source Based Questions' : r.type === 'Map' ? 'Map Work' : `${r.marks}-Mark Answers`;
+    const order = r => r.type === MCQ ? 0 : r.type === AR ? 1 : r.type === D ? 10 + r.marks : r.type === C ? 50 : 60;
+    const sectionNames = [];
+    bp.rows = [...groups.values()].sort((a, b) => order(a) - order(b)).map((r, i) => {
+      const name = sectionName(r);
+      if (!sectionNames.includes(name)) sectionNames.push(name);
+      return { ...r, id: `r${i + 1}`, section: `Section ${String.fromCharCode(65 + sectionNames.indexOf(name))} — ${name}`, title: r.type === MCQ ? 'Multiple choice' : r.type === AR ? 'Assertion–Reason' : r.type === C ? 'Case / source based' : r.type === 'Map' ? `${r.marks}-mark map work` : `${r.marks}-mark answer` };
+    });
+    const grade = Number(String(settings.class || '').match(/\d+/)?.[0]);
+    bp.chapterScoped = true;
+    bp.schoolAdaptation = true;
+    bp.includeMaps = includeMaps;
+    bp.note = `School chapter-based ${marks}-mark paper. ${grade >= 6 && grade <= 8 ? 'Combined subject paper for Classes 6–8. ' : ''}Sections follow question types and marks. All questions come only from the selected chapters; no fixed marks are reserved for individual subject branches.`;
+    if (variant === 'social' && !includeMaps) bp.note += ' Map work is switched off: its marks are reassigned to equal-mark answers (one-mark items become MCQs).';
+    return bp;
+  }
   function allocateCounts(total, weights) {
     const entries = Object.entries(weights).filter(([, v]) => Number(v) > 0);
     if (!entries.length) return { Any: total };
@@ -9016,6 +9056,8 @@ if (cleanedErrors.length) {
     const unique = new Map(), excluded = [];
     for (const raw of input) {
       const q = raw.family !== undefined ? clone(raw) : normalize(raw);
+      if (Array.isArray(settings.chapters) && !settings.chapters.includes(q.chapter)) continue;
+      if (['class', 'board', 'subject'].some(field => settings[field] && q[field] !== settings[field])) continue;
       q._errors = nodeErrors(q);
       if (q.deleted) continue;
       if (q._errors.length) { excluded.push(q); continue; }
@@ -9092,7 +9134,7 @@ if (cleanedErrors.length) {
       return normalize({ metaLine, body: lines.join('\n'), chapter: metaField(metaLine, 'Chapter'), subject: metaField(metaLine, 'Subject'), class: metaField(metaLine, 'Class'), board: 'CBSE' }, { ...context, id: `import-${i + 1}` });
     });
   }
-  root.SciMentraCBSE = { clone, key, type, area, family, normalize, normalPart, effectiveMarks, nodeErrors, patternMatches, compatible, fingerprint, allocateCounts, buildPreset, validateBlueprint, planSlots, solve, competencyMinimum, parseImport, TYPES, FAMILIES, VARIANTS, AREAS, sourceURL };
+  root.SciMentraCBSE = { clone, key, type, area, family, normalize, normalPart, effectiveMarks, nodeErrors, patternMatches, compatible, fingerprint, allocateCounts, buildPreset, buildChapterPreset, validateBlueprint, planSlots, solve, competencyMinimum, parseImport, TYPES, FAMILIES, VARIANTS, AREAS, sourceURL };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.SciMentraCBSE;
 })(typeof window === 'undefined' ? globalThis : window);
 
@@ -9155,16 +9197,20 @@ if (cleanedErrors.length) {
     const el = document.getElementById(`chapters-multiselect-${sIdx}`);
     const list = el ? $$('input[type="checkbox"]:checked', el).map(x => x.value).filter(x => x !== '__ALL__') : [];
     const all = !!$('input[value="__ALL__"]:checked', el || document.createElement('div'));
-    const manual = $(`.subject-block[data-cb-index="${sIdx}"] .ai-manual-chapters-input`)?.value || '';
+    const manual = getSourceTypeGlobal() === 'Question Bank' ? '' : $(`.subject-block[data-cb-index="${sIdx}"] .ai-manual-chapters-input`)?.value || '';
     return [...new Set([...(all ? $$('input[type="checkbox"]', el).map(x => x.value).filter(x => x !== '__ALL__') : list), ...manual.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)])];
   }
   function getConfig(subject) {
     if (!state.subjects.has(subject)) {
       const variant = (C.VARIANTS[subject] || [['custom']])[0][0];
       const marks = variant === 'computer' && state.defaultMarks === 80 ? 50 : state.defaultMarks;
-      state.subjects.set(subject, { subject, variant, marks, blueprint: C.buildPreset(variant, marks), chapterAreas: {}, strictModels: true, requireCoverage: true, competencyMinimum: 0 });
+      state.subjects.set(subject, { subject, variant, marks, blueprint: C.buildChapterPreset(variant, marks, { class: getSelectedClass() }), chapterAreas: {}, includeMaps: true, strictModels: true, requireCoverage: true, competencyMinimum: 0 });
     }
-    return state.subjects.get(subject);
+    const cfg = state.subjects.get(subject);
+    if (['science', 'social'].includes(cfg.variant) && !cfg.blueprint.custom && !cfg.blueprint.chapterScoped) {
+      cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false });
+    }
+    return cfg;
   }
   function patternText(pattern) {
     return pattern ? pattern.map(p => p.any ? `any ${p.any}/${p.count} × ${marksText(p.marks)}` : p.alternatives > 1 ? `(${Array(p.alternatives).fill(marksText(p.marks)).join(' OR ')})` : marksText(p.marks)).join(' + ') : '';
@@ -9187,12 +9233,13 @@ if (cleanedErrors.length) {
       <button type="button" class="cb-button cb-custom">Edit as Custom Paper</button>
       <button type="button" class="cb-button cb-bank">Check bank & classify</button></div>
       <p class="cb-muted">${escape(cfg.blueprint.note)} ${cfg.blueprint.source ? `<a href="${escape(cfg.blueprint.source)}" target="_blank" rel="noopener">Official reference</a>` : ''}</p>
+      ${cfg.variant === 'social' && !cfg.blueprint.custom ? `<label class="cb-check"><input type="checkbox" class="cb-include-maps" ${cfg.includeMaps !== false ? 'checked' : ''}> Include map questions from the selected chapters</label><p class="cb-muted">Turn this off when the selected chapters have no map work. The total marks stay the same; the revised question groups are shown below.</p>` : ''}
       ${cfg.blueprint.custom ? `<label>Subject target marks <input class="cb-target" type="number" min="0.5" step="0.5" value="${cfg.marks}"></label>` : ''}
       <div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Section / question group</th><th>Type</th><th>Printed</th><th>Attempt</th><th>Marks each</th><th>OR slots</th><th>Counted marks</th><th>Details</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr><td><small>${escape(r.section)}</small><br>${escape(r.title)}${r.area ? `<br><small>${escape(r.area.replace(/\|/g, ' / '))}</small>` : ''}</td><td>${escape(r.type)}</td><td>${r.count + r.orCount}</td><td>${r.attempt}</td><td>${marksText(r.marks)}</td><td>${r.orCount}${r.pattern ? `<br><small>${escape(patternText(r.pattern))}</small>` : ''}</td><td>${marksText(r.attempt * r.marks)}</td><td><button type="button" class="cb-link" data-row="${i}">${cfg.blueprint.custom ? 'Edit' : 'View'}</button>${cfg.blueprint.custom ? `<button type="button" class="cb-link" data-delete-row="${i}" aria-label="Delete row ${i + 1}">×</button>` : ''}</td></tr>`).join('')}
       </tbody><tfoot><tr><th colspan="6">Attempted total</th><th colspan="2">${marksText(rows.reduce((s, r) => s + r.attempt * r.marks, 0))} / ${marksText(cfg.marks)}</th></tr></tfoot></table></div>
       ${cfg.blueprint.custom ? '<button type="button" class="cb-button cb-add-row">+ Add question group</button>' : ''}
-      <details class="cb-details"><summary>Model balance, competency target and chapter mapping</summary>
+      <details class="cb-details"><summary>Model balance and competency target${cfg.blueprint.rows.some(r => r.area) ? ' · Chapter mapping' : ''}</summary>
         <p class="cb-muted">Model-family targets below are editable school selection rules. Competency is tracked separately from the question model. Untagged questions are not counted as confirmed competency-based questions.</p>
         <label class="cb-check"><input type="checkbox" class="cb-strict" ${cfg.strictModels ? 'checked' : ''}> Enforce the displayed model-family counts</label>
         <label class="cb-check"><input type="checkbox" class="cb-coverage" ${cfg.requireCoverage ? 'checked' : ''}> Include every selected chapter in the printed paper</label>
@@ -9201,14 +9248,15 @@ if (cleanedErrors.length) {
         <div class="cb-model-summary">${rows.map(r => `<p><b>${escape(r.title)}:</b> ${escape(Object.entries(C.allocateCounts(r.count, r.models)).map(([k, v]) => `${k}: ${v}`).join(' · '))}${r.orCount ? '; each OR alternative matches its slot’s model family' : ''}</p>`).join('')}</div>
         <div class="cb-chapter-map"></div>
       </details>`;
-    $('.cb-variant', list).onchange = e => { cfg.variant = e.target.value; cfg.marks = cfg.variant === 'computer' ? 50 : cfg.marks; cfg.blueprint = C.buildPreset(cfg.variant, cfg.marks); renderSubject(sIdx); syncTotal(); };
+    $('.cb-variant', list).onchange = e => { cfg.variant = e.target.value; cfg.marks = cfg.variant === 'computer' ? 50 : cfg.marks; cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false }); renderSubject(sIdx); syncTotal(); };
     $('.cb-size', list).value = cfg.blueprint.custom ? 'custom' : String(cfg.marks);
     $('.cb-size', list).onchange = e => {
       if (e.target.value === 'custom') cfg.blueprint.custom = true;
-      else { cfg.marks = Number(e.target.value); cfg.blueprint = C.buildPreset(cfg.variant, cfg.marks); }
+      else { cfg.marks = Number(e.target.value); cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false }); }
       renderSubject(sIdx); syncTotal();
     };
     $('.cb-custom', list).onclick = () => { cfg.blueprint.custom = true; cfg.blueprint.note = 'Custom Paper. Counts, marks, models and choice rules are teacher-defined.'; renderSubject(sIdx); };
+    $('.cb-include-maps', list)?.addEventListener('change', e => { cfg.includeMaps = e.target.checked; cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps }); renderSubject(sIdx); });
     $('.cb-bank', list).onclick = () => bankInspector(sIdx).catch(e => errorDialog('Could not read question bank', [e.message]));
     $('.cb-target', list)?.addEventListener('change', e => { cfg.marks = Number(e.target.value); cfg.blueprint.marks = cfg.marks; renderSubject(sIdx); syncTotal(); });
     $('.cb-strict', list).onchange = e => { cfg.strictModels = e.target.checked; status(cfg.strictModels ? 'Model-family matching enabled.' : `${subject}: available-model selection explicitly enabled. The final report will show the actual mix.`); };
@@ -9222,7 +9270,7 @@ if (cleanedErrors.length) {
   }
   function updateChapterMap(sIdx) {
     const block = $$('.subject-block')[sIdx], host = $('.cb-chapter-map', block || document.createElement('div')); if (!host) return;
-    const cfg = getConfig(block.dataset.subject), areas = C.AREAS[cfg.variant] || [], chapters = selectedChapters(sIdx);
+    const cfg = getConfig(block.dataset.subject), areas = cfg.blueprint.rows.some(r => r.area) ? C.AREAS[cfg.variant] || [] : [], chapters = selectedChapters(sIdx);
     host.innerHTML = !areas.length ? '' : `<h4>Map selected chapters to subject areas</h4><p class="cb-muted">A question’s own Area tag takes priority. For an integrated chapter, classify individual questions using “Check bank & classify”.</p>${chapters.map(ch => `<label>${escape(ch)}<select data-cb-chapter="${escape(ch)}">${option('', 'Use question Area tags', cfg.chapterAreas[ch] || '')}${areas.map(a => option(a, a, cfg.chapterAreas[ch])).join('')}</select></label>`).join('') || '<p>Select chapters above to map them here.</p>'}`;
     $$('select[data-cb-chapter]', host).forEach(sel => sel.onchange = () => { cfg.chapterAreas[sel.dataset.cbChapter] = sel.value; });
   }
@@ -9367,9 +9415,9 @@ if (cleanedErrors.length) {
   }
   function promptText() {
     const snapshot = setupSnapshot();
-    const plan = snapshot.subjects.map(cfg => ({ subject: cfg.subject, class: snapshot.class, chapters: cfg.chapters, chapterAreas: cfg.chapterAreas, variant: cfg.variant, marks: cfg.marks, reference: cfg.blueprint.source, schoolAdaptation: cfg.marks !== cfg.blueprint.referenceMarks || cfg.blueprint.custom, rows: cfg.blueprint.rows.map(r => ({ ...r, modelCounts: C.allocateCounts(r.count, cfg.strictModels ? r.models : {}) })) }));
-    const example = { class: snapshot.class, board: 'CBSE', subject: snapshot.subjects[0]?.subject || '', chapter: snapshot.subjects[0]?.chapters[0] || '', type: 'Case Based', marks: 4, modelType: 'Application', subjectArea: 'Physics', competency: 'Application', competencyBased: true, passage: 'Full common context belongs here.', text: '', parts: [{ text: 'First subquestion', marks: 1, answer: 'Answer' }, { text: 'Second subquestion', marks: 1, answer: 'Answer' }, { marks: 2, alternatives: [{ text: 'Third subquestion A', marks: 2, answer: 'Answer' }, { text: 'Third subquestion B based on the SAME context', marks: 2, answer: 'Answer' }] }] };
-    return `Create a COMPLETE, VERIFIED question inventory for the following SciMentra CBSE exam blueprint. Return only a valid JSON object with a "questions" array, without markdown fences. This is question data, not a styled paper.\n\n${JSON.stringify(plan, null, 2)}\n\nRULES\n1. Stay strictly within each selected class, subject and chapter. The Class 10 reference supplies the examination structure only, even for Classes 6–9. Use age-appropriate academic content and language.\n2. Include exactly the printed inventory required by each row. count is the primary printed count; orCount requires one EXTRA independent question of the same type, marks and model family for each OR slot. attempt controls counted marks. Never combine these independent OR questions into one inventory record. Internal OR choices WITHIN a case or passage must remain inside that record's parts/alternatives.\n3. Follow the per-row modelCounts. Preserve meaningful exact modelType names such as Direct Concept, Application, Analyse, Give Reasons, Inference, Source Based, or Letter. Competency and competencyBased are separate classifications, not synonyms for type/model. Supply a truthful cognitive skill and true/false flag; do not label recall items competency-based merely because they are MCQs. Cover every selected chapter with distinct questions.\n4. Every record requires class, board: "CBSE", subject, chapter, type, marks, modelType, subjectArea, competency, competencyBased, text, answer or fully answered parts, and explanation where useful. MCQ/Assertion–Reason requires four options as strings and one answer letter A–D. Give the assertion–reason answer meanings in the options.\n5. Required subpart pattern: marks is the effective mark value; alternatives:2 means TWO subquestions with identical marks under an OR; any:2,count:3,marks:1 means a part group {choice:"any",attempt:2,marks:2,parts:[three one-mark questions]}. Do not count unattempted choices in marks. Each parent's marks equals its effective subpart sum.\n6. Reading / Extract / Question Set records need passage where relevant and a structured parts array with individually marked questions. Never create subquestions without the source passage. For grammar, output separate one-mark records; the Builder will group them. For map questions keep required map images with their record; do not substitute a prose question for a map.\n7. Questions needing an actual visual must include pictureNeeded:true and an image reference when available. Do not pretend a figure exists. The Builder will require the picture before printing. Prefer self-contained text/data questions where the blueprint permits.\n8. Match modelFilter if one appears. Preserve subjectArea domains (a | in the blueprint lists permitted alternative domains, not a literal Area value). Reading/Grammar/Writing domains apply to all language courses. Use each selected grade's own literature, never Class 10 text for a lower class.\n9. Non-mathematics/non-English descriptive answers should normally be point-wise with a flexible number of points appropriate to the question. Mathematics solutions must be step-wise; English responses should suit the task. Verify all options, calculations and answers.\n10. Use inline LaTeX where useful; escape each backslash correctly for JSON. Do not put answers, model tags or explanations into student-facing question text.\n\nSTRUCTURED CASE EXAMPLE (structure only, not actual questions):\n${JSON.stringify(example, null, 2)}\n\nKeep the selected blueprint totals exact. If selected chapters do not support a required topic/area, say so instead of adding out-of-syllabus questions.`;
+    const plan = snapshot.subjects.map(cfg => ({ subject: cfg.subject, class: snapshot.class, chapters: cfg.chapters, chapterAreas: Object.fromEntries(Object.entries(cfg.chapterAreas).filter(([chapter]) => cfg.chapters.includes(chapter))), variant: cfg.variant, marks: cfg.marks, reference: cfg.blueprint.source, schoolAdaptation: !!cfg.blueprint.schoolAdaptation || cfg.marks !== cfg.blueprint.referenceMarks || cfg.blueprint.custom, chapterScoped: !!cfg.blueprint.chapterScoped, rows: cfg.blueprint.rows.map(r => ({ ...r, modelCounts: C.allocateCounts(r.count, cfg.strictModels ? r.models : {}) })) }));
+    const example = { class: snapshot.class, board: 'CBSE', subject: snapshot.subjects[0]?.subject || '', chapter: snapshot.subjects[0]?.chapters[0] || '', type: 'Case Based', marks: 4, modelType: 'Application', subjectArea: '', competency: 'Application', competencyBased: true, passage: 'Full common context belongs here.', text: '', parts: [{ text: 'First subquestion', marks: 1, answer: 'Answer' }, { text: 'Second subquestion', marks: 1, answer: 'Answer' }, { marks: 2, alternatives: [{ text: 'Third subquestion A', marks: 2, answer: 'Answer' }, { text: 'Third subquestion B based on the SAME context', marks: 2, answer: 'Answer' }] }] };
+    return `Create a COMPLETE, VERIFIED question inventory for the following SciMentra CBSE exam blueprint. Return only a valid JSON object with a "questions" array, without markdown fences. This is question data, not a styled paper.\n\n${JSON.stringify(plan, null, 2)}\n\nRULES\n1. Stay strictly within each selected class, subject and chapter. Use the displayed question groups and age-appropriate content. Science and Social Science are chapter-based papers with no compulsory branch quotas. Never add a chapter or a subject branch that was not selected.\n2. Include exactly the printed inventory required by each row. count is the primary printed count; orCount requires one EXTRA independent question of the same type, marks and model family for each OR slot. attempt controls counted marks. Never combine these independent OR questions into one inventory record. Internal OR choices WITHIN a case or passage must remain inside that record's parts/alternatives.\n3. Follow the per-row modelCounts. Preserve meaningful exact modelType names such as Direct Concept, Application, Analyse, Give Reasons, Inference, Source Based, or Letter. Competency and competencyBased are separate classifications, not synonyms for type/model. Supply a truthful cognitive skill and true/false flag; do not label recall items competency-based merely because they are MCQs. Cover every selected chapter with distinct questions.\n4. Every record requires class, board: "CBSE", subject, chapter, type, marks, modelType, competency, competencyBased, text, answer or fully answered parts, and explanation where useful. MCQ/Assertion–Reason requires four options as strings and one answer letter A–D. Give the assertion–reason answer meanings in the options.\n5. Required subpart pattern: marks is the effective mark value; alternatives:2 means TWO subquestions with identical marks under an OR; any:2,count:3,marks:1 means a part group {choice:"any",attempt:2,marks:2,parts:[three one-mark questions]}. Do not count unattempted choices in marks. Each parent's marks equals its effective subpart sum.\n6. Reading / Extract / Question Set records need passage where relevant and a structured parts array with individually marked questions. Never create subquestions without the source passage. For grammar, output separate one-mark records; the Builder will group them. For map questions keep required map images with their record; do not substitute a prose question for a map.\n7. Questions needing an actual visual must include pictureNeeded:true and an image reference when available. Do not pretend a figure exists. The Builder will require the picture before printing. Prefer self-contained text/data questions where the blueprint permits.\n8. Match modelFilter if one appears. Supply subjectArea when a row requires an area (a | lists permitted alternative domains, not a literal Area value). An empty row area accepts any subject area within the selected chapters; area tags are optional for combined Science and Social Science papers. Reading/Grammar/Writing domains apply to all language courses. Use each selected grade's own literature, never Class 10 text for a lower class.\n9. Non-mathematics/non-English descriptive answers should normally be point-wise with a flexible number of points appropriate to the question. Mathematics solutions must be step-wise; English responses should suit the task. Verify all options, calculations and answers.\n10. Use inline LaTeX where useful; escape each backslash correctly for JSON. Do not put answers, model tags or explanations into student-facing question text.\n\nSTRUCTURED CASE EXAMPLE (structure only, not actual questions):\n${JSON.stringify(example, null, 2)}\n\nKeep the selected blueprint totals exact. If selected chapters do not support a required topic/area, say so instead of adding out-of-syllabus questions.`;
   }
   function aiPromptDialog() {
     const errors = setupErrors(); if (errors.length) { errorDialog('Complete the CBSE setup', errors); return; }
@@ -9645,7 +9693,7 @@ if (cleanedErrors.length) {
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Class 10 master patterns · Classes 6–10</h3><p>Choose a paper size for each subject below. The selected class and chapters supply all question content.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Saved drafts</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get CBSE question request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science and Social Science use question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Saved drafts</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get CBSE question request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').before(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = aiPromptDialog;
