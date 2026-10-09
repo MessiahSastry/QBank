@@ -6070,6 +6070,16 @@ function cbsePrintQuestion(question, number, section) {
       stem.firstChild.remove();
     }
 
+        // Centre standalone OR after the HTML cleanup.
+    stem.querySelectorAll('p, div').forEach(element => {
+      if (
+        element.textContent.trim().toUpperCase() === 'OR' &&
+        !element.querySelector('p, div, table, img')
+      ) {
+        element.classList.add('cbse-centred-or');
+      }
+    });
+
     const line = stem.parentElement;
     line.classList.add('cbse-question-line');
 
@@ -6094,6 +6104,235 @@ function cbsePrintQuestion(question, number, section) {
 
 function cbseFormatSectionBoxes(page) {
   if (!cbsePrintEnabled()) return;
+
+  if (!document.getElementById('cbse-board-layout-style')) {
+    const style = document.createElement('style');
+    style.id = 'cbse-board-layout-style';
+
+    style.textContent = `
+      body.cbse-paper-preview .cbse-section-heading {
+        display: block;
+        width: 100%;
+        text-align: center;
+        font-weight: 700 !important;
+        font-size: 1.12em;
+        margin: 14px 0 6px;
+        color: #111;
+        break-after: avoid;
+      }
+
+      body.cbse-paper-preview .cbse-section-box {
+        margin-top: 0;
+        align-items: flex-start;
+      }
+
+      body.cbse-paper-preview
+      .cbse-section-box > .cbse-box-instruction {
+        flex: 1 1 auto;
+        min-width: 0;
+        text-align: left;
+        white-space: normal;
+        line-height: 1.4;
+        font-weight: 400 !important;
+      }
+
+      body.cbse-paper-preview
+      .cbse-section-box > .cbse-section-total {
+        flex: 0 0 auto;
+        text-align: right;
+        white-space: nowrap;
+        font-weight: 700 !important;
+      }
+
+      body.cbse-paper-preview
+      .question-text .cbse-centred-or {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box;
+        text-align: center !important;
+        margin: 8px 0 !important;
+        padding: 0 !important;
+        font-weight: 700 !important;
+        break-after: avoid;
+      }
+
+      body.cbse-paper-preview
+      .question-text .cbse-centred-or * {
+        font-weight: 700 !important;
+      }
+
+      body.cbse-paper-preview .cbse-general-instructions {
+        margin: 12px 0 16px;
+        line-height: 1.4;
+      }
+
+      body.cbse-paper-preview .cbse-instructions-title {
+        font-weight: 700 !important;
+        margin-bottom: 5px;
+      }
+
+      body.cbse-paper-preview .cbse-general-instructions ol {
+        margin: 0;
+        padding-left: 24px;
+      }
+
+      body.cbse-paper-preview .cbse-general-instructions li {
+        margin: 3px 0;
+      }
+
+      body.cbse-paper-preview .cbse-ar-directions {
+        margin: 10px 0;
+        line-height: 1.4;
+        break-after: avoid;
+      }
+
+      body.cbse-paper-preview .cbse-ar-title {
+        font-weight: 700 !important;
+        margin-bottom: 4px;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  page.querySelectorAll('.cbse-general-instructions').forEach(
+    element => element.remove()
+  );
+
+  const subjects = exam.subjects || [];
+  const sections = subjects.flatMap(
+    subject => subject.sections || []
+  );
+
+  const questionCount = sections.reduce(
+    (sum, section) => sum + (section.questions || []).length,
+    0
+  );
+
+  const summaries = [];
+
+  for (const subject of subjects) {
+    const subjectGroups = new Map();
+
+    for (const section of subject.sections || []) {
+      const label = String(section.label || section.name || '');
+      const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
+      const name = match ? match[1] : label;
+      const key = name.trim().toLowerCase();
+
+      if (!subjectGroups.has(key)) {
+        subjectGroups.set(key, {
+          name,
+          count: 0,
+          marks: new Set()
+        });
+      }
+
+      const group = subjectGroups.get(key);
+
+      for (const q of section.questions || []) {
+        group.count++;
+        group.marks.add(
+          Number(q.marks || section.marksPerQuestion || 0)
+        );
+      }
+    }
+
+    for (const group of subjectGroups.values()) {
+      const prefix = subjects.length > 1
+        ? `${subject.subject}: `
+        : '';
+
+      let text =
+        `${prefix}${group.name} contains ${group.count} questions`;
+
+      const marks = [...group.marks];
+
+      if (marks.length === 1 && marks[0] > 0) {
+        text +=
+          ` carrying ${marks[0]} ` +
+          `${marks[0] === 1 ? 'mark' : 'marks'} each`;
+      }
+
+      summaries.push(text + '.');
+    }
+  }
+
+  const instructions = [
+    `This paper contains ${questionCount} main questions.`,
+    `The paper is divided into ${summaries.length} sections.`,
+    ...summaries
+  ];
+
+  const allMainQuestionsRequired = sections.every(
+    section =>
+      !section.type ||
+      section.type === 'all' ||
+      section.type === 'internal'
+  );
+
+  instructions.push(
+    allMainQuestionsRequired
+      ? 'All main questions are compulsory. Follow any choices specified within a question.'
+      : 'Follow the number of questions to be attempted in each section.'
+  );
+
+  const hasOR = sections.some(
+    section =>
+      Number(section.orCount) > 0 ||
+      (section.questions || []).some(q =>
+        /\bOR\b/.test(String(q.text || q.question || ''))
+      )
+  );
+
+  if (hasOR) {
+    instructions.push(
+      'Where an internal choice is marked OR, answer only one alternative.'
+    );
+  }
+
+  // Include instructions entered when building this paper.
+  if (exam.instructions) {
+    const source = document.createElement('div');
+
+    source.innerHTML = String(exam.instructions)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(?:p|div|li)>/gi, '\n');
+
+    const additional = source.textContent
+      .split(/\n+/)
+      .map(line => line.trim())
+      .filter(line =>
+        line && !/^general instructions\s*:?\s*$/i.test(line)
+      );
+
+    instructions.push(...additional);
+  }
+
+  const general = document.createElement('div');
+  general.className = 'cbse-general-instructions';
+
+  const title = document.createElement('div');
+  title.className = 'cbse-instructions-title';
+  title.textContent = 'General Instructions:';
+
+  const list = document.createElement('ol');
+
+  for (const text of [...new Set(instructions)]) {
+    const item = document.createElement('li');
+    item.textContent = text;
+    list.appendChild(item);
+  }
+
+  general.append(title, list);
+
+  const details = page.querySelector(':scope > .details-rect');
+
+  if (details) {
+    details.after(general);
+  } else {
+    page.prepend(general);
+  }
 
   const blocks = Array.from(
     page.querySelectorAll(':scope > .section-block')
@@ -6129,11 +6368,17 @@ function cbseFormatSectionBoxes(page) {
             )
           : count * Number(section.marksPerQuestion || 0);
 
-      if (!groups.has(key)) {
-        groups.set(key, { name, total: 0, shown: false });
+           if (!groups.has(key)) {
+        groups.set(key, {
+          name,
+          total: 0,
+          shown: false,
+          sections: []
+        });
       }
 
       groups.get(key).total += total;
+      groups.get(key).sections.push(section);
 
       return { section, key };
     });
@@ -6145,30 +6390,123 @@ function cbseFormatSectionBoxes(page) {
       const group = groups.get(key);
       block.replaceChildren();
 
-      if (!group.shown) {
+            if (!group.shown) {
+        const heading = document.createElement('div');
+        heading.className = 'cbse-section-heading';
+        heading.textContent = group.name.toUpperCase();
+
         const box = document.createElement('div');
         box.className = 'cbse-section-box';
 
-        const name = document.createElement('span');
-        name.textContent = group.name;
+        const instruction = document.createElement('span');
+        instruction.className = 'cbse-box-instruction';
+
+        const questions = group.sections.flatMap(
+          item => item.questions || []
+        );
+
+        const allRequired = group.sections.every(
+          item => !item.type || item.type === 'all'
+        );
+
+        if (allRequired) {
+          instruction.textContent =
+            `Answer all ${questions.length} questions.`;
+
+          const questionMarks = [
+            ...new Set(
+              group.sections.flatMap(item =>
+                (item.questions || []).map(q =>
+                  Number(q.marks || item.marksPerQuestion || 0)
+                )
+              )
+            )
+          ];
+
+          if (questionMarks.length === 1 && questionMarks[0] > 0) {
+            const mark = questionMarks[0];
+
+            instruction.textContent +=
+              ` Each question carries ${mark} ` +
+              `${mark === 1 ? 'mark' : 'marks'}.`;
+          }
+        } else {
+          instruction.textContent = [
+            ...new Set(
+              group.sections.map(item => {
+                if (item.instructions) return item.instructions;
+
+                if (item.type === 'any') {
+                  return `Answer any ${
+                    item.attemptAny || item.numQuestions
+                  } questions.`;
+                }
+
+                if (item.type === 'internal') {
+                  return `Answer one alternative from each of ${
+                    item.numPairs
+                  } pairs.`;
+                }
+
+                return `Answer all ${item.numQuestions} questions.`;
+              })
+            )
+          ].join(' ');
+        }
+
+        const hasOR = group.sections.some(
+          item =>
+            Number(item.orCount) > 0 ||
+            (item.questions || []).some(q =>
+              /\bOR\b/.test(String(q.text || q.question || ''))
+            )
+        );
+
+        if (hasOR && !/\bOR\b/.test(instruction.textContent)) {
+          instruction.textContent +=
+            ' Where OR is given, answer only one alternative.';
+        }
 
         const marks = document.createElement('span');
+        marks.className = 'cbse-section-total';
         marks.textContent = `${group.total} Marks`;
 
-        box.append(name, marks);
-        block.appendChild(box);
+        box.append(instruction, marks);
+        block.append(heading, box);
+
         group.shown = true;
-      } else {
-        // Keep this row's instructions without another section box.
-        block.classList.remove('section-block');
-        block.classList.add('cbse-row-instructions');
       }
 
-      if (section.instructions) {
-        const instruction = document.createElement('div');
-        instruction.className = 'cbse-section-instruction';
-        instruction.textContent = section.instructions;
-        block.appendChild(instruction);
+      // Assertion–Reason stays within the existing section.
+      const isAssertionReason = /assertion/i.test(
+        [
+          section.label,
+          section.name,
+          section.mcqType,
+          ...(section.questions || []).map(q => q.type || q.mcqType)
+        ].join(' ')
+      );
+
+      if (isAssertionReason) {
+        const directions = document.createElement('div');
+        directions.className = 'cbse-ar-directions';
+
+        const title = document.createElement('div');
+        title.className = 'cbse-ar-title';
+        title.textContent = 'Assertion–Reason Questions';
+
+        const text = document.createElement('div');
+        text.textContent =
+          'Read Assertion (A) and Reason (R) in each question. ' +
+          'Choose the correct answer from the options given.';
+
+        directions.append(title, text);
+        block.appendChild(directions);
+      }
+
+      // Remove duplicate section headings with no remaining content.
+      if (!block.children.length) {
+        block.remove();
       }
     }
   }
