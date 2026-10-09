@@ -5217,7 +5217,9 @@ function __cbseSplitLongQuestion(node) {
       } else if (
         child.nodeType === 1 &&
         /^(P|DIV|SPAN)$/.test(child.tagName) &&
-        !child.matches('.cbse-centred-or') &&
+                !child.matches(
+          '.cbse-centred-or, .cbse-subquestion-row'
+        ) &&
         (
           /^(P|DIV)$/.test(child.tagName) ||
           child.querySelector('br, p, div')
@@ -6226,7 +6228,7 @@ function cbsePrintQuestion(question, number, section) {
 
     // Join a separate OR-choice label to its question text.
     stem.querySelectorAll('p').forEach(p => {
-      if (!/^\([A-Z]\)$/.test(p.textContent.trim())) return;
+            if (!/^\((?:[A-Z]|\d+)\)$/.test(p.textContent.trim())) return;
 
       let next = p.nextSibling;
 
@@ -6266,7 +6268,185 @@ function cbsePrintQuestion(question, number, section) {
       stem.firstChild.remove();
     }
 
-        // Centre standalone OR after the HTML cleanup.
+            if (!document.getElementById('cbse-subquestion-marks-style')) {
+      const style = document.createElement('style');
+      style.id = 'cbse-subquestion-marks-style';
+
+      style.textContent = `
+        body.cbse-paper-preview .cbse-question-line {
+          gap: 0 !important;
+        }
+
+        body.cbse-paper-preview .cbse-question-marks {
+          flex: 0 0 3em !important;
+          width: 3em;
+          text-align: right;
+          box-sizing: border-box;
+        }
+
+        body.cbse-paper-preview
+        .question-text .cbse-subquestion-row {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) 3em;
+          width: calc(100% + 3em);
+          box-sizing: border-box;
+          align-items: start;
+          margin: 6px 0 !important;
+          padding: 0 !important;
+          break-inside: avoid;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-text {
+          min-width: 0;
+          margin: 0 !important;
+          padding: 0 !important;
+          text-align: left;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-text > p {
+          margin: 0 !important;
+        }
+
+        body.cbse-paper-preview
+        .question-text .cbse-subquestion-marks {
+          display: block;
+          text-align: right;
+          white-space: nowrap;
+          font-weight: 700 !important;
+          line-height: inherit;
+        }
+      `;
+
+      document.head.appendChild(style);
+    }
+
+    function makeSubquestionRow(element, marks, removeTail) {
+      if (removeTail) {
+        const walker = document.createTreeWalker(
+          element,
+          NodeFilter.SHOW_TEXT
+        );
+
+        let current;
+        let lastText = null;
+
+        while ((current = walker.nextNode())) {
+          if (current.textContent.trim()) {
+            lastText = current;
+          }
+        }
+
+        if (lastText) {
+          lastText.textContent = lastText.textContent.replace(
+            /\s*\[\d+(?:\.\d+)?\]\s*$/,
+            ''
+          );
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = 'cbse-subquestion-row';
+
+      const text = document.createElement('div');
+      text.className = 'cbse-subquestion-text';
+
+      while (element.firstChild) {
+        text.appendChild(element.firstChild);
+      }
+
+      const mark = document.createElement('span');
+      mark.className = 'cbse-subquestion-marks';
+      mark.textContent = `[${marks}]`;
+
+      row.append(text, mark);
+      element.replaceWith(row);
+    }
+
+    // Convert detached marks into identifiable blocks.
+    Array.from(stem.childNodes).forEach(node => {
+      const text = node.textContent.trim();
+
+      if (!text) {
+        if (node.nodeType === Node.TEXT_NODE) node.remove();
+        return;
+      }
+
+      if (
+        /^\[\d+(?:\.\d+)?\]$/.test(text) &&
+        (
+          node.nodeType === Node.TEXT_NODE ||
+          /^(B|STRONG|SPAN)$/.test(node.nodeName)
+        )
+      ) {
+        const paragraph = document.createElement('p');
+        node.replaceWith(paragraph);
+        paragraph.appendChild(node);
+      }
+    });
+
+    // A detached [2] following A / OR / B belongs to both alternatives.
+    Array.from(stem.children).forEach(element => {
+      const match = element.textContent.trim().match(
+        /^\[(\d+(?:\.\d+)?)\]$/
+      );
+
+      if (!match) return;
+
+      const alternatives = [];
+      let previous = element.previousElementSibling;
+      let foundOR = false;
+
+      while (previous) {
+        const text = previous.textContent.trim();
+
+        if (!text && !previous.querySelector('img, table')) {
+          previous = previous.previousElementSibling;
+          continue;
+        }
+
+        if (/^OR$/i.test(text)) {
+          foundOR = true;
+          previous = previous.previousElementSibling;
+          continue;
+        }
+
+        if (
+          /^(?:\(\d+\)\s*)?\([A-Z]\)\s+\S/.test(text) &&
+          !previous.classList.contains('cbse-subquestion-row')
+        ) {
+          alternatives.push(previous);
+          previous = previous.previousElementSibling;
+          continue;
+        }
+
+        break;
+      }
+
+      if (foundOR && alternatives.length >= 2) {
+        alternatives.forEach(alternative => {
+          makeSubquestionRow(alternative, match[1], false);
+        });
+
+        element.remove();
+      }
+    });
+
+    // Move ordinary subquestion marks, such as [1], into the right column.
+    Array.from(stem.children).forEach(element => {
+      if (element.classList.contains('cbse-subquestion-row')) return;
+
+      const text = element.textContent.trim();
+
+      if (!/^\(\d+\)\s*\S/.test(text)) return;
+
+      const match = text.match(/\[(\d+(?:\.\d+)?)\]\s*$/);
+
+      if (match) {
+        makeSubquestionRow(element, match[1], true);
+      }
+    });
+
+    // Centre standalone OR after the HTML cleanup.
     stem.querySelectorAll('p, div').forEach(element => {
       if (
         element.textContent.trim().toUpperCase() === 'OR' &&
