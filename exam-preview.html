@@ -5162,7 +5162,199 @@ function __examExtractDirectFlowPieces(wrapper) {
   return pieces;
 }
 
+function __cbseSplitLongQuestion(node) {
+  if (
+    typeof cbsePrintEnabled !== 'function' ||
+    !cbsePrintEnabled() ||
+    !node?.matches('.question-container')
+  ) return null;
+
+  const body = node.querySelector(':scope > .question-body');
+  const number = node.querySelector(':scope > .question-number');
+  const line = body?.querySelector(':scope > .cbse-question-line');
+  const stem = line?.querySelector(':scope > .question-text');
+  const options = body?.querySelector(':scope > .options-block');
+
+  if (!body || !number || !line || !stem) return null;
+
+  // Keep the existing MCQ option handling.
+  if (
+    options?.textContent.trim() ||
+    options?.querySelector('img, mjx-container')
+  ) {
+    return null;
+  }
+
+  function hasContent(element) {
+    return !!(
+      element.textContent.trim() ||
+      element.querySelector(
+        'img, svg, math, mjx-container, table'
+      )
+    );
+  }
+
+  // Split at paragraphs and existing line breaks.
+  // Keep formulas, tables, images and lists intact.
+  function splitMarkup(element) {
+    const result = [];
+    let part = element.cloneNode(false);
+    part.removeAttribute('id');
+
+    function flush() {
+      if (hasContent(part)) result.push(part);
+
+      part = element.cloneNode(false);
+      part.removeAttribute('id');
+    }
+
+    for (const child of element.childNodes) {
+      if (
+        child.nodeType === 1 &&
+        child.tagName === 'BR'
+      ) {
+        flush();
+      } else if (
+        child.nodeType === 1 &&
+        /^(P|DIV|SPAN)$/.test(child.tagName) &&
+        !child.matches('.cbse-centred-or') &&
+        (
+          /^(P|DIV)$/.test(child.tagName) ||
+          child.querySelector('br, p, div')
+        )
+      ) {
+        flush();
+
+        for (const fragment of splitMarkup(child)) {
+          part.appendChild(fragment);
+          flush();
+        }
+      } else {
+        part.appendChild(child.cloneNode(true));
+      }
+    }
+
+    flush();
+    return result;
+  }
+
+  const chunks = splitMarkup(stem);
+
+  if (chunks.length < 2) return null;
+
+  const groups = [];
+  let pending = [];
+
+  for (const chunk of chunks) {
+    pending.push(chunk);
+
+    const text = chunk.textContent.trim();
+
+    // Keep OR, alternative labels and introductory lines
+    // with the content immediately following them.
+    if (
+      /^(?:OR|\([A-Z]\))$/i.test(text) ||
+      /:\s*$/.test(text)
+    ) {
+      continue;
+    }
+
+    groups.push(pending);
+    pending = [];
+  }
+
+  if (pending.length) {
+    if (groups.length) {
+      groups[groups.length - 1].push(...pending);
+    } else {
+      groups.push(pending);
+    }
+  }
+
+  if (groups.length < 2) return null;
+
+  const pieces = groups.map((group, index) => {
+    const piece = node.cloneNode(false);
+
+    piece.removeAttribute('id');
+    piece.classList.add('exam-flow-piece');
+
+    piece.setAttribute(
+      'data-exam-flow-piece',
+      'cbse-question-part'
+    );
+
+    piece.setAttribute('data-cbse-flow', 'true');
+
+    const numberCopy = number.cloneNode(true);
+    const bodyCopy = body.cloneNode(false);
+    const lineCopy = line.cloneNode(false);
+    const stemCopy = stem.cloneNode(false);
+
+    // Show the question number only at the beginning.
+    if (index > 0) {
+      numberCopy.textContent = '';
+      numberCopy.setAttribute('aria-hidden', 'true');
+    }
+
+    for (const chunk of group) {
+      for (const paragraph of chunk.querySelectorAll('p')) {
+        paragraph.style.setProperty(
+          'margin',
+          '0',
+          'important'
+        );
+      }
+
+      stemCopy.append(...Array.from(chunk.childNodes));
+    }
+
+    lineCopy.appendChild(stemCopy);
+
+    // Preserve the marks column, showing marks only once.
+    for (const child of line.children) {
+      if (child === stem) continue;
+
+      const copy = child.cloneNode(true);
+
+      if (index > 0) {
+        copy.style.visibility = 'hidden';
+        copy.setAttribute('aria-hidden', 'true');
+      }
+
+      lineCopy.appendChild(copy);
+    }
+
+    bodyCopy.appendChild(lineCopy);
+    piece.append(numberCopy, bodyCopy);
+
+    return piece;
+  });
+
+  const last = pieces[pieces.length - 1];
+
+  const lastBody = last.querySelector(
+    ':scope > .question-body'
+  );
+
+  // Preserve figures and other content following the text.
+  for (const child of body.childNodes) {
+    if (child !== line) {
+      lastBody.appendChild(child.cloneNode(true));
+    }
+  }
+
+  last.setAttribute('data-cbse-flow-last', 'true');
+
+  node.remove();
+
+  return pieces;
+}
+
 function __examSplitStandardQuestion(node) {
+  const cbsePieces = __cbseSplitLongQuestion(node);
+
+  if (cbsePieces) return cbsePieces;
   if (
     !node ||
     !node.matches('.question-container')
@@ -5469,10 +5661,14 @@ function applyExamQuestionGap(
     questionBlocks.push(node);
   });
 
-  questionBlocks.forEach(node => {
+    questionBlocks.forEach(node => {
+    const isContinuation =
+      node.hasAttribute('data-cbse-flow') &&
+      !node.hasAttribute('data-cbse-flow-last');
+
     node.style.setProperty(
       'margin-bottom',
-      gap,
+      isContinuation ? '2px' : gap,
       'important'
     );
   });
