@@ -9236,12 +9236,63 @@ if (cleanedErrors.length) {
       ${q.parts?.length ? `${q.choice === 'any' ? `<p class="cb-choice-note">Attempt any ${q.attempt} of the following ${q.parts.length}.</p>` : ''}<ol class="cb-parts" type="${depth ? 'a' : 'i'}">${q.parts.map(p => `<li><span class="cb-part-mark">[${marksText(C.effectiveMarks(p))}]</span>${questionHTML(p, answers, depth + 1)}</li>`).join('')}</ol>` : ''}
       ${answer}${explanation}</div>`;
   }
+   function cbseChapterName(text) {
+    return String(text || '').normalize('NFKC')
+      .replace(/^\s*[-•–—]\s*/, '')
+      .replace(/^\s*(?:chapter|lesson|unit|ch\.?)\s+\d+\s*(?:[.):\-–—]\s*)?/i, '')
+      .replace(/^\s*(?:\d+\s*[.):\-–—]|\(\d+\))\s*/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function cbseChapterKey(text) {
+    return cbseChapterName(text).toLocaleLowerCase();
+  }
+
+  function cbseManualChapters(text) {
+    return String(text || '').normalize('NFKC')
+      .replace(
+        /\s+(?=(?:(?:chapter|lesson|unit|ch\.?)\s+)?(?:\d+[.):]|\(\d+\))\s+\p{L})/giu,
+        '\n'
+      )
+      .split(/[,;\n]+/)
+      .map(cbseChapterName)
+      .filter(Boolean);
+  }
+
   function selectedChapters(sIdx) {
     const el = document.getElementById(`chapters-multiselect-${sIdx}`);
-    const list = el ? $$('input[type="checkbox"]:checked', el).map(x => x.value).filter(x => x !== '__ALL__') : [];
-    const all = !!$('input[value="__ALL__"]:checked', el || document.createElement('div'));
-    const manual = getSourceTypeGlobal() === 'Question Bank' ? '' : $(`.subject-block[data-cb-index="${sIdx}"] .ai-manual-chapters-input`)?.value || '';
-    return [...new Set([...(all ? $$('input[type="checkbox"]', el).map(x => x.value).filter(x => x !== '__ALL__') : list), ...manual.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)])];
+
+    const list = el
+      ? $$('input[type="checkbox"]:checked', el)
+          .map(x => x.value)
+          .filter(x => x !== '__ALL__')
+      : [];
+
+    const all = el
+      ? !!$('input[value="__ALL__"]:checked', el)
+      : false;
+
+    const manual = getSourceTypeGlobal() === 'Question Bank'
+      ? ''
+      : $(`.subject-block[data-cb-index="${sIdx}"] .ai-manual-chapters-input`)?.value || '';
+
+    const selected = all
+      ? $$('input[type="checkbox"]', el)
+          .map(x => x.value)
+          .filter(x => x !== '__ALL__')
+      : list;
+
+    const unique = new Map();
+
+    for (const chapter of [...selected, ...cbseManualChapters(manual)]) {
+      const key = cbseChapterKey(chapter);
+      if (key && !unique.has(key)) {
+        unique.set(key, chapter.trim());
+      }
+    }
+
+    return [...unique.values()];
   }
   function getConfig(subject) {
     if (!state.subjects.has(subject)) {
@@ -9414,15 +9465,97 @@ if (cleanedErrors.length) {
   function setupSnapshot() {
     return { class: getSelectedClass(), subjects: getSelectedSubjects().map((subject, i) => ({ ...C.clone(getConfig(subject)), class: getSelectedClass(), chapters: selectedChapters(i) })), overrides: [...state.overrides], school: value('cb-school'), examName: value('exam-name-input'), time: value('time-input'), date: value('date-input'), instructions: value('instructions-input') };
   }
-  async function readImported() {
+    async function readImported() {
     let raw = value('global-paste-area');
+
     if (getSourceTypeGlobal() === 'Upload .docx') {
-      if (!window._globalDocxArrayBuffer) throw new Error('Choose a .docx file first.');
-      if (!window.mammoth) throw new Error('The Word reader has not loaded. Check the internet connection.');
-      raw = (await mammoth.extractRawText({ arrayBuffer: window._globalDocxArrayBuffer })).value;
+      if (!window._globalDocxArrayBuffer) {
+        throw new Error('Choose a .docx file first.');
+      }
+
+      if (!window.mammoth) {
+        throw new Error(
+          'The Word reader has not loaded. Check the internet connection.'
+        );
+      }
+
+      raw = (
+        await mammoth.extractRawText({
+          arrayBuffer: window._globalDocxArrayBuffer
+        })
+      ).value;
     }
-    const subjects = getSelectedSubjects(), chapters = subjects.length === 1 ? selectedChapters(0) : [];
-    return C.parseImport(raw, { class: getSelectedClass(), board: 'CBSE', subject: subjects.length === 1 ? subjects[0] : '', chapter: chapters.length === 1 ? chapters[0] : '' });
+
+    const subjects = getSelectedSubjects();
+    const selectedClass = getSelectedClass();
+
+    const chaptersBySubject = new Map(
+      subjects.map((subject, index) => [
+        subject,
+        selectedChapters(index)
+      ])
+    );
+
+    const chapters = subjects.length === 1
+      ? chaptersBySubject.get(subjects[0])
+      : [];
+
+    const questions = C.parseImport(raw, {
+      class: selectedClass,
+      board: 'CBSE',
+      subject: subjects.length === 1 ? subjects[0] : '',
+      chapter: chapters.length === 1 ? chapters[0] : ''
+    });
+
+    const issues = [];
+
+    questions.forEach((q, index) => {
+      const label =
+        (String(q.metaLine || '').match(/Q\s*\d+/i) || [])[0]
+        || `Question ${index + 1}`;
+
+      if (q.class !== selectedClass) {
+        issues.push(
+          `${label}: class "${q.class || 'missing'}" does not match "${selectedClass}".`
+        );
+      }
+
+      if (q.board !== 'CBSE') {
+        issues.push(
+          `${label}: board "${q.board || 'missing'}" does not match CBSE.`
+        );
+      }
+
+      const allowedChapters = chaptersBySubject.get(q.subject);
+
+      if (!allowedChapters) {
+        issues.push(
+          `${label}: subject "${q.subject || 'missing'}" is not selected. Selected subjects: ${subjects.join(', ')}.`
+        );
+        return;
+      }
+
+      const matchingChapter = allowedChapters.find(
+        chapter => cbseChapterKey(chapter) === cbseChapterKey(q.chapter)
+      );
+
+      if (matchingChapter !== undefined) {
+        // Use the selected chapter's exact name for later blueprint checks.
+        q.chapter = matchingChapter;
+      } else {
+        issues.push(
+          `${label}: chapter "${q.chapter || 'missing'}" does not match the selected ${q.subject} chapters: ${allowedChapters.join('; ')}.`
+        );
+      }
+    });
+
+    if (issues.length) {
+      throw new Error(
+        'Please correct these details:\n\n' + issues.join('\n\n')
+      );
+    }
+
+    return questions;
   }
   async function build() {
     if (state.busy) return;
