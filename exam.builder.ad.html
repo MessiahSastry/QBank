@@ -9608,12 +9608,15 @@ if (cleanedErrors.length) {
     const qtype = ['Reading', 'Extract', 'Grammar', 'Writing'].includes(qt) ? qt : qt;
     let options = Array.isArray(q.options) ? q.options.map(x => clean(x).replace(/^[A-D][).:]\s*/i, '')) : q.options && typeof q.options === 'object' ? ['A', 'B', 'C', 'D'].map(k => clean(q.options[k])) : [];
     let text = rec.body;
-    if ([MCQ, AR, 'MCQ (Multiple)'].includes(qtype)) {
+        if ([MCQ, AR, 'MCQ (Multiple)'].includes(qtype)) {
+      const parsed = optionRecord(rec.body);
+
       if (!options.length) {
-        const om = [...text.matchAll(/(?:^|\n)\s*([A-D])[).:]\s*([\s\S]*?)(?=\n\s*[A-D][).:]|$)/g)];
-        if (om.length === 4) options = om.map(m => m[2].trim());
+        options = parsed.options;
       }
-      text = clean(q.question || text.split(/\n\s*A[).:]/)[0]);
+
+      // Preserve the complete stem, including Assertion and Reason.
+      text = clean(parsed.text || q.question || '');
     }
     const bodyParts = !q.parts?.length && !q.subQuestions?.length ? parseParts(stripTags(q.body || q.parsedBody || q.text || q.fullText || q.question || '')) : null;
     if (bodyParts) text = '';
