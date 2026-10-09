@@ -8864,27 +8864,48 @@ if (cleanedErrors.length) {
     const exp = raw.match(/(?:^|\n)\s*(?:Explanation|Solution)\s*:\s*([\s\S]*?)(?=\n\s*Answers?\s*:|$)/i);
     return { body, answer: ans ? answerText(ans[1]) : '', explanation: exp ? exp[1].trim() : '' };
   }
+  function optionRecord(body) {
+    const matches = [...body.matchAll(/(?:^|\n)\s*([A-D])[).:]\s*([\s\S]*?)(?=\n\s*[A-D][).:]|$)/g)];
+    return matches.length === 4 ? { text: body.slice(0, matches[0].index).trim(), options: matches.map(m => m[2].trim()) } : { text: body, options: [] };
+  }
   function normalPart(p) {
-    const out = { ...p, text: stripTags(p.text || p.question || p.body || ''), marks: Number(p.marks), answer: answerText(p.answer || p.parsedAnswer || p.finalAnswer || ''), options: Array.isArray(p.options) ? p.options.map(String) : [] };
+    const rec = splitRecord(p.text || p.question || p.body || '');
+    const parsed = optionRecord(rec.body);
+    const out = { ...p, text: parsed.text, marks: Number(p.marks), answer: answerText(p.answer || p.parsedAnswer || p.finalAnswer || rec.answer), explanation: p.explanation || rec.explanation, options: p.options?.length ? p.options.map(String) : parsed.options };
     if (p.parts) out.parts = p.parts.map(normalPart);
     if (p.alternatives) out.alternatives = p.alternatives.map(normalPart);
     if (p.attempt != null) out.attempt = Number(p.attempt);
     return out;
   }
-  function parseParts(body) {
-    const re = /(?:^|\n)\s*Sub[- ]question\s+(\d+)([A-Z])?\s*\((\d+(?:\.\d+)?)\s*Marks?\)\s*:\s*/gi;
+  function parseParts(body, itemLevel = false) {
+    const label = itemLevel ? 'Item' : 'Sub[- ]question';
+    const re = new RegExp('(?:^|\\n)\\s*' + label + '\\s+(\\d+)([A-Z])?\\s*\\((\\d+(?:\\.\\d+)?)\\s*Marks?\\)\\s*(?:\\[Attempt Any:\\s*(\\d+)\\]\\s*)?:\\s*', 'gi');
     const matches = [...body.matchAll(re)];
     if (!matches.length) return null;
     const parts = [], byNumber = new Map();
     matches.forEach((m, i) => {
-      const text = body.slice(m.index + m[0].length, matches[i + 1]?.index ?? body.length).replace(/\n\s*OR\s*$/i, '').trim();
-      const p = { text, marks: Number(m[3]), answer: '', options: [] };
+      const content = body.slice(m.index + m[0].length, matches[i + 1]?.index ?? body.length).replace(/\n\s*OR\s*$/i, '').trim();
+      let part;
+      if (m[4]) {
+        const nested = parseParts(content, true);
+        if (!nested) throw new Error('Attempt Any subpart needs marked Item 1, Item 2, … records.');
+        part = { text: nested.passage, marks: Number(m[3]), choice: 'any', attempt: Number(m[4]), parts: nested.parts };
+      } else part = normalPart({ text: content, marks: Number(m[3]) });
       if (byNumber.has(m[1])) {
         const existing = byNumber.get(m[1]);
-        if (!existing.alternatives) { existing.alternatives = [{ ...existing }]; existing.text = ''; }
-        existing.alternatives.push(p);
-      } else { parts.push(p); byNumber.set(m[1], p); }
+        if (!m[2] || !existing._choiceLetter || existing._choiceLetter === m[2].toUpperCase()) throw new Error('Repeated subquestion number. Use distinct A/B suffixes for an internal OR.');
+        if (!existing.alternatives) {
+          const first = { ...existing }; delete first._choiceLetter;
+          Object.keys(existing).forEach(k => delete existing[k]);
+          Object.assign(existing, { text: '', marks: first.marks, alternatives: [first], _choiceLetter: m[2].toUpperCase() });
+        }
+        existing.alternatives.push(part);
+      } else {
+        part._choiceLetter = m[2]?.toUpperCase() || '';
+        parts.push(part); byNumber.set(m[1], part);
+      }
     });
+    parts.forEach(p => delete p._choiceLetter);
     return { passage: body.slice(0, matches[0].index).replace(/^\s*(?:Case\/Source|Case|Source|Passage)\s*:\s*/i, '').trim(), parts };
   }
   function normalize(raw, context = {}) {
@@ -8905,14 +8926,16 @@ if (cleanedErrors.length) {
       }
       text = clean(q.question || text.split(/\n\s*A[).:]/)[0]);
     }
-    const bodyParts = !q.parts && !q.subQuestions ? parseParts(rec.body) : null;
+    const bodyParts = !q.parts?.length && !q.subQuestions?.length ? parseParts(stripTags(q.body || q.parsedBody || q.text || q.fullText || q.question || '')) : null;
+    if (bodyParts) text = '';
+    else if (q.parts?.length || q.subQuestions?.length) text = stripTags(q.text || q.question || '');
     const passage = stripTags(q.passage || q.caseText || bodyParts?.passage || '');
-    const parts = (q.parts || q.subQuestions || bodyParts?.parts || (q.mcqs?.length ? q.mcqs.map(x => ({ ...x, marks: x.marks || 1 })) : [])).map(normalPart);
+    const parts = (q.parts?.length ? q.parts : q.subQuestions?.length ? q.subQuestions : bodyParts?.parts || (q.mcqs?.length ? q.mcqs.map(x => ({ ...x, marks: x.marks || 1 })) : [])).map(normalPart);
     const format = q.format || (/computer|information technology/i.test(q.subject || context.subject || '') ? 'plain' : '');
     const applyFormat = p => { p.format = p.format || format; (p.parts || []).forEach(applyFormat); (p.alternatives || []).forEach(applyFormat); };
     parts.forEach(applyFormat);
     const images = [q.image, q.imageUrl, q.imageURL, ...(Array.isArray(q.images) ? q.images.map(x => typeof x === 'string' ? x : x.url || x.src) : [])].filter(Boolean);
-    const rawAnswer = answerText(q.answer || q.parsedAnswer || q.finalAnswer || rec.answer);
+    const rawAnswer = answerText(q.answer || q.parsedAnswer || q.finalAnswer || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.answer));
     const m = Number(q.marks || (meta.match(/(\d+(?:\.\d+)?)\s*Marks?/i) || [])[1] || 0);
     const competency = clean(q.competency || q.cognitiveSkill || metaField(meta, 'Competency'));
     const cb = q.competencyBased === true || /^yes|^true$/i.test(metaField(meta, 'CompetencyBased')) ? true : q.competencyBased === false || /^no|^false$/i.test(metaField(meta, 'CompetencyBased')) ? false : null;
@@ -8920,8 +8943,8 @@ if (cleanedErrors.length) {
       ...q, id: clean(q.id || q.srcId || q.bankId || context.id || ''), class: clean(q.class || context.class || ''), board: clean(q.board || context.board || ''),
       subject: clean(q.subject || context.subject || ''), chapter: clean(q.chapter || metaField(meta, 'Chapter') || context.chapter || ''),
       text, question: text, type: qtype, mcqType: qtype, marks: m, modelType: model, family: family(model), subjectArea: qArea,
-      category: clean(q.category || metaField(meta, 'Category')), competency, competencyBased: cb,
-      options, answer: rawAnswer, explanation: stripTags(q.explanation || rec.explanation), image: images[0] || '', images, passage, parts, format,
+      slot: clean(q.slot || metaField(meta, 'Slot')), category: clean(q.category || metaField(meta, 'Category')), competency, competencyBased: cb,
+      options, answer: rawAnswer, explanation: stripTags(q.explanation || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.explanation)), image: images[0] || '', images, passage, parts, format,
       pictureNeeded: qtype === 'Map' || q.pictureNeeded === true || /\[Picture Needed:\s*Yes\]/i.test([meta, q.body, q.text, q.fullText, q.question, q.answer].join('\n')),
       deleted: q.deleted === true || q.isDeleted === true || key(q.status) === 'deleted'
     };
@@ -9100,7 +9123,7 @@ if (cleanedErrors.length) {
     return { ...best, errors, shortages: [], excluded, rowsReport, pool, slots };
   }
   function parseImport(text, context = {}) {
-    const raw = clean(text).replace(/^```(?:json|text)?\s*/i, '').replace(/\s*```$/, '');
+    const raw = clean(text).replace(/^\s*```[^\n]*\n?/gm, '').trim();
     if (!raw) return [];
     if (/^[\[{]/.test(raw)) {
       try {
@@ -9108,14 +9131,53 @@ if (cleanedErrors.length) {
         if (Array.isArray(list)) return list.map((q, i) => normalize(q, { ...context, id: `import-${i + 1}` }));
       } catch (error) { if (/^[\[{]\s*[\{"\]]/.test(raw)) throw new Error(`Invalid JSON: ${error.message}`); }
     }
-    const blocks = raw.split(/\n(?=\s*Q\s*\d+\s*:)/i).filter(x => /^\s*Q\s*\d+\s*:/i.test(x));
-    if (!blocks.length) throw new Error('Use Q1: … headers with marks and type, or paste the generated JSON question list.');
-    return blocks.map((block, i) => {
-      const [metaLine, ...lines] = block.split('\n');
-      return normalize({ metaLine, body: lines.join('\n'), chapter: metaField(metaLine, 'Chapter'), subject: metaField(metaLine, 'Subject'), class: metaField(metaLine, 'Class'), board: 'CBSE' }, { ...context, id: `import-${i + 1}` });
+    const headers = [...raw.matchAll(/^\s*Q\s*(\d+)\s*:[^\n]*/gim)];
+    if (!headers.length) throw new Error('Paste the complete FINAL SET from ChatGPT, beginning with Q1: and containing marks, types, answers and chapter tags.');
+    const seen = new Set();
+    return headers.map((h, i) => {
+      if (seen.has(Number(h[1]))) throw new Error(`Question Q${h[1]} is repeated. Paste one complete final set.`);
+      seen.add(Number(h[1]));
+      const metaLine = h[0].trim();
+      const body = raw.slice(h.index + h[0].length, headers[i + 1]?.index ?? raw.length).trim();
+      const image = metaField(body, 'Image') || metaField(metaLine, 'Image');
+      return normalize({ metaLine, body: body.replace(/\[Image:\s*[^\]]+\]/gi, '').trim(), image, chapter: metaField(metaLine, 'Chapter'), subject: metaField(metaLine, 'Subject'), class: metaField(metaLine, 'Class'), board: 'CBSE' }, { ...context, id: `import-${i + 1}` });
     });
   }
-  root.SciMentraCBSE = { clone, key, type, area, family, normalize, normalPart, effectiveMarks, nodeErrors, patternMatches, compatible, fingerprint, allocateCounts, buildPreset, buildChapterPreset, validateBlueprint, planSlots, solve, competencyMinimum, parseImport, TYPES, FAMILIES, VARIANTS, AREAS, sourceURL };
+  // Final sets already contain the teacher's selected questions: validate and
+  // assemble them in blueprint order instead of selecting again from a pool.
+  function assembleFinalSet(bp, input, settings = {}) {
+    const errors = validateBlueprint(bp), slots = planSlots(bp, settings.strictModels !== false);
+    if (input.length !== slots.length) errors.push(`The final set has ${input.length} records; this subject needs exactly ${slots.length}, including OR alternatives.`);
+    const tagged = input.some(q => q.slot), bySlot = new Map();
+    if (tagged) for (const q of input) {
+      if (!q.slot) errors.push('Some questions are missing their [Slot: …] tag.');
+      else if (bySlot.has(q.slot)) errors.push(`Slot ${q.slot} is repeated.`);
+      else bySlot.set(q.slot, q);
+    }
+    const expected = new Set(slots.map(s => s.id));
+    for (const id of bySlot.keys()) if (!expected.has(id)) errors.push(`Slot ${id} is not in the selected blueprint.`);
+    const seen = new Set(), assigned = slots.map((slot, i) => {
+      const q = tagged ? bySlot.get(slot.id) : input[i];
+      if (!q) { errors.push(`Missing question for ${slot.row.title}, slot ${slot.id}.`); return null; }
+      const label = `Question ${i + 1} (${slot.row.title})`;
+      errors.push(...nodeErrors(q, label));
+      if (!compatible({ ...q, _errors: [] }, slot.row, slot.family)) errors.push(`${label}: type, marks, model or subpart pattern does not match the blueprint.`);
+      if (q.deleted || ['class', 'board', 'subject'].some(k => settings[k] && q[k] !== settings[k]) || !(settings.chapters || []).includes(q.chapter)) errors.push(`${label}: class, subject or chapter does not match the selected setup.`);
+      const fp = fingerprint(q); if (seen.has(fp)) errors.push(`${label}: duplicate question.`); seen.add(fp);
+      return { ...clone(q), _targetFamily: slot.family };
+    });
+    if (errors.length) return { errors, rowsReport: [], excluded: [] };
+    const rows = bp.rows.map((r, ri) => ({ ...clone(r), items: Array.from({ length: r.count }, (_, index) => {
+      const choices = slots.map((s, i) => ({ s, q: assigned[i] })).filter(x => x.s.ri === ri && x.s.index === index).map(x => x.q);
+      return choices.length === 2 ? { text: '', marks: r.marks, alternatives: choices } : choices[0];
+    }) }));
+    const covered = new Set(assigned.map(q => q.chapter));
+    if (settings.requireCoverage !== false) for (const chapter of settings.chapters || []) if (!covered.has(chapter)) errors.push(`Chapter not represented: ${chapter}.`);
+    const minCompetency = competencyMinimum(rows);
+    if (minCompetency < bp.marks * Number(settings.competencyMinimum || 0) / 100) errors.push('The final set does not meet the selected competency target after choices.');
+    return { rows, minCompetency, errors, rowsReport: [], excluded: [] };
+  }
+  root.SciMentraCBSE = { clone, key, type, area, family, normalize, normalPart, effectiveMarks, nodeErrors, patternMatches, compatible, fingerprint, allocateCounts, buildPreset, buildChapterPreset, validateBlueprint, planSlots, solve, competencyMinimum, parseImport, assembleFinalSet, TYPES, FAMILIES, VARIANTS, AREAS, sourceURL };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.SciMentraCBSE;
 })(typeof window === 'undefined' ? globalThis : window);
 
@@ -9370,21 +9432,25 @@ if (cleanedErrors.length) {
       const snapshot = setupSnapshot(), source = getSourceTypeGlobal(), imported = source === 'Question Bank' ? null : await readImported();
       if (imported) {
         const missing = imported.filter(q => !q.class || !q.subject || !q.chapter);
-        if (missing.length) throw new Error(`${missing.length} imported questions need Class, Subject or Chapter metadata. Use the CBSE prompt or add these tags.`);
+        if (missing.length) throw new Error(`${missing.length} imported questions need Class, Subject or Chapter tags. Copy the complete FINAL SET with its question headers.`);
+        const outside = imported.filter(q => q.class !== snapshot.class || q.board !== 'CBSE' || !snapshot.subjects.some(cfg => cfg.subject === q.subject && cfg.chapters.includes(q.chapter)));
+        if (outside.length) throw new Error(`${outside.length} pasted questions do not match the selected class, subjects or chapters. Correct the setup or paste the matching final set.`);
       }
       const built = [], reports = [], failures = [];
       for (const cfg of snapshot.subjects) {
         status(`Checking ${cfg.subject}: marks, models, choices and chapter coverage…`);
         const pool = source === 'Question Bank' ? preparedPool(await rawPool(cfg.subject, true), cfg, cfg.chapters) : preparedPool(imported, cfg, cfg.chapters);
-        const result = C.solve(cfg.blueprint, pool, { ...cfg, chapters: cfg.chapters });
+        const result = source === 'Question Bank'
+          ? C.solve(cfg.blueprint, pool, { ...cfg, chapters: cfg.chapters })
+          : C.assembleFinalSet(cfg.blueprint, pool, { ...cfg, board: 'CBSE', chapters: cfg.chapters });
         reports.push({ subject: cfg.subject, ...result });
         failures.push(...result.errors.map(e => `${cfg.subject}: ${e}`));
         if (!result.errors.length) built.push({ subject: cfg.subject, chapters: cfg.chapters, marks: cfg.marks, variant: cfg.variant, blueprint: cfg.blueprint, rows: result.rows, policy: { strictModels: cfg.strictModels, requireCoverage: cfg.requireCoverage, competencyMinimum: cfg.competencyMinimum }, minCompetency: result.minCompetency });
       }
       if (failures.length) {
-        showShortages(reports, failures); status('The draft was not built. Review the missing requirements shown in the report.', true); return;
+        if (source === 'Question Bank') showShortages(reports, failures); else errorDialog('Check the pasted final set', failures); status('The draft was not built. Review the missing requirements shown in the report.', true); return;
       }
-      state.paper = { schema: 'scimentra-cbse-paper-v2', id: `cbse-${Date.now()}`, board: 'CBSE', class: getSelectedClass(), school: snapshot.school || 'SciMentra', examName: snapshot.examName.toUpperCase(), date: snapshot.date, time: Number(snapshot.time), instructions: snapshot.instructions, maxMarks: built.reduce((s, sData) => s + sData.marks, 0), source, selectionMode: getSelectionMode(), manualSelectionConfirmed: getSelectionMode() !== 'Manual Select', createdAt: new Date().toISOString(), subjects: built, setup: snapshot };
+      state.paper = { schema: 'scimentra-cbse-paper-v2', id: `cbse-${Date.now()}`, board: 'CBSE', class: getSelectedClass(), school: snapshot.school || 'SciMentra', examName: snapshot.examName.toUpperCase(), date: snapshot.date, time: Number(snapshot.time), instructions: snapshot.instructions, maxMarks: built.reduce((s, sData) => s + sData.marks, 0), source, selectionMode: source === 'Question Bank' ? getSelectionMode() : 'Final Set', manualSelectionConfirmed: source !== 'Question Bank' || getSelectionMode() !== 'Manual Select', createdAt: new Date().toISOString(), subjects: built, setup: snapshot };
       state.reviewTab = 'review';
       showReview(); status('Draft ready. Check the questions and answers, then save or print.');
     } catch (error) { errorDialog('Could not build the paper', [error.message || String(error)]); status('Build stopped. The error needs to be resolved before continuing.', true); }
@@ -9396,21 +9462,119 @@ if (cleanedErrors.length) {
   }
   function promptText() {
     const snapshot = setupSnapshot();
-    const plan = snapshot.subjects.map(cfg => ({ subject: cfg.subject, class: snapshot.class, chapters: cfg.chapters, chapterAreas: Object.fromEntries(Object.entries(cfg.chapterAreas).filter(([chapter]) => cfg.chapters.includes(chapter))), variant: cfg.variant, marks: cfg.marks, reference: cfg.blueprint.source, schoolAdaptation: !!cfg.blueprint.schoolAdaptation || cfg.marks !== cfg.blueprint.referenceMarks || cfg.blueprint.custom, chapterScoped: !!cfg.blueprint.chapterScoped, rows: cfg.blueprint.rows.map(r => ({ ...r, modelCounts: C.allocateCounts(r.count, cfg.strictModels ? r.models : {}) })) }));
-    const example = { class: snapshot.class, board: 'CBSE', subject: snapshot.subjects[0]?.subject || '', chapter: snapshot.subjects[0]?.chapters[0] || '', type: 'Case Based', marks: 4, modelType: 'Application', subjectArea: '', competency: 'Application', competencyBased: true, passage: 'Full common context belongs here.', text: '', parts: [{ text: 'First subquestion', marks: 1, answer: 'Answer' }, { text: 'Second subquestion', marks: 1, answer: 'Answer' }, { marks: 2, alternatives: [{ text: 'Third subquestion A', marks: 2, answer: 'Answer' }, { text: 'Third subquestion B based on the SAME context', marks: 2, answer: 'Answer' }] }] };
-    return `Create a COMPLETE, VERIFIED question inventory for the following SciMentra CBSE exam blueprint. Return only a valid JSON object with a "questions" array, without markdown fences. This is question data, not a styled paper.\n\n${JSON.stringify(plan, null, 2)}\n\nRULES\n1. Stay strictly within each selected class, subject and chapter. Use the displayed question groups and age-appropriate content. Science and Social Science are chapter-based papers with no compulsory branch quotas. Never add a chapter or a subject branch that was not selected.\n2. Include exactly the printed inventory required by each row. count is the primary printed count; orCount requires one EXTRA independent question of the same type, marks and model family for each OR slot. attempt controls counted marks. Never combine these independent OR questions into one inventory record. Internal OR choices WITHIN a case or passage must remain inside that record's parts/alternatives.\n3. Follow the per-row modelCounts. Preserve meaningful exact modelType names such as Direct Concept, Application, Analyse, Give Reasons, Inference, Source Based, or Letter. Competency and competencyBased are separate classifications, not synonyms for type/model. Supply a truthful cognitive skill and true/false flag; do not label recall items competency-based merely because they are MCQs. Cover every selected chapter with distinct questions.\n4. Every record requires class, board: "CBSE", subject, chapter, type, marks, modelType, competency, competencyBased, text, answer or fully answered parts, and explanation where useful. MCQ/Assertion–Reason requires four options as strings and one answer letter A–D. Give the assertion–reason answer meanings in the options.\n5. Required subpart pattern: marks is the effective mark value; alternatives:2 means TWO subquestions with identical marks under an OR; any:2,count:3,marks:1 means a part group {choice:"any",attempt:2,marks:2,parts:[three one-mark questions]}. Do not count unattempted choices in marks. Each parent's marks equals its effective subpart sum.\n6. Reading / Extract / Question Set records need passage where relevant and a structured parts array with individually marked questions. Never create subquestions without the source passage. For grammar, output separate one-mark records; the Builder will group them. For map questions keep required map images with their record; do not substitute a prose question for a map.\n7. Questions needing an actual visual must include pictureNeeded:true and an image reference when available. Do not pretend a figure exists. The Builder will require the picture before printing. Prefer self-contained text/data questions where the blueprint permits.\n8. Match modelFilter if one appears. Supply subjectArea when a row requires an area (a | lists permitted alternative domains, not a literal Area value). An empty row area accepts any subject area within the selected chapters; area tags are optional for combined Science and Social Science papers. Reading/Grammar/Writing domains apply to all language courses. Use each selected grade's own literature, never Class 10 text for a lower class.\n9. Non-mathematics/non-English descriptive answers should normally be point-wise with a flexible number of points appropriate to the question. Mathematics solutions must be step-wise; English responses should suit the task. Verify all options, calculations and answers.\n10. Use inline LaTeX where useful; escape each backslash correctly for JSON. Do not put answers, model tags or explanations into student-facing question text.\n\nSTRUCTURED CASE EXAMPLE (structure only, not actual questions):\n${JSON.stringify(example, null, 2)}\n\nKeep the selected blueprint totals exact. If selected chapters do not support a required topic/area, say so instead of adding out-of-syllabus questions.`;
+    let questionNumber = 0;
+    const plan = snapshot.subjects.map(cfg => {
+      const slots = C.planSlots(cfg.blueprint, cfg.strictModels);
+      const rows = cfg.blueprint.rows.map((r, ri) => {
+        const records = slots.filter(s => s.ri === ri).map(slot => {
+          questionNumber++;
+          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${slot.family === 'Any' ? 'choose an accurate model' : slot.family}] [Subject: ${cfg.subject}] [Chapter: choose exactly from selected chapters] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
+        });
+        return `${r.section} — ${r.title}\nType: ${r.type}; marks each: ${r.marks}; main questions: ${r.count}; attempt: ${r.attempt}; extra OR records: ${r.orCount}; counted marks: ${r.attempt * r.marks}.\n${r.pattern ? `Subpart pattern: ${r.pattern.map((p, i) => `${i + 1}: ${p.any ? `attempt any ${p.any} of ${p.count}, ${p.marks} mark(s) each` : `${p.marks} mark(s)${p.alternatives ? ` with ${p.alternatives} OR alternatives` : ''}`}`).join('; ')}.\n` : ''}${r.modelFilter ? `Required model: ${r.modelFilter}.\n` : ''}Required records in this order:\n${records.join('\n')}`;
+      }).join('\n\n');
+      return `SUBJECT: ${cfg.subject}\nCLASS: ${snapshot.class}\nSELECTED CHAPTERS: ${cfg.chapters.join('; ')}\nSUBJECT MARKS: ${cfg.marks}\nMinimum confirmed competency-based marks: ${cfg.competencyMinimum || 0}% after OR/Attempt Any choices.\n${rows}`;
+    }).join('\n\n');
+    return `You are generating an examination question set for the SciMentra Exam Builder.
+Generate questions and answers only. The Builder handles the question-paper layout, sections, final numbering and printing.
+
+EXAM: ${snapshot.examName}
+BOARD: CBSE
+CLASS: ${snapshot.class}
+MAXIMUM MARKS: ${snapshot.subjects.reduce((sum, s) => sum + s.marks, 0)}
+TIME: ${snapshot.time} minutes
+DATE: ${snapshot.date || 'Not specified'}
+
+SELECTED BLUEPRINT AND REQUIRED RECORDS
+${plan}
+
+CONTENT AND BLUEPRINT RULES
+- Stay strictly within the selected class, subject and chapters. Use that class's own textbook content, terminology and age-appropriate questions. The paper pattern may be adapted from Class 10; the content must never be taken from Class 10 for a lower class.
+- Cover every selected chapter. Science and Social Science have no compulsory branch quotas. Never introduce unselected chapters or branches.
+- Generate exactly the listed Q1–Q${questionNumber} records in order, including the independent OR alternatives. Preserve every Slot tag exactly. Slot tags restart for each subject and identify placement in the Builder; do not print them inside question text.
+- Each listed OR record is a complete independent question of the required marks and model family. Keep OR choices inside a case/reading passage as subquestions of that SAME record.
+- Replace each Chapter placeholder with an EXACT selected chapter name. Preserve subject and class names. Give meaningful models (e.g. Direct Concept, Application, Analyse, Give Reasons, Inference), matching each required model family. Do not use Level 1/2/3 labels.
+- Competency and CompetencyBased are separate classifications. Use truthful tags; do not label recall questions competency-based just to meet a target. If the requested blueprint cannot be met from these chapters, explain the conflict during the draft review.
+- Include every question, four options for a single-correct MCQ or Assertion–Reason, the correct answer, and an explanation where useful. An MCQ answer is just A), B), C) or D). Put each option on its own line. Define Assertion–Reason option meanings.
+- Descriptive answers for subjects other than Mathematics and English should be point-wise, with as many points as the question needs. Mathematics solutions must be step-wise. English answers should suit the task.
+- Check all facts, calculations, options, answers, marks, model tags, chapter coverage and internal choices. Avoid duplicate or ambiguous questions. Never invent a required source passage or pretend a missing figure is present.
+- Where a visual is necessary, add [Picture Needed: Yes] and [Image: actual image URL] if supplied. Otherwise explain that the picture must be provided before the paper can be built. Prefer self-contained text/data questions when the blueprint allows.
+
+DRAFT → RECHECK → FINAL SET
+1. First give the complete DRAFT question set with answers for teacher review.
+2. The teacher may ask you to recheck questions, answers, difficulty, models, marks or chapter coverage, or to replace weak questions. Make all requested corrections and retain the exact blueprint.
+3. Do NOT give the copy-code FINAL SET until the teacher explicitly asks “final set” or “give me the final set”.
+4. Then give ALL corrected records from Q1 to Q${questionNumber}, not only changed questions, in ONE plain-text copy-code block. No introduction, headings or commentary outside that block. Do not return JSON.
+5. Use ONLY inline LaTeX for mathematical expressions: \\( ... \\). Do not use display math, \\[ ... \\] or $$ ... $$. Keep ordinary prose and metadata outside LaTeX. Use normal LaTeX backslashes, not JSON escaping.
+6. Preserve the headers, marks, types, models, subject, chapter, class, Slot, competency tags, options, answers, explanations and all passage/subquestion structures. Do not put answers or metadata inside the student-facing question wording.
+
+FINAL SET FORMAT (structure examples only; use the actual required records above)
+Q1: 1 Mark [MCQ (Single)] [Model: Direct Concept] [Subject: exact subject] [Chapter: exact chapter] [Class: ${snapshot.class}] [Slot: 0:0:0] [Competency: Understanding] [CompetencyBased: No]
+Question text using \\( ... \\) where needed.
+A) First option
+B) Second option
+C) Third option
+D) Fourth option
+Ans: B)
+Explanation:
+Explanation text.
+
+For a descriptive record, use its complete header, then question text, then:
+Answer:
+Complete answer.
+Explanation:
+Working or explanation if useful.
+
+For a case, passage, extract or question set, use its complete header, followed by:
+Passage:
+Full common passage/context.
+Sub-question 1 (1 Mark):
+Question text.
+Answer:
+Answer to this subquestion.
+Sub-question 2 (1 Mark):
+Question text.
+Answer:
+Answer to this subquestion.
+Sub-question 3A (2 Marks):
+First internal-choice question.
+Answer:
+Its answer.
+OR
+Sub-question 3B (2 Marks):
+Second internal-choice question based on the SAME passage.
+Answer:
+Its answer.
+Use precisely the subpart marks and choices required by the actual blueprint; the example above only demonstrates syntax. Put each subquestion's answer/explanation immediately after it, before the next subquestion. Do not use a separate combined answer section. For MCQ subquestions, use four options on separate lines and Ans: B) in the same way as a main MCQ.
+
+For an Attempt Any subgroup within a record use this syntax (adjust counts/marks to the blueprint):
+Sub-question 1 (2 Marks) [Attempt Any: 2]:
+Attempt any two of the following three items.
+Item 1 (1 Mark):
+First item text.
+Answer:
+Its answer.
+Item 2 (1 Mark):
+Second item text.
+Answer:
+Its answer.
+Item 3 (1 Mark):
+Third item text.
+Answer:
+Its answer.
+
+${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instructions}\n\n` : ''}NOW: Produce the DRAFT set for teacher review. Wait for the teacher to request the FINAL SET.`;
   }
   function openCBSEInChatGPT() {
     const errors = setupErrors();
     if (errors.length) { errorDialog('Complete the CBSE setup', errors); return; }
     const prompt = promptText();
     if (__ebOpenAIQuestionGenerator(prompt) === false) { aiPromptDialog(); return; }
-    status('Continue in ChatGPT, then paste the returned JSON into the question box and click Build Exam Draft. If no tab opens, allow popups and try again, or use Copy / download request.');
+    status('Continue in ChatGPT, then review and recheck the questions, ask for the FINAL SET, then paste the inline-LaTeX copy-code block into the question box and click Build Exam Draft. If no tab opens, allow popups and try again, or use Copy / download request.');
   }
   function aiPromptDialog() {
     const errors = setupErrors(); if (errors.length) { errorDialog('Complete the CBSE setup', errors); return; }
     const prompt = promptText();
-    const dlg = openDialog('CBSE question request', '<p>Copy this request to your AI tool. Paste the returned JSON into the Builder’s question box, or import a JSON file.</p><textarea class="cb-prompt" rows="16" readonly></textarea><p class="cb-copy-status"></p>', [
+    const dlg = openDialog('CBSE question request', '<p>Copy this prompt to ChatGPT. Review the draft, ask for corrections, then request the FINAL SET. Paste the complete inline-LaTeX copy-code block into the Builder and click Build Exam Draft.</p><textarea class="cb-prompt" rows="16" readonly></textarea><p class="cb-copy-status"></p>', [
       { label: 'Copy request', primary: true, action: async el => { try { await navigator.clipboard.writeText(prompt); $('.cb-copy-status', el).textContent = 'Copied.'; } catch (e) { $('.cb-prompt', el).select(); $('.cb-copy-status', el).textContent = 'Press Ctrl+C to copy the selected text.'; } } },
       { label: 'Download request', action: () => download('cbse-question-request.txt', prompt, 'text/plain') }
     ]); $('.cb-prompt', dlg).value = prompt;
@@ -9450,12 +9614,13 @@ if (cleanedErrors.length) {
   function showReview() {
     if (!state.paper) return;
     const p = state.paper, el = reviewRoot(); $('.setup-form-container').hidden = true; el.hidden = false;
-    el.innerHTML = `<div class="cb-review-head"><div><span class="cb-kicker">CBSE EXAM DRAFT</span><h2>${escape(p.examName)}</h2><p>${escape(p.class)} · ${p.maxMarks} marks · ${p.time} minutes</p></div><div class="cb-flex"><button class="cb-button" data-action="setup">Back to setup</button><button class="cb-button" data-action="save">Save draft</button><button class="cb-button" data-action="export">Download draft</button><button class="cb-button cb-primary" data-action="print">Print paper</button></div></div>
+    el.innerHTML = `<div class="cb-review-head"><div><span class="cb-kicker">EXAM REVIEW</span><h2>${escape(p.examName)}</h2><p>${escape(p.class)} · ${p.maxMarks} marks · ${p.time} minutes</p></div><div class="cb-flex"><button class="cb-button" data-action="setup">Back to setup</button><button class="cb-button" data-action="save">Save Paper</button><button class="cb-button" data-action="export">Download draft</button><button class="cb-button" data-action="blueprint">Download Blueprint</button><button class="cb-button cb-primary" data-action="print">Print paper</button></div></div>
       ${p.selectionMode === 'Manual Select' && !p.manualSelectionConfirmed ? '<div class="cb-notice">Manual selection: eligible questions have been suggested for each slot. Use “Choose another” to select your questions, then confirm the selection.<br><button type="button" class="cb-button cb-primary" data-action="confirm-manual">Confirm question selection</button></div>' : ''}
       <nav class="cb-tabs" aria-label="Draft views">${[['review', 'Review & select'], ['preview', 'Paper preview'], ['answers', 'Answer key'], ['audit', 'Blueprint report']].map(([id, title]) => `<button type="button" data-tab="${id}" class="${state.reviewTab === id ? 'active' : ''}">${title}</button>`).join('')}</nav><div id="cb-review-content"></div>`;
     $$('[data-tab]', el).forEach(b => b.onclick = () => { state.reviewTab = b.dataset.tab; showReview(); });
     $('[data-action="setup"]', el).onclick = () => { el.hidden = true; $('.setup-form-container').hidden = false; window.scrollTo(0, 0); };
     $('[data-action="save"]', el).onclick = saveDraft;
+    $('[data-action="blueprint"]', el).onclick = () => downloadBlueprint(p);
     $('[data-action="confirm-manual"]', el)?.addEventListener('click', () => { const errors = paperErrors(p); if (errors.length) { errorDialog('Selection needs correction', errors); return; } p.manualSelectionConfirmed = true; showReview(); });
     $('[data-action="export"]', el).onclick = () => { const errors = paperErrors(p); if (errors.length) { errorDialog('Draft validation', errors); return; } download(`${filename(p.examName)}-draft.json`, JSON.stringify(p, null, 2), 'application/json'); };
     $('[data-action="print"]', el).onclick = () => printPaper(state.reviewTab === 'answers');
@@ -9502,6 +9667,11 @@ if (cleanedErrors.length) {
       const min = C.competencyMinimum(sub.rows), unknown = qs.filter(q => q.competencyBased === null).length;
       return `<h3>${escape(sub.subject)} — ${sub.marks} marks · ${sectionCount} main questions</h3><p>${escape(sub.blueprint.note)} ${sub.blueprint.source ? `<a href="${escape(sub.blueprint.source)}" target="_blank" rel="noopener">Reference paper</a>` : ''}</p><p>Model rule: ${sub.policy.strictModels ? 'specified family counts' : 'available mix, explicitly selected'}. Confirmed competency-based marks, minimum after choices: <b>${min}/${sub.marks}</b>. Unconfirmed inventory records: ${unknown}.</p><div class="cb-audit-grid">${table('Printed inventory by chapter (includes alternatives)', counts('chapter'))}${table('Exact models in the inventory', counts('modelType'))}${table('Recorded cognitive competencies', counts('competency'))}</div><p class="cb-muted">Printed inventory counts include unattempted alternatives. Coverage and model tags do not certify factual correctness; review the questions and answers before use.</p>`;
     }).join('');
+  }
+  function downloadBlueprint(p) {
+    const rows = p.subjects.map(sub => `<h2>${escape(sub.subject)}</h2><table><thead><tr><th>Section / group</th><th>Type</th><th>Main questions</th><th>Attempt</th><th>Marks each</th><th>OR alternatives</th><th>Counted marks</th></tr></thead><tbody>${sub.rows.map(r => `<tr><td>${escape(r.section)} / ${escape(r.title)}</td><td>${escape(r.type)}</td><td>${r.count}</td><td>${r.attempt}</td><td>${r.marks}</td><td>${r.orCount}</td><td>${r.attempt * r.marks}</td></tr>`).join('')}</tbody></table>`).join('');
+    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escape(p.examName)} — Blueprint</title><style>body{font:15px Arial,sans-serif;max-width:1100px;margin:32px auto;padding:20px;color:#172b42}h1,h2{color:#173c62}table{border-collapse:collapse;width:100%;margin:18px 0}td,th{border:1px solid #bac6d3;padding:9px;text-align:left}th{background:#edf3f8}button{padding:10px 18px}a{color:#173c62}@media print{button{display:none}body{margin:0;padding:0}tr{break-inside:avoid}}</style></head><body><button onclick="window.print()">Print / Save as PDF</button><h1>${escape(p.examName)} — Blueprint</h1><p>${escape(p.school)} · ${escape(p.class)} · ${p.maxMarks} marks · ${p.time} minutes</p>${rows}${auditHTML(p)}</body></html>`;
+    download(`${filename(p.examName)}-blueprint.html`, html, 'text/html');
   }
   function locate(path) { const [si, ri, ii, vi] = path.split(':').map(Number), sub = state.paper.subjects[si], r = sub.rows[ri], q = vi < 0 ? r.items[ii] : r.items[ii].alternatives[vi]; return { si, ri, ii, vi, sub, r, q }; }
   function setLocated(loc, q) { if (loc.vi < 0) loc.r.items[loc.ii] = q; else loc.r.items[loc.ii].alternatives[loc.vi] = q; }
@@ -9624,14 +9794,15 @@ if (cleanedErrors.length) {
       const errors = paperErrors(state.paper); if (errors.length) { errorDialog('Draft validation', errors); return; }
       state.paper.updatedAt = new Date().toISOString();
       await draftStore('readwrite', store => store.put(C.clone(state.paper)));
-      openDialog('Draft saved', '<p>The complete paper and answers have been saved in this browser. Use Download draft for a portable backup.</p>');
+      openDialog('Paper saved', '<p>Your paper and answers are saved under the examination name in Your Papers on this browser. Use Download draft for an editable backup.</p>');
     } catch (e) { errorDialog('Could not save in this browser', [`${e.message}. Use Download draft to save a portable copy.`]); }
   }
   async function savedDrafts() {
     try {
       const drafts = (await draftStore('readonly', store => store.getAll())) || [];
-      const dlg = openDialog('Saved CBSE drafts', drafts.length ? drafts.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map((p, i) => `<div class="cb-bank-record"><b>${escape(p.examName)}</b><p>${escape(p.class)} · ${p.maxMarks} marks · ${escape(p.date || '')}</p><button type="button" class="cb-button" data-open="${i}">Open draft</button></div>`).join('') : '<p>No drafts are saved in this browser yet. You can also import a downloaded draft.</p>');
+      const dlg = openDialog('Your Papers', drafts.length ? drafts.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map((p, i) => `<div class="cb-bank-record"><b>${escape(p.examName)}</b><p>${escape(p.class)} · ${p.maxMarks} marks · ${escape(p.date || '')}</p><button type="button" class="cb-button" data-open="${i}">Open Exam Review</button><button type="button" class="cb-button" data-blueprint="${i}">Download Blueprint</button></div>`).join('') : '<p>No drafts are saved in this browser yet. You can also import a downloaded draft.</p>');
       $$('[data-open]', dlg).forEach(btn => btn.onclick = () => { const p = drafts[Number(btn.dataset.open)]; restoreDraft(p); dlg.close(); });
+      $$('[data-blueprint]', dlg).forEach(btn => btn.onclick = () => downloadBlueprint(drafts[Number(btn.dataset.blueprint)]));
     } catch (e) { errorDialog('Could not load drafts', [e.message]); }
   }
   function restoreDraft(p) {
@@ -9676,12 +9847,16 @@ if (cleanedErrors.length) {
       const dropdown = $(`#chapters-multiselect-${i}`, block); if (dropdown) dropdown.closest('.form-group').style.display = '';
       const manual = $('.ai-manual-chapters-group', block); if (manual) manual.style.display = source === 'Question Bank' ? 'none' : 'block';
     });
+    if (source === 'AI Generate' || source === 'Paste') {
+      $('#global-paste-label').textContent = 'Paste the Complete FINAL SET from ChatGPT';
+      $('#global-paste-area').placeholder = 'Get Questions → review and recheck in ChatGPT → ask for the final set → paste its complete inline-LaTeX copy-code block here → Build Exam Draft → Exam Review.';
+    }
     $('#paste-docx-shuffle').style.display = 'none'; // Exact slot order and answer labels are retained.
   }
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science and Social Science use question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Saved drafts</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science and Social Science use question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').before(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
