@@ -7012,7 +7012,7 @@ function renderPrintPreview() {
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
                 <div class="school-title school-title-themed">${escapeHtml(getCurrentSchoolName())}</div>
-        <div class="subtitle">${exam.board === 'CBSE' ? 'CBSE' : 'IIT & NEET FOUNDATION'}</div>
+        ${cbsePrintEnabled() ? '' : '<div class="subtitle">IIT & NEET FOUNDATION</div>'}
         <div class="exam-title">${exam.examName || ''}</div>
       </div>
       <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
@@ -7041,8 +7041,8 @@ function renderPrintPreview() {
       </div>
       <div class="rect-row">
         <span class="rect-label">Time: ${exam.time ? formatExamTime(exam.time) : ''}</span>
-        <span style="flex:1;text-align:center;font-size:1.18em;font-weight:600;color:#163A63;">
-          ${exam.paperType || ''}
+                <span style="flex:1;text-align:center;font-size:1.18em;font-weight:600;color:#163A63;">
+          ${cbsePrintEnabled() ? '' : (exam.paperType || '')}
         </span>
         <span class="rect-label">Max Marks: ${exam.maxMarks || ''}</span>
       </div>
