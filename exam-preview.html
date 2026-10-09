@@ -6000,7 +6000,281 @@ function formatSectionTotal(value) {
     : String(n);
 }
 
+function cbsePrintEnabled() {
+  return String(exam.board || '').trim().toUpperCase() === 'CBSE';
+}
+
+function cbsePrintQuestion(question, number, section) {
+  const q = {
+    ...question,
+    marks: question.marks || section.marksPerQuestion
+  };
+
+  const holder = document.createElement('div');
+
+  holder.innerHTML =
+    window.SciMentraPapers.previewQuestion(q, number);
+
+  const stem = holder.querySelector('.question-text');
+
+  if (stem) {
+    // Remove empty paragraphs that push the question below its number.
+    stem.querySelectorAll('p').forEach(p => {
+      if (
+        !p.textContent.trim() &&
+        !p.querySelector('img, table, svg, math')
+      ) {
+        p.remove();
+      }
+    });
+
+    // Join a separate OR-choice label to its question text.
+    stem.querySelectorAll('p').forEach(p => {
+      if (!/^\([A-Z]\)$/.test(p.textContent.trim())) return;
+
+      let next = p.nextSibling;
+
+      while (
+        next &&
+        next.nodeType === Node.TEXT_NODE &&
+        !next.textContent.trim()
+      ) {
+        next = next.nextSibling;
+      }
+
+      const label = document.createElement('span');
+      label.textContent = p.textContent.trim() + ' ';
+
+      if (
+        next &&
+        next.nodeType === Node.ELEMENT_NODE &&
+        /^(P|DIV)$/.test(next.tagName)
+      ) {
+        next.prepend(label);
+        p.remove();
+      } else {
+        p.replaceWith(label);
+      }
+    });
+
+    while (
+      stem.firstChild &&
+      (
+        (
+          stem.firstChild.nodeType === Node.TEXT_NODE &&
+          !stem.firstChild.textContent.trim()
+        ) ||
+        stem.firstChild.nodeName === 'BR'
+      )
+    ) {
+      stem.firstChild.remove();
+    }
+
+    const line = stem.parentElement;
+    line.classList.add('cbse-question-line');
+
+    // Use a span so the existing bold-tag cleanup preserves this class.
+    let marks = Array.from(line.children).find(
+      child => child !== stem && /^(B|STRONG)$/.test(child.tagName)
+    );
+
+    const markSpan = document.createElement('span');
+    markSpan.className = 'cbse-question-marks';
+    markSpan.textContent = `[${q.marks}]`;
+
+    if (marks) {
+      marks.replaceWith(markSpan);
+    } else {
+      line.appendChild(markSpan);
+    }
+  }
+
+  return holder.innerHTML;
+}
+
+function cbseFormatSectionBoxes(page) {
+  if (!cbsePrintEnabled()) return;
+
+  const blocks = Array.from(
+    page.querySelectorAll(':scope > .section-block')
+  );
+
+  let blockIndex = 0;
+
+  for (const subject of exam.subjects || []) {
+    const groups = new Map();
+
+    const entries = (subject.sections || []).map(section => {
+      const label = String(section.label || section.name || '');
+      const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
+      const name = match ? match[1] : label;
+      const key = name.trim().toLowerCase();
+
+      const count =
+        section.type === 'any'
+          ? Number(section.attemptAny || section.numQuestions || 0)
+          : section.type === 'internal'
+          ? Number(section.numPairs || 0)
+          : Number(
+              section.numQuestions ??
+              (section.questions || []).length
+            );
+
+      const total =
+        section.type === 'all' && section.questions?.length
+          ? section.questions.reduce(
+              (sum, q) =>
+                sum + Number(q.marks || section.marksPerQuestion || 0),
+              0
+            )
+          : count * Number(section.marksPerQuestion || 0);
+
+      if (!groups.has(key)) {
+        groups.set(key, { name, total: 0, shown: false });
+      }
+
+      groups.get(key).total += total;
+
+      return { section, key };
+    });
+
+    for (const { section, key } of entries) {
+      const block = blocks[blockIndex++];
+      if (!block) continue;
+
+      const group = groups.get(key);
+      block.replaceChildren();
+
+      if (!group.shown) {
+        const box = document.createElement('div');
+        box.className = 'cbse-section-box';
+
+        const name = document.createElement('span');
+        name.textContent = group.name;
+
+        const marks = document.createElement('span');
+        marks.textContent = `${group.total} Marks`;
+
+        box.append(name, marks);
+        block.appendChild(box);
+        group.shown = true;
+      } else {
+        // Keep this row's instructions without another section box.
+        block.classList.remove('section-block');
+        block.classList.add('cbse-row-instructions');
+      }
+
+      if (section.instructions) {
+        const instruction = document.createElement('div');
+        instruction.className = 'cbse-section-instruction';
+        instruction.textContent = section.instructions;
+        block.appendChild(instruction);
+      }
+    }
+  }
+}
+
 function renderPrintPreview() {
+  document.body.classList.toggle(
+    'cbse-paper-preview',
+    cbsePrintEnabled()
+  );
+
+  if (!document.getElementById('cbse-print-layout-fix')) {
+    const style = document.createElement('style');
+    style.id = 'cbse-print-layout-fix';
+
+    style.textContent = `
+      body.cbse-paper-preview .cbse-section-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border: 2px solid #111;
+        border-radius: 18px;
+        padding: 7px 18px;
+        margin: 10px 0 7px;
+        color: #111;
+        background: #fff;
+        font-weight: 700;
+        break-inside: avoid;
+      }
+
+      body.cbse-paper-preview .cbse-section-box > span {
+        font-weight: 700 !important;
+      }
+
+      body.cbse-paper-preview .cbse-section-box > span:last-child {
+        white-space: nowrap;
+      }
+
+      body.cbse-paper-preview .cbse-section-instruction {
+        margin: 5px 0 10px;
+        line-height: 1.4;
+      }
+
+      body.cbse-paper-preview .question-container {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        gap: 0;
+      }
+
+      body.cbse-paper-preview .question-number {
+        flex: 0 0 32px;
+        min-width: 32px;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        line-height: 1.4 !important;
+      }
+
+      body.cbse-paper-preview .question-body {
+        flex: 1 1 0;
+        min-width: 0;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+      }
+
+      body.cbse-paper-preview .cbse-question-line {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 12px;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      body.cbse-paper-preview .question-text {
+        flex: 1 1 0;
+        min-width: 0;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        font-size: inherit !important;
+        line-height: 1.4 !important;
+      }
+
+      body.cbse-paper-preview .question-text > :first-child {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+      }
+
+      body.cbse-paper-preview .question-text > p,
+      body.cbse-paper-preview .question-text > div {
+        line-height: 1.4 !important;
+      }
+
+      body.cbse-paper-preview .cbse-question-marks {
+        display: block !important;
+        flex: 0 0 auto;
+        white-space: nowrap;
+        margin-left: auto;
+        line-height: 1.4 !important;
+        font-weight: 700 !important;
+        color: #111;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
   const renderId = ++window.__examPreviewRenderId;
 
   const container =
@@ -6105,7 +6379,12 @@ function renderPrintPreview() {
 
       if (section.questions && section.questions.length > 0) {
      const questionsHTML = section.questions.map(q => {
-        const currentQNum = Math.max(qNum, Number(q.number || qNum));
+            const currentQNum = Math.max(qNum, Number(q.number || qNum));
+
+    if (cbsePrintEnabled()) {
+      qNum = currentQNum + 1;
+      return cbsePrintQuestion(q, currentQNum, section);
+    }
 
     /*
       CBSE:
@@ -6300,7 +6579,12 @@ function renderPrintPreview() {
               // ------- Single-subject branch -------
 if (section.questions && section.questions.length > 0) {
     const questionsHTML = section.questions.map(q => {
-    const currentQNum = Math.max(qNum, Number(q.number || qNum));
+        const currentQNum = Math.max(qNum, Number(q.number || qNum));
+
+    if (cbsePrintEnabled()) {
+      qNum = currentQNum + 1;
+      return cbsePrintQuestion(q, currentQNum, section);
+    }
 
     const qForPreviewRender = {
       ...q,
@@ -6440,8 +6724,11 @@ if (section.questions && section.questions.length > 0) {
     }
   }
 
-    page.innerHTML += contentHTML;
-  container.appendChild(page);
+       page.innerHTML += contentHTML;
+
+    cbseFormatSectionBoxes(page);
+
+    container.appendChild(page);
 
   // Internal-choice A/B auto-splitting remains disabled.
   // setTimeout(() => { insertManualOrBoxes(page); }, 0);
