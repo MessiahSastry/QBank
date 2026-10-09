@@ -668,24 +668,73 @@
       if (subjectTotal !== num(sub.marks)) warnings.push(`Question-derived total ${fmt(subjectTotal)} does not equal the subject target ${fmt(sub.marks)}.`);
       if (selected.length === 0) warnings.push('No selected lesson list is stored with this paper. Lessons were inferred from question metadata.');
       const list = [...selected, ...[...allChapters].filter(c => !selected.includes(c))];
-      const headings = types.map(t => `<th>${escape(t)}</th>`).join('');
-      const dataRows = list.map(ch => {
+            const dataRows = list.map(ch => {
         const mr = markRange.get(ch) || [0, 0];
-        const cr = countRange.get(ch) || [0, 0];
+
+        const distribution = types.map(t => {
+          const entries = cells.get(`${ch}\u0000${t}`) || [];
+
+          return entries.length
+            ? `<div class="type-line"><b>${escape(t)}:</b> ${entries.map(escape).join(', ')}</div>`
+            : '';
+        }).filter(Boolean).join('');
+
         return `<tr><td class="lesson">${escape(ch)}${mr[1] === 0 ? ' <small>(not covered)</small>' : ''}</td>` +
-          types.map(t => `<td>${(cells.get(`${ch}\u0000${t}`) || []).map(escape).join('<br>') || '—'}</td>`).join('') +
-          `<td class="num">${range(cr[0], cr[1])}</td><td class="num">${range(mr[0], mr[1])}</td></tr>`;
+          `<td>${distribution || '—'}</td><td class="num">${range(mr[0], mr[1])}</td></tr>`;
       }).join('');
-      const totals = `<tr class="total"><th>Total</th>${types.map(t => `<th class="num">${fmt(typeTotals.get(t) || 0)}</th>`).join('')}<th class="num">${fmt(attempted)}</th><th class="num">${fmt(subjectTotal)}</th></tr>`;
-      const questionRows = details.map(d => `<tr><td>${escape(d.ref)}</td><td>${escape(d.chapter)}</td><td>${escape(d.section)}</td><td>${escape(d.type)}</td><td class="num">${fmt(d.marks)}</td><td>${escape(d.choice)}</td></tr>`).join('');
+
+      const totals = `<tr class="total"><th>Total</th><th>${types.map(t => `${escape(t)}: ${fmt(typeTotals.get(t) || 0)} marks`).join(' · ')} · ${fmt(attempted)} questions to attempt</th><th class="num">${fmt(subjectTotal)}</th></tr>`;
+
+      const questionRows = details.map(d =>
+        `<tr>
+          <td>${escape(d.ref)}</td>
+          <td>${escape(d.chapter)}</td>
+          <td>${escape(d.section)}<br><small>${escape(d.type)}</small></td>
+          <td class="num">${fmt(d.marks)}</td>
+          <td>${escape(d.choice)}</td>
+        </tr>`
+      ).join('');
       const hasChoices = sub.rows.some(r => num(r.attempt) < num(r.count) || (r.items || []).some(q => q.alternatives?.length));
-      return `<section class="subject"><h2>${escape(sub.subject)} — ${fmt(subjectTotal)} marks</h2>
+            return `<section class="subject">
+
+        <h2>${escape(sub.subject)} — ${fmt(subjectTotal)} marks</h2>
+
         <h3>Table 1. Lesson-wise question distribution</h3>
-        <div class="scroll"><table><thead><tr><th>Lesson name</th>${headings}<th>Questions to attempt</th><th>Total marks</th></tr></thead><tbody>${dataRows}${totals}</tbody></table></div>
+
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Lesson name</th>
+              <th>Question types and question numbers [marks]</th>
+              <th>Total marks</th>
+            </tr>
+          </thead>
+          <tbody>${dataRows}${totals}</tbody>
+        </table>
+
         ${hasChoices ? '<p class="note">* An OR choice crosses lessons: the lesson total is choice-dependent and displayed as a minimum–maximum range. † Attempt-any group: individual parts may not all be answered; the range reflects the compulsory number to attempt. Alternatives and unattempted parts are not double-counted.</p>' : ''}
-        <h3>Table 2. Question-wise blueprint</h3>
-        <table><thead><tr><th>Question</th><th>Lesson</th><th>Section</th><th>Type</th><th>Marks</th><th>Internal choice / attempt rule</th></tr></thead><tbody>${questionRows}</tbody></table>
+
+        <div class="question-page">
+
+          <h3>Table 2. Question-wise blueprint</h3>
+
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Question</th>
+                <th>Lesson</th>
+                <th>Section / Type</th>
+                <th>Marks</th>
+                <th>Internal choice / attempt rule</th>
+              </tr>
+            </thead>
+            <tbody>${questionRows}</tbody>
+          </table>
+
+        </div>
+
         ${warnings.length ? `<p class="warning"><b>Check before use:</b> ${[...new Set(warnings)].map(escape).join(' ')}</p>` : ''}
+
       </section>`;
     }).join('');
     const mismatch = actualTotal !== totalExpected
@@ -694,7 +743,7 @@
       <meta name="viewport" content="width=device-width,initial-scale=1">
       <title>${escape(paper.examName || 'Examination')} — Blueprint</title>
       <style>
-      @page{size:A4 landscape;margin:12mm}
+           @page{size:A4 portrait;margin:13mm 12mm}
       *{box-sizing:border-box}body{font:13px/1.5 Arial,sans-serif;color:#172b42;max-width:1500px;margin:20px auto;padding:16px}
       .head{text-align:center;border-bottom:2px solid #23384c;padding-bottom:10px}.head h1{font-size:22px;margin:0}.head h2{font-size:18px;margin:2px 0}
       .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600;margin-top:8px}
@@ -705,7 +754,123 @@
       .scroll{width:100%;overflow-x:auto}.note{font-size:11px;color:#40566b;margin:8px 0}.warning{font-size:11px;border-left:3px solid #a65c13;padding:7px 10px;background:#fff5e7}
       small{color:#6b7180;font-size:10px}tr{break-inside:avoid}thead{display:table-header-group}.actions{margin-bottom:18px}
       button{font:600 13px Arial,sans-serif;padding:9px 15px;cursor:pointer}
-      @media print{body{padding:0;margin:0;max-width:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}.actions{display:none}.scroll{overflow:visible}.subject{break-inside:auto}}
+            /* A4 PORTRAIT BLUEPRINT */
+
+      .summary-table {
+        table-layout: fixed;
+        width: 100%;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .summary-table th:first-child {
+        width: 29%;
+      }
+
+      .summary-table th:last-child {
+        width: 13%;
+      }
+
+      .summary-table td,
+      .summary-table th {
+        padding: 7px 8px;
+        overflow-wrap: break-word;
+        vertical-align: top;
+      }
+
+      .type-line {
+        margin: 0 0 4px;
+      }
+
+      .type-line:last-child {
+        margin-bottom: 0;
+      }
+
+      /* QUESTION-WISE TABLE */
+
+      .detail-table {
+        table-layout: fixed;
+        width: 100%;
+        font-size: 11.5px;
+        line-height: 1.45;
+      }
+
+      .detail-table th:nth-child(1) {
+        width: 11%;
+      }
+
+      .detail-table th:nth-child(2) {
+        width: 27%;
+      }
+
+      .detail-table th:nth-child(3) {
+        width: 24%;
+      }
+
+      .detail-table th:nth-child(4) {
+        width: 9%;
+      }
+
+      .detail-table th:nth-child(5) {
+        width: 29%;
+      }
+
+      .detail-table td,
+      .detail-table th {
+        padding: 6px;
+        overflow-wrap: break-word;
+        vertical-align: top;
+      }
+
+      .question-page {
+        margin-top: 18px;
+      }
+
+      /* PRINT SETTINGS */
+
+      @media print {
+
+        body {
+          padding: 0;
+          margin: 0;
+          max-width: none;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .actions {
+          display: none;
+        }
+
+        .subject {
+          break-inside: auto;
+        }
+
+        /* Table 2 starts on a fresh page */
+        .question-page {
+          break-before: page;
+          page-break-before: always;
+          margin-top: 0;
+        }
+
+        /* Keep table title with its table */
+        .question-page h3 {
+          break-after: avoid;
+          page-break-after: avoid;
+        }
+
+        /* Repeat headings on subsequent pages */
+        thead {
+          display: table-header-group;
+        }
+
+        /* Prevent splitting question rows */
+        tr {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+      }
       </style></head><body><div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
       <header class="head"><h1>${escape(paper.school || paper.schoolName || 'SciMentra')}</h1><h2>${escape(paper.examName || 'Examination')} — Blueprint</h2>
       <div class="meta"><span>Class: ${escape(paper.class || '')}</span><span>Board: CBSE</span><span>Maximum Marks: ${fmt(totalExpected)}</span><span>Time: ${escape(paper.time || '')} minutes</span>${paper.date ? `<span>Date: ${escape(paper.date)}</span>` : ''}</div></header>
