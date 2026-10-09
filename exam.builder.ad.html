@@ -6765,43 +6765,24 @@ Do not give the FINAL SET until the teacher explicitly asks for it.
    ========================================================= */
 
 function __ebOpenAIQuestionGenerator(prompt) {
+    const url = new URL('https://chatgpt.com/');
+    url.searchParams.set('q', prompt);
 
+    // Launch within the click event; do not wait for clipboard permission.
+    // With noopener, a null return does not prove that the popup was blocked.
     try {
-        navigator.clipboard
-            ?.writeText(prompt)
-            .catch(() => {});
+        window.open(url.toString(), '_blank', 'noopener');
     } catch (_) {
-        // Clipboard is optional.
+        showToast('Could not open ChatGPT. Allow popups or use Copy / download request.', 'error');
+        return false;
     }
-
-    const url =
-        new URL('https://chatgpt.com/?');
-
-    url.searchParams.set(
-        'q',
-        prompt
-    );
-
-    const opened =
-        window.open(
-            url.toString(),
-            '_blank',
-            'noopener'
-        );
-
-    if (!opened) {
-        showToast(
-            'Popup blocked. Please allow popups and click Get Questions again.',
-            'error'
-        );
-
-        return;
+    try {
+        navigator.clipboard?.writeText(prompt)?.catch(() => {});
+    } catch (_) {
+        // The URL carries the prompt even when clipboard access is unavailable.
     }
-
-    showToast(
-        'AI question request opened. Generate the questions and paste them back here.',
-        'success'
-    );
+    showToast('Opening ChatGPT with your prompt. Paste the generated questions back here.', 'success');
+    return true;
 }
 
 
@@ -9405,24 +9386,26 @@ if (cleanedErrors.length) {
       }
       state.paper = { schema: 'scimentra-cbse-paper-v2', id: `cbse-${Date.now()}`, board: 'CBSE', class: getSelectedClass(), school: snapshot.school || 'SciMentra', examName: snapshot.examName.toUpperCase(), date: snapshot.date, time: Number(snapshot.time), instructions: snapshot.instructions, maxMarks: built.reduce((s, sData) => s + sData.marks, 0), source, selectionMode: getSelectionMode(), manualSelectionConfirmed: getSelectionMode() !== 'Manual Select', createdAt: new Date().toISOString(), subjects: built, setup: snapshot };
       state.reviewTab = 'review';
-      // Save the full generated/pulled paper, including answers and blueprint, immediately.
-      const stored = await persistPaper(state.paper, { silent: true });
-      showReview();
-      status(stored
-        ? `Paper saved in Your Papers: ${state.paper.examName}. Review the answers before printing.`
-        : 'Paper built but browser saving failed. Download the draft JSON now to keep a backup.', !stored);
+      showReview(); status('Draft ready. Check the questions and answers, then save or print.');
     } catch (error) { errorDialog('Could not build the paper', [error.message || String(error)]); status('Build stopped. The error needs to be resolved before continuing.', true); }
     finally { state.busy = false; btn.disabled = false; btn.textContent = 'Build Exam Draft'; }
   }
   function showShortages(reports, errors) {
     const html = `<div class="cb-notice cb-error"><ul>${errors.map(e => `<li>${escape(e)}</li>`).join('')}</ul></div>` + reports.map(rep => `<h3>${escape(rep.subject)}</h3><div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Group</th><th>Family</th><th>Marks</th><th>Need, incl. choices</th><th>Available</th></tr></thead><tbody>${(rep.rowsReport || rep.shortages || []).map(r => `<tr${r.available < r.need ? ' class="cb-short"' : ''}><td>${escape(r.section)}<br>${escape(r.row)}</td><td>${escape(r.family)}</td><td>${r.marks}</td><td>${r.need}</td><td>${r.available}</td></tr>`).join('')}</tbody></table></div>${rep.excluded?.length ? `<details><summary>${rep.excluded.length} incomplete question records excluded</summary><ul>${rep.excluded.slice(0, 30).map(q => `<li>${escape(q.chapter)} — ${escape((q.passage || q.text).slice(0, 80))}: ${escape(q._errors.join(' '))}</li>`).join('')}</ul></details>` : ''}`).join('') + '<p>Add suitable questions, correct their tags using “Check bank & classify”, select more chapters, or edit the blueprint explicitly. Marks and types will not be changed automatically.</p>';
-    openDialog('CBSE bank requirements', html, [{ label: 'Copy AI request for this blueprint', primary: true, action: () => aiPromptDialog() }]);
+    openDialog('CBSE bank requirements', html, [{ label: 'Get Questions in ChatGPT', primary: true, action: () => openCBSEInChatGPT() }]);
   }
   function promptText() {
     const snapshot = setupSnapshot();
     const plan = snapshot.subjects.map(cfg => ({ subject: cfg.subject, class: snapshot.class, chapters: cfg.chapters, chapterAreas: Object.fromEntries(Object.entries(cfg.chapterAreas).filter(([chapter]) => cfg.chapters.includes(chapter))), variant: cfg.variant, marks: cfg.marks, reference: cfg.blueprint.source, schoolAdaptation: !!cfg.blueprint.schoolAdaptation || cfg.marks !== cfg.blueprint.referenceMarks || cfg.blueprint.custom, chapterScoped: !!cfg.blueprint.chapterScoped, rows: cfg.blueprint.rows.map(r => ({ ...r, modelCounts: C.allocateCounts(r.count, cfg.strictModels ? r.models : {}) })) }));
     const example = { class: snapshot.class, board: 'CBSE', subject: snapshot.subjects[0]?.subject || '', chapter: snapshot.subjects[0]?.chapters[0] || '', type: 'Case Based', marks: 4, modelType: 'Application', subjectArea: '', competency: 'Application', competencyBased: true, passage: 'Full common context belongs here.', text: '', parts: [{ text: 'First subquestion', marks: 1, answer: 'Answer' }, { text: 'Second subquestion', marks: 1, answer: 'Answer' }, { marks: 2, alternatives: [{ text: 'Third subquestion A', marks: 2, answer: 'Answer' }, { text: 'Third subquestion B based on the SAME context', marks: 2, answer: 'Answer' }] }] };
     return `Create a COMPLETE, VERIFIED question inventory for the following SciMentra CBSE exam blueprint. Return only a valid JSON object with a "questions" array, without markdown fences. This is question data, not a styled paper.\n\n${JSON.stringify(plan, null, 2)}\n\nRULES\n1. Stay strictly within each selected class, subject and chapter. Use the displayed question groups and age-appropriate content. Science and Social Science are chapter-based papers with no compulsory branch quotas. Never add a chapter or a subject branch that was not selected.\n2. Include exactly the printed inventory required by each row. count is the primary printed count; orCount requires one EXTRA independent question of the same type, marks and model family for each OR slot. attempt controls counted marks. Never combine these independent OR questions into one inventory record. Internal OR choices WITHIN a case or passage must remain inside that record's parts/alternatives.\n3. Follow the per-row modelCounts. Preserve meaningful exact modelType names such as Direct Concept, Application, Analyse, Give Reasons, Inference, Source Based, or Letter. Competency and competencyBased are separate classifications, not synonyms for type/model. Supply a truthful cognitive skill and true/false flag; do not label recall items competency-based merely because they are MCQs. Cover every selected chapter with distinct questions.\n4. Every record requires class, board: "CBSE", subject, chapter, type, marks, modelType, competency, competencyBased, text, answer or fully answered parts, and explanation where useful. MCQ/Assertion–Reason requires four options as strings and one answer letter A–D. Give the assertion–reason answer meanings in the options.\n5. Required subpart pattern: marks is the effective mark value; alternatives:2 means TWO subquestions with identical marks under an OR; any:2,count:3,marks:1 means a part group {choice:"any",attempt:2,marks:2,parts:[three one-mark questions]}. Do not count unattempted choices in marks. Each parent's marks equals its effective subpart sum.\n6. Reading / Extract / Question Set records need passage where relevant and a structured parts array with individually marked questions. Never create subquestions without the source passage. For grammar, output separate one-mark records; the Builder will group them. For map questions keep required map images with their record; do not substitute a prose question for a map.\n7. Questions needing an actual visual must include pictureNeeded:true and an image reference when available. Do not pretend a figure exists. The Builder will require the picture before printing. Prefer self-contained text/data questions where the blueprint permits.\n8. Match modelFilter if one appears. Supply subjectArea when a row requires an area (a | lists permitted alternative domains, not a literal Area value). An empty row area accepts any subject area within the selected chapters; area tags are optional for combined Science and Social Science papers. Reading/Grammar/Writing domains apply to all language courses. Use each selected grade's own literature, never Class 10 text for a lower class.\n9. Non-mathematics/non-English descriptive answers should normally be point-wise with a flexible number of points appropriate to the question. Mathematics solutions must be step-wise; English responses should suit the task. Verify all options, calculations and answers.\n10. Use inline LaTeX where useful; escape each backslash correctly for JSON. Do not put answers, model tags or explanations into student-facing question text.\n\nSTRUCTURED CASE EXAMPLE (structure only, not actual questions):\n${JSON.stringify(example, null, 2)}\n\nKeep the selected blueprint totals exact. If selected chapters do not support a required topic/area, say so instead of adding out-of-syllabus questions.`;
+  }
+  function openCBSEInChatGPT() {
+    const errors = setupErrors();
+    if (errors.length) { errorDialog('Complete the CBSE setup', errors); return; }
+    const prompt = promptText();
+    if (__ebOpenAIQuestionGenerator(prompt) === false) { aiPromptDialog(); return; }
+    status('Continue in ChatGPT, then paste the returned JSON into the question box and click Build Exam Draft. If no tab opens, allow popups and try again, or use Copy / download request.');
   }
   function aiPromptDialog() {
     const errors = setupErrors(); if (errors.length) { errorDialog('Complete the CBSE setup', errors); return; }
@@ -9467,16 +9450,14 @@ if (cleanedErrors.length) {
   function showReview() {
     if (!state.paper) return;
     const p = state.paper, el = reviewRoot(); $('.setup-form-container').hidden = true; el.hidden = false;
-    el.innerHTML = `<div class="cb-review-head"><div><span class="cb-kicker">CBSE EXAM DRAFT</span><h2>${escape(p.examName)}</h2><p>${escape(p.class)} · ${p.maxMarks} marks · ${p.time} minutes</p></div><div class="cb-flex"><button class="cb-button" data-action="setup">Back to setup</button><button class="cb-button" data-action="library">Your Papers</button><button class="cb-button" data-action="save">Save paper</button><button class="cb-button" data-action="blueprint">Download Blueprint</button><button class="cb-button" data-action="export">Download backup</button><button class="cb-button cb-primary" data-action="print">Print paper</button></div></div>
+    el.innerHTML = `<div class="cb-review-head"><div><span class="cb-kicker">CBSE EXAM DRAFT</span><h2>${escape(p.examName)}</h2><p>${escape(p.class)} · ${p.maxMarks} marks · ${p.time} minutes</p></div><div class="cb-flex"><button class="cb-button" data-action="setup">Back to setup</button><button class="cb-button" data-action="save">Save draft</button><button class="cb-button" data-action="export">Download draft</button><button class="cb-button cb-primary" data-action="print">Print paper</button></div></div>
       ${p.selectionMode === 'Manual Select' && !p.manualSelectionConfirmed ? '<div class="cb-notice">Manual selection: eligible questions have been suggested for each slot. Use “Choose another” to select your questions, then confirm the selection.<br><button type="button" class="cb-button cb-primary" data-action="confirm-manual">Confirm question selection</button></div>' : ''}
-      <p class="cb-muted">Your Papers saves the paper in this browser. Download a backup to move it to another device. AI Generate uses a copy-and-paste AI prompt; there is no direct AI service call.</p><nav class="cb-tabs" aria-label="Draft views">${[['review', 'Review & select'], ['preview', 'Paper preview'], ['answers', 'Answer key'], ['audit', 'Blueprint report']].map(([id, title]) => `<button type="button" data-tab="${id}" class="${state.reviewTab === id ? 'active' : ''}">${title}</button>`).join('')}</nav><div id="cb-review-content"></div>`;
+      <nav class="cb-tabs" aria-label="Draft views">${[['review', 'Review & select'], ['preview', 'Paper preview'], ['answers', 'Answer key'], ['audit', 'Blueprint report']].map(([id, title]) => `<button type="button" data-tab="${id}" class="${state.reviewTab === id ? 'active' : ''}">${title}</button>`).join('')}</nav><div id="cb-review-content"></div>`;
     $$('[data-tab]', el).forEach(b => b.onclick = () => { state.reviewTab = b.dataset.tab; showReview(); });
     $('[data-action="setup"]', el).onclick = () => { el.hidden = true; $('.setup-form-container').hidden = false; window.scrollTo(0, 0); };
     $('[data-action="save"]', el).onclick = saveDraft;
-    $('[data-action="library"]', el).onclick = savedDrafts;
-    $('[data-action="blueprint"]', el).onclick = () => downloadBlueprint(p);
-    $('[data-action="confirm-manual"]', el)?.addEventListener('click', () => { const errors = paperErrors(p); if (errors.length) { errorDialog('Selection needs correction', errors); return; } p.manualSelectionConfirmed = true; showReview(); persistPaper(p, { silent: true }); });
-    $('[data-action="export"]', el).onclick = () => downloadBackup(p);
+    $('[data-action="confirm-manual"]', el)?.addEventListener('click', () => { const errors = paperErrors(p); if (errors.length) { errorDialog('Selection needs correction', errors); return; } p.manualSelectionConfirmed = true; showReview(); });
+    $('[data-action="export"]', el).onclick = () => { const errors = paperErrors(p); if (errors.length) { errorDialog('Draft validation', errors); return; } download(`${filename(p.examName)}-draft.json`, JSON.stringify(p, null, 2), 'application/json'); };
     $('[data-action="print"]', el).onclick = () => printPaper(state.reviewTab === 'answers');
     if (state.reviewTab === 'audit') $('#cb-review-content').innerHTML = auditHTML(p);
     else {
@@ -9531,7 +9512,6 @@ if (cleanedErrors.length) {
       setLocated(loc, q); const errors = paperErrors(state.paper);
       if (errors.length) { setLocated(loc, old); throw new Error(errors.join(' ')); }
       showReview();
-      persistPaper(state.paper, { silent: true });
     }, loc.r);
   }
   function editQuestion(question, onSave, requiredRow) {
@@ -9613,7 +9593,7 @@ if (cleanedErrors.length) {
         const next = C.clone(eligible.find(q => q.id === btn.dataset.pick)); next._targetFamily = loc.q._targetFamily;
         const old = C.clone(loc.q); setLocated(loc, next); const errors = paperErrors(state.paper);
         if (errors.length) { setLocated(loc, old); errorDialog('Replacement cannot be used', errors); return; }
-        dlg.close(); showReview(); persistPaper(state.paper, { silent: true });
+        dlg.close(); showReview();
       }); math($('.cb-replacements', dlg));
     }
     $('.cb-replace-search', dlg).oninput = draw; draw();
@@ -9639,138 +9619,20 @@ if (cleanedErrors.length) {
     if (!dbPromise) dbPromise = new Promise((resolve, reject) => { const req = indexedDB.open('scimentra-cbse-builder-v2', 1); req.onupgradeneeded = () => req.result.createObjectStore('drafts', { keyPath: 'id' }); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); return dbPromise;
   }
   async function draftStore(mode, fn) { const db = await database(); return new Promise((resolve, reject) => { const tx = db.transaction('drafts', mode), req = fn(tx.objectStore('drafts')); let result; if (req) req.onsuccess = () => { result = req.result; }; tx.oncomplete = () => resolve(result); tx.onerror = () => reject(tx.error); }); }
-  // Browser storage is deliberately kept compatible with older saved CBSE drafts.
-  // Papers use their unique ID as the key; paper names are searchable and may repeat.
-  let paperSaveQueue = Promise.resolve();
-  async function persistPaper(paper, { silent = false } = {}) {
-    if (!paper) return false;
-    const errors = paperErrors(paper);
-    if (errors.length) {
-      if (!silent) errorDialog('Paper validation', errors);
-      return false;
-    }
-    const updated = { ...paper, updatedAt: new Date().toISOString() };
-    // Preserve write ordering so quick successive edits cannot overwrite a newer edit.
-    const attempt = paperSaveQueue.catch(() => {}).then(() =>
-      draftStore('readwrite', store => store.put(C.clone(updated)))
-    );
-    paperSaveQueue = attempt;
+  async function saveDraft() {
     try {
-      await attempt;
-      paper.updatedAt = updated.updatedAt;
-      if (!silent) openDialog('Paper saved in Your Papers',
-        `<p><b>${escape(paper.examName)}</b> has been saved with its questions, answers and exact blueprint.</p><p class="cb-muted">Your Papers are currently saved in this browser. Use Download backup (.json) to move the paper to another device.</p>`);
-      return true;
-    } catch (e) {
-      if (!silent) errorDialog('Paper was not saved', [e.message, 'Download a JSON backup. Local browser storage is not cloud sync.']);
-      else status(`Could not autosave: ${e.message}. Download a JSON backup.`, true);
-      return false;
-    }
-  }
-  async function saveDraft() { return persistPaper(state.paper); }
-
-  function validateForDownload(paper) {
-    const errors = paperErrors(paper);
-    if (errors.length) { errorDialog('Paper must be corrected before export', errors); return false; }
-    return true;
-  }
-  function blueprintRows(paper) {
-    const rows = [];
-    for (const sub of paper.subjects || []) {
-      for (const row of sub.rows || []) {
-        const chapters = [...new Set(row.items.flatMap(item =>
-          flatten([item]).map(q => q.chapter).filter(Boolean)))];
-        rows.push({
-          subject: sub.subject, section: row.section, group: row.title,
-          type: row.type, printed: Number(row.count) + Number(row.orCount || 0),
-          attempt: Number(row.attempt), marksEach: Number(row.marks),
-          total: Number(row.attempt) * Number(row.marks), orCount: Number(row.orCount || 0),
-          models: Object.entries(C.allocateCounts(row.count, sub.policy.strictModels ? row.models : {}))
-            .map(([k, n]) => `${k}: ${n}`).join('; '),
-          chapters: chapters.join('; '), pattern: patternText(row.pattern || [])
-        });
-      }
-    }
-    return rows;
-  }
-  function blueprintHTML(paper) {
-    const rows = blueprintRows(paper);
-    const bySubject = paper.subjects.map(sub => ({
-      subject: sub.subject,
-      chapters: sub.chapters || [],
-      marks: sub.marks,
-      questions: sub.rows.reduce((n, r) => n + r.count, 0),
-      source: sub.blueprint?.source || '',
-      note: sub.blueprint?.note || ''
-    }));
-    const body = `<header><h1>${escape(paper.school || 'SciMentra')}</h1><h2>Question Paper Blueprint</h2><p><b>${escape(paper.examName)}</b> · ${escape(paper.class)} · CBSE</p><p>Maximum Marks: ${marksText(paper.maxMarks)} &nbsp; | &nbsp; Time: ${Number(paper.time)} minutes &nbsp; | &nbsp; Date: ${escape(paper.date || 'Not specified')}</p><p>Question source: <b>${escape(paper.source || 'Unknown')}</b></p></header>
-      ${bySubject.map(sub => `<section><h3>${escape(sub.subject)} — ${marksText(sub.marks)} marks</h3><p>Selected chapters: ${sub.chapters.length ? sub.chapters.map(escape).join(' · ') : 'None'}</p><p>${escape(sub.note)}</p></section>`).join('')}
-      <table><thead><tr><th>Subject</th><th>Section / Group</th><th>Type</th><th>Printed (incl. OR)</th><th>Attempt</th><th>Marks each</th><th>OR slots</th><th>Counted marks</th><th>Question models</th><th>Chapters represented</th></tr></thead><tbody>
-      ${rows.map(r => `<tr><td>${escape(r.subject)}</td><td>${escape(r.section)}<br>${escape(r.group)}</td><td>${escape(r.type)}</td><td>${r.printed}</td><td>${r.attempt}</td><td>${marksText(r.marksEach)}</td><td>${r.orCount}</td><td>${marksText(r.total)}</td><td>${escape(r.models)}${r.pattern ? `<br><small>${escape(r.pattern)}</small>` : ''}</td><td>${escape(r.chapters)}</td></tr>`).join('')}
-      </tbody><tfoot><tr><th colspan="7">Total attempted marks</th><th>${marksText(rows.reduce((n, r) => n + r.total, 0))}</th><th colspan="2">${escape(paper.examName)}</th></tr></tfoot></table>
-      <p class="note">Printed counts include the additional alternatives in OR slots. The attempted marks count each choice only once. Chapters represented describe the actual questions selected, not an inferred equal chapter-wise allocation.</p>
-      <h3>Chapter and question-model audit</h3>${auditHTML(paper)}`;
-    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(paper.examName)} — Blueprint</title>
-      <style>@page{size:A4 landscape;margin:12mm}body{font:13px/1.5 Arial,sans-serif;color:#142638;max-width:1450px;margin:24px auto;padding:0 18px}header{text-align:center;border-bottom:2px solid #225a87;margin-bottom:24px}h1{font-size:20px;margin:0}h2{font-size:20px;margin:5px}h3{margin-top:23px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #b6c5cf;padding:6px;text-align:left;vertical-align:top}thead{background:#e9f3fb}tfoot{background:#eef4f8}.note,.cb-muted{font-size:11px;color:#465767}.cb-audit-grid{display:flex;gap:16px;page-break-inside:avoid}.cb-audit-grid>*{flex:1}.cb-audit-grid table{width:100%}.cb-notice{border:1px solid #ccc;padding:8px}.cb-good{color:#16583d}.cb-error{color:#a11}a{color:#245b8e}tr{page-break-inside:avoid}.noprint{margin-bottom:16px}@media print{body{margin:0;padding:0}.noprint{display:none}thead{display:table-header-group}}</style></head>
-      <body><div class="noprint"><button onclick="window.print()">Print / Save as PDF</button></div>${body}</body></html>`;
-  }
-  function downloadBlueprint(paper, format = 'html') {
-    if (!validateForDownload(paper)) return;
-    const basename = `${filename(paper.examName)}-${filename(paper.class)}-blueprint`;
-    if (format === 'csv') {
-      const fields = ['subject', 'section', 'group', 'type', 'printed', 'attempt', 'marksEach', 'orCount', 'total', 'models', 'chapters', 'pattern'];
-      const quote = s => `"${String(s == null ? '' : s).replace(/"/g, '""')}"`;
-      const data = [fields.join(','), ...blueprintRows(paper).map(r => fields.map(f => quote(r[f])).join(','))];
-      download(`${basename}.csv`, '\uFEFF' + data.join('\r\n'), 'text/csv');
-    } else download(`${basename}.html`, blueprintHTML(paper), 'text/html');
-  }
-  function downloadBackup(paper) {
-    if (!validateForDownload(paper)) return;
-    download(`${filename(paper.examName)}-${filename(paper.class)}-paper.json`, JSON.stringify(paper, null, 2), 'application/json');
-  }
-  function libraryCard(p, i) {
-    const subjects = (p.subjects || []).map(s => s.subject).join(', ');
-    const stamp = String(p.updatedAt || p.createdAt || '').replace('T', ' ').slice(0, 16);
-    return `<article class="cb-bank-record cb-library-card" data-search="${escape(`${p.examName} ${p.class} ${subjects} ${p.source} ${p.date || ''}`.toLowerCase())}">
-      <div class="cb-flex" style="align-items:center;justify-content:space-between"><strong>${escape(p.examName)}</strong><small>${escape(p.source || 'Unknown source')}</small></div>
-      <p>${escape(p.class)} · ${escape(subjects)} · <b>${marksText(p.maxMarks)} marks</b>${p.date ? ` · ${escape(p.date)}` : ''}</p>
-      <p class="cb-muted">Saved ${escape(stamp)} · ${escape(p.id)}</p>
-      <div class="cb-flex"><button type="button" class="cb-button cb-primary" data-open="${i}">Open paper</button><button type="button" class="cb-button" data-blueprint="${i}">Download Blueprint</button><button type="button" class="cb-button" data-csv="${i}">Blueprint CSV</button><button type="button" class="cb-button" data-backup="${i}">Download backup</button><button type="button" class="cb-button" data-delete="${i}">Delete</button></div>
-    </article>`;
+      const errors = paperErrors(state.paper); if (errors.length) { errorDialog('Draft validation', errors); return; }
+      state.paper.updatedAt = new Date().toISOString();
+      await draftStore('readwrite', store => store.put(C.clone(state.paper)));
+      openDialog('Draft saved', '<p>The complete paper and answers have been saved in this browser. Use Download draft for a portable backup.</p>');
+    } catch (e) { errorDialog('Could not save in this browser', [`${e.message}. Use Download draft to save a portable copy.`]); }
   }
   async function savedDrafts() {
     try {
-      await paperSaveQueue.catch(() => {});
       const drafts = (await draftStore('readonly', store => store.getAll())) || [];
-      drafts.sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')));
-      const dlg = openDialog('Your Papers — CBSE', `<p class="cb-muted">Saved papers on this browser (${drafts.length}). They are not cloud-synced. Download a JSON backup to transfer or preserve a paper.</p>
-        <label>Search papers<input class="cb-library-search" type="search" placeholder="Exam, subject, class or source"></label>
-        <div class="cb-library-empty cb-muted" hidden>No matching papers.</div>
-        <div class="cb-library-items">${drafts.length ? drafts.map(libraryCard).join('') : '<p>No saved papers yet. Build a paper from Question Bank or AI Generate to save it here.</p>'}</div>`);
-      const cards = $$('.cb-library-card', dlg);
-      $('.cb-library-search', dlg).oninput = e => {
-        const term = e.target.value.trim().toLowerCase();
-        let visible = 0;
-        cards.forEach(card => { card.hidden = !card.dataset.search.includes(term); if (!card.hidden) visible++; });
-        $('.cb-library-empty', dlg).hidden = visible !== 0 || !cards.length;
-      };
-      $$('[data-open]', dlg).forEach(btn => btn.onclick = () => { const p = drafts[Number(btn.dataset.open)]; try { restoreDraft(C.clone(p)); dlg.close(); } catch (e) { errorDialog('Could not open paper', [e.message]); } });
-      $$('[data-blueprint]', dlg).forEach(btn => btn.onclick = () => downloadBlueprint(drafts[Number(btn.dataset.blueprint)]));
-      $$('[data-csv]', dlg).forEach(btn => btn.onclick = () => downloadBlueprint(drafts[Number(btn.dataset.csv)], 'csv'));
-      $$('[data-backup]', dlg).forEach(btn => btn.onclick = () => downloadBackup(drafts[Number(btn.dataset.backup)]));
-      $$('[data-delete]', dlg).forEach(btn => btn.onclick = () => {
-        const target = drafts[Number(btn.dataset.delete)];
-        const confirm = openDialog('Delete saved paper?', `<p>Permanently delete <b>${escape(target.examName)}</b> (${escape(target.class)}) from this browser? A downloaded backup will not be deleted.</p>`, [
-          { label: 'Cancel', action: d => d.close() },
-          { label: 'Delete paper', primary: true, action: async d => {
-            try {
-              await draftStore('readwrite', store => store.delete(target.id));
-              d.close(); dlg.close(); savedDrafts();
-            } catch (e) { errorDialog('Could not delete paper', [e.message]); }
-          } }
-        ]);
-      });
-    } catch (e) { errorDialog('Could not load Your Papers', [e.message]); }
+      const dlg = openDialog('Saved CBSE drafts', drafts.length ? drafts.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map((p, i) => `<div class="cb-bank-record"><b>${escape(p.examName)}</b><p>${escape(p.class)} · ${p.maxMarks} marks · ${escape(p.date || '')}</p><button type="button" class="cb-button" data-open="${i}">Open draft</button></div>`).join('') : '<p>No drafts are saved in this browser yet. You can also import a downloaded draft.</p>');
+      $$('[data-open]', dlg).forEach(btn => btn.onclick = () => { const p = drafts[Number(btn.dataset.open)]; restoreDraft(p); dlg.close(); });
+    } catch (e) { errorDialog('Could not load drafts', [e.message]); }
   }
   function restoreDraft(p) {
     if (p?.schema !== 'scimentra-cbse-paper-v2' || !Array.isArray(p.subjects) || !p.setup) throw new Error('This is not a supported CBSE draft file.');
@@ -9819,10 +9681,10 @@ if (cleanedErrors.length) {
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science and Social Science use question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button cb-primary" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get CBSE question request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science and Social Science use question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Saved drafts</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').before(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
-    $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = aiPromptDialog;
+    $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
     $('#cb-import-file').onchange = async e => {
       const file = e.target.files[0]; if (!file) return;
       try {
@@ -9837,7 +9699,7 @@ if (cleanedErrors.length) {
       e.target.value = '';
     };
     $('#exam-setup-form').addEventListener('submit', event => { if (!cbse()) return; event.preventDefault(); event.stopImmediatePropagation(); build(); }, true);
-    $('#ai-get-questions-btn')?.addEventListener('click', event => { if (!cbse()) return; event.preventDefault(); event.stopImmediatePropagation(); aiPromptDialog(); }, true);
+    $('#ai-get-questions-btn')?.addEventListener('click', event => { if (!cbse()) return; event.preventDefault(); event.stopImmediatePropagation(); openCBSEInChatGPT(); }, true);
     $('#subjects-sections-area').addEventListener('change', e => { if (cbse() && e.target.closest('[id^="chapters-multiselect-"]')) { const block = e.target.closest('.subject-block'); updateChapterMap(Number(block.dataset.cbIndex)); } });
     $('#subjects-sections-area').addEventListener('input', e => { if (cbse() && e.target.matches('.ai-manual-chapters-input')) updateChapterMap(Number(e.target.closest('.subject-block').dataset.cbIndex)); });
   }
