@@ -179,6 +179,695 @@
 /* centered OR line */
 .or-line { text-align: center; font-weight: 700; letter-spacing: .08em; margin: .25rem 0; color:#0f3d6b; }
   </style>
+<style>
+  /* Replaced by the common My Papers button. */
+  #cb-saved {
+    display: none !important;
+  }
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  const copy = value => JSON.parse(JSON.stringify(value));
+
+  const esc = value => String(value ?? '').replace(
+    /[&<>"']/g,
+    character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character])
+  );
+
+  const imageURL = value =>
+    /^(https?:\/\/|data:image\/(png|jpeg|jpg|gif|webp);base64,|blob:)/i
+      .test(String(value || ''))
+      ? String(value)
+      : '';
+
+  function rich(value) {
+    const text = String(value || '');
+
+    if (!/<[a-z][^>]*>/i.test(text)) {
+      return esc(text).replace(/\n/g, '<br>');
+    }
+
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+
+    const allowed = new Set(
+      'P BR DIV SPAN B STRONG I EM U SUP SUB UL OL LI TABLE THEAD TBODY TR TD TH IMG PRE CODE'
+        .split(' ')
+    );
+
+    [...doc.body.querySelectorAll('*')].reverse().forEach(el => {
+      if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|SVG|MATH|FORM)$/.test(el.tagName)) {
+        el.remove();
+        return;
+      }
+
+      if (!allowed.has(el.tagName)) {
+        el.replaceWith(...el.childNodes);
+        return;
+      }
+
+      [...el.attributes].forEach(attribute => {
+        if (!['src', 'alt', 'colspan', 'rowspan', 'type'].includes(attribute.name)) {
+          el.removeAttribute(attribute.name);
+        }
+      });
+
+      if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
+        el.removeAttribute('src');
+      }
+    });
+
+    return doc.body.innerHTML;
+  }
+
+  function questionTree(question, includeImage = true) {
+    if (question.alternatives?.length) {
+      return question.alternatives.map((alternative, index) => `
+        ${index ? '<p style="text-align:center"><b>OR</b></p>' : ''}
+        <p>
+          <b>(${String.fromCharCode(65 + index)})</b>
+          ${questionTree(alternative)}
+        </p>
+      `).join('');
+    }
+
+    let html = rich(
+      question.passage ||
+      question.text ||
+      question.question ||
+      question.body
+    );
+
+    if (question.options?.length) {
+      html += '<ol type="A">' +
+        question.options.map(option => `<li>${rich(option)}</li>`).join('') +
+        '</ol>';
+    }
+
+    if (question.parts?.length) {
+      if (question.choice === 'any') {
+        html += `
+          <p>
+            Attempt any ${question.attempt}
+            of the following ${question.parts.length}.
+          </p>
+        `;
+      }
+
+      html += question.parts.map((part, index) => `
+        <p>
+          <b>(${index + 1})</b>
+          ${questionTree(part)}
+          <b>[${esc(part.marks)}]</b>
+        </p>
+      `).join('');
+    }
+
+    if (includeImage && imageURL(question.image)) {
+      html += `
+        <p>
+          <img
+            class="question-img"
+            style="max-width:100%"
+            src="${esc(question.image)}"
+            alt="Question figure">
+        </p>
+      `;
+    }
+
+    return html;
+  }
+
+  function answerTree(question) {
+    const children =
+      question.alternatives ||
+      question.parts ||
+      question.mcqs;
+
+    if (children?.length) {
+      return children.map((part, index) => `
+        <p>
+          <b>(${question.alternatives
+            ? String.fromCharCode(65 + index)
+            : index + 1})</b>
+          ${answerTree(part)}
+        </p>
+      `).join('');
+    }
+
+    return rich(
+      question.answer ||
+      question.parsedAnswer ||
+      question.finalAnswer ||
+      ''
+    ) + (
+      question.explanation
+        ? `<p>${rich(question.explanation)}</p>`
+        : ''
+    );
+  }
+
+  function toReviewPaper(source) {
+    const paper = copy(source);
+
+    /* Foundation papers already use the Review-page structure. */
+    if (!paper.subjects?.some(subject => Array.isArray(subject.rows))) {
+      return paper;
+    }
+
+    let number = 0;
+
+    paper.subjects = paper.subjects.map(subject => ({
+      subject: subject.subject,
+      chapters: subject.chapters,
+      marks: subject.marks,
+
+      sections: subject.rows.map(row => {
+        const grouped = row.grouped || row.attempt < row.count;
+
+        const items = grouped
+          ? [{
+              text: row.title,
+              marks: row.attempt * row.marks,
+              parts: row.items,
+              choice: row.attempt < row.count ? 'any' : 'all',
+              attempt: row.attempt
+            }]
+          : row.items;
+
+        return {
+          label: `${row.section} — ${row.title}`,
+          type: 'all',
+          orCount: row.orCount || 0,
+          mcqType: grouped ? 'Descriptive' : row.type,
+          numQuestions: items.length,
+
+          marksPerQuestion: grouped
+            ? row.attempt * row.marks
+            : row.marks,
+
+          instructions: grouped
+            ? 'Answer the following question as instructed.'
+            : `Answer all ${row.count} questions.${
+                row.orCount
+                  ? ' Where OR is given, answer only one alternative.'
+                  : ''
+              }`,
+
+          questions: items.map(question => {
+            const composite = !!(
+              question.parts?.length ||
+              question.alternatives?.length
+            );
+
+            const text = composite
+              ? questionTree({ ...question, image: '' })
+              : rich(question.text || question.question);
+
+            return {
+              _cbseBridge: true,
+              number: ++number,
+              text,
+              question: text,
+              body: text,
+              marks: question.marks || row.marks,
+              type: composite ? 'Descriptive' : row.type,
+              mcqType: composite ? 'Descriptive' : row.type,
+              options: composite ? [] : (question.options || []),
+              image: imageURL(question.image),
+
+              answer: composite
+                ? answerTree(question)
+                : (question.answer || ''),
+
+              explanation: composite
+                ? ''
+                : (question.explanation || ''),
+
+              chapter: question.chapter || '',
+              modelType: question.modelType || ''
+            };
+          })
+        };
+      })
+    }));
+
+    paper.schema = 'scimentra-review-paper-v1';
+    paper.schoolName = paper.schoolName || paper.school || 'SciMentra';
+    paper.paperType = paper.paperType || 'CBSE Assessment';
+
+    delete paper.setup;
+
+    return paper;
+  }
+
+  function openPaper(source, preview = false) {
+    const paper = toReviewPaper(source);
+
+    sessionStorage.setItem('examPaper', JSON.stringify(paper));
+    sessionStorage.setItem('finalExamData', JSON.stringify(paper));
+
+    location.href = preview
+      ? 'exam-preview.html'
+      : 'exam-review.html';
+  }
+
+  function store(mode, action) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
+
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('drafts', { keyPath: 'id' });
+      };
+
+      request.onerror = () => reject(request.error);
+
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction('drafts', mode);
+        let result;
+
+        const operation = action(transaction.objectStore('drafts'));
+
+        operation.onsuccess = () => {
+          result = operation.result;
+        };
+
+        transaction.oncomplete = () => {
+          database.close();
+          resolve(result);
+        };
+
+        transaction.onerror = transaction.onabort = () => {
+          database.close();
+          reject(transaction.error || new Error('Saving failed.'));
+        };
+      };
+    });
+  }
+
+  function downloadReport(source, answers) {
+    const paper = toReviewPaper(source);
+
+    let body = `
+      <h1>${esc(paper.examName)}</h1>
+      <h2>${answers ? 'Answer Key' : 'Blueprint'}</h2>
+      <p>
+        ${esc(paper.schoolName || paper.school)} ·
+        ${esc(paper.class)} ·
+        ${esc(paper.maxMarks)} marks
+      </p>
+    `;
+
+    paper.subjects.forEach(subject => {
+      body += `<h2>${esc(subject.subject)}</h2>`;
+
+      if (answers) {
+        subject.sections.forEach(section => {
+          body += `<h3>${esc(section.label)}</h3>`;
+
+          section.questions.forEach(question => {
+            body += `
+              <article>
+                <b>${esc(question.number)}.</b>
+                ${rich(question.text || question.question)}
+                <p><b>Answer:</b> ${answerTree(question)}</p>
+              </article>
+            `;
+          });
+        });
+
+        return;
+      }
+
+      body += `
+        <table>
+          <thead>
+            <tr>
+              <th>Section</th>
+              <th>Type</th>
+              <th>Printed</th>
+              <th>Attempt</th>
+              <th>Marks each</th>
+              <th>OR slots</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      subject.sections.forEach(section => {
+        const count = Number(
+          section.numQuestions ||
+          section.numPairs ||
+          section.questions.length
+        );
+
+        const attempt = section.type === 'any'
+          ? Number(section.attemptAny || count)
+          : count;
+
+        const orCount = Number(
+          section.orCount ||
+          (section.type === 'internal' ? section.numPairs : 0) ||
+          0
+        );
+
+        body += `
+          <tr>
+            <td>${esc(section.label)}</td>
+            <td>${esc(section.mcqType || '')}</td>
+            <td>${count}</td>
+            <td>${attempt}</td>
+            <td>${esc(section.marksPerQuestion)}</td>
+            <td>${orCount}</td>
+            <td>${attempt * Number(section.marksPerQuestion)}</td>
+          </tr>
+          <tr>
+            <td colspan="7">${esc(section.instructions || '')}</td>
+          </tr>
+        `;
+      });
+
+      body += '</tbody></table>';
+    });
+
+    const math =
+      '<script>window.MathJax={tex:{inlineMath:[["\\\\(","\\\\)"]]}};</scr' +
+      'ipt><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></scr' +
+      'ipt>';
+
+    const html = `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${esc(paper.examName)}</title>
+        <style>
+          body {
+            font: 16px Georgia, serif;
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 20px;
+          }
+          table { border-collapse: collapse; width: 100%; }
+          td, th { border: 1px solid #aaa; padding: 9px; }
+          article { border-bottom: 1px solid #ddd; padding: 12px 0; }
+          img { max-width: 100%; }
+          @media print {
+            button { display: none; }
+            tr { break-inside: avoid; }
+          }
+        </style>
+        ${math}
+      </head>
+      <body>
+        <button onclick="window.print()">Print / Save as PDF</button>
+        ${body}
+      </body>
+      </html>
+    `;
+
+    const url = URL.createObjectURL(
+      new Blob([html], { type: 'text/html;charset=utf-8' })
+    );
+
+    const link = document.createElement('a');
+    link.href = url;
+
+    link.download =
+      String(paper.examName || 'Paper')
+        .replace(/[^\p{L}\p{N}._-]+/gu, '-') +
+      (answers ? '-Answer-Key.html' : '-Blueprint.html');
+
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
+  async function showMyPapers() {
+    try {
+      const papers = (
+        await store('readonly', records => records.getAll()) || []
+      ).sort((a, b) =>
+        String(b.updatedAt || b.createdAt)
+          .localeCompare(String(a.updatedAt || a.createdAt))
+      );
+
+      const dialog = document.createElement('dialog');
+
+      dialog.style.cssText = `
+        width:min(900px,90vw);
+        max-height:85vh;
+        border:0;
+        border-radius:16px;
+        padding:24px;
+        overflow:auto;
+      `;
+
+      dialog.innerHTML = `
+        <h2>My Papers</h2>
+        <p>Saved papers on this browser.</p>
+        <button data-close>Close</button>
+        ${
+          papers.length
+            ? papers.map((paper, index) => `
+                <article style="padding:16px 0;border-bottom:1px solid #ddd">
+                  <b>${esc(paper.examName)}</b>
+                  <p>
+                    ${esc(paper.class)} ·
+                    ${esc(paper.maxMarks)} marks
+                  </p>
+                  ${
+                    [
+                      ['open', 'Open Paper'],
+                      ['review', 'Exam Review'],
+                      ['answers', 'Download Answer Key'],
+                      ['blueprint', 'Download Blueprint'],
+                      ['delete', 'Delete']
+                    ].map(([action, label]) => `
+                      <button
+                        data-action="${action}"
+                        data-index="${index}"
+                        style="margin:4px;padding:8px">
+                        ${label}
+                      </button>
+                    `).join('')
+                  }
+                </article>
+              `).join('')
+            : '<p>No saved papers yet. Save a paper from Exam Preview.</p>'
+        }
+      `;
+
+      dialog.addEventListener('close', () => dialog.remove());
+
+      dialog.onclick = async event => {
+        const button = event.target.closest('button');
+        if (!button) return;
+
+        if (button.hasAttribute('data-close')) {
+          dialog.close();
+          return;
+        }
+
+        const paper = papers[Number(button.dataset.index)];
+
+        try {
+          switch (button.dataset.action) {
+            case 'open':
+              openPaper(paper, true);
+              break;
+
+            case 'review':
+              openPaper(paper);
+              break;
+
+            case 'answers':
+              downloadReport(paper, true);
+              break;
+
+            case 'blueprint':
+              downloadReport(paper, false);
+              break;
+
+            case 'delete':
+              if (confirm(`Delete saved paper "${paper.examName}"?`)) {
+                await store('readwrite', records => records.delete(paper.id));
+                dialog.close();
+                await showMyPapers();
+              }
+              break;
+          }
+        } catch (error) {
+          alert(error.message);
+        }
+      };
+
+      document.body.append(dialog);
+      dialog.showModal();
+    } catch (error) {
+      alert('Could not load My Papers: ' + error.message);
+    }
+  }
+
+  function previewQuestion(question, number) {
+    const optionLines = (question.options || []).map(
+      (option, index) => `${String.fromCharCode(65 + index)}) ${option}`
+    );
+
+    const optionsHTML = optionLines.length
+      ? (
+          typeof renderOptionsLayout === 'function'
+            ? renderOptionsLayout(optionLines)
+            : '<ol type="A">' +
+              question.options.map(option => `<li>${rich(option)}</li>`).join('') +
+              '</ol>'
+        )
+      : '';
+
+    return `
+      <div class="question-container">
+        <div class="question-number">${number}.</div>
+
+        <div class="question-body">
+          <div style="display:flex;gap:12px">
+            <div class="question-text" style="flex:1">
+              ${rich(question.text || question.question)}
+            </div>
+
+            <b style="white-space:nowrap">
+              [${esc(question.marks)}]
+            </b>
+          </div>
+
+          ${
+            imageURL(question.image)
+              ? `
+                <div class="question-img-block">
+                  <img
+                    class="question-img"
+                    src="${esc(question.image)}"
+                    alt="Question figure">
+                </div>
+              `
+              : ''
+          }
+
+          <div
+            class="options-block"
+            data-options="${encodeURIComponent(JSON.stringify(optionLines))}">
+            ${optionsHTML}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  window.SciMentraPapers = {
+    openReview: paper => openPaper(paper),
+    previewQuestion,
+    showMyPapers
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('exam-setup-form');
+
+    if (form) {
+      const button = document.createElement('button');
+
+      button.type = 'button';
+      button.textContent = 'My Papers';
+      button.style.cssText = `
+        padding:12px 22px;
+        margin:12px 0;
+        border:0;
+        border-radius:10px;
+        background:#174e80;
+        color:white;
+        cursor:pointer;
+      `;
+
+      button.onclick = showMyPapers;
+      form.before(button);
+    }
+
+    const review = document.getElementById('exam-review-area');
+
+    if (
+      review &&
+      typeof getExamPaper === 'function' &&
+      getExamPaper()?.board === 'CBSE'
+    ) {
+      const subtitle = document.querySelector('#main-header .subtitle');
+      if (subtitle) subtitle.textContent = 'CBSE';
+
+      document.getElementById('download-blueprint-btn')
+        ?.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          saveEdits(false);
+          downloadReport(getExamPaper(), false);
+        }, true);
+    }
+
+    const toolbar = document.querySelector('.toolbar');
+
+    if (toolbar && document.getElementById('print-preview')) {
+      const button = document.createElement('button');
+
+      button.type = 'button';
+      button.textContent = 'Save Paper';
+      toolbar.append(button);
+
+      button.onclick = async () => {
+        button.disabled = true;
+
+        try {
+          if (typeof exam === 'undefined' || !exam.subjects?.length) {
+            throw new Error('No paper to save.');
+          }
+
+          const name = String(exam.examName || '').trim();
+
+          if (!name) {
+            throw new Error('Enter an exam name before saving.');
+          }
+
+          exam.id = exam.id || (
+            'paper-' + (
+              crypto.randomUUID
+                ? crypto.randomUUID()
+                : Date.now()
+            )
+          );
+
+          exam.examName = name;
+          exam.updatedAt = new Date().toISOString();
+
+          await store('readwrite', records => records.put(copy(exam)));
+
+          sessionStorage.setItem('examPaper', JSON.stringify(exam));
+          sessionStorage.setItem('finalExamData', JSON.stringify(exam));
+
+          alert('Paper saved. Open My Papers in Exam Builder.');
+        } catch (error) {
+          alert('Could not save paper: ' + error.message);
+        } finally {
+          button.disabled = false;
+        }
+      };
+    }
+  });
+})();
+</script>
 </head>
 <body>
 <div class="page-wrapper">
