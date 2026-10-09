@@ -414,6 +414,11 @@
   function toReviewPaper(source) {
     const paper = copy(source);
 
+    // Preserve chapter and OR metadata when a CBSE paper is saved in Exam Review.
+    if (paper.subjects?.some(subject => Array.isArray(subject.rows))) {
+      paper._cbseBlueprintSource = copy(source);
+    }
+
     /* Foundation papers already use the Review-page structure. */
     if (!paper.subjects?.some(subject => Array.isArray(subject.rows))) {
       return paper;
@@ -550,7 +555,184 @@
     });
   }
 
+  // One shared, question-derived blueprint for Builder and My Papers.
+  function __ebBlueprintHtml(input) {
+    const paper = input?._cbseBlueprintSource || input;
+    if (!paper || !Array.isArray(paper.subjects) ||
+        !paper.subjects.every(s => Array.isArray(s.rows))) {
+      throw new Error('This saved paper does not include the original CBSE question records needed for a reliable lesson-wise blueprint. Open a paper saved from the updated Builder and save it again.');
+    }
+    const escape = v => String(v ?? '').replace(/[&<>"']/g,
+      c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const num = n => Number(n || 0);
+    const fmt = n => String(Math.round((num(n) + Number.EPSILON) * 100) / 100);
+    const range = (low, high) => low === high ? fmt(low) : `${fmt(low)}–${fmt(high)}`;
+    const roman = n => {
+      let out = '';
+      for (const [value, symbol] of [[100,'c'],[90,'xc'],[50,'l'],[40,'xl'],[10,'x'],[9,'ix'],[5,'v'],[4,'iv'],[1,'i']]) {
+        while (n >= value) { out += symbol; n -= value; }
+      }
+      return out;
+    };
+    const typeLabel = row => {
+      const name = String(row.type || row.title || 'Question').trim();
+      const m = fmt(row.marks);
+      if (/^MCQ \(Single\)$/i.test(name)) return `MCQ (${m}M)`;
+      if (/^Assertion and Reason/i.test(name)) return `A–R (${m}M)`;
+      if (/^Descriptive$/i.test(name)) return `${m}-mark`;
+      if (/^Case Based$/i.test(name)) return `Case-Based (${m}M)`;
+      return `${name} (${m}M)`;
+    };
+    const totalExpected = num(paper.maxMarks);
+    let actualTotal = 0;
+    const blocks = paper.subjects.map(sub => {
+      const selected = [...new Set((sub.chapters || []).map(c => String(c).trim()).filter(Boolean))];
+      const cells = new Map();
+      const details = [];
+      const types = [];
+      const warnings = [];
+      const typeTotals = new Map();
+      const markRange = new Map();
+      const countRange = new Map();
+      const allChapters = new Set(selected);
+      let number = 0;
+      let attempted = 0;
+      let subjectTotal = 0;
+      const putCell = (chapter, type, value) => {
+        const key = `${chapter}\u0000${type}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(value);
+      };
+      const chapterOf = (q, parent) => {
+        const chapter = String(q?.chapter || parent?.chapter || '').trim();
+        return chapter || 'Unassigned chapter';
+      };
+      for (const row of sub.rows) {
+        const type = typeLabel(row);
+        if (!types.includes(type)) types.push(type);
+        const marks = num(row.marks);
+        const items = Array.isArray(row.items) ? row.items : [];
+        const count = num(row.count);
+        const take = num(row.attempt);
+        const grouped = !!row.grouped || take < count;
+        const rowSlots = [];
+        subjectTotal += take * marks;
+        attempted += take;
+        typeTotals.set(type, (typeTotals.get(type) || 0) + take * marks);
+        if (items.length !== count) warnings.push(`${row.section || 'Section'}: expected ${count} question records but found ${items.length}.`);
+        if (take > items.length) warnings.push(`${row.section || 'Section'}: fewer question records than required attempts.`);
+        if (grouped) number++;
+        items.forEach((item, index) => {
+          if (!grouped) number++;
+          const ref = `Q${number}${grouped ? `(${roman(index + 1)})` : ''}`;
+          const options = Array.isArray(item?.alternatives) && item.alternatives.length
+            ? item.alternatives : [item || {}];
+          const chapters = options.map(option => chapterOf(option, item));
+          const distinct = [...new Set(chapters)];
+          distinct.forEach(ch => {
+            allChapters.add(ch);
+            if (ch === 'Unassigned chapter') warnings.push(`${ref}: missing lesson name; marks cannot be assigned to a selected lesson.`);
+            else if (selected.length && !selected.includes(ch)) warnings.push(`${ref}: lesson “${ch}” is outside the selected lessons.`);
+          });
+          const choiceRefs = options.map((_, i) => options.length > 1 ? `${ref}(${String.fromCharCode(65 + i)})` : ref);
+          if (distinct.length === 1) {
+            putCell(distinct[0], type, `${choiceRefs.join(' OR ')} [${fmt(marks)}]${take < count ? '†' : ''}`);
+          } else {
+            options.forEach((_, i) => putCell(chapters[i], type,
+              `${choiceRefs[i]} [${fmt(marks)}]*${take < count ? '†' : ''}`));
+          }
+          options.forEach((_, i) => details.push({
+            ref: choiceRefs[i], chapter: chapters[i], section: String(row.section || ''),
+            type, marks, choice: options.length > 1
+              ? `OR — attempt one (${choiceRefs.join(' / ')})`
+              : take < count ? `Attempt any ${take} of ${count} in ${row.section || 'this group'}` : '—'
+          }));
+          rowSlots.push({ chapters, marks });
+        });
+        for (const chapter of allChapters) {
+          const lowWeights = rowSlots.map(slot => slot.chapters.every(ch => ch === chapter) ? marks : 0);
+          const highWeights = rowSlots.map(slot => slot.chapters.includes(chapter) ? marks : 0);
+          const lowCount = lowWeights.map(v => v ? 1 : 0);
+          const highCount = highWeights.map(v => v ? 1 : 0);
+          const chooseMin = arr => arr.slice().sort((a, b) => a - b).slice(0, take).reduce((a, b) => a + b, 0);
+          const chooseMax = arr => arr.slice().sort((a, b) => b - a).slice(0, take).reduce((a, b) => a + b, 0);
+          const mr = markRange.get(chapter) || [0, 0];
+          const cr = countRange.get(chapter) || [0, 0];
+          markRange.set(chapter, [mr[0] + chooseMin(lowWeights), mr[1] + chooseMax(highWeights)]);
+          countRange.set(chapter, [cr[0] + chooseMin(lowCount), cr[1] + chooseMax(highCount)]);
+        }
+      }
+      // A lesson discovered in later rows is zero for earlier rows, so its
+      // missing earlier contribution is correctly zero.
+      actualTotal += subjectTotal;
+      if (subjectTotal !== num(sub.marks)) warnings.push(`Question-derived total ${fmt(subjectTotal)} does not equal the subject target ${fmt(sub.marks)}.`);
+      if (selected.length === 0) warnings.push('No selected lesson list is stored with this paper. Lessons were inferred from question metadata.');
+      const list = [...selected, ...[...allChapters].filter(c => !selected.includes(c))];
+      const headings = types.map(t => `<th>${escape(t)}</th>`).join('');
+      const dataRows = list.map(ch => {
+        const mr = markRange.get(ch) || [0, 0];
+        const cr = countRange.get(ch) || [0, 0];
+        return `<tr><td class="lesson">${escape(ch)}${mr[1] === 0 ? ' <small>(not covered)</small>' : ''}</td>` +
+          types.map(t => `<td>${(cells.get(`${ch}\u0000${t}`) || []).map(escape).join('<br>') || '—'}</td>`).join('') +
+          `<td class="num">${range(cr[0], cr[1])}</td><td class="num">${range(mr[0], mr[1])}</td></tr>`;
+      }).join('');
+      const totals = `<tr class="total"><th>Total</th>${types.map(t => `<th class="num">${fmt(typeTotals.get(t) || 0)}</th>`).join('')}<th class="num">${fmt(attempted)}</th><th class="num">${fmt(subjectTotal)}</th></tr>`;
+      const questionRows = details.map(d => `<tr><td>${escape(d.ref)}</td><td>${escape(d.chapter)}</td><td>${escape(d.section)}</td><td>${escape(d.type)}</td><td class="num">${fmt(d.marks)}</td><td>${escape(d.choice)}</td></tr>`).join('');
+      const hasChoices = sub.rows.some(r => num(r.attempt) < num(r.count) || (r.items || []).some(q => q.alternatives?.length));
+      return `<section class="subject"><h2>${escape(sub.subject)} — ${fmt(subjectTotal)} marks</h2>
+        <h3>Table 1. Lesson-wise question distribution</h3>
+        <div class="scroll"><table><thead><tr><th>Lesson name</th>${headings}<th>Questions to attempt</th><th>Total marks</th></tr></thead><tbody>${dataRows}${totals}</tbody></table></div>
+        ${hasChoices ? '<p class="note">* An OR choice crosses lessons: the lesson total is choice-dependent and displayed as a minimum–maximum range. † Attempt-any group: individual parts may not all be answered; the range reflects the compulsory number to attempt. Alternatives and unattempted parts are not double-counted.</p>' : ''}
+        <h3>Table 2. Question-wise blueprint</h3>
+        <table><thead><tr><th>Question</th><th>Lesson</th><th>Section</th><th>Type</th><th>Marks</th><th>Internal choice / attempt rule</th></tr></thead><tbody>${questionRows}</tbody></table>
+        ${warnings.length ? `<p class="warning"><b>Check before use:</b> ${[...new Set(warnings)].map(escape).join(' ')}</p>` : ''}
+      </section>`;
+    }).join('');
+    const mismatch = actualTotal !== totalExpected
+      ? `<p class="warning">Paper maximum ${fmt(totalExpected)} differs from the calculated total ${fmt(actualTotal)}. Please correct the paper before distribution.</p>` : '';
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>${escape(paper.examName || 'Examination')} — Blueprint</title>
+      <style>
+      @page{size:A4 landscape;margin:12mm}
+      *{box-sizing:border-box}body{font:13px/1.5 Arial,sans-serif;color:#172b42;max-width:1500px;margin:20px auto;padding:16px}
+      .head{text-align:center;border-bottom:2px solid #23384c;padding-bottom:10px}.head h1{font-size:22px;margin:0}.head h2{font-size:18px;margin:2px 0}
+      .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600;margin-top:8px}
+      .subject{margin-top:25px;break-before:auto}.subject h2{font-size:17px;margin:20px 0 8px}
+      h3{font-size:14px;margin:18px 0 8px}table{border-collapse:collapse;width:100%;font-size:11px;line-height:1.4;margin-bottom:10px}
+      th,td{border:1px solid #a9b7c5;padding:6px 7px;vertical-align:top;text-align:left;overflow-wrap:anywhere}
+      th{background:#edf2f7;font-weight:700}.num{text-align:center;white-space:nowrap}.lesson{min-width:160px}.total th{background:#dfe9f3}
+      .scroll{width:100%;overflow-x:auto}.note{font-size:11px;color:#40566b;margin:8px 0}.warning{font-size:11px;border-left:3px solid #a65c13;padding:7px 10px;background:#fff5e7}
+      small{color:#6b7180;font-size:10px}tr{break-inside:avoid}thead{display:table-header-group}.actions{margin-bottom:18px}
+      button{font:600 13px Arial,sans-serif;padding:9px 15px;cursor:pointer}
+      @media print{body{padding:0;margin:0;max-width:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}.actions{display:none}.scroll{overflow:visible}.subject{break-inside:auto}}
+      </style></head><body><div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
+      <header class="head"><h1>${escape(paper.school || paper.schoolName || 'SciMentra')}</h1><h2>${escape(paper.examName || 'Examination')} — Blueprint</h2>
+      <div class="meta"><span>Class: ${escape(paper.class || '')}</span><span>Board: CBSE</span><span>Maximum Marks: ${fmt(totalExpected)}</span><span>Time: ${escape(paper.time || '')} minutes</span>${paper.date ? `<span>Date: ${escape(paper.date)}</span>` : ''}</div></header>
+      ${mismatch}${blocks}<p class="note">This is a chapter-scoped school assessment blueprint derived from the final saved question records, not an official CBSE-prescribed blueprint.</p></body></html>`;
+  }
+
+  window.SciMentraBlueprint = {
+    html: __ebBlueprintHtml,
+    download(source) {
+      const paper = source?._cbseBlueprintSource || source;
+      const markup = __ebBlueprintHtml(source);
+      const url = URL.createObjectURL(new Blob([markup], { type: 'text/html;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = String(paper?.examName || 'Exam').replace(/[^\p{L}\p{N}._-]+/gu, '-') + '-Blueprint.html';
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+    }
+  };
   function downloadReport(source, answers) {
+    if (!answers && (source?.subjects?.some(s => Array.isArray(s.rows)) ||
+        source?._cbseBlueprintSource?.subjects?.some(s => Array.isArray(s.rows)))) {
+      window.SciMentraBlueprint.download(source);
+      return;
+    }
     const paper = toReviewPaper(source);
 
     let body = `
@@ -10484,9 +10666,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
     }).join('');
   }
   function downloadBlueprint(p) {
-    const rows = p.subjects.map(sub => `<h2>${escape(sub.subject)}</h2><table><thead><tr><th>Section / group</th><th>Type</th><th>Main questions</th><th>Attempt</th><th>Marks each</th><th>OR alternatives</th><th>Counted marks</th></tr></thead><tbody>${sub.rows.map(r => `<tr><td>${escape(r.section)} / ${escape(r.title)}</td><td>${escape(r.type)}</td><td>${r.count}</td><td>${r.attempt}</td><td>${r.marks}</td><td>${r.orCount}</td><td>${r.attempt * r.marks}</td></tr>`).join('')}</tbody></table>`).join('');
-    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escape(p.examName)} — Blueprint</title><style>body{font:15px Arial,sans-serif;max-width:1100px;margin:32px auto;padding:20px;color:#172b42}h1,h2{color:#173c62}table{border-collapse:collapse;width:100%;margin:18px 0}td,th{border:1px solid #bac6d3;padding:9px;text-align:left}th{background:#edf3f8}button{padding:10px 18px}a{color:#173c62}@media print{button{display:none}body{margin:0;padding:0}tr{break-inside:avoid}}</style></head><body><button onclick="window.print()">Print / Save as PDF</button><h1>${escape(p.examName)} — Blueprint</h1><p>${escape(p.school)} · ${escape(p.class)} · ${p.maxMarks} marks · ${p.time} minutes</p>${rows}${auditHTML(p)}</body></html>`;
-    download(`${filename(p.examName)}-blueprint.html`, html, 'text/html');
+    window.SciMentraBlueprint.download(p);
   }
   function locate(path) { const [si, ri, ii, vi] = path.split(':').map(Number), sub = state.paper.subjects[si], r = sub.rows[ri], q = vi < 0 ? r.items[ii] : r.items[ii].alternatives[vi]; return { si, ri, ii, vi, sub, r, q }; }
   function setLocated(loc, q) { if (loc.vi < 0) loc.r.items[loc.ii] = q; else loc.r.items[loc.ii].alternatives[loc.vi] = q; }
