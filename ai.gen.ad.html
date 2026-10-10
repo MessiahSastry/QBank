@@ -1217,7 +1217,24 @@ getQuestionTypesForBoard: function (boardName) {
 getSubjectsForBoard: function (boardName) {
   const b = (boardName || '').trim();
   const map = this.boardSubjectMappings || {};
-  return Array.isArray(map[b]) ? map[b] : (Array.isArray(map["Other"]) ? map["Other"] : []);
+  const subjects = Array.isArray(map[b])
+    ? map[b] : (map.Other || []);
+
+  const selectedClass =
+    document.getElementById('class-value-ai')?.value || '';
+
+  if (
+    b === 'CBSE' &&
+    /^(11th|12th) Class$/.test(selectedClass)
+  ) {
+    return subjects.flatMap(subject =>
+      subject === 'Science'
+        ? ['Physics', 'Chemistry', 'Biology']
+        : [subject]
+    );
+  }
+
+  return subjects;
 },
 
       // BACKWARD COMPAT: if any old code still calls this
