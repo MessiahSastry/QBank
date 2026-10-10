@@ -219,6 +219,81 @@
 /* CBSE controls are scoped; existing Foundation/entrance views keep their styles. */
 .cb-panel{background:#f2f7ff;border:1px solid #b8cfea;border-radius:12px;padding:22px;margin:20px 0;color:#17344e}
 .cb-panel h3{margin:6px 0 10px!important}.cb-kicker{font-size:11px;font-weight:800;letter-spacing:.12em;color:#2c6296}
+
+/* Compact CBSE tools */
+
+.cb-panel #cb-prompt-btn {
+  background:#195995!important;
+  border-color:#195995!important;
+  color:#fff!important;
+  border-radius:10px!important;
+}
+
+.cb-panel #cb-prompt-btn:hover {
+  background:#10446f!important;
+}
+
+.cb-more-tools {
+  position:relative;
+  align-self:end;
+}
+
+.cb-more-tools > summary {
+  list-style:none;
+  border-radius:10px!important;
+  user-select:none;
+}
+
+.cb-more-tools > summary::-webkit-details-marker {
+  display:none;
+}
+
+.cb-more-tools > summary::after {
+  content:"\25be";
+  margin-left:9px;
+  font-size:13px;
+}
+
+.cb-more-tools[open] > summary::after {
+  content:"\25b4";
+}
+
+.cb-more-tools-menu {
+  position:absolute;
+  z-index:60;
+  right:0;
+  top:calc(100% + 8px);
+  width:245px;
+  padding:9px;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  background:#fff;
+  border:1px solid #cbd8e6;
+  border-radius:12px;
+  box-shadow:0 12px 30px rgba(12,45,77,.16);
+}
+
+.cb-more-tools-menu .cb-button {
+  display:flex!important;
+  width:100%;
+  justify-content:flex-start!important;
+  margin:0!important;
+  min-width:0!important;
+  border-radius:8px!important;
+}
+
+.cb-more-tools-menu .cb-file-label {
+  cursor:pointer;
+}
+
+@media(max-width:600px) {
+  .cb-more-tools-menu {
+    right:auto;
+    left:0;
+    width:min(245px,84vw);
+  }
+}
 .cb-flex{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.cb-flex>label{flex:1;min-width:165px}
 .cb-panel input,.cb-panel select,.cb-subject-content input,.cb-subject-content select,.cb-dialog input,.cb-dialog textarea,.cb-dialog select{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:9px 10px;border:1px solid #b8c7d4;border-radius:6px;background:#fff;color:#172b3b;font:inherit;min-height:38px}
 .cb-panel label,.cb-subject-content label,.cb-dialog label{display:block;font-size:13px;font-weight:600;color:#28475f;margin:7px 0}
@@ -8549,9 +8624,23 @@ function __ebOpenAIQuestionGenerator(prompt) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    auth.onAuthStateChanged(function(user) {
+        auth.onAuthStateChanged(function(user) {
         if (!user) {
-            window.location.href = "login.html";
+            window.location.replace("login.html");
+            return;
+        }
+
+        const adminEmails = [
+            "messiahsastry20@gmail.com"
+        ];
+
+        const userEmail = String(user.email || "")
+            .trim()
+            .toLowerCase();
+
+        if (!adminEmails.includes(userEmail)) {
+            alert("Access denied. Administrator login required.");
+            window.location.replace("dashboard.html");
             return;
         }
 
@@ -12268,7 +12357,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–12</h3><p>Choose a paper size and the chapters to test. Science Classes 6–8 use integrated question-type sections; Classes 9–10 use Biology, Chemistry and Physics sections in that order when using the reference Science preset. Social Science uses question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–12</h3><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><details class="cb-more-tools"><summary class="cb-button"><i class="fas fa-ellipsis-h" aria-hidden="true" style="margin-right:8px"></i>More Tools</summary><div class="cb-more-tools-menu"><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div></details></div><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').before(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
