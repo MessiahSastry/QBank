@@ -350,8 +350,29 @@
 .question-text{
       line-height: 1.25;
       margin-bottom: 6px;
-      color:#163A63;
+      color:#000000;
       font-weight:400;
+}
+
+/* Black text in preview, PDF export and printing. */
+#print-preview,
+#print-preview *,
+.exam-source-page,
+.exam-source-page *,
+.a4-page,
+.a4-page * {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-text-stroke-width: 0 !important;
+}
+
+/* Justify prose passages and their continuation pieces. */
+.cbse-prose-passage,
+.paragraph-passage-text,
+.paragraph-passage-continuation-piece {
+  text-align: justify !important;
+  text-align-last: auto !important;
+  text-justify: inter-word;
 }
        .footer-row {
         display: flex;
@@ -6550,9 +6571,16 @@ function cbsePrintQuestion(question, number, section) {
     });
 
         // Add an instruction to reading passages when missing.
-    const readingSection = /reading|passage|extract/i.test(
+        const readingSection = /reading|passage|extract/i.test(
       `${section?.label || ''} ${q?.text?.slice(0, 100) || ''}`
     );
+
+    if (
+      readingSection &&
+      !/poetry|poem|verse/i.test(String(section?.label || ''))
+    ) {
+      stem.classList.add('cbse-prose-passage');
+    }
 
     const firstSubquestion =
       stem.querySelector('.cbse-subquestion-row');
