@@ -12174,7 +12174,7 @@ if (cleanedErrors.length) {
         const pool = source === 'Question Bank' ? preparedPool(await rawPool(cfg.subject, true), cfg, cfg.chapters) : preparedPool(imported, cfg, cfg.chapters);
         const result = source === 'Question Bank'
           ? C.solve(cfg.blueprint, pool, { ...cfg, chapters: cfg.chapters })
-          : C.assembleFinalSet(cfg.blueprint, pool, { ...cfg, board: 'CBSE', chapters: cfg.chapters });
+          : C.assembleFinalSet(cfg.blueprint, pool, { ...cfg, board: 'CBSE', chapters: cfg.chapters, requireCoverage: false });
         reports.push({ subject: cfg.subject, ...result });
         failures.push(...result.errors.map(e => `${cfg.subject}: ${e}`));
         if (!result.errors.length) built.push({ subject: cfg.subject, chapters: cfg.chapters, marks: cfg.marks, variant: cfg.variant, blueprint: cfg.blueprint, rows: result.rows, policy: { strictModels: cfg.strictModels, requireCoverage: cfg.requireCoverage, competencyMinimum: cfg.competencyMinimum }, minCompetency: result.minCompetency });
@@ -12376,7 +12376,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
         });
       }
       const covered = new Set(sub.rows.flatMap(r => flatten(r.items)).map(q => q.chapter));
-      if (sub.policy.requireCoverage) for (const ch of sub.chapters) if (!covered.has(ch)) errors.push(`${sub.subject}: chapter ${ch} is not represented.`);
+      if (paper.source === 'Question Bank' && sub.policy.requireCoverage) for (const ch of sub.chapters) if (!covered.has(ch)) errors.push(`${sub.subject}: chapter ${ch} is not represented.`);
       if (C.competencyMinimum(sub.rows) < sub.marks * sub.policy.competencyMinimum / 100) errors.push(`${sub.subject}: confirmed competency minimum is below its target.`);
       total += sub.marks;
     }
