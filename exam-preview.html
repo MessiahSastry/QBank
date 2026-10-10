@@ -5713,16 +5713,96 @@ function __cbseSplitLongQuestion(node) {
        for (const child of element.childNodes) {
       // Allow each complete subquestion to flow separately.
       
+      
+      // Allow long (A)/(B) alternatives to flow across pages
+      // without losing their hanging-indent alignment.
       if (
         child.nodeType === 1 &&
-        child.matches('.cbse-subquestion-row, .cbse-hanging-choice')
+        child.matches('.cbse-hanging-choice')
       ) {
+        const label = child.querySelector(
+          ':scope > .cbse-hanging-label'
+        );
 
+        const content = child.querySelector(
+          ':scope > .cbse-hanging-content'
+        );
+
+        const isPoetry =
+          /\b(?:poetry|poem|verse|stanza)\b/i.test(
+            stem.textContent.slice(0, 180)
+          );
+
+        if (label && content && !isPoetry) {
+          const fragments = splitMarkup(content);
+
+          if (fragments.length > 1) {
+            flush();
+
+            fragments.forEach((fragment, index) => {
+              const choice = child.cloneNode(false);
+              const newLabel = label.cloneNode(true);
+              const newContent = content.cloneNode(false);
+
+              // Display (A)/(B) only once.
+              // Preserve its text-column indentation.
+              if (index > 0) {
+                newLabel.textContent = '';
+                newLabel.setAttribute(
+                  'aria-hidden',
+                  'true'
+                );
+              }
+
+              Array.from(fragment.childNodes).forEach(node => {
+                newContent.appendChild(
+                  node.cloneNode(true)
+                );
+              });
+
+              choice.append(
+                newLabel,
+                newContent
+              );
+
+              part.appendChild(choice);
+              flush();
+            });
+
+            continue;
+          }
+        }
+      }
+
+      // Keep complete marked subquestions together.
+      if (
+        child.nodeType === 1 &&
+        child.matches(
+          '.cbse-subquestion-row, .cbse-hanging-choice'
+        )
+      ) {
         flush();
-        part.appendChild(child.cloneNode(true));
+        part.appendChild(
+          child.cloneNode(true)
+        );
         flush();
         continue;
       }
+
+      // Separate an HTML table from surrounding paragraphs,
+      // allowing it to move independently during pagination.
+      if (
+        child.nodeType === 1 &&
+        child.tagName === 'TABLE'
+      ) {
+        flush();
+        part.appendChild(
+          child.cloneNode(true)
+        );
+        flush();
+        continue;
+      }
+
 
       if (
         child.nodeType === 1 &&
