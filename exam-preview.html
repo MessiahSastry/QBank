@@ -6527,9 +6527,16 @@ function cbsePrintQuestion(question, number, section) {
       }
     });
 
-    // Move ordinary subquestion marks, such as [1], into the right column.
-    Array.from(stem.children).forEach(element => {
-      if (element.classList.contains('cbse-subquestion-row')) return;
+        // Move ordinary subquestion marks, such as [1], into the right column.
+    stem.querySelectorAll('img').forEach(img => {
+      img.classList.add('question-img');
+    });
+
+    Array.from(stem.querySelectorAll('p, div')).reverse().forEach(element => {
+      if (
+        element.closest('.cbse-subquestion-row') ||
+        element.querySelector('.cbse-subquestion-row')
+      ) return;
 
       const text = element.textContent.trim();
 
@@ -6593,6 +6600,32 @@ function cbsePrintQuestion(question, number, section) {
   }
 
   return holder.innerHTML;
+}
+
+function cbsePrintSectionName(subject, section, combined = false) {
+  const label = String(section.label || section.name || '');
+  const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
+  const name = match ? match[1] : label;
+
+  if (!/^english\b/i.test(String(subject.subject || ''))) return name;
+  if (/^Section\s+A$/i.test(name)) return 'Section A — Reading Skills';
+  if (/^Section\s+C$/i.test(name)) return 'Section C — Literature Textbook';
+
+  if (/^Section\s+B$/i.test(name)) {
+    if (combined) return 'Section B — Grammar and Writing';
+    const type = String(section.mcqType || '');
+    const task = label.split(/[—–]/).pop() || label;
+    if (/grammar/i.test(type + ' ' + task)) {
+      return 'Section B — Grammar';
+    }
+    if (/writing|letter|analytical/i.test(type + ' ' + task)) {
+      return 'Section B — Writing';
+    }
+    return /writing/i.test(label) && !/grammar/i.test(label)
+      ? 'Section B — Writing' : 'Section B — Grammar';
+  }
+
+  return name;
 }
 
 function cbseFormatSectionBoxes(page) {
@@ -6707,10 +6740,8 @@ function cbseFormatSectionBoxes(page) {
   for (const subject of subjects) {
     const subjectGroups = new Map();
 
-    for (const section of subject.sections || []) {
-      const label = String(section.label || section.name || '');
-      const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
-      const name = match ? match[1] : label;
+        for (const section of subject.sections || []) {
+      const name = cbsePrintSectionName(subject, section, true);
       const key = name.trim().toLowerCase();
 
       if (!subjectGroups.has(key)) {
@@ -6836,10 +6867,8 @@ function cbseFormatSectionBoxes(page) {
   for (const subject of exam.subjects || []) {
     const groups = new Map();
 
-    const entries = (subject.sections || []).map(section => {
-      const label = String(section.label || section.name || '');
-      const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
-      const name = match ? match[1] : label;
+        const entries = (subject.sections || []).map(section => {
+      const name = cbsePrintSectionName(subject, section);
       const key = name.trim().toLowerCase();
 
       const count =
@@ -6964,8 +6993,11 @@ function cbseFormatSectionBoxes(page) {
         marks.className = 'cbse-section-total';
         marks.textContent = `${group.total} Marks`;
 
-        box.append(instruction, marks);
-        block.append(heading, box);
+               box.append(instruction, marks);
+        block.append(heading);
+        if (!/^english\b/i.test(String(subject.subject || ''))) {
+          block.append(box);
+        }
 
         group.shown = true;
       }
