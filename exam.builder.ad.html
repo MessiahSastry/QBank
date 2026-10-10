@@ -11059,6 +11059,73 @@ if (cleanedErrors.length) {
         add(c, 'Main reader extended response', D, 1, 2, { orCount: 1, area: 'Prose|Poetry|Drama|Literature' });
         add(c, 'Supplementary extended response', D, 1, 2, { orCount: 1, area: 'Supplementary' });
       }
+          rows.forEach(r => {
+        r.section = r.type === 'Reading'
+          ? 'Section A — Reading Skills'
+          : r.type === 'Grammar'
+          ? 'Section B — Grammar'
+          : r.type === 'Writing'
+          ? 'Section B — Writing'
+          : 'Section C — Literature Textbook';
+      });
+
+      if (marks === 80) {
+        rows[0].pattern = [1, 1, 2, 1, 1, 1, 2, 1]
+          .map(marks => ({ marks }));
+        rows[1].pattern = [1, 1, 2, 1, 1, 1, 1, 1, 1]
+          .map(marks => ({ marks }));
+
+        const styles = [
+          [
+            'Read the passage given below:',
+            'One original unseen discursive passage followed by eight subquestions in this order: inference (1); contextual completion with two choices (1); evidence/justification (2); MCQ (1); true/false (1); MCQ (1); two reasons (2); vocabulary MCQ (1).'
+          ],
+          [
+            'Read the passage and the accompanying data carefully:',
+            'One original factual/data passage with its complete data table before nine subquestions in this order: analogy (1); fact/opinion completion (1); justification (2); data comparison (1); inference (1); vocabulary MCQ (1); brief explanation (1); Assertion–Reason MCQ with defined options (1); inference (1).'
+          ],
+          [
+            'Complete ANY TEN of the following twelve tasks, as directed:',
+            'Twelve independent one-mark Grammar import records, forming ONE printed question. Mix contextual completion, four-option MCQs, bracketed verb forms, reported dialogue/questions, and error-correction tasks. For error correction, provide a clearly incorrect sentence and ask for both the error and its correction. Use only grammar prescribed for the selected class; adapt task types when necessary. Do not make all twelve tasks the same type.'
+          ],
+          [
+            'Answer ANY ONE of the following two formal-letter tasks in 100–120 words:',
+            'Two independent formal-letter alternatives, five marks each. Give a complete situation, purpose, recipient and necessary details in each. Each task and its model answer must follow the 100–120-word limit. Use a model containing Letter.'
+          ],
+          [
+            'Answer ANY ONE of the following two analytical-paragraph tasks in 100–120 words:',
+            'Two independent analytical-paragraph alternatives, five marks each. Supply the complete source data, table, comparison or argument within each task. Each task and its model answer must follow the 100–120-word limit. Use a model containing Analytical Paragraph.'
+          ],
+          [
+            'Read the prose/drama extracts and answer the questions for ANY ONE of the two:',
+            'Two independent extracts from selected prose/drama lessons. Each contains its own verified extract and four subquestions worth 1, 1, 1 and 2 marks. Mix completion, MCQ, inference and explanation. Each alternative totals five marks.'
+          ],
+          [
+            'Read the poetry extracts and answer the questions for ANY ONE of the two:',
+            'Two independent extracts from selected poems. Each contains its own verified extract and four subquestions worth 1, 1, 1 and 2 marks. Mix meaning, imagery/poetic device, MCQ and inference. Each alternative totals five marks.'
+          ],
+          [
+            'Answer ANY FOUR of the following five questions, in about 50 words each:',
+            'Five independent three-mark main-reader records, forming ONE printed question. Use varied interpretation, character, theme and evidence questions from selected main-reader lessons. Model answers: about 50 words each.'
+          ],
+          [
+            'Answer ANY TWO of the following three questions, in 40–50 words each:',
+            'Three independent three-mark supplementary-reader records, forming ONE printed question. Use only selected supplementary lessons. Model answers: 40–50 words each.'
+          ],
+          [
+            'Answer ANY ONE of the following two questions, in 100–120 words:',
+            'Two independent six-mark main-reader alternatives. Use interpretation, theme, character or comparison supported by selected lessons. Tasks and model answers: 100–120 words each.'
+          ],
+          [
+            'Answer ANY ONE of the following two questions, in 100–120 words:',
+            'Two independent six-mark supplementary-reader alternatives from selected lessons. Tasks and model answers: 100–120 words each.'
+          ]
+        ];
+
+        rows.forEach((r, i) => {
+          [r.printInstruction, r.generationRules] = styles[i];
+        });
+      }
     } else if (variant === 'hindi_a' || variant === 'hindi_b') {
       const isA = variant === 'hindi_a', a = 'खंड क — अपठित बोध', b = 'खंड ख — व्यावहारिक व्याकरण', c = 'खंड ग — साहित्य', d = 'खंड घ — रचनात्मक लेखन';
       if (marks === 80) {
@@ -11381,7 +11448,7 @@ if (cleanedErrors.length) {
     const qtype = ['Reading', 'Extract', 'Grammar', 'Writing'].includes(qt) ? qt : qt;
     let options = Array.isArray(q.options) ? q.options.map(x => clean(x).replace(/^[A-D][).:]\s*/i, '')) : q.options && typeof q.options === 'object' ? ['A', 'B', 'C', 'D'].map(k => clean(q.options[k])) : [];
     let text = rec.body;
-        if ([MCQ, AR, 'MCQ (Multiple)'].includes(qtype)) {
+                if ([MCQ, AR, 'MCQ (Multiple)', 'Grammar'].includes(qtype)) {
       const parsed = optionRecord(rec.body);
 
       if (!options.length) {
@@ -12199,7 +12266,7 @@ if (cleanedErrors.length) {
       return `SUBJECT: ${cfg.subject}\nCLASS: ${snapshot.class}\nSELECTED CHAPTERS: ${cfg.chapters.join('; ')}\nSUBJECT MARKS: ${cfg.marks}\nMinimum confirmed competency-based marks: ${cfg.competencyMinimum || 0}% after OR/Attempt Any choices.\n${rows}`;
     }).join('\n\n');
     return `You are generating an examination question set for the SciMentra Exam Builder.
-Generate questions and answers only. The Builder handles the question-paper layout, sections, final numbering and printing.
+Generate questions and answers only. The Builder handles the question-paper layout, sections, final numbering and printing. Q headers below identify import records, not final printed question numbers. Preserve separate records for every Grammar item, Attempt Any item and independent OR alternative. Keep the specified headers and Slot tags; the Builder groups and renumbers them for printing. Do not copy blueprint titles or printed instructions into the question body; the Builder adds them.
 
 EXAM: ${snapshot.examName}
 BOARD: CBSE
@@ -12295,9 +12362,6 @@ For a case, passage, extract or question set, use its complete header, followed 
 Passage:
 Full common passage/context.
 Answer the following questions:
-Sub-question 1 (1 Mark):
-Passage:
-Full common passage/context.
 Sub-question 1 (1 Mark):
 Question text.
 Answer:
