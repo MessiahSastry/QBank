@@ -6313,14 +6313,29 @@ function cbsePrintQuestion(question, number, section) {
           break-inside: avoid;
         }
 
-        body.cbse-paper-preview .cbse-subquestion-text {
+                body.cbse-paper-preview .cbse-subquestion-text {
+          display: grid !important;
+          grid-template-columns: 30px minmax(0, 1fr);
+          align-items: start;
           min-width: 0;
           margin: 0 !important;
           padding: 0 !important;
           text-align: left;
         }
 
-        body.cbse-paper-preview .cbse-subquestion-text > p {
+        body.cbse-paper-preview .cbse-subquestion-label {
+          grid-column: 1;
+          white-space: nowrap;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-content {
+          grid-column: 2;
+          min-width: 0;
+          overflow-wrap: break-word;
+          white-space: normal;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-content p {
           margin: 0 !important;
         }
 
@@ -6367,8 +6382,57 @@ function cbsePrintQuestion(question, number, section) {
       const text = document.createElement('div');
       text.className = 'cbse-subquestion-text';
 
-      while (element.firstChild) {
+           while (element.firstChild) {
         text.appendChild(element.firstChild);
+      }
+
+      // Separate the subquestion label from its text.
+      // Wrapped lines align under the text, not the number.
+      const first = text.firstElementChild;
+      const oldLabel = first?.textContent.trim() || '';
+
+      if (/^(?:\(\d+\)|\([a-z]\)|(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)\.)$/i.test(oldLabel)) {
+        const label = document.createElement('span');
+        label.className = 'cbse-subquestion-label';
+
+        const match = oldLabel.match(/^\((\d+)\)$/);
+
+        const isReading = /reading|passage|extract/i.test(
+          `${section?.label || ''} ${q?.text?.slice(0, 100) || ''}`
+        );
+
+        const roman = [
+          'i', 'ii', 'iii', 'iv', 'v',
+          'vi', 'vii', 'viii', 'ix', 'x',
+          'xi', 'xii'
+        ];
+
+        const index = match ? Number(match[1]) - 1 : -1;
+
+        label.textContent = index >= 0
+          ? (
+              isReading
+                ? `${roman[index] || index + 1}.`
+                : `(${String.fromCharCode(97 + index)})`
+            )
+          : oldLabel;
+
+        first.remove();
+
+        const content = document.createElement('div');
+        content.className = 'cbse-subquestion-content';
+
+        while (text.firstChild) {
+          content.appendChild(text.firstChild);
+        }
+
+        content.querySelectorAll('b,strong').forEach(el => {
+          if (!el.textContent.trim()) {
+            el.remove();
+          }
+        });
+
+        text.append(label, content);
       }
 
       const mark = document.createElement('span');
@@ -6454,7 +6518,7 @@ function cbsePrintQuestion(question, number, section) {
 
       const text = element.textContent.trim();
 
-      if (!/^\(\d+\)\s*\S/.test(text)) return;
+            if (!/^(?:\(\d+\)|\([a-z]\)|(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)\.)\s*\S/i.test(text)) return;
 
       const match = text.match(/\[(\d+(?:\.\d+)?)\]\s*$/);
 
@@ -6462,6 +6526,27 @@ function cbsePrintQuestion(question, number, section) {
         makeSubquestionRow(element, match[1], true);
       }
     });
+
+        // Add an instruction to reading passages when missing.
+    const readingSection = /reading|passage|extract/i.test(
+      `${section?.label || ''} ${q?.text?.slice(0, 100) || ''}`
+    );
+
+    const firstSubquestion =
+      stem.querySelector('.cbse-subquestion-row');
+
+    if (
+      readingSection &&
+      firstSubquestion &&
+      !/answer.{0,50}(?:questions|items)/i.test(stem.textContent)
+    ) {
+      const prompt = document.createElement('p');
+
+      prompt.innerHTML =
+        '<b>Answer the following questions:</b>';
+
+      firstSubquestion.before(prompt);
+    }
 
     // Centre standalone OR after the HTML cleanup.
     stem.querySelectorAll('p, div').forEach(element => {
