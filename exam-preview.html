@@ -5294,10 +5294,12 @@ function __cbseSplitLongQuestion(node) {
 
        for (const child of element.childNodes) {
       // Allow each complete subquestion to flow separately.
+      
       if (
         child.nodeType === 1 &&
-        child.matches('.cbse-subquestion-row')
+        child.matches('.cbse-subquestion-row, .cbse-hanging-choice')
       ) {
+
         flush();
         part.appendChild(child.cloneNode(true));
         flush();
@@ -6550,12 +6552,47 @@ function cbsePrintQuestion(question, number, section) {
           white-space: nowrap;
         }
 
+        
         body.cbse-paper-preview .cbse-subquestion-content {
           grid-column: 2;
           min-width: 0;
           overflow-wrap: break-word;
           white-space: normal;
         }
+
+        /* Hanging alignment for (A), (B), (a), (b), etc. */
+        body.cbse-paper-preview .question-text .cbse-hanging-choice {
+          display: grid !important;
+          grid-template-columns: 30px minmax(0, 1fr);
+          align-items: start;
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+          margin: 2px 0 !important;
+          padding: 0 !important;
+          break-inside: avoid;
+        }
+
+        body.cbse-paper-preview .question-text .cbse-hanging-label {
+          grid-column: 1;
+          white-space: nowrap;
+        }
+
+        body.cbse-paper-preview .question-text .cbse-hanging-content {
+          grid-column: 2;
+          min-width: 0;
+          white-space: normal;
+          overflow-wrap: break-word;
+          text-align: justify !important;
+          text-align-last: auto !important;
+        }
+
+        body.cbse-paper-preview .question-text .cbse-hanging-content > p,
+        body.cbse-paper-preview .question-text .cbse-hanging-content > div {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
 
                 body.cbse-paper-preview .question-text {
           margin-bottom: 0 !important;
@@ -6809,8 +6846,76 @@ function cbsePrintQuestion(question, number, section) {
       firstSubquestion.before(prompt);
     }
 
+    
+    // Give alternatives and unmarked subquestions a hanging label.
+    Array.from(stem.querySelectorAll('p, div')).reverse().forEach(block => {
+      if (block.closest(
+        '.cbse-subquestion-row, .cbse-hanging-choice, .options-block, td, th'
+      )) return;
+
+      if (block.querySelector(
+        '.cbse-subquestion-row, .cbse-hanging-choice'
+      )) return;
+
+      const firstNode = Array.from(block.childNodes).find(node =>
+        node.nodeType === Node.TEXT_NODE
+          ? !!node.textContent.trim()
+          : node.nodeType === Node.ELEMENT_NODE &&
+            node.tagName !== 'BR' &&
+            !!node.textContent.trim()
+      );
+
+      if (!firstNode) return;
+
+      const labelPattern =
+        /^\s*(\((?:[A-Za-z]|\d{1,2})\)|(?:i|ii|iii|iv|v|vi|vii|viii|ix|x)\.)\s*/i;
+
+      const match = firstNode.textContent.match(labelPattern);
+      if (!match) return;
+
+      const labelText = match[1];
+
+      if (firstNode.nodeType === Node.TEXT_NODE) {
+        firstNode.textContent =
+          firstNode.textContent.slice(match[0].length);
+      } else if (firstNode.textContent.trim() === labelText) {
+        firstNode.remove();
+      } else {
+        const walker = document.createTreeWalker(
+          firstNode,
+          NodeFilter.SHOW_TEXT
+        );
+
+        let textNode;
+
+        while ((textNode = walker.nextNode())) {
+          if (!textNode.textContent.trim()) continue;
+
+          textNode.textContent =
+            textNode.textContent.replace(labelPattern, '');
+
+          break;
+        }
+      }
+
+      const label = document.createElement('span');
+      label.className = 'cbse-hanging-label';
+      label.textContent = labelText;
+
+      const content = document.createElement('div');
+      content.className = 'cbse-hanging-content';
+
+      while (block.firstChild) {
+        content.appendChild(block.firstChild);
+      }
+
+      block.classList.add('cbse-hanging-choice');
+      block.append(label, content);
+    });
+
     // Centre standalone OR after the HTML cleanup.
     stem.querySelectorAll('p, div').forEach(element => {
+
       if (
         element.textContent.trim().toUpperCase() === 'OR' &&
         !element.querySelector('p, div, table, img')
