@@ -595,6 +595,28 @@
   font-size: inherit !important;
 }
 
+/* Justify questions and subquestions. */
+#print-preview .question-text,
+#print-preview .cbse-subquestion-text,
+#print-preview .cbse-subquestion-content,
+#print-preview .paragraph-sub-text {
+  text-align: justify !important;
+  text-align-last: auto !important;
+}
+
+/* Make instruction lines bold. */
+#print-preview .exam-print-instruction,
+#print-preview .exam-print-instruction :not(mjx-container, mjx-container *, svg, svg *),
+#print-preview .cbse-box-instruction,
+#print-preview .cbse-section-instruction {
+  font-weight: 700 !important;
+}
+
+#print-preview .option-item {
+  text-align: left !important;
+  text-align-last: auto !important;
+}
+
 /* ===== Paragraph-Based MCQ Preview Layout ===== */
 .paragraph-set-preview {
   display: block;
@@ -5330,7 +5352,8 @@ function __cbseSplitLongQuestion(node) {
       '.cbse-subquestion-row'
     );
 
-    const isInstruction =
+        const isInstruction =
+      !!chunk.querySelector('.exam-print-instruction') ||
       /^(?:[^:\n]{1,80}:\s*)?(?:attempt|answer)\s+(?:any|all|the\s+following)\b/i.test(text);
 
     // Keep OR, labels and instructions with the following content.
@@ -5801,9 +5824,11 @@ async function paginateExamPreview(sourcePage, renderId) {
     node,
     tolerance = 2
   ) {
-    if (!shell || !shell.content || !node) {
+       if (!shell || !shell.content || !node) {
       return true;
     }
+
+    repairOptionLayouts(node);
 
     void shell.content.offsetHeight;
     void node.offsetHeight;
@@ -6280,6 +6305,136 @@ function formatSectionTotal(value) {
   return Number.isInteger(n)
     ? String(n)
     : String(n);
+}
+
+function formatExamTextForPrint(root) {
+  if (!root) return;
+
+  // Convert embedded MCQ lists into the automatic option layout.
+  root.querySelectorAll('.question-text ol').forEach(list => {
+    const items = Array.from(list.children).filter(
+      item => item.tagName === 'LI'
+    );
+
+    if (items.length !== 4) return;
+
+    const labels = items.map(item =>
+      (item.textContent.trim().match(/^\(?([A-D])[).:]\s+/i) || [])[1]
+    ).join('').toUpperCase();
+
+    if (
+      String(list.getAttribute('type') || '').toUpperCase() !== 'A' &&
+      labels !== 'ABCD'
+    ) return;
+
+    const lines = items.map((item, index) => {
+      const option = item.cloneNode(true);
+
+      if (labels === 'ABCD') {
+        const walker = document.createTreeWalker(
+          option,
+          NodeFilter.SHOW_TEXT
+        );
+
+        let first = walker.nextNode();
+
+        while (first && !first.textContent.trim()) {
+          first = walker.nextNode();
+        }
+
+        if (first) {
+          first.textContent = first.textContent.replace(
+            /^\s*(?:\([A-D]\)|[A-D][).:])\s*/i,
+            ''
+          );
+        }
+      }
+
+      option.querySelectorAll('p,div').forEach(element => {
+        element.replaceWith(
+          ...element.childNodes,
+          document.createTextNode(' ')
+        );
+      });
+
+      option.querySelectorAll('br').forEach(element => {
+        element.replaceWith(document.createTextNode(' '));
+      });
+
+      return String.fromCharCode(65 + index) + ') ' +
+        option.innerHTML.replace(/\r?\n/g, ' ').trim();
+    });
+
+    const options = document.createElement('div');
+    options.className = 'options-block';
+
+    options.setAttribute(
+      'data-options',
+      encodeURIComponent(JSON.stringify(lines))
+    );
+
+    options.innerHTML = renderOptionsLayout(lines, options);
+    list.replaceWith(options);
+  });
+
+  // Identify instruction lines.
+  const instructionStart = /^(?:(?:\(\d+\)|\([a-z]\)|[ivxlcdm]+\.)\s*)?(?:(?:read|study|observe|examine)\s+(?:the\s+)?(?:(?:following|given)\s+)?(?:passage|extract|poem|text|table|chart|graph|data|picture|image|information|case)\b|(?:answer|attempt)\s+(?:any|all|both|each|(?:the\s+)?(?:foll(?:o)?wing|questions?))\b|choose\s+(?:the\s+)?(?:correct|appropriate|best)\b|(?:complete|rewrite|match)\s+(?:the\s+)?following\b|fill\s+(?:in\s+)?(?:the\s+)?blanks?\b|write\s+(?:a|an)\s+(?:formal|informal|letter|paragraph|report|notice|email)\b)/i;
+
+  root.querySelectorAll(
+    '.question-text, .question-text p, .question-text div, ' +
+    '.paragraph-passage-text, .paragraph-sub-text'
+  ).forEach(block => {
+    if (
+      block.closest(
+        '.options-block, .option-layout, .exam-print-instruction'
+      )
+    ) return;
+
+    let run = [];
+
+    const flush = () => {
+      const text = run.map(node => node.textContent).join('')
+        .replace(/\s+/g, ' ').trim();
+
+      const alreadyMarked = run.some(node =>
+        node.nodeType === Node.ELEMENT_NODE &&
+        node.classList.contains('exam-print-instruction')
+      );
+
+      if (
+        run.length &&
+        !alreadyMarked &&
+        instructionStart.test(text)
+      ) {
+        const instruction = document.createElement('span');
+        instruction.className = 'exam-print-instruction';
+
+        run[0].before(instruction);
+
+        run.forEach(node => {
+          instruction.appendChild(node);
+        });
+      }
+
+      run = [];
+    };
+
+    Array.from(block.childNodes).forEach(node => {
+      if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        /^(BR|P|DIV|UL|OL|TABLE|PRE|BLOCKQUOTE|H[1-6]|HR)$/.test(node.nodeName)
+      ) {
+        flush();
+      } else if (
+        node.nodeType === Node.TEXT_NODE ||
+        node.nodeType === Node.ELEMENT_NODE
+      ) {
+        run.push(node);
+      }
+    });
+
+    flush();
+  });
 }
 
 function cbsePrintEnabled() {
@@ -7689,7 +7844,9 @@ if (section.questions && section.questions.length > 0) {
     'mjx-process'
   );
 
-   function doTypeset() {
+     function doTypeset() {
+    formatExamTextForPrint(page);
+
     // Build options HTML BEFORE MathJax
     document.querySelectorAll('.options-block[data-options]').forEach(node => {
       try {
