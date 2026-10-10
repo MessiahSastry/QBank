@@ -3451,6 +3451,20 @@ Don't mention the option in the explanation, but give the correct answer.
         );
       }
 
+            if (
+        isCbse &&
+        !/^Text(?: Book)?\b/i.test(
+          String(sessionParams.questionType || '')
+        )
+      ) {
+        fullPromptForAI += '\n' +
+          __scSeniorSciencePrompt(
+            sessionParams.class,
+            sessionParams.subject,
+            'individual questions'
+          );
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/v1/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4429,6 +4443,103 @@ Do not change instructions for another subject.
 `;
 }
 
+function __scSeniorSciencePrompt(classLabel, subjectLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+
+  const subject = String(subjectLabel || '').trim();
+
+  if (
+    ![11, 12].includes(grade) ||
+    !['Physics', 'Chemistry', 'Biology'].includes(subject)
+  ) return '';
+
+  const subjectRules = {
+    Physics:
+      'Use correct physical principles, quantities, SI units, dimensions, sign conventions, formulae, substitutions, numerical results, graphs and diagrams. Verify every calculation and physical conclusion.',
+
+    Chemistry:
+      'Use verified chemical facts, formulas, nomenclature, valency, chemical equations, balancing, reaction conditions, stoichiometry and data. Apply Physical, Organic or Inorganic Chemistry only where prescribed in the selected chapter.',
+
+    Biology:
+      'Use correct biological terminology, cell and organism structures, functions, processes, labelled diagrams, experimental evidence and data interpretation. Do not introduce unsupported mechanisms or higher-class details.'
+  };
+
+  return `
+CBSE CLASS ${grade} ${subject.toUpperCase()} — INDEPENDENT SUBJECT RULES
+
+1. SUBJECT IDENTITY
+- Treat ${subject} as its own CBSE subject.
+- Subject code: ${
+  subject === 'Physics' ? '042' :
+  subject === 'Chemistry' ? '043' : '044'
+}.
+- Do NOT treat it as part of a combined Science paper.
+- Never mix questions from Physics, Chemistry and Biology.
+
+2. TEXTBOOK RESEARCH
+- Verify the applicable academic-year CBSE syllabus.
+- Identify the correct prescribed NCERT textbook.
+- Study the actual selected Class ${grade} ${subject} chapter.
+- Use official CBSE Academic, NCERT and ePathshala sources.
+- Do not hardcode textbook names or use unverified summaries.
+- Stay strictly within the selected chapter.
+
+3. SUBJECT-SPECIFIC QUESTION STANDARD
+- ${subjectRules[subject]}
+- Cover the chapter's actual concepts, examples, exercises,
+  diagrams, experiments and applications.
+- Include conceptual, application, reasoning, competency
+  and higher-order questions where appropriate.
+- Avoid repeated questions and superficial changes of numbers.
+- Do not introduce deleted or higher-class syllabus topics.
+
+4. QUESTION TYPES AND ANSWERS
+- Follow the requested question types and quantities exactly.
+- Distinguish MCQ (Single), Assertion–Reason, descriptive,
+  case-based and data-based questions.
+- Verify all options and answers independently.
+- Use accurate, appropriately detailed point-wise explanations
+  for descriptive science answers.
+- For calculations, give complete step-wise working with units.
+- Use correctly balanced chemical equations where applicable.
+- Include genuine diagrams and graphs only when appropriate.
+- Never invent figures, labels, experimental results or image URLs.
+
+5. GENERATION WORKFLOW
+
+${workflow === 'chapter bank'
+  ? `This is a reusable SINGLE-CHAPTER QUESTION BANK.
+Follow the existing chapter-bank inventory where the verified
+lesson can genuinely support the requested question models.
+Do not turn the bank into a complete 70-mark examination paper.
+Do not pad the inventory with invented or duplicate questions.`
+  : `This is INDIVIDUAL QUESTION GENERATION.
+Follow the selected question type, exact quantity, marks
+and requested difficulty distribution.
+Do not impose an entire examination blueprint.`}
+
+6. CBSE EXAMINATION REFERENCE
+- Class XII Physics, Chemistry and Biology have separate
+  70-mark theory examinations.
+- The full 33-question, Sections A–E reference blueprint
+  belongs in the Exam Builder, not the chapter-wise question bank.
+- For Class XI, that full-paper question format is a school
+  adaptation, not a Class XI board examination.
+- Never use the Class X combined Science blueprint.
+
+7. FINAL VERIFICATION
+- Check the actual textbook chapter.
+- Verify every scientific fact, formula, calculation and answer.
+- Check chapter coverage, question types, counts and difficulty.
+- If the actual chapter cannot be accessed or verified,
+  stop before Q1 and request a suitable source.
+- Preserve the existing question-record headers, marks,
+  metadata, options, answers, explanations and parsing format.
+`;
+}
+
 function buildCompleteChapterBankPrompt(sessionParams = {}) {
   const cls = String(sessionParams.class || '').trim();
   const board = String(sessionParams.board || '').trim();
@@ -4847,6 +4958,10 @@ IMPORTANT:
 ${subjectPlan}
 
 ${specialRules}
+
+${boardKey === 'cbse' && isScience
+  ? __scSeniorSciencePrompt(cls, subj, 'chapter bank')
+  : ''}
 
 ${boardKey === 'cbse' && isEnglish
   ? __scEnglishResearchRules(cls, 'chapter bank')
@@ -5287,6 +5402,9 @@ Board: ${board}
 Subject: ${subj}
 Chapter: ${chap}
 ${requestLine}
+${isCbse && !isTextbook
+  ? __scSeniorSciencePrompt(cls, subj, 'individual questions')
+  : ''}
 ${isCbse && /^english\b/i.test(String(subj)) && !isTextbook
   ? __scEnglishResearchRules(cls, 'individual questions')
   : ''}
