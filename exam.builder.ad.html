@@ -5568,9 +5568,11 @@ function updateSubjectsForBoardAndClass() {
       selectedBoard === 'CBSE' &&
       /^(11th|12th) Class$/.test(selectedClass)
         ? mappedSubjects.flatMap(subject =>
-            subject === 'Science'
+                        subject === 'Science'
               ? ['Physics', 'Chemistry', 'Biology']
-              : [subject]
+              : subject === 'Social Science'
+                ? ['History', 'Geography', 'Political Science', 'Economics']
+                : [subject]
           )
         : mappedSubjects;
 
@@ -7968,6 +7970,24 @@ ${String(board || '').trim().toUpperCase() === 'CBSE' &&
     ? __scMathResearchRules(className, 'exam blueprint')
     : ''}
 
+${String(board || '').trim().toUpperCase() === 'CBSE' &&
+  Array.isArray(subjects)
+    ? subjects
+        .filter(s =>
+          __scIsSocialSubject(
+            s?.subject || s?.name || s
+          )
+        )
+        .map(s =>
+          __scSocialResearchRules(
+            className,
+            s?.subject || s?.name || s,
+            'exam blueprint'
+          )
+        )
+        .join('\n')
+    : ''}
+
 QUESTION BLUEPRINT — FOLLOW THIS ORDER EXACTLY
 `;
 
@@ -9961,6 +9981,13 @@ if (cleanedErrors.length) {
         ? `https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/${SOURCES[variant]}-SQP.pdf`
         : '';
   };
+    const __scSeniorSocialSources = {
+    history: 'https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/History-SQP.pdf',
+    geography: 'https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Geography-SQP.pdf',
+    political_science: 'https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/PolSci-SQP.pdf',
+    economics: 'https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/Economics-SQP.pdf'
+  };
+
   const VARIANTS = {
     Mathematics: [['mathematics', 'Mathematics Standard (041)'], ['mathematics_basic', 'Mathematics Basic (241)']],
         Science: [['science', 'Science (086)']],
@@ -9969,6 +9996,10 @@ if (cleanedErrors.length) {
     Physics: [['physics', 'Physics (042) — XI/XII']],
     Chemistry: [['chemistry', 'Chemistry (043) — XI/XII']],
     Biology: [['biology', 'Biology (044) — XI/XII']],
+        History: [['history', 'History (027)']],
+    Geography: [['geography', 'Geography (029)']],
+    'Political Science': [['political_science', 'Political Science (028)']],
+    Economics: [['economics', 'Economics (030)']],
     English: [['english', 'English Language & Literature (184)']],
     Hindi: [['hindi_b', 'Hindi B (085)'], ['hindi_a', 'Hindi A (002)']],
     Sanskrit: [['sanskrit', 'Sanskrit (122)']],
@@ -10191,6 +10222,166 @@ if (cleanedErrors.length) {
       return blueprint;
     }
 
+        if ([
+      'history', 'geography',
+      'political_science', 'economics'
+    ].includes(variant)) {
+
+      const referenceMarks =
+        variant === 'geography' ? 70 : 80;
+
+      if (![20, 40, referenceMarks].includes(marks)) {
+        throw new Error(
+          `${variant} supports 20, 40 or ${referenceMarks} marks.`
+        );
+      }
+
+      const seniorRows = [];
+
+      const addSenior = (...args) =>
+        seniorRows.push(row(...args));
+
+      if (marks === referenceMarks) {
+
+        if (variant === 'history') {
+          addSenior('Section A', 'Multiple choice',
+            MCQ, 21, 1);
+
+          addSenior('Section B', 'Short answer',
+            D, 6, 3,
+            { orCount: 2, orPositions: [0, 5] });
+
+          addSenior('Section C', 'Long answer',
+            D, 3, 8,
+            { orCount: 3, orPositions: [0, 1, 2] });
+
+          addSenior('Section D', 'Source-based',
+            C, 3, 4,
+            { pattern: [
+              { marks: 1 }, { marks: 1 }, { marks: 2 }
+            ] });
+
+          addSenior('Section E', 'Map-based',
+            'Map', 1, 5,
+            { pattern: [
+              { marks: 1 },
+              { marks: 1 },
+              { marks: 1, alternatives: 2 },
+              { marks: 2 }
+            ] });
+
+        } else if (variant === 'geography') {
+          addSenior('Section A', 'Multiple choice',
+            MCQ, 17, 1);
+
+          addSenior('Section B', 'Source-based',
+            C, 2, 3);
+
+          addSenior('Section C', 'Short answer',
+            D, 4, 3);
+
+          addSenior('Section D', 'Long answer',
+            D, 5, 5);
+
+          addSenior('Section E', 'Map-based',
+            'Map', 2, 5);
+
+        } else if (variant === 'political_science') {
+          addSenior('Section A', 'Multiple choice',
+            MCQ, 12, 1);
+
+          addSenior('Section B', '2-mark answer',
+            D, 6, 2);
+
+          addSenior('Section C', '4-mark answer',
+            D, 5, 4,
+            { orCount: 2, orPositions: [1, 3] });
+
+          addSenior('Section D',
+            'Picture / passage / map-based',
+            C, 3, 4);
+
+          addSenior('Section E', '6-mark answer',
+            D, 4, 6,
+            { orCount: 4, orPositions: [0, 1, 2, 3] });
+
+        } else if (variant === 'economics') {
+          for (const section of [
+            'Section A — Macroeconomics',
+            'Section B — Indian Economic Development'
+          ]) {
+            addSenior(section, 'Multiple choice',
+              MCQ, 10, 1);
+
+            addSenior(section, '3-mark answer',
+              D, 2, 3);
+
+            addSenior(section, '4-mark answer',
+              D, 3, 4);
+
+            addSenior(section, '6-mark answer',
+              D, 2, 6);
+          }
+        }
+
+      } else if (marks === 40) {
+
+        // Explicit school adaptation.
+        addSenior('Section A', 'Multiple choice',
+          MCQ, 10, 1);
+
+        addSenior('Section B', 'Short answer',
+          D, 4, 3);
+
+        addSenior('Section C', 'Long answer',
+          D, 2, 5);
+
+        addSenior('Section D', 'Case / source-based',
+          C, 2, 4);
+
+      } else {
+
+        // Explicit 20-mark school adaptation.
+        addSenior('Section A', 'Multiple choice',
+          MCQ, 6, 1);
+
+        addSenior('Section B', 'Short answer',
+          D, 2, 3);
+
+        addSenior('Section C', '4-mark answer',
+          D, 2, 4);
+      }
+
+      const blueprint = {
+        variant,
+        marks,
+        rows: seniorRows.map((r, i) => ({
+          ...r,
+          id: `r${i + 1}`,
+          models: modelWeights(variant, r.type)
+        })),
+        custom: false,
+        referenceMarks,
+        source: __scSeniorSocialSources[variant],
+        schoolAdaptation: marks !== referenceMarks,
+        note: marks === referenceMarks
+          ? `Class XII CBSE 2026–27 ${variant.replace(/_/g, ' ')} reference structure. Class XI uses this as a school adaptation with Class XI syllabus content.`
+          : `${marks}-mark school adaptation, not an official CBSE sample-paper distribution.`
+      };
+
+      const total = blueprint.rows.reduce(
+        (sum, r) => sum + r.attempt * r.marks, 0
+      );
+
+      if (total !== marks) {
+        throw new Error(
+          `Senior Social Science blueprint total: ${total}, expected ${marks}.`
+        );
+      }
+
+      return blueprint;
+    }
+
     let rows = [];
     const add = (...args) => rows.push(row(...args));
     const isMath = variant.startsWith('mathematics');
@@ -10375,8 +10566,68 @@ if (cleanedErrors.length) {
     const year = variant === 'telugu' ? '2025–26; the 2026–27 index has no active Telugu AP paper link' : '2026–27';
     return { variant, marks, rows, custom: false, referenceMarks, source: sourceURL(variant), note: marks === referenceMarks ? `Class 10 reference structure (${year}). For Classes 6–9 this is a school-selected use of that structure; content stays within the selected class.` : `School adaptation of the Class 10 ${referenceMarks}-mark structure (${year}). Counts and choices are adjusted explicitly to ${marks} marks.` };
   }
-    function buildChapterPreset(variant, marks = 80, settings = {}) {
+      function buildChapterPreset(variant, marks = 80, settings = {}) {
     const bp = buildPreset(variant, marks);
+
+    const grade = Number(
+      String(settings.class || '').match(/\d+/)?.[0] || 0
+    );
+
+    if ([
+      'history', 'geography',
+      'political_science', 'economics'
+    ].includes(variant)) {
+      if (grade === 11) {
+        bp.schoolAdaptation = true;
+        bp.note =
+          `Class XI ${variant.replace(/_/g, ' ')} school paper. ` +
+          `Uses the Class XII question-format reference, ` +
+          `but ONLY Class XI selected syllabus content.`;
+      }
+      return bp;
+    }
+
+    if (
+      variant === 'social' &&
+      (grade === 9 || grade === 10)
+    ) {
+      const includeMaps = settings.includeMaps !== false;
+
+      if (!includeMaps) {
+        bp.rows = bp.rows.map(r => {
+          if (r.type !== 'Map') return r;
+
+          return {
+            ...r,
+            type: r.marks === 1 ? MCQ : D,
+            title: `${r.marks}-mark alternative to map work`,
+            pattern: null,
+            models: modelWeights(
+              variant,
+              r.marks === 1 ? MCQ : D
+            )
+          };
+        });
+      }
+
+      bp.chapterScoped = true;
+      bp.includeMaps = includeMaps;
+      bp.schoolAdaptation =
+        grade === 9 || marks !== 80 || !includeMaps;
+
+      bp.note =
+        `Class ${grade} Social Science: ` +
+        `Section A - History; Section B - Geography; ` +
+        `Section C - Political Science; Section D - Economics. ` +
+        (grade === 9
+          ? 'Class X section structure adapted for Class IX. '
+          : '') +
+        'Use ONLY selected chapters. A full four-area preset ' +
+        'requires sufficient selected content in all four areas. ' +
+        'For partial-syllabus tests, use Custom Paper.';
+
+      return bp;
+    }
 
     if (['physics', 'chemistry', 'biology'].includes(variant)) {
 
@@ -10916,7 +11167,7 @@ if (cleanedErrors.length) {
   function getConfig(subject) {
     if (!state.subjects.has(subject)) {
       const variant = (C.VARIANTS[subject] || [['custom']])[0][0];
-            const marks =
+                 const marks =
         ['physics', 'chemistry', 'biology'].includes(variant)
           ? 70
           : variant === 'computer' && state.defaultMarks === 80
@@ -10944,8 +11195,8 @@ if (cleanedErrors.length) {
     $('.add-section-btn', block).style.display = 'none';
     list.classList.add('cb-subject-content');
     const variants = C.VARIANTS[subject] || [['custom', 'School-defined Custom blueprint']];
-       const choices =
-      ['physics', 'chemistry', 'biology'].includes(cfg.variant)
+           const choices =
+      ['physics', 'chemistry', 'biology', 'geography'].includes(cfg.variant)
         ? [20, 40, 70]
         : [20, 40, ...(cfg.variant === 'computer' ? [50] : []), 80];
     const rows = cfg.blueprint.rows;
@@ -10973,11 +11224,13 @@ if (cleanedErrors.length) {
       cfg.variant = e.target.value;
 
       cfg.marks =
-        ['physics', 'chemistry', 'biology'].includes(cfg.variant)
+               ['physics', 'chemistry', 'biology', 'geography'].includes(cfg.variant)
           ? 70
-          : cfg.variant === 'computer'
-            ? 50
-            : cfg.marks;
+          : ['history', 'political_science', 'economics'].includes(cfg.variant)
+            ? 80
+            : cfg.variant === 'computer'
+              ? 50
+              : cfg.marks;
 
       cfg.blueprint = C.buildChapterPreset(
         cfg.variant,
@@ -11295,6 +11548,17 @@ ${snapshot.subjects.some(s =>
   ? __scMathResearchRules(snapshot.class, 'exam blueprint')
   : ''}
 
+${snapshot.subjects
+  .filter(s => __scIsSocialSubject(s.subject))
+  .map(s =>
+    __scSocialResearchRules(
+      snapshot.class,
+      s.subject,
+      'exam blueprint'
+    )
+  )
+  .join('\n')}
+
 CONTENT AND BLUEPRINT RULES
 - Stay strictly within the selected class, subject and chapters. Use the current prescribed syllabus and textbook for that class.
 - For Classes 6–10, follow the selected school blueprint and the applicable CBSE course.
@@ -11304,7 +11568,7 @@ CONTENT AND BLUEPRINT RULES
 - The 20-mark and 40-mark subject blueprints are school adaptations.
 - Never use Class 10 Science questions, chapter allocations or its 80-mark board-paper structure for Classes 11 or 12.
 - Do not mix Physics, Chemistry and Biology into a single senior-secondary Science paper.
-- Cover every selected chapter. Science Classes 6–8 are integrated. Science Classes 9–10 use ordered Biology, Chemistry and Physics sections when the selected blueprint requires them. If a selected-chapter test lacks a required branch, report the incompatible full-branch preset and request a Custom Paper blueprint; do not invent content. Social Science has no compulsory branch quotas.
+- Cover every selected chapter. Science Classes 6–8 are integrated. Science Classes 9–10 use ordered Biology, Chemistry and Physics sections when the selected blueprint requires them. If a selected-chapter test lacks a required branch, report the incompatible full-branch preset and request a Custom Paper blueprint; do not invent content. For Classes 6–8, Social Science remains integrated without compulsory branch sections. For Classes 9–10, follow Section A – History, Section B – Geography, Section C – Political Science and Section D – Economics when using the four-section blueprint. Class 9 uses this format as a school adaptation. Generate questions only from selected chapters. If a partial-syllabus examination cannot support all four sections, use a compatible Custom Paper blueprint. For Classes 11–12, History, Geography, Political Science and Economics are separate subjects with their own CBSE blueprints.
 - Generate exactly the listed Q1–Q${questionNumber} records in order, including the independent OR alternatives. Preserve every Slot tag exactly. Slot tags restart for each subject and identify placement in the Builder; do not print them inside question text.
 - Each listed OR record is a complete independent question of the required marks and model family. Keep OR choices inside a case/reading passage as subquestions of that SAME record.
 - Replace each Chapter placeholder with an EXACT selected chapter name. Preserve subject and class names. Give meaningful models (e.g. Direct Concept, Application, Analyse, Give Reasons, Inference), matching each required model family. Do not use Level 1/2/3 labels.
