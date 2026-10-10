@@ -5561,7 +5561,19 @@ function updateSubjectsForBoardAndClass() {
         return;
     }
 
-    const subjects = config.boardSubjectMappings[selectedBoard] || [];
+        const mappedSubjects =
+      config.boardSubjectMappings[selectedBoard] || [];
+
+    const subjects =
+      selectedBoard === 'CBSE' &&
+      /^(11th|12th) Class$/.test(selectedClass)
+        ? mappedSubjects.flatMap(subject =>
+            subject === 'Science'
+              ? ['Physics', 'Chemistry', 'Biology']
+              : [subject]
+          )
+        : mappedSubjects;
+
     createMultiSelectDropdown(
         'subjects-multiselect',
         subjects,
@@ -9935,10 +9947,28 @@ if (cleanedErrors.length) {
     mathematics: 'MathsStandard', mathematics_basic: 'MathsBasic', science: 'Science', social: 'SocialScience',
     english: 'EnglishL', hindi_a: 'HindiCourseA', hindi_b: 'HindiCourseB', sanskrit: 'Sanskrit', computer: 'ComputerApplication'
   };
-  const sourceURL = variant => variant === 'telugu' ? 'https://cbseacademic.nic.in/web_material/SQP/ClassX_2025_26/TeluguAndhra-SQP.pdf' : SOURCES[variant] ? `https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/${SOURCES[variant]}-SQP.pdf` : '';
+    const sourceURL = variant => {
+    if (['physics', 'chemistry', 'biology'].includes(variant)) {
+      const filename =
+        variant[0].toUpperCase() + variant.slice(1);
+
+      return `https://cbseacademic.nic.in/web_material/SQP/ClassXII_2026_27/${filename}-SQP.pdf`;
+    }
+
+    return variant === 'telugu'
+      ? 'https://cbseacademic.nic.in/web_material/SQP/ClassX_2025_26/TeluguAndhra-SQP.pdf'
+      : SOURCES[variant]
+        ? `https://cbseacademic.nic.in/web_material/SQP/ClassX_2026_27/${SOURCES[variant]}-SQP.pdf`
+        : '';
+  };
   const VARIANTS = {
     Mathematics: [['mathematics', 'Mathematics Standard (041)'], ['mathematics_basic', 'Mathematics Basic (241)']],
-    Science: [['science', 'Science (086)']], 'Social Science': [['social', 'Social Science (087)']],
+        Science: [['science', 'Science (086)']],
+    'Social Science': [['social', 'Social Science (087)']],
+
+    Physics: [['physics', 'Physics (042) — XI/XII']],
+    Chemistry: [['chemistry', 'Chemistry (043) — XI/XII']],
+    Biology: [['biology', 'Biology (044) — XI/XII']],
     English: [['english', 'English Language & Literature (184)']],
     Hindi: [['hindi_b', 'Hindi B (085)'], ['hindi_a', 'Hindi A (002)']],
     Sanskrit: [['sanskrit', 'Sanskrit (122)']],
@@ -10011,7 +10041,156 @@ if (cleanedErrors.length) {
   }
   const MCQ = 'MCQ (Single)', AR = 'Assertion and Reason (MCQ Single)', D = 'Descriptive', C = 'Case Based';
   const casePattern = or => [{ marks: 1 }, { marks: 1 }, { marks: 2, alternatives: or ? 2 : 1 }];
-  function buildPreset(variant, marks = 80) {
+    function buildPreset(variant, marks = 80) {
+
+    if (['physics', 'chemistry', 'biology'].includes(variant)) {
+
+      if (![20, 40, 70].includes(marks)) {
+        throw new Error(
+          'Senior science supports 20, 40 or 70 theory marks.'
+        );
+      }
+
+      const rows = [];
+      const add = (...args) => rows.push(row(...args));
+
+      if (marks === 70) {
+
+        const choices = variant === 'physics'
+          ? {
+              b: [0, 3],
+              c: [5],
+              e: [0, 1, 2]
+            }
+          : variant === 'chemistry'
+            ? {
+                b: [0],
+                c: [5],
+                e: [0, 1, 2]
+              }
+            : {
+                b: [0, 3, 4],
+                c: [],
+                e: [0, 1, 2]
+              };
+
+        const caseParts = variant === 'biology'
+          ? [
+              { marks: 1 },
+              { marks: 2 },
+              { marks: 1, alternatives: 2 }
+            ]
+          : variant === 'chemistry'
+            ? [
+                { marks: 1 },
+                { marks: 1 },
+                { marks: 2, alternatives: 2 }
+              ]
+            : [
+                { marks: 1 },
+                { marks: 1 },
+                { marks: 1 },
+                { marks: 1 }
+              ];
+
+        add(
+          'Section A',
+          'Multiple choice',
+          MCQ, 12, 1
+        );
+
+        add(
+          'Section A',
+          'Assertion–Reason',
+          AR, 4, 1
+        );
+
+        add(
+          'Section B',
+          'Very short answer',
+          D, 5, 2,
+          {
+            orCount: choices.b.length,
+            orPositions: choices.b
+          }
+        );
+
+        add(
+          'Section C',
+          'Short answer',
+          D, 7, 3,
+          {
+            orCount: choices.c.length,
+            orPositions: choices.c
+          }
+        );
+
+        add(
+          'Section D',
+          'Case / data-based questions',
+          C, 2, 4,
+          { pattern: caseParts }
+        );
+
+        add(
+          'Section E',
+          'Long answer',
+          D, 3, 5,
+          {
+            orCount: choices.e.length,
+            orPositions: choices.e
+          }
+        );
+
+      } else if (marks === 40) {
+
+        // School adaptation, not an official 40-mark SQP.
+        add('Section A', 'Multiple choice', MCQ, 8, 1);
+        add('Section A', 'Assertion–Reason', AR, 2, 1);
+        add('Section B', 'Very short answer', D, 4, 2);
+        add('Section C', 'Short answer', D, 3, 3);
+        add('Section D', 'Case-based question', C, 2, 4);
+        add('Section E', 'Long answer', D, 1, 5);
+
+      } else {
+
+        // 20-mark school unit-test adaptation.
+        add('Section A', 'Multiple choice', MCQ, 4, 1);
+        add('Section A', 'Assertion–Reason', AR, 2, 1);
+        add('Section B', 'Very short answer', D, 2, 2);
+        add('Section C', 'Short answer', D, 2, 3);
+        add('Section D', 'Case-based question', C, 1, 4);
+      }
+
+      const blueprint = {
+        variant,
+        marks,
+
+        rows: rows.map((r, i) => ({
+          ...r,
+          id: `r${i + 1}`,
+          models: modelWeights(variant, r.type)
+        })),
+
+        custom: false,
+        referenceMarks: 70,
+        source: sourceURL(variant),
+        schoolAdaptation: marks !== 70,
+
+        note: marks === 70
+          ? 'Class XII CBSE 2026–27 reference: 33 questions, 70 theory marks, five sections. For Class XI this format is a school adaptation using only Class XI content. Practical assessment is separate (30 marks).'
+          : `School-adapted ${marks}-mark paper using senior-secondary subject content. Not an official CBSE sample-paper distribution.`
+      };
+
+      if (validateBlueprint(blueprint).length) {
+        throw new Error(
+          'Senior science blueprint marks/count validation failed.'
+        );
+      }
+
+      return blueprint;
+    }
+
     let rows = [];
     const add = (...args) => rows.push(row(...args));
     const isMath = variant.startsWith('mathematics');
@@ -10196,8 +10375,26 @@ if (cleanedErrors.length) {
     const year = variant === 'telugu' ? '2025–26; the 2026–27 index has no active Telugu AP paper link' : '2026–27';
     return { variant, marks, rows, custom: false, referenceMarks, source: sourceURL(variant), note: marks === referenceMarks ? `Class 10 reference structure (${year}). For Classes 6–9 this is a school-selected use of that structure; content stays within the selected class.` : `School adaptation of the Class 10 ${referenceMarks}-mark structure (${year}). Counts and choices are adjusted explicitly to ${marks} marks.` };
   }
-  function buildChapterPreset(variant, marks = 80, settings = {}) {
-        const bp = buildPreset(variant, marks);
+    function buildChapterPreset(variant, marks = 80, settings = {}) {
+    const bp = buildPreset(variant, marks);
+
+    if (['physics', 'chemistry', 'biology'].includes(variant)) {
+
+      if (
+        /^11th Class$/.test(String(settings.class || '')) &&
+        marks === 70
+      ) {
+        bp.schoolAdaptation = true;
+
+        bp.note =
+          'Class XI school examination: 70 theory marks / 3 hours, ' +
+          'using the Class XII five-section question format as an adaptation. ' +
+          'Follow only the selected Class XI CBSE syllabus. ' +
+          'Practical assessment is separate (30 marks).';
+      }
+
+      return bp;
+    }
     const scienceGrade = Number(
       String(settings.class || '').match(/\d+/)?.[0]
     );
@@ -10719,7 +10916,12 @@ if (cleanedErrors.length) {
   function getConfig(subject) {
     if (!state.subjects.has(subject)) {
       const variant = (C.VARIANTS[subject] || [['custom']])[0][0];
-      const marks = variant === 'computer' && state.defaultMarks === 80 ? 50 : state.defaultMarks;
+            const marks =
+        ['physics', 'chemistry', 'biology'].includes(variant)
+          ? 70
+          : variant === 'computer' && state.defaultMarks === 80
+            ? 50
+            : state.defaultMarks;
       state.subjects.set(subject, { subject, variant, marks, blueprint: C.buildChapterPreset(variant, marks, { class: getSelectedClass() }), chapterAreas: {}, includeMaps: true, strictModels: true, requireCoverage: true, competencyMinimum: 0 });
     }
     const cfg = state.subjects.get(subject);
@@ -10742,7 +10944,10 @@ if (cleanedErrors.length) {
     $('.add-section-btn', block).style.display = 'none';
     list.classList.add('cb-subject-content');
     const variants = C.VARIANTS[subject] || [['custom', 'School-defined Custom blueprint']];
-    const choices = [20, 40, ...(cfg.variant === 'computer' ? [50] : []), 80];
+       const choices =
+      ['physics', 'chemistry', 'biology'].includes(cfg.variant)
+        ? [20, 40, 70]
+        : [20, 40, ...(cfg.variant === 'computer' ? [50] : []), 80];
     const rows = cfg.blueprint.rows;
     list.innerHTML = `<div class="cb-flex"><label>Reference course<select class="cb-variant">${variants.map(([v, l]) => option(v, l, cfg.variant)).join('')}</select></label>
       <label>Paper size<select class="cb-size">${choices.map(n => option(n, `${n} marks`, cfg.marks)).join('')}${option('custom', 'Custom Paper', cfg.blueprint.custom ? 'custom' : cfg.marks)}</select></label>
@@ -10764,7 +10969,28 @@ if (cleanedErrors.length) {
         <div class="cb-model-summary">${rows.map(r => `<p><b>${escape(r.title)}:</b> ${escape(Object.entries(C.allocateCounts(r.count, r.models)).map(([k, v]) => `${k}: ${v}`).join(' · '))}${r.orCount ? '; each OR alternative matches its slot’s model family' : ''}</p>`).join('')}</div>
         <div class="cb-chapter-map"></div>
       </details>`;
-    $('.cb-variant', list).onchange = e => { cfg.variant = e.target.value; cfg.marks = cfg.variant === 'computer' ? 50 : cfg.marks; cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false }); renderSubject(sIdx); syncTotal(); };
+       $('.cb-variant', list).onchange = e => {
+      cfg.variant = e.target.value;
+
+      cfg.marks =
+        ['physics', 'chemistry', 'biology'].includes(cfg.variant)
+          ? 70
+          : cfg.variant === 'computer'
+            ? 50
+            : cfg.marks;
+
+      cfg.blueprint = C.buildChapterPreset(
+        cfg.variant,
+        cfg.marks,
+        {
+          class: getSelectedClass(),
+          includeMaps: cfg.includeMaps !== false
+        }
+      );
+
+      renderSubject(sIdx);
+      syncTotal();
+    };
     $('.cb-size', list).value = cfg.blueprint.custom ? 'custom' : String(cfg.marks);
     $('.cb-size', list).onchange = e => {
       if (e.target.value === 'custom') cfg.blueprint.custom = true;
@@ -10871,7 +11097,9 @@ if (cleanedErrors.length) {
   }
   function setupErrors() {
     const errors = [];
-    if (!/^(6th|7th|8th|9th|10th) Class$/.test(getSelectedClass())) errors.push('CBSE master presets in this update cover Classes 6–10. Select one of these classes.');
+        if (!/^(6th|7th|8th|9th|10th|11th|12th) Class$/.test(getSelectedClass())) {
+      errors.push('CBSE builder supports Classes 6–12.');
+    }
     if (!getSelectedSubjects().length) errors.push('Select at least one subject.');
     if (!value('exam-name-input').trim()) errors.push('Enter the exam name.');
     if (!(Number(value('time-input')) > 0)) errors.push('Enter a positive time in minutes.');
@@ -11068,7 +11296,14 @@ ${snapshot.subjects.some(s =>
   : ''}
 
 CONTENT AND BLUEPRINT RULES
-- Stay strictly within the selected class, subject and chapters. Use that class's own textbook content, terminology and age-appropriate questions. The paper pattern may be adapted from Class 10; the content must never be taken from Class 10 for a lower class.
+- Stay strictly within the selected class, subject and chapters. Use the current prescribed syllabus and textbook for that class.
+- For Classes 6–10, follow the selected school blueprint and the applicable CBSE course.
+- For Classes 11–12 Physics, Chemistry and Biology, follow each subject's separate senior-secondary blueprint.
+- Class XII 70-mark papers must match the official 2026–27 reference structure: 33 questions, Sections A–E, including the specified internal choices.
+- Class XI 70-mark papers use the Class XII question-format structure as a school adaptation, but must contain only Class XI syllabus content.
+- The 20-mark and 40-mark subject blueprints are school adaptations.
+- Never use Class 10 Science questions, chapter allocations or its 80-mark board-paper structure for Classes 11 or 12.
+- Do not mix Physics, Chemistry and Biology into a single senior-secondary Science paper.
 - Cover every selected chapter. Science Classes 6–8 are integrated. Science Classes 9–10 use ordered Biology, Chemistry and Physics sections when the selected blueprint requires them. If a selected-chapter test lacks a required branch, report the incompatible full-branch preset and request a Custom Paper blueprint; do not invent content. Social Science has no compulsory branch quotas.
 - Generate exactly the listed Q1–Q${questionNumber} records in order, including the independent OR alternatives. Preserve every Slot tag exactly. Slot tags restart for each subject and identify placement in the Builder; do not print them inside question text.
 - Each listed OR record is a complete independent question of the required marks and model family. Keep OR choices inside a case/reading passage as subquestions of that SAME record.
@@ -11424,7 +11659,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science Classes 6–8 use integrated question-type sections; Classes 9–10 use Biology, Chemistry and Physics sections in that order when using the reference Science preset. Social Science uses question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–12</h3><p>Choose a paper size and the chapters to test. Science Classes 6–8 use integrated question-type sections; Classes 9–10 use Biology, Chemistry and Physics sections in that order when using the reference Science preset. Social Science uses question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').before(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
