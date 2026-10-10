@@ -1256,23 +1256,25 @@
     return doc.body.innerHTML;
   }
 
-  function questionTree(question, includeImage = true) {
+    function questionTree(question, includeImage = true) {
     if (question.alternatives?.length) {
       return question.alternatives.map((alternative, index) => `
         ${index ? '<p style="text-align:center"><b>OR</b></p>' : ''}
-        <p>
+        <div>
           <b>(${String.fromCharCode(65 + index)})</b>
-          ${questionTree(alternative)}
-        </p>
+          ${questionTree(alternative, includeImage)}
+        </div>
       `).join('');
     }
 
-    let html = rich(
-      question.passage ||
-      question.text ||
-      question.question ||
-      question.body
-    );
+    const stem = question.passage || question.text ||
+      question.question || question.body || '';
+    let html = rich(stem);
+
+    if (includeImage && imageURL(question.image)) {
+      html += `<p><img src="${esc(question.image)}"
+        alt="Question figure" style="max-width:100%"></p>`;
+    }
 
     if (question.options?.length) {
       html += '<ol type="A">' +
@@ -1281,34 +1283,21 @@
     }
 
     if (question.parts?.length) {
-      if (question.choice === 'any') {
-        html += `
-          <p>
-            Attempt any ${question.attempt}
-            of the following ${question.parts.length}.
-          </p>
-        `;
+      if (
+        question.choice === 'any' &&
+        !/(?:attempt|answer|complete)\s+any\b/i.test(String(stem))
+      ) {
+        html += `<p>Attempt any ${question.attempt}
+          of the following ${question.parts.length}:</p>`;
       }
 
       html += question.parts.map((part, index) => `
-        <p>
+        <div>
           <b>(${index + 1})</b>
-          ${questionTree(part)}
+          ${questionTree(part, includeImage)}
           <b>[${esc(part.marks)}]</b>
-        </p>
+        </div>
       `).join('');
-    }
-
-    if (includeImage && imageURL(question.image)) {
-      html += `
-        <p>
-          <img
-            class="question-img"
-            style="max-width:100%"
-            src="${esc(question.image)}"
-            alt="Question figure">
-        </p>
-      `;
     }
 
     return html;
@@ -1321,13 +1310,13 @@
       question.mcqs;
 
     if (children?.length) {
-      return children.map((part, index) => `
-        <p>
+            return children.map((part, index) => `
+        <div>
           <b>(${question.alternatives
             ? String.fromCharCode(65 + index)
             : index + 1})</b>
           ${answerTree(part)}
-        </p>
+        </div>
       `).join('');
     }
 
@@ -1363,7 +1352,7 @@
 
         const items = grouped
           ? [{
-              text: row.title,
+                           text: row.printInstruction || row.title,
               marks: row.attempt * row.marks,
               parts: row.items,
               choice: row.attempt < row.count ? 'any' : 'all',
@@ -1396,9 +1385,13 @@
               question.alternatives?.length
             );
 
-            const text = composite
-              ? questionTree({ ...question, image: '' })
-              : rich(question.text || question.question);
+                        const instruction = !grouped && row.printInstruction
+              ? `<p><b>${esc(row.printInstruction)}</b></p>`
+              : '';
+
+            const text = instruction + (composite
+              ? questionTree(question)
+              : rich(question.text || question.question));
 
             return {
               _cbseBridge: true,
@@ -1409,8 +1402,8 @@
               marks: question.marks || row.marks,
               type: composite ? 'Descriptive' : row.type,
               mcqType: composite ? 'Descriptive' : row.type,
-              options: composite ? [] : (question.options || []),
-              image: imageURL(question.image),
+                           options: composite ? [] : (question.options || []),
+              image: composite ? '' : imageURL(question.image),
 
               answer: composite
                 ? answerTree(question)
