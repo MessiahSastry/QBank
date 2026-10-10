@@ -4603,7 +4603,7 @@ function buildAnswerKeyDoc(examData) {
 }
 
 function buildPublicAnswerKeyUrl(paperId) {
-  const url = new URL(window.location.origin + window.location.pathname);
+  const url = new URL('https://scimentra.github.io/scimentra-answer-key.html');
   url.search = '';
   url.hash = '';
   url.searchParams.set('mode', 'answerkey');
