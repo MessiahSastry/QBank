@@ -1003,13 +1003,95 @@
 
     const cloud = {
 
-      async getAll() {
+           async getAll() {
+        // Read cloud papers first.
         const snapshot = await papers.get();
+        const saved = new Map(snapshot.docs.map(doc => [
+          doc.id, { ...doc.data(), id: doc.id }
+        ]));
 
-        return snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id
-        }));
+        // Recover papers saved by the older Exam Review / Exam Preview pages.
+        const legacy = await new Promise((resolve, reject) => {
+          const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
+
+          request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains('drafts')) {
+              request.result.createObjectStore('drafts', {
+                keyPath: 'id'
+              });
+            }
+          };
+
+          request.onerror = () =>
+            reject(request.error || new Error('Cannot open browser papers.'));
+
+          request.onsuccess = () => {
+            const db = request.result;
+            const tx = db.transaction('drafts', 'readonly');
+            const read = tx.objectStore('drafts').getAll();
+
+            read.onsuccess = () => resolve(read.result || []);
+
+            read.onerror = () =>
+              reject(read.error || new Error('Cannot read browser papers.'));
+
+            tx.oncomplete = () => db.close();
+          };
+        });
+
+        // Transfer older papers to the administrator cloud account.
+        for (const paper of legacy) {
+          if (!paper?.id) continue;
+
+          const id = String(paper.id);
+          const cloudCopy = saved.get(id);
+
+          const localTime =
+            Date.parse(paper.updatedAt || paper.createdAt || '') || 0;
+
+          const cloudTime =
+            Date.parse(cloudCopy?.updatedAt || cloudCopy?.createdAt || '') || 0;
+
+          if (!cloudCopy || localTime > cloudTime) {
+            await papers.doc(id).set(
+              JSON.parse(JSON.stringify(paper))
+            );
+
+            saved.set(id, { ...paper, id });
+          }
+        }
+
+        // Clear old browser copies only after successful cloud storage.
+        if (legacy.some(paper => paper?.id)) {
+          await new Promise((resolve, reject) => {
+            const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
+
+            request.onerror = () =>
+              reject(request.error || new Error('Cannot complete migration.'));
+
+            request.onsuccess = () => {
+              const db = request.result;
+              const tx = db.transaction('drafts', 'readwrite');
+              const drafts = tx.objectStore('drafts');
+
+              for (const paper of legacy) {
+                if (paper?.id) drafts.delete(paper.id);
+              }
+
+              tx.oncomplete = () => {
+                db.close();
+                resolve();
+              };
+
+              tx.onerror = tx.onabort = () => {
+                db.close();
+                reject(tx.error || new Error('Cannot finish migration.'));
+              };
+            };
+          });
+        }
+
+        return [...saved.values()];
       },
 
       async put(paper) {
