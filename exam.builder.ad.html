@@ -8148,6 +8148,42 @@ These extra rules apply ONLY to CBSE Mathematics (Classes 6–12).
 `;
 }
 
+function __scIsSocialSubject(value) {
+  return /^(?:social(?:[\s-]+(?:science|studies))?|sst|s\.?\s*st\.?|history|geography|political[\s-]*science|civics|economics)$/i.test(
+    String(value || '').trim()
+  );
+}
+
+function __scSocialResearchRules(classLabel, subjectLabel, workflow) {
+  const grade = Number(String(classLabel || '').match(/\d+/)?.[0] || 0);
+  const subject = String(subjectLabel || '').trim();
+
+  if (grade < 6 || grade > 12 || !__scIsSocialSubject(subject)) {
+    return '';
+  }
+
+  const structure = grade <= 8
+    ? 'Classes 6–8: Social Science is an integrated subject. Do not force separate History, Geography, Political Science or Economics sections.'
+    : grade <= 10
+      ? 'Classes 9–10: Use History, Geography, Political Science and Economics sections only when the selected blueprint requires them. Generate questions strictly from selected chapters; do not invent missing branch chapters.'
+      : 'Classes 11–12: History, Geography, Political Science and Economics are separate CBSE subjects with separate syllabuses and blueprints. Follow only the selected subject.';
+
+  return `
+CBSE SOCIAL SCIENCE — TEXTBOOK AND BLUEPRINT RULES
+Workflow: ${workflow}
+Class: ${grade}; Subject: ${subject}
+
+- Check the current CBSE syllabus and relevant NCERT textbook chapters for the selected class and subject. Use only verifiable textbook and syllabus content.
+- ${structure}
+- Follow the exact selected lesson names, question models, sections, marks, internal choices and order from the Builder.
+- Verify dates, places, definitions, institutions, maps, economic terms and historical facts. Distinguish fact from interpretation.
+- Write clear, syllabus-appropriate and competency-based questions, including case/source/map questions only when the blueprint and chapter content support them.
+- Give point-wise descriptive answers where appropriate; use as many points as the question requires, not an automatic marks-to-points rule.
+- Do not invent unavailable sources or maps. If the chapter or selected blueprint cannot be verified or supported, report the limitation before generating questions.
+- Preserve the requested DRAFT → RECHECK → FINAL SET process and every question record's metadata.
+`;
+}
+
 function __scIsCbseScienceSubject(value) {
   return /^(?:science|general science|physics|chemistry|biology)$/i.test(
     String(value || '').trim()
