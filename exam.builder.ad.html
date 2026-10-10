@@ -7538,6 +7538,175 @@ Before giving the FINAL SET, silently verify:
    BUILD COMPLETE EXAM-BLUEPRINT PROMPT
    ========================================================= */
 
+function __scEnglishResearchRules(classLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+
+  if (grade < 6 || grade > 12) return '';
+
+  const depth = ({
+    6: 'Literal comprehension, important events, vocabulary in context, simple inference.',
+    7: 'Comprehension, cause and effect, character choices, reasons and interpretation.',
+    8: 'Inference, textual evidence, imagery, theme and age-appropriate analysis.',
+    9: 'Interpretation, literary devices, textual evidence and competency-based reasoning.',
+    10: 'Board-appropriate extract interpretation, inference and analytical responses.',
+    11: 'Close reading, critical interpretation, literary technique and reasoned evaluation.',
+    12: 'Precise textual analysis, interpretive reasoning and evaluative responses.'
+  })[grade];
+
+  return `
+CBSE ENGLISH — MANDATORY TEXTBOOK RESEARCH
+Workflow: ${workflow}
+Class: ${grade}
+
+1. TEXTBOOK IDENTIFICATION
+First verify the current applicable CBSE curriculum and prescribed English course and textbook for this class and academic session.
+
+Do not assume the textbook name from memory.
+Do not use a fixed historical textbook list.
+
+For Classes 11 and 12, distinguish English Core from English Elective. If the course is unclear, ask before generating.
+
+2. OFFICIAL WEBSITE RESEARCH
+Use available browsing or retrieval tools to check:
+https://cbseacademic.nic.in/
+https://ncert.nic.in/
+https://epathshala.nic.in/
+
+Also use the school's supplied textbook or lesson source if available.
+
+Confirm the exact lesson, matching class, edition and content.
+
+General educational websites, chapter summaries, coaching notes and question banks are not substitutes for the actual textbook.
+
+Official-source research takes priority over earlier suggestions to use third-party educational websites.
+
+3. STUDY THE COMPLETE LESSON
+Read the accessible actual lesson and relevant textbook exercises before generating.
+
+For prose, examine real events, setting, characters, motivations, sequence, language and theme.
+
+For poetry, examine actual stanzas, speaker, imagery, tone, poetic devices and message.
+
+For supplementary reading, examine the actual plot, incidents, characters and interpretations.
+
+Cover distinct portions of the complete lesson.
+
+Do not invent characters, incidents, quotations, textbook exercises, page numbers or source claims.
+
+Do not reproduce long copyrighted extracts. Use brief permissible extracts or accurate textual references when suitable.
+
+4. TEXTBOOK-BASED QUESTION RULE
+Every literature question and its answer must be supported by the verified lesson.
+
+Do not generate general questions merely related to the chapter title.
+
+For grammar, follow the selected prescribed curriculum topic or textbook exercise.
+
+For unseen reading and independent writing, follow the current syllabus and use suitable original material. Do not pretend it is an extract from the textbook.
+4A. PICTURE-BASED AND VISUAL-COMPREHENSION QUESTIONS
+
+Include picture-based questions only when appropriate to the selected CBSE class, English syllabus, lesson content and question type.
+
+Suitable visual-based questions may include:
+- Picture comprehension
+- Picture description
+- Illustration-based questions from the prescribed lesson
+- Event identification from textbook illustrations
+- Picture-based inference and interpretation
+- Visual sequencing of story events
+- Chart, graph and infographic comprehension
+- Competency-based questions using relevant visual information
+
+STRICT RULES:
+
+1. Do not make picture-based questions compulsory for every chapter or examination.
+
+2. For literature, visual questions must relate directly to the actual prescribed textbook lesson.
+
+3. Do not invent illustrations or assume that a particular picture exists in the textbook.
+
+4. If the textbook contains a relevant illustration, use it only after verifying its actual content.
+
+5. For reading comprehension, charts, graphs and infographics may be used when appropriate to the class and examination pattern.
+
+6. Every visual-based question must test meaningful comprehension, interpretation, observation or reasoning.
+
+7. Do not generate simple picture-identification questions when the selected class requires higher-order interpretation.
+
+8. If the question requires an image, use the existing [Picture Needed: Yes] marker where supported by the question format.
+
+9. Include [Image: actual image URL] only when a genuine, accessible and verified image URL is available.
+
+10. Never invent image URLs, refer to missing pictures or provide answers based on an unseen image.
+
+11. If an image is required but unavailable, clearly report the missing visual during draft review. Do not include an unanswerable question in the final set.
+
+12. In the Exam Builder, visual-based questions must follow the selected blueprint, question type, question count and marks allocation.
+
+13. In the Questions Generator, visual-based questions must be distributed appropriately across the chapter-bank inventory without introducing unnecessary repetitions.
+
+14. Do not alter the existing question-record format, numbering, options, answers, metadata or parsing structure.
+
+5. CLASS-WISE QUESTION STANDARD
+For Class ${grade}, follow:
+${depth}
+
+Generate genuine comprehension, interpretation, inference, analytical and competency-based questions appropriate to the class.
+
+Avoid repetitive recall, duplicate questions and content outside the prescribed syllabus.
+
+Each single-correct MCQ must have four plausible choices and exactly one defensible correct answer.
+
+English descriptive answers must be natural, accurate and appropriate to the marks.
+
+6. QUESTION INVENTORY AND BLUEPRINT
+Follow the selected question counts, question types, marks and chapter requirements exactly.
+
+For the workflow "${workflow}", follow ${
+  workflow === 'exam blueprint'
+    ? 'all section allocations, question slots, internal OR pairs, Attempt-Any rules and attempted-mark totals'
+    : 'the complete chapter-bank inventory or individual-question selection'
+}.
+
+Keep existing Q headers, metadata tags, numbering, option labels, Answer/Ans/Explanation fields and DRAFT → RECHECK → FINAL SET procedure unchanged.
+
+Internal OR alternatives must count only once toward the attempted paper marks.
+
+7. QUALITY VERIFICATION
+Before output, verify:
+- Correct textbook and lesson
+- Complete and balanced chapter coverage
+- Accuracy of every question
+- Correct answers and plausible MCQ distractors
+- Appropriate question type and marks
+- Suitable difficulty for the class
+- No duplicate or ambiguous questions
+- Correct total marks and internal choices
+
+Keep research URLs outside the final question-record body so the existing HTML parser continues to work.
+
+Provide source references separately only when requested.
+
+8. SOURCE UNAVAILABLE OR INSUFFICIENT
+If browsing is unavailable, the actual literature lesson cannot be confirmed or read, or the verified content cannot support the required question inventory:
+
+STOP BEFORE Q1.
+
+Clearly state the missing source or conflicting requirement.
+
+Request the official chapter PDF, chapter link, lesson text or a suitable blueprint adjustment.
+
+Never pretend to have browsed or verified a source that was not accessed.
+
+Never invent questions merely to complete a quota.
+
+Apply these additional rules ONLY to CBSE English.
+Do not change instructions for another subject.
+`;
+}
+
 function __ebBuildAIExamPrompt(blueprint) {
 
     const {
@@ -7598,7 +7767,17 @@ Use this distribution across the generated questions unless an exact section-lev
 `;
     }
 
-    prompt += `
+        prompt += `
+
+${String(board || '').trim().toUpperCase() === 'CBSE' &&
+  Array.isArray(subjects) &&
+  subjects.some(s =>
+    /^english\b/i.test(
+      String(s?.subject || s?.name || s || '')
+    )
+  )
+    ? __scEnglishResearchRules(className, 'exam blueprint')
+    : ''}
 
 QUESTION BLUEPRINT — FOLLOW THIS ORDER EXACTLY
 `;
@@ -10658,6 +10837,12 @@ DATE: ${snapshot.date || 'Not specified'}
 
 SELECTED BLUEPRINT AND REQUIRED RECORDS
 ${plan}
+
+${snapshot.subjects.some(s =>
+  /^english\b/i.test(String(s.subject || ''))
+)
+  ? __scEnglishResearchRules(snapshot.class, 'exam blueprint')
+  : ''}
 
 CONTENT AND BLUEPRINT RULES
 - Stay strictly within the selected class, subject and chapters. Use that class's own textbook content, terminology and age-appropriate questions. The paper pattern may be adapted from Class 10; the content must never be taken from Class 10 for a lower class.
