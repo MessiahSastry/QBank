@@ -7326,8 +7326,89 @@ function cbsePrintQuestion(question, number, section) {
       block.append(label, content);
     });
 
+    
+    // Keep all poetry lines aligned after (A) or (B).
+    // Poetry extracts may store each line separately.
+    const isPoetryExtract =
+      /\b(?:poetry|poem|poetic|verse|stanza)\b/i.test(
+        `${section?.label || ''} ${q?.text || q?.question || ''}`
+      );
+
+    if (isPoetryExtract) {
+      stem.querySelectorAll('.cbse-hanging-choice').forEach(choice => {
+        const label = choice.querySelector(
+          ':scope > .cbse-hanging-label'
+        );
+
+        const content = choice.querySelector(
+          ':scope > .cbse-hanging-content'
+        );
+
+        if (
+          !label ||
+          !content ||
+          !/^\([A-Z]\)$/.test(label.textContent.trim())
+        ) return;
+
+        let following = choice.nextSibling;
+
+        while (following) {
+          const next = following.nextSibling;
+          const isElement =
+            following.nodeType === Node.ELEMENT_NODE;
+          const text = following.textContent.trim();
+
+          if (!text && !isElement) {
+            following.remove();
+            following = next;
+            continue;
+          }
+
+          if (isElement && following.tagName === 'BR') {
+            following.remove();
+            following = next;
+            continue;
+          }
+
+          // Stop at OR, the next alternative, or a subquestion.
+          if (
+            /^(?:OR\b|\([A-Za-z]\)|\(\d+\)|[ivxlcdm]+\.)\s*/i.test(text) ||
+            (isElement && (
+              following.matches(
+                '.cbse-hanging-choice, .cbse-subquestion-row, .cbse-centred-or, .exam-print-instruction, .options-block'
+              ) ||
+              following.querySelector(
+                '.cbse-hanging-choice, .cbse-subquestion-row, .options-block'
+              )
+            ))
+          ) break;
+
+          if (
+            isElement &&
+            !/^(P|DIV|SPAN)$/.test(following.tagName)
+          ) break;
+
+          if (!text) {
+            following.remove();
+          } else if (
+            isElement &&
+            following.tagName !== 'SPAN'
+          ) {
+            content.appendChild(following);
+          } else {
+            const verseLine = document.createElement('div');
+            verseLine.appendChild(following);
+            content.appendChild(verseLine);
+          }
+
+          following = next;
+        }
+      });
+    }
+
     // Centre standalone OR after the HTML cleanup.
     stem.querySelectorAll('p, div').forEach(element => {
+
 
       if (
         element.textContent.trim().toUpperCase() === 'OR' &&
