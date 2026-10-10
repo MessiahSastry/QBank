@@ -7538,6 +7538,87 @@ Before giving the FINAL SET, silently verify:
    BUILD COMPLETE EXAM-BLUEPRINT PROMPT
    ========================================================= */
 
+function __scMathResearchRules(classLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+
+  if (grade < 6 || grade > 12) return '';
+
+  const focus = ({
+    6: 'Number sense, patterns, operations, basic geometry, simple reasoning and everyday applications.',
+    7: 'Conceptual links, proportional reasoning where prescribed, multi-step arithmetic and geometry.',
+    8: 'Algebraic thinking, numerical relationships, geometry, data interpretation and applications.',
+    9: 'Algebra, geometry, reasoning, proofs where prescribed and well-structured calculations.',
+    10: 'CBSE board-style concept application, mathematical reasoning, competency and case-based problems.',
+    11: 'Deeper algebraic, geometric and functional reasoning with accurate multi-step solutions.',
+    12: 'Advanced analytical problem-solving, mathematical modelling and rigorous verification.'
+  })[grade];
+
+  return `
+CBSE MATHEMATICS — VERIFIED CHAPTER-BASED QUESTION RULES
+Workflow: ${workflow}; Class: ${grade}
+
+1. PRESCRIBED CURRICULUM AND SOURCE
+
+- Verify the applicable CBSE syllabus and current prescribed Mathematics textbook for the selected academic year, class and chapter. Never hardcode a textbook title or edition.
+- Prioritise https://cbseacademic.nic.in/, https://ncert.nic.in/ and https://epathshala.nic.in/; read the actual chapter, not only search snippets, summaries, coaching notes or question-bank websites.
+- Confirm the chapter title, definitions, properties, examples, diagrams, exercises and permitted methods.
+- Where relevant, distinguish Class 10 Mathematics Basic/Standard and senior-secondary Mathematics/Applied Mathematics; do not silently substitute one course for another.
+- If a supplied source conflicts with a general website, verify against the applicable prescribed material before proceeding.
+
+2. CONTENT COVERAGE AND QUESTION MODELS
+
+- Map the selected chapter's actual concepts, subtopics, worked examples, exercise types and applications before writing questions.
+- Distribute questions across distinct assessable concepts; avoid repeating one method with only changed numbers.
+- Include direct understanding, conceptual reasoning, application, multi-step problem solving, analysis and competency tasks in proportions appropriate to the selected inventory or exam blueprint.
+- Stay strictly within the selected class and chapter. Do not require higher-class theorems, shortcuts, formulae or techniques.
+- Class ${grade} focus: ${focus}
+- Do not force assertions, case studies, proofs or five-mark problems when the actual content cannot support meaningful versions.
+- Construct original, syllabus-grounded numerical values and contexts when suitable; do not claim invented problems are verbatim textbook exercises.
+
+3. MATHEMATICAL ACCURACY AND ANSWERS
+
+- Solve each final question independently before setting its answer or choices. Recheck arithmetic, algebra, signs, units, rounding, roots, domain restrictions and special cases.
+- For a single-correct MCQ, verify all four options: exactly one must be mathematically valid, including equivalent expressions or forms.
+- For multiple-correct MCQs, identify every valid option and follow the selected question-type rules.
+- Use plausible error-based distractors, not impossible or unrelated options.
+- Descriptive answers must show coherent step-wise working, relevant formulae, substitutions, reasoning and a separate correct final answer.
+- Do not force numbered prose points or leave a dangling equals sign.
+- Use ONLY inline LaTeX \\( ... \\) in question records; do not use display-math delimiters.
+- Preserve the existing Q headers, marks, tags, option lines, Ans:, Answer: and Explanation: structure.
+
+4. DIAGRAMS, GRAPHS AND DATA
+
+- Use accurate geometry diagrams, number lines, graphs, tables or statistical visuals when the chapter and question model warrant them, but not in every question.
+- State all necessary measurements, labels, scales, axis values and constraints; an answer must not depend on an imaginary or missing figure.
+- Use the existing [Picture Needed: Yes] marker only where supported and genuinely needed.
+- Include [Image: actual image URL] only if its content and accessible URL have been verified.
+- If a necessary figure cannot be supplied or described unambiguously using the existing format, flag the problem before the final set.
+- Never fabricate an image URL.
+
+5. QUESTION COUNTS AND BLUEPRINT
+
+- For individual questions, obey the teacher's exact selected question type, quantity and level allocation.
+- For a complete chapter bank, follow the 45-record Mathematics inventory only if the verified chapter can support distinct, valid questions of each requested category.
+- Otherwise report the constraint before generating rather than padding the inventory.
+- For an exam blueprint, obey every selected chapter, section, slot, model family, question count, marks, competency classification, internal OR and Attempt Any condition.
+- Count OR alternatives once toward attempted marks.
+- Verify the sum of attempted marks against the selected blueprint.
+- Preserve the DRAFT → RECHECK → FINAL SET workflow and exact machine-readable question-record formatting.
+- Do not introduce unrequested changes to other subjects or to the selected output schema.
+
+6. SOURCE AND VERIFICATION FAILURE
+
+- If the actual prescribed chapter cannot be accessed or verified using available tools or supplied materials, STOP BEFORE Q1 and request the chapter PDF, text or accessible source link.
+- If a specified question type or distribution cannot genuinely be supported, identify the exact conflict rather than inventing content.
+- Never claim to have browsed, inspected a figure or verified calculations without doing so.
+- Keep research references outside the final question-record block.
+
+These extra rules apply ONLY to CBSE Mathematics (Classes 6–12).
+`;
+}
+
 function __scEnglishResearchRules(classLabel, workflow) {
   const grade = Number(
     String(classLabel || '').match(/\d+/)?.[0] || 0
@@ -7777,6 +7858,16 @@ ${String(board || '').trim().toUpperCase() === 'CBSE' &&
     )
   )
     ? __scEnglishResearchRules(className, 'exam blueprint')
+    : ''}
+
+${String(board || '').trim().toUpperCase() === 'CBSE' &&
+  Array.isArray(subjects) &&
+  subjects.some(s =>
+    /^(?:mathematics|maths?|applied mathematics)\b/i.test(
+      String(s?.subject || s?.name || s || '')
+    )
+  )
+    ? __scMathResearchRules(className, 'exam blueprint')
     : ''}
 
 QUESTION BLUEPRINT — FOLLOW THIS ORDER EXACTLY
@@ -10842,6 +10933,14 @@ ${snapshot.subjects.some(s =>
   /^english\b/i.test(String(s.subject || ''))
 )
   ? __scEnglishResearchRules(snapshot.class, 'exam blueprint')
+  : ''}
+
+${snapshot.subjects.some(s =>
+  /^(?:mathematics|maths?|applied mathematics)\b/i.test(
+    String(s.subject || '')
+  )
+)
+  ? __scMathResearchRules(snapshot.class, 'exam blueprint')
   : ''}
 
 CONTENT AND BLUEPRINT RULES
