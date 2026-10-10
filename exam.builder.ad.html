@@ -5778,11 +5778,11 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
                 <input
                     type="text"
                     class="ai-manual-chapters-input"
-                    placeholder="e.g., Madam Rides the Bus, The Necklace"
+                    placeholder="e.g., Madam Rides the Bus; The Necklace"
                     autocomplete="off"
                 >
                 <div style="font-size:.86em;color:#6b7c8c;margin-top:5px;">
-                    You may select above, enter names here, or use both. Separate multiple names with commas.
+                    You may select above, enter names here, or use both. Separate multiple chapter names with semicolons (;). Commas within chapter titles are preserved.
                 </div>
             </div>
 
@@ -12312,11 +12312,10 @@ if (cleanedErrors.length) {
         '\n'
       );
 
-    // Manual comma-separated lists remain supported.
-    // Individually selected chapter titles retain their commas.
-    if (isManual || grouped) {
-      prepared = prepared.replace(/,/g, '\n');
-    }
+       // Universal chapter-name parsing.
+    // Commas are part of a chapter title, NOT separators.
+    // Separate chapters using semicolons or new lines.
+    // Preserve punctuation in every official chapter name.
 
     const unique = new Map();
 
@@ -12359,9 +12358,9 @@ if (cleanedErrors.length) {
 
     const unique = new Map();
 
-            const checkedChapters = selected.flatMap(chapter =>
-      cbseManualChapters(chapter, false)
-    );
+                const checkedChapters = selected
+      .map(chapter => cbseChapterName(chapter))
+      .filter(Boolean);
     for (const chapter of [
       ...checkedChapters,
       ...cbseManualChapters(manual)
@@ -13166,7 +13165,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       const host = document.getElementById(`chapters-multiselect-${i}`); if (!host) return;
       const restore = () => { const boxes = $$('input[type="checkbox"]', host); if (!boxes.length) return false; boxes.forEach(box => box.checked = cfg.chapters.includes(box.value)); updateSelectedChaptersDisplay(host); updateChapterMap(i); return true; };
       if (!restore()) { const observer = new MutationObserver(() => { if (restore()) observer.disconnect(); }); observer.observe(host, { childList: true, subtree: true }); setTimeout(() => observer.disconnect(), 15000); }
-      const input = $('.ai-manual-chapters-input', $$('.subject-block')[i]); if (input) input.value = cfg.chapters.join(', ');
+      const input = $('.ai-manual-chapters-input', $$('.subject-block')[i]); if (input) input.value = cfg.chapters.join('; ');
     });
     syncBoard();
     showReview();
