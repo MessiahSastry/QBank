@@ -4489,28 +4489,42 @@ async function renderAnswerKeyPageFromUrl() {
       <div id="page-container">
         <div id="print-preview" class="print-preview">
           <div class="a4-page">
-            <div class="heading-row">
-              <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
+                        <div class="heading-row"
+                 style="min-height:80px;padding:0;">
               <div class="school-headings">
-                <div class="school-title school-title-themed">${escapeHtml(data.schoolName || 'SciMentra')}</div>
-                <div class="subtitle">IIT & NEET FOUNDATION</div>
-                <div class="exam-title">${escapeHtml(data.examName || '')}</div>
+                <div class="school-title"
+                     style="font-size:1.8em;color:#111;text-transform:uppercase;">
+                  ANSWER KEY
+                </div>
+                <div class="exam-title">
+                  ${escapeHtml(data.examName || 'Examination')}
+                </div>
               </div>
-              <img src="schoollogo2.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
             </div>
 
-                       <div class="details-rect">
+            <div class="details-rect">
               <div class="rect-row">
-                <span class="rect-label">Class: ${escapeHtml(data.className || '')}</span>
-                <span class="rect-subject">${escapeHtml(String(topSubject || '').toUpperCase())}</span>
-                <span class="rect-label">Date: ${escapeHtml(formatDate(data.date) || '')}</span>
-              </div>
-              <div class="rect-row">
-                <span class="rect-label">Time: ${escapeHtml(data.time ? formatExamTime(data.time) : '')}</span>
-                <span style="flex:1;text-align:center;font-size:1.18em;font-weight:700;color:#7A2230;">
-                  ANSWER KEY
+                <span class="rect-label">
+                  Class: ${escapeHtml(data.className || '')}
                 </span>
-                <span class="rect-label">Max Marks: ${escapeHtml(String(data.maxMarks || ''))}</span>
+
+                <span class="rect-subject">
+                  ${escapeHtml(String(topSubject || '').toUpperCase())}
+                </span>
+
+                <span class="rect-label">
+                  Date: ${escapeHtml(formatDate(data.date) || '______________')}
+                </span>
+              </div>
+
+              <div class="rect-row">
+                <span class="rect-label">
+                  Time: ${escapeHtml(data.time ? formatExamTime(data.time) : '')}
+                </span>
+
+                <span class="rect-label">
+                  Max Marks: ${escapeHtml(String(data.maxMarks || ''))}
+                </span>
               </div>
             </div>
 
