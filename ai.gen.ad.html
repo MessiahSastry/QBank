@@ -3399,6 +3399,20 @@ Don't mention the option in the explanation, but give the correct answer.
         }
       }
 
+           if (
+        isCbse &&
+        /^english\b/i.test(String(sessionParams.subject || '')) &&
+        !/^Text(?: Book)?\b/i.test(
+          String(sessionParams.questionType || '')
+        )
+      ) {
+        fullPromptForAI += '\n' +
+          __scEnglishResearchRules(
+            sessionParams.class,
+            'individual questions'
+          );
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/v1/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4059,6 +4073,132 @@ async function openInChatGptWithPrefill(prompt) {
    COMPLETE CHAPTER BANK — SUBJECT-WISE PROMPT BUILDER
 ========================================================= */
 
+function __scEnglishResearchRules(classLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+
+  if (grade < 6 || grade > 12) return '';
+
+  const depth = ({
+    6: 'Literal comprehension, important events, vocabulary in context, simple inference.',
+    7: 'Comprehension, cause and effect, character choices, reasons and interpretation.',
+    8: 'Inference, textual evidence, imagery, theme and age-appropriate analysis.',
+    9: 'Interpretation, literary devices, textual evidence and competency-based reasoning.',
+    10: 'Board-appropriate extract interpretation, inference and analytical responses.',
+    11: 'Close reading, critical interpretation, literary technique and reasoned evaluation.',
+    12: 'Precise textual analysis, interpretive reasoning and evaluative responses.'
+  })[grade];
+
+  return `
+CBSE ENGLISH — MANDATORY TEXTBOOK RESEARCH
+Workflow: ${workflow}
+Class: ${grade}
+
+1. TEXTBOOK IDENTIFICATION
+First verify the current applicable CBSE curriculum and prescribed English course and textbook for this class and academic session.
+
+Do not assume the textbook name from memory.
+Do not use a fixed historical textbook list.
+
+For Classes 11 and 12, distinguish English Core from English Elective. If the course is unclear, ask before generating.
+
+2. OFFICIAL WEBSITE RESEARCH
+Use available browsing or retrieval tools to check:
+https://cbseacademic.nic.in/
+https://ncert.nic.in/
+https://epathshala.nic.in/
+
+Also use the school's supplied textbook or lesson source if available.
+
+Confirm the exact lesson, matching class, edition and content.
+
+General educational websites, chapter summaries, coaching notes and question banks are not substitutes for the actual textbook.
+
+Official-source research takes priority over earlier suggestions to use third-party educational websites.
+
+3. STUDY THE COMPLETE LESSON
+Read the accessible actual lesson and relevant textbook exercises before generating.
+
+For prose, examine real events, setting, characters, motivations, sequence, language and theme.
+
+For poetry, examine actual stanzas, speaker, imagery, tone, poetic devices and message.
+
+For supplementary reading, examine the actual plot, incidents, characters and interpretations.
+
+Cover distinct portions of the complete lesson.
+
+Do not invent characters, incidents, quotations, textbook exercises, page numbers or source claims.
+
+Do not reproduce long copyrighted extracts. Use brief permissible extracts or accurate textual references when suitable.
+
+4. TEXTBOOK-BASED QUESTION RULE
+Every literature question and its answer must be supported by the verified lesson.
+
+Do not generate general questions merely related to the chapter title.
+
+For grammar, follow the selected prescribed curriculum topic or textbook exercise.
+
+For unseen reading and independent writing, follow the current syllabus and use suitable original material. Do not pretend it is an extract from the textbook.
+
+5. CLASS-WISE QUESTION STANDARD
+For Class ${grade}, follow:
+${depth}
+
+Generate genuine comprehension, interpretation, inference, analytical and competency-based questions appropriate to the class.
+
+Avoid repetitive recall, duplicate questions and content outside the prescribed syllabus.
+
+Each single-correct MCQ must have four plausible choices and exactly one defensible correct answer.
+
+English descriptive answers must be natural, accurate and appropriate to the marks.
+
+6. QUESTION INVENTORY AND BLUEPRINT
+Follow the selected question counts, question types, marks and chapter requirements exactly.
+
+For the workflow "${workflow}", follow ${
+  workflow === 'exam blueprint'
+    ? 'all section allocations, question slots, internal OR pairs, Attempt-Any rules and attempted-mark totals'
+    : 'the complete chapter-bank inventory or individual-question selection'
+}.
+
+Keep existing Q headers, metadata tags, numbering, option labels, Answer/Ans/Explanation fields and DRAFT → RECHECK → FINAL SET procedure unchanged.
+
+Internal OR alternatives must count only once toward the attempted paper marks.
+
+7. QUALITY VERIFICATION
+Before output, verify:
+- Correct textbook and lesson
+- Complete and balanced chapter coverage
+- Accuracy of every question
+- Correct answers and plausible MCQ distractors
+- Appropriate question type and marks
+- Suitable difficulty for the class
+- No duplicate or ambiguous questions
+- Correct total marks and internal choices
+
+Keep research URLs outside the final question-record body so the existing HTML parser continues to work.
+
+Provide source references separately only when requested.
+
+8. SOURCE UNAVAILABLE OR INSUFFICIENT
+If browsing is unavailable, the actual literature lesson cannot be confirmed or read, or the verified content cannot support the required question inventory:
+
+STOP BEFORE Q1.
+
+Clearly state the missing source or conflicting requirement.
+
+Request the official chapter PDF, chapter link, lesson text or a suitable blueprint adjustment.
+
+Never pretend to have browsed or verified a source that was not accessed.
+
+Never invent questions merely to complete a quota.
+
+Apply these additional rules ONLY to CBSE English.
+Do not change instructions for another subject.
+`;
+}
+
 function buildCompleteChapterBankPrompt(sessionParams = {}) {
   const cls = String(sessionParams.class || '').trim();
   const board = String(sessionParams.board || '').trim();
@@ -4308,7 +4448,7 @@ ${socialAreaRule}
     subjectPlan = `
 TARGET CHAPTER BANK INVENTORY:
 
-Generate 45 reusable question-bank records appropriate to this selected English chapter/lesson.
+Target 45 reusable question-bank records appropriate to this English lesson, using the inventory below ONLY if the verified lesson genuinely supports that many distinct questions. If it does not, explain the source/content limitation BEFORE Q1; never pad the bank with invented or nearly identical questions.
 
 A. OBJECTIVE / MCQ — 18 questions
 • Direct understanding
@@ -4473,6 +4613,10 @@ IMPORTANT:
 ${subjectPlan}
 
 ${specialRules}
+
+${boardKey === 'cbse' && isEnglish
+  ? __scEnglishResearchRules(cls, 'chapter bank')
+  : ''}
 
 =========================================================
 MANDATORY META FORMAT
@@ -4896,6 +5040,9 @@ Board: ${board}
 Subject: ${subj}
 Chapter: ${chap}
 ${requestLine}
+${isCbse && /^english\b/i.test(String(subj)) && !isTextbook
+  ? __scEnglishResearchRules(cls, 'individual questions')
+  : ''}
 `;
 
   // ---- LEVEL DEFINITIONS ----
