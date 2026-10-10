@@ -3427,6 +3427,13 @@ Don't mention the option in the explanation, but give the correct answer.
           );
       }
 
+           if (isCbse && __scIsCbseScienceSubject(sessionParams.subject) &&
+          !/^Text(?: Book)?\b/i.test(String(sessionParams.questionType || ''))) {
+        fullPromptForAI += '\n' + __scScienceResearchRules(
+          sessionParams.class, sessionParams.subject, 'individual questions'
+        );
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/v1/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4168,6 +4175,74 @@ These extra rules apply ONLY to CBSE Mathematics (Classes 6–12).
 `;
 }
 
+function __scIsCbseScienceSubject(value) {
+  return /^(?:science|general science|physics|chemistry|biology)$/i.test(
+    String(value || '').trim()
+  );
+}
+
+function __scScienceResearchRules(classLabel, subjectLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+  const subject = String(subjectLabel || '').trim();
+
+  if (grade < 6 || grade > 12 ||
+      !__scIsCbseScienceSubject(subject)) {
+    return '';
+  }
+
+  const structure = grade <= 8
+    ? 'Classes 6–8: ONE integrated Science subject. Do not divide the paper or chapter bank into Physics, Chemistry and Biology sections; no [Area: ...] tag.'
+    : grade <= 10
+      ? 'Classes 9–10: ONE Science paper, arranged Section A – Biology, Section B – Chemistry, Section C – Physics, in that exact order. The Class 9 section layout is a school adaptation of the Class 10 pattern. Tag each question with exactly one accurate [Area: Biology], [Area: Chemistry] or [Area: Physics] when supported by the output format.'
+      : 'Classes 11–12: Physics, Chemistry and Biology are THREE DIFFERENT CBSE subjects, each with its own syllabus, textbook, question paper and subject-specific blueprint. Never treat senior-secondary Science as a combined paper; never use the Class 10 Science section structure for these subjects.';
+
+  return `
+CBSE SCIENCE — MANDATORY TEXTBOOK AND BLUEPRINT RULES
+Workflow: ${workflow}
+Class: ${grade}; Selected subject: ${subject}
+
+1. OFFICIAL TEXTBOOK RESEARCH
+- Verify the applicable CBSE syllabus and NCERT textbook/edition for this class, academic year, subject and selected chapter(s). Do not hardcode textbook titles.
+- Prioritise https://cbseacademic.nic.in/, https://ncert.nic.in/ and https://epathshala.nic.in/.
+- Actually read each accessible selected chapter, examples, labelled diagrams, investigations, observations, activities and prescribed exercises. Do not rely only on summaries, snippets or chapter titles.
+- Cover only selected chapters and the concepts they genuinely contain, without adding higher-class or deleted topics.
+
+2. SCIENCE SUBJECT ORGANISATION
+${structure}
+- For Classes 9–10, identify the actual scientific branch of EACH selected chapter before assigning its section or [Area: ...] tag. Do not guess merely from the chapter number.
+- Follow the current official Class 10 Science section order. For school tests drawn from selected chapters, do not invent questions from missing branches just to fill the full-syllabus template. Report an incompatible blueprint before Q1 and request a suitable custom blueprint.
+- For Classes 11–12, when separate subject selection is supported, follow that selected subject's own current CBSE question pattern, not a combined 80-mark Science pattern.
+
+3. SCIENTIFIC QUESTION QUALITY
+- Prioritise conceptual understanding, scientific reasoning, investigation, application, evidence interpretation, competency and analysis; stay class-appropriate.
+- Physics: use valid principles, correctly defined quantities, SI units, necessary formulae, substitutions, calculations, rounding and physical interpretation.
+- Chemistry: check chemical names, symbols, formulae, valencies, equations, balancing, states/conditions and observations; use only syllabus-appropriate reactions.
+- Biology: verify biological structures, functions, processes, terminology, sequences, examples and conclusions.
+- Use legitimate experiment-based, data/table-based, diagram-based, assertion–reason and case-based questions only when supported by chapter content and the selected question model.
+- MCQ (Single) must have exactly one defensible correct option and three plausible distractors; verify every option separately.
+- Answer descriptive science questions point-wise when appropriate, using as many points as needed rather than a fixed marks-to-points formula. Give step-wise working for numericals and balanced equations where needed.
+
+4. FIGURES, PRACTICALS AND DATA
+- If a question requires a diagram, give correct labels, orientation and scientific context, and use the existing [Picture Needed: Yes] marker where supported.
+- Supply [Image: actual image URL] only when verified and accessible. Never fabricate image URLs or assume a diagram was supplied.
+- Questions depending on an unavailable visual or unverified data must be replaced by self-contained questions or flagged before the final set.
+- Use observed/experimental results accurately; do not invent a result and falsely attribute it to NCERT.
+
+5. INVENTORY, BLUEPRINT AND VERIFICATION
+- Chapter bank: follow its existing question-type inventory when the verified content can support genuinely distinct items; never fill it with duplicates or invented content.
+- Individual questions: follow the requested type, count and level distribution.
+- Exam Builder: obey exact blueprint rows, question order, section names, subject, chapter, Slot, marks, internal OR, Attempt Any and attempted total.
+- Never swap Biology, Chemistry or Physics content between sections.
+- Preserve the existing Q record metadata, answer/explanation fields, question numbering, formatting and DRAFT → RECHECK → FINAL SET sequence.
+- Double-check all facts, calculations, diagrams, equations, MCQ options, marks and answers against the verified chapter.
+- If the actual source is unavailable or the selected blueprint cannot be met, STOP BEFORE Q1; state the exact limitation and request an accessible chapter or compatible blueprint. Never claim to have browsed or verified inaccessible material.
+
+Apply these extra rules ONLY to CBSE Science, Physics, Chemistry or Biology in Classes 6–12.
+`;
+}
+
 function __scEnglishResearchRules(classLabel, workflow) {
   const grade = Number(
     String(classLabel || '').match(/\d+/)?.[0] || 0
@@ -4428,11 +4503,11 @@ MATHEMATICS-SPECIFIC RULES:
   /* =====================================================
      SCIENCE
   ===================================================== */
-  else if (isScience) {
+    else if (isScience) {
     subjectPlan = `
 TARGET CHAPTER BANK INVENTORY:
 
-Generate 45 reusable question-bank records for this chapter.
+Target 45 genuinely distinct, verified Science records; if the chapter cannot support every model, report the constraint before Q1 rather than inventing questions.
 
 A. OBJECTIVE / MCQ — 25 questions
 • 7 Direct Concept / Understanding MCQs
@@ -4472,6 +4547,9 @@ SCIENCE-SPECIFIC RULES:
 • Physics answers should show formula, substitution, calculation and unit where required.
 • Chemistry equations, symbols, formulae and reactions must be correct.
 • Descriptive answers should be point-wise where suitable.
+${classNum === 9 || classNum === 10
+  ? "• For CBSE Science Classes 9–10, append the correct [Area: Biology], [Area: Chemistry] or [Area: Physics] tag to EVERY record, based on the actual chapter."
+  : "• For CBSE Science Classes 6–8, keep Science integrated and do not add an [Area: ...] tag."}
 `;
   }
 
@@ -4757,6 +4835,10 @@ ${boardKey === 'cbse' && isEnglish
   ? __scEnglishResearchRules(cls, 'chapter bank')
   : ''}
 
+${boardKey === 'cbse' && isScience
+  ? __scScienceResearchRules(cls, subj, 'chapter bank')
+  : ''}
+
 ${boardKey === 'cbse' && isMath
   ? __scMathResearchRules(cls, 'chapter bank')
   : ''}
@@ -4771,6 +4853,11 @@ Q<num>: <Marks> [<Question Type>] [Model: <Model Type>]
 
 For Social Science Class 9 or 10, append:
 [Area: <History/Geography/Political Science/Economics>]
+
+For CBSE Science Class 9 or 10, append exactly one:
+[Area: Biology] or [Area: Chemistry] or [Area: Physics]
+
+For CBSE Science Classes 6–8, do NOT append an Area tag.
 
 Examples:
 
@@ -5185,6 +5272,9 @@ Chapter: ${chap}
 ${requestLine}
 ${isCbse && /^english\b/i.test(String(subj)) && !isTextbook
   ? __scEnglishResearchRules(cls, 'individual questions')
+  : ''}
+${isCbse && __scIsCbseScienceSubject(subj) && !isTextbook
+  ? __scScienceResearchRules(cls, subj, 'individual questions')
   : ''}
 ${isCbse && isMathSubject && !isTextbook
   ? __scMathResearchRules(cls, 'individual questions')
