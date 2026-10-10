@@ -2184,7 +2184,98 @@
     }
   }
 
+  
+  function __epStudentQuestionOnly(value) {
+    const host = document.createElement('div');
+    host.innerHTML = rich(value);
+
+    const answerStart =
+      /^[ \t]*(?:Answer|Ans|Explanation|Solution)\s*:/im;
+
+    const nextQuestion =
+      /^[ \t]*(?:Sub[- ]question\s+(?:\d+[A-Z]?|\([ivxlcdm]+\))(?:\s*\(\d+(?:\.\d+)?\s*Marks?\))?\s*:|Item\s+\d+\s*\(\d+(?:\.\d+)?\s*Marks?\)\s*:|\(?OR\)?[ \t]*$)/im;
+
+    for (let pass = 0; pass < 100; pass++) {
+      const walker = document.createTreeWalker(
+        host,
+        NodeFilter.SHOW_TEXT
+      );
+
+      const nodes = [];
+      let node;
+
+      while ((node = walker.nextNode())) {
+        nodes.push(node);
+      }
+
+      let start = null;
+      let startIndex = -1;
+
+      for (let i = 0; i < nodes.length; i++) {
+        const match = nodes[i].textContent.match(answerStart);
+
+        if (match) {
+          start = {
+            node: nodes[i],
+            offset: match.index
+          };
+          startIndex = i;
+          break;
+        }
+      }
+
+      if (!start) break;
+
+      let end = null;
+
+      for (let i = startIndex; i < nodes.length; i++) {
+        const offset = i === startIndex
+          ? start.offset + 1
+          : 0;
+
+        const match = nodes[i].textContent
+          .slice(offset)
+          .match(nextQuestion);
+
+        if (match) {
+          end = {
+            node: nodes[i],
+            offset: offset + match.index
+          };
+          break;
+        }
+      }
+
+      const range = document.createRange();
+      range.setStart(start.node, start.offset);
+
+      if (end) {
+        range.setEnd(end.node, end.offset);
+      } else {
+        range.setEnd(host, host.childNodes.length);
+      }
+
+      range.deleteContents();
+    }
+
+    [...host.querySelectorAll('p,div,span,b,strong')]
+      .reverse()
+      .forEach(element => {
+        if (
+          !element.textContent.trim() &&
+          !element.querySelector(
+            'img,table,svg,math,mjx-container'
+          )
+        ) {
+          element.remove();
+        }
+      });
+
+    return host.innerHTML;
+  }
+
   function previewQuestion(question, number) {
+
     const optionLines = (question.options || []).map(
       (option, index) => `${String.fromCharCode(65 + index)}) ${option}`
     );
@@ -2206,7 +2297,7 @@
         <div class="question-body">
           <div style="display:flex;gap:12px">
             <div class="question-text" style="flex:1">
-              ${rich(question.text || question.question)}
+              ${__epStudentQuestionOnly(question.text || question.question)}
             </div>
 
             <b style="white-space:nowrap">
