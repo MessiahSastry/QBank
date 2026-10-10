@@ -8918,6 +8918,22 @@ Do NOT add school headers, decorative formatting or paper styling.
 
 QUESTION WRITING STANDARD — ALL SUBJECTS
 
+MANDATORY COMPLETE SYLLABUS COVERAGE
+
+- Apply to all classes, boards, subjects and examinations.
+- Every selected chapter, lesson and syllabus topic must be represented.
+- Prepare an internal checklist before question generation and verify coverage before finalising.
+- Distribute questions appropriately across the complete selected syllabus.
+- Use existing internal OR alternatives to cover different selected topics, concepts or skills where permitted.
+- For writing sections, prefer different selected writing formats across alternatives instead of repeating the same format.
+- Allow more than one short writing task within an existing record only when supported by the blueprint and parser.
+- Each combined question must preserve the original total marks and contain clearly marked subquestions and model answers.
+- Preserve the selected question type, compulsory model family, difficulty requirements and all subpart patterns.
+- Do not change the maximum marks, question counts, number of records, sections or internal-choice structure.
+- Do not introduce unselected syllabus content or repeat similar questions unnecessarily.
+- If complete coverage is impossible under the fixed blueprint, report the conflict explicitly; do not silently omit a selected topic.
+- Recheck selected-topic coverage before providing the FINAL SET.
+
 - Follow concise, direct, examination-style question writing appropriate to the selected class, board and subject.
 - Keep ordinary question stems short, clear and meaningful.
 - For descriptive questions, generally use one or two sentences unless additional information is essential.
@@ -11525,8 +11541,8 @@ if (cleanedErrors.length) {
         add(a, 'Discursive passage', 'Reading', 1, 10, { area: 'Reading', pattern: [1, 1, 1, 2, 1, 1, 1, 2].map(marks => ({ marks })) });
         add(a, 'Case / factual passage', 'Reading', 1, 10, { area: 'Reading', pattern: [1, 1, 1, 1, 2, 1, 1, 1, 1].map(marks => ({ marks })) });
         add(b, 'Grammar: attempt any 10 of 12', 'Grammar', 12, 1, { attempt: 10, area: 'Grammar', grouped: true });
-        add(b, 'Formal letter', 'Writing', 1, 5, { orCount: 1, area: 'Writing', modelFilter: 'Letter' });
-        add(b, 'Analytical paragraph', 'Writing', 1, 5, { orCount: 1, area: 'Writing', modelFilter: 'Analytical Paragraph' });
+               add(b, 'Writing choice — letters', 'Writing', 1, 5, { orCount: 1, area: 'Writing' });
+        add(b, 'Writing choice — paragraph and functional writing', 'Writing', 1, 5, { orCount: 1, area: 'Writing' });
         add(c, 'Prose / drama extract', 'Extract', 1, 5, { orCount: 1, area: 'Prose|Drama', pattern: [1, 1, 1, 2].map(marks => ({ marks })) });
         add(c, 'Poetry extract', 'Extract', 1, 5, { orCount: 1, area: 'Poetry', pattern: [1, 1, 1, 2].map(marks => ({ marks })) });
         add(c, 'Main reader: any 4 of 5', D, 5, 3, { attempt: 4, grouped: true, area: 'Prose|Poetry|Drama|Literature' });
@@ -11536,8 +11552,8 @@ if (cleanedErrors.length) {
       } else if (marks === 40) {
         add(a, 'Reading passages', 'Reading', 2, 5, { area: 'Reading' });
         add(b, 'Grammar', 'Grammar', 6, 1, { attempt: 5, area: 'Grammar', grouped: true });
-        add(b, 'Formal letter', 'Writing', 1, 2.5, { orCount: 1, area: 'Writing', modelFilter: 'Letter' });
-        add(b, 'Analytical paragraph', 'Writing', 1, 2.5, { orCount: 1, area: 'Writing', modelFilter: 'Analytical Paragraph' });
+                add(b, 'Writing choice — letters', 'Writing', 1, 2.5, { orCount: 1, area: 'Writing' });
+        add(b, 'Writing choice — other selected writing formats', 'Writing', 1, 2.5, { orCount: 1, area: 'Writing' });
         add(c, 'Prose / drama extract', 'Extract', 1, 4, { orCount: 1, area: 'Prose|Drama' });
         add(c, 'Poetry extract', 'Extract', 1, 4, { orCount: 1, area: 'Poetry' });
         add(c, 'Main reader short answers', D, 3, 2, { attempt: 2, grouped: true, area: 'Prose|Poetry|Drama|Literature' });
@@ -11585,12 +11601,12 @@ if (cleanedErrors.length) {
             'Twelve independent one-mark Grammar import records, forming ONE printed question. Mix contextual completion, four-option MCQs, bracketed verb forms, reported dialogue/questions, and error-correction tasks. For error correction, provide a clearly incorrect sentence and ask for both the error and its correction. Use only grammar prescribed for the selected class; adapt task types when necessary. Do not make all twelve tasks the same type.'
           ],
           [
-            'Answer ANY ONE of the following two formal-letter tasks in 100–120 words:',
-            'Two independent formal-letter alternatives, five marks each. Write a concise, direct question specifying the writer, recipient, purpose and essential situation. Avoid lengthy background narration. The 100–120-word limit applies ONLY to each model letter, NOT to the question statement. Use a model containing Letter.'
+                        'Answer ANY ONE of the following two writing tasks:',
+            'Generate two independent five-mark alternatives using different selected writing formats. Prefer a Formal Letter and an Informal Letter when both are selected. If either is not selected, use suitable different writing formats from the selected syllabus. Each alternative must be a complete independent task worth five marks. Apply a word limit appropriate to its writing format and class. Give a complete model answer. Use a model name matching the actual writing task. Keep the question statement concise. Do not change the existing OR records, slots or marks.'
           ],
           [
-            'Answer ANY ONE of the following two analytical-paragraph tasks in 100–120 words:',
-            'Two independent analytical-paragraph alternatives, five marks each. Write a short, direct task instruction. Supply the complete source data, table, comparison or argument required to answer it. Do not expand the question statement unnecessarily. The 100–120-word limit applies ONLY to each model paragraph, NOT to the question or accompanying data. Use a model containing Analytical Paragraph.'
+                        'Answer ANY ONE of the following two writing alternatives:',
+            'Generate two independent five-mark alternatives covering different selected writing topics. Prefer an Analytical Paragraph for the first alternative when paragraph writing is selected. For the second alternative, use different selected functional-writing topics. If both Notice Writing and Message Writing are selected, combine them into ONE five-mark record containing Sub-question 1 (3 Marks) for a Notice and Sub-question 2 (2 Marks) for a Message, each with its own complete answer. Otherwise choose another suitable selected writing task or valid combination. Every alternative must total five marks. Use format-appropriate word limits. Supply complete source data for analytical paragraphs. Preserve the existing record count, OR slots, question type and total marks. Do not introduce unselected writing topics.'
           ],
           [
             'Read the prose/drama extracts and answer the questions for ANY ONE of the two:',
@@ -12810,6 +12826,28 @@ ${snapshot.subjects
   .join('\n')}
 
 CONTENT AND BLUEPRINT RULES
+
+MANDATORY SYLLABUS COVERAGE — ALL CLASSES AND SUBJECTS
+
+- Every selected syllabus chapter, lesson and topic must be represented in the examination.
+- Apply this rule to every class, board, subject and examination.
+- Before generating questions, prepare an internal coverage checklist of all selected chapters and topics.
+- Distribute questions across the selected syllabus without unnecessary repetition.
+- Every selected topic must appear in at least one main question, subquestion, Attempt Any item or internal OR alternative.
+- Internal OR alternatives should preferably cover different selected chapters, concepts, skills or writing formats instead of repeating similar questions.
+- All OR alternatives must retain the specified marks, compatible question type, required model family and appropriate difficulty.
+- For language subjects, use different selected writing formats across internal choices wherever the blueprint permits.
+- Examples include formal letters, informal letters, notices, messages, paragraphs, emails and reports.
+- When necessary, combine two short writing tasks within one existing record using clearly marked subquestions and marks that add up to the original record total.
+- Do not combine incompatible question types or violate mandatory subpart patterns.
+- Use format-appropriate word limits and provide a complete model answer for every writing task.
+- Preserve the examination's original maximum marks, attempted marks, question-record count, section structure, Slot tags and internal-choice count.
+- Do not create additional question records merely to cover extra topics.
+- Do not introduce unselected chapters or topics.
+- Before producing the draft, check that every selected syllabus topic is represented.
+- During RECHECK, verify complete syllabus coverage, answers, difficulty, marks and internal choices.
+- If the selected blueprint cannot accommodate all topics without violating its compulsory structure, clearly report the conflict during draft review instead of silently omitting topics.
+- Do not claim complete coverage unless every selected topic is actually represented.
 
 QUESTION STEM LENGTH — ALL SUBJECTS
 - Write direct, concise, exam-ready question stems appropriate to the class and board. Use one or two short sentences when enough.
