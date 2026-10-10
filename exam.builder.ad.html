@@ -7619,6 +7619,74 @@ These extra rules apply ONLY to CBSE Mathematics (Classes 6–12).
 `;
 }
 
+function __scIsCbseScienceSubject(value) {
+  return /^(?:science|general science|physics|chemistry|biology)$/i.test(
+    String(value || '').trim()
+  );
+}
+
+function __scScienceResearchRules(classLabel, subjectLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+  const subject = String(subjectLabel || '').trim();
+
+  if (grade < 6 || grade > 12 ||
+      !__scIsCbseScienceSubject(subject)) {
+    return '';
+  }
+
+  const structure = grade <= 8
+    ? 'Classes 6–8: ONE integrated Science subject. Do not divide the paper or chapter bank into Physics, Chemistry and Biology sections; no [Area: ...] tag.'
+    : grade <= 10
+      ? 'Classes 9–10: ONE Science paper, arranged Section A – Biology, Section B – Chemistry, Section C – Physics, in that exact order. The Class 9 section layout is a school adaptation of the Class 10 pattern. Tag each question with exactly one accurate [Area: Biology], [Area: Chemistry] or [Area: Physics] when supported by the output format.'
+      : 'Classes 11–12: Physics, Chemistry and Biology are THREE DIFFERENT CBSE subjects, each with its own syllabus, textbook, question paper and subject-specific blueprint. Never treat senior-secondary Science as a combined paper; never use the Class 10 Science section structure for these subjects.';
+
+  return `
+CBSE SCIENCE — MANDATORY TEXTBOOK AND BLUEPRINT RULES
+Workflow: ${workflow}
+Class: ${grade}; Selected subject: ${subject}
+
+1. OFFICIAL TEXTBOOK RESEARCH
+- Verify the applicable CBSE syllabus and NCERT textbook/edition for this class, academic year, subject and selected chapter(s). Do not hardcode textbook titles.
+- Prioritise https://cbseacademic.nic.in/, https://ncert.nic.in/ and https://epathshala.nic.in/.
+- Actually read each accessible selected chapter, examples, labelled diagrams, investigations, observations, activities and prescribed exercises. Do not rely only on summaries, snippets or chapter titles.
+- Cover only selected chapters and the concepts they genuinely contain, without adding higher-class or deleted topics.
+
+2. SCIENCE SUBJECT ORGANISATION
+${structure}
+- For Classes 9–10, identify the actual scientific branch of EACH selected chapter before assigning its section or [Area: ...] tag. Do not guess merely from the chapter number.
+- Follow the current official Class 10 Science section order. For school tests drawn from selected chapters, do not invent questions from missing branches just to fill the full-syllabus template. Report an incompatible blueprint before Q1 and request a suitable custom blueprint.
+- For Classes 11–12, when separate subject selection is supported, follow that selected subject's own current CBSE question pattern, not a combined 80-mark Science pattern.
+
+3. SCIENTIFIC QUESTION QUALITY
+- Prioritise conceptual understanding, scientific reasoning, investigation, application, evidence interpretation, competency and analysis; stay class-appropriate.
+- Physics: use valid principles, correctly defined quantities, SI units, necessary formulae, substitutions, calculations, rounding and physical interpretation.
+- Chemistry: check chemical names, symbols, formulae, valencies, equations, balancing, states/conditions and observations; use only syllabus-appropriate reactions.
+- Biology: verify biological structures, functions, processes, terminology, sequences, examples and conclusions.
+- Use legitimate experiment-based, data/table-based, diagram-based, assertion–reason and case-based questions only when supported by chapter content and the selected question model.
+- MCQ (Single) must have exactly one defensible correct option and three plausible distractors; verify every option separately.
+- Answer descriptive science questions point-wise when appropriate, using as many points as needed rather than a fixed marks-to-points formula. Give step-wise working for numericals and balanced equations where needed.
+
+4. FIGURES, PRACTICALS AND DATA
+- If a question requires a diagram, give correct labels, orientation and scientific context, and use the existing [Picture Needed: Yes] marker where supported.
+- Supply [Image: actual image URL] only when verified and accessible. Never fabricate image URLs or assume a diagram was supplied.
+- Questions depending on an unavailable visual or unverified data must be replaced by self-contained questions or flagged before the final set.
+- Use observed/experimental results accurately; do not invent a result and falsely attribute it to NCERT.
+
+5. INVENTORY, BLUEPRINT AND VERIFICATION
+- Chapter bank: follow its existing question-type inventory when the verified content can support genuinely distinct items; never fill it with duplicates or invented content.
+- Individual questions: follow the requested type, count and level distribution.
+- Exam Builder: obey exact blueprint rows, question order, section names, subject, chapter, Slot, marks, internal OR, Attempt Any and attempted total.
+- Never swap Biology, Chemistry or Physics content between sections.
+- Preserve the existing Q record metadata, answer/explanation fields, question numbering, formatting and DRAFT → RECHECK → FINAL SET sequence.
+- Double-check all facts, calculations, diagrams, equations, MCQ options, marks and answers against the verified chapter.
+- If the actual source is unavailable or the selected blueprint cannot be met, STOP BEFORE Q1; state the exact limitation and request an accessible chapter or compatible blueprint. Never claim to have browsed or verified inaccessible material.
+
+Apply these extra rules ONLY to CBSE Science, Physics, Chemistry or Biology in Classes 6–12.
+`;
+}
+
 function __scEnglishResearchRules(classLabel, workflow) {
   const grade = Number(
     String(classLabel || '').match(/\d+/)?.[0] || 0
@@ -7858,6 +7926,24 @@ ${String(board || '').trim().toUpperCase() === 'CBSE' &&
     )
   )
     ? __scEnglishResearchRules(className, 'exam blueprint')
+    : ''}
+
+${String(board || '').trim().toUpperCase() === 'CBSE' &&
+  Array.isArray(subjects)
+    ? subjects
+        .filter(s =>
+          __scIsCbseScienceSubject(
+            s?.subject || s?.name || s
+          )
+        )
+        .map(s =>
+          __scScienceResearchRules(
+            className,
+            s?.subject || s?.name || s,
+            'exam blueprint'
+          )
+        )
+        .join('\n')
     : ''}
 
 ${String(board || '').trim().toUpperCase() === 'CBSE' &&
@@ -10111,7 +10197,34 @@ if (cleanedErrors.length) {
     return { variant, marks, rows, custom: false, referenceMarks, source: sourceURL(variant), note: marks === referenceMarks ? `Class 10 reference structure (${year}). For Classes 6–9 this is a school-selected use of that structure; content stays within the selected class.` : `School adaptation of the Class 10 ${referenceMarks}-mark structure (${year}). Counts and choices are adjusted explicitly to ${marks} marks.` };
   }
   function buildChapterPreset(variant, marks = 80, settings = {}) {
-    const bp = buildPreset(variant, marks);
+        const bp = buildPreset(variant, marks);
+    const scienceGrade = Number(
+      String(settings.class || '').match(/\d+/)?.[0]
+    );
+
+    if (
+      variant === 'science' &&
+      scienceGrade >= 9 &&
+      scienceGrade <= 10
+    ) {
+      bp.chapterScoped = true;
+      bp.schoolAdaptation =
+        scienceGrade === 9 || marks !== 80;
+
+      bp.note =
+        `CBSE Science class ${scienceGrade}: ` +
+        `Section A – Biology, ` +
+        `Section B – Chemistry, ` +
+        `Section C – Physics. ` +
+        (scienceGrade === 9
+          ? 'This section arrangement is a school adaptation of the Class 10 pattern. '
+          : '') +
+        'This full-branch preset needs selected chapters from all three areas. ' +
+        'For a partial-syllabus test covering fewer branches, ' +
+        'choose a Custom Paper blueprint rather than inventing out-of-syllabus questions.';
+
+      return bp;
+    }
     if (!['science', 'social'].includes(variant)) return bp;
     const includeMaps = settings.includeMaps !== false;
     const groups = new Map();
@@ -10935,6 +11048,17 @@ ${snapshot.subjects.some(s =>
   ? __scEnglishResearchRules(snapshot.class, 'exam blueprint')
   : ''}
 
+${snapshot.subjects
+  .filter(s => __scIsCbseScienceSubject(s.subject))
+  .map(s =>
+    __scScienceResearchRules(
+      snapshot.class,
+      s.subject,
+      'exam blueprint'
+    )
+  )
+  .join('\n')}
+
 ${snapshot.subjects.some(s =>
   /^(?:mathematics|maths?|applied mathematics)\b/i.test(
     String(s.subject || '')
@@ -10945,7 +11069,7 @@ ${snapshot.subjects.some(s =>
 
 CONTENT AND BLUEPRINT RULES
 - Stay strictly within the selected class, subject and chapters. Use that class's own textbook content, terminology and age-appropriate questions. The paper pattern may be adapted from Class 10; the content must never be taken from Class 10 for a lower class.
-- Cover every selected chapter. Science and Social Science have no compulsory branch quotas. Never introduce unselected chapters or branches.
+- Cover every selected chapter. Science Classes 6–8 are integrated. Science Classes 9–10 use ordered Biology, Chemistry and Physics sections when the selected blueprint requires them. If a selected-chapter test lacks a required branch, report the incompatible full-branch preset and request a Custom Paper blueprint; do not invent content. Social Science has no compulsory branch quotas.
 - Generate exactly the listed Q1–Q${questionNumber} records in order, including the independent OR alternatives. Preserve every Slot tag exactly. Slot tags restart for each subject and identify placement in the Builder; do not print them inside question text.
 - Each listed OR record is a complete independent question of the required marks and model family. Keep OR choices inside a case/reading passage as subquestions of that SAME record.
 - Replace each Chapter placeholder with an EXACT selected chapter name. Preserve subject and class names. Give meaningful models (e.g. Direct Concept, Application, Analyse, Give Reasons, Inference), matching each required model family. Do not use Level 1/2/3 labels.
@@ -11300,7 +11424,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science and Social Science use question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–10</h3><p>Choose a paper size and the chapters to test. Science Classes 6–8 use integrated question-type sections; Classes 9–10 use Biology, Chemistry and Physics sections in that order when using the reference Science preset. Social Science uses question-type sections with no compulsory branch quotas. Every question comes from the selected class and chapters.</p><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div><p class="cb-muted">Reference presets: Mathematics, Science, Social Science, English, Hindi A/B, Sanskrit, Telugu AP and Computer Applications. Telugu AP uses the available 2025–26 reference. Other courses use Custom Paper. Computer Applications has a 50-mark reference; its 80-mark option is a school adaptation.</p><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').before(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
