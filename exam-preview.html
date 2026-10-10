@@ -3,7 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <title>Exam Print Preview | St. Patrick's School</title>
-  <meta name="viewport" content="width=900, initial-scale=1.0">
+    <meta name="viewport" content="width=900, initial-scale=1.0">
+  <script>
+    if (new URLSearchParams(window.location.search).get('mode') === 'answerkey') {
+      document.querySelector('meta[name="viewport"]').setAttribute(
+        'content',
+        'width=device-width, initial-scale=1.0'
+      );
+    }
+  </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -7260,7 +7268,76 @@ function cbsePrintQuestion(question, number, section) {
     }
 
     
+    
+    // Fix (A)/(B) extracts that also contain numbered subquestions.
+    Array.from(stem.querySelectorAll('div')).reverse().forEach(group => {
+      if (group.closest('.cbse-subquestion-row, .cbse-hanging-choice, .options-block')) return;
+      if (!group.querySelector('.cbse-subquestion-row')) return;
+
+      const first = Array.from(group.childNodes).find(node =>
+        node.nodeType === Node.TEXT_NODE
+          ? !!node.textContent.trim()
+          : node.nodeType === Node.ELEMENT_NODE && !!node.textContent.trim()
+      );
+
+      if (!first || (first.nodeType === Node.ELEMENT_NODE &&
+          first.querySelector('.cbse-subquestion-row'))) return;
+
+      const leadingText = first.nodeType === Node.TEXT_NODE
+        ? first
+        : (() => {
+            const walker = document.createTreeWalker(first, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+              if (node.textContent.trim()) return node;
+            }
+            return null;
+          })();
+
+      const match = leadingText?.textContent.match(/^\s*(\([AB]\))(?=\s|["“']|$)\s*/i);
+      if (!match) return;
+
+      const row = document.createElement('div');
+      row.className = 'cbse-hanging-choice';
+
+      const label = document.createElement('span');
+      label.className = 'cbse-hanging-label';
+      label.textContent = match[1];
+
+      const content = document.createElement('div');
+      content.className = 'cbse-hanging-content';
+
+      row.append(label, content);
+      first.before(row);
+
+      leadingText.textContent =
+        leadingText.textContent.slice(match[0].length);
+
+      if (!first.textContent.trim() &&
+          first.nodeType === Node.ELEMENT_NODE &&
+          !first.querySelector('img, table, svg')) {
+        first.remove();
+      }
+
+      let next = row.nextSibling;
+
+      while (next) {
+        const following = next.nextSibling;
+
+        if (next.nodeType === Node.ELEMENT_NODE && (
+          next.matches('.cbse-subquestion-row, .cbse-centred-or, .options-block') ||
+          next.querySelector('.cbse-subquestion-row')
+        )) break;
+
+        if (/^(?:OR|\([AB]\))$/i.test((next.textContent || '').trim())) break;
+
+        content.appendChild(next);
+        next = following;
+      }
+    });
+
     // Give alternatives and unmarked subquestions a hanging label.
+
     Array.from(stem.querySelectorAll('p, div')).reverse().forEach(block => {
       if (block.closest(
         '.cbse-subquestion-row, .cbse-hanging-choice, .options-block, td, th'
