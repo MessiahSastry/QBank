@@ -12205,7 +12205,57 @@ if (cleanedErrors.length) {
       if (!q) { errors.push(`Missing question for ${slot.row.title}, slot ${slot.id}.`); return null; }
       const label = `Question ${i + 1} (${slot.row.title})`;
       errors.push(...nodeErrors(q, label));
-      if (!compatible({ ...q, _errors: [] }, slot.row, slot.family)) errors.push(`${label}: type, marks, model or subpart pattern does not match the blueprint.`);
+            if (!compatible({ ...q, _errors: [] }, slot.row, slot.family)) {
+        const r = slot.row;
+        const issues = [];
+
+        if (q.marks !== r.marks) {
+          issues.push(`marks: expected ${r.marks}, found ${q.marks}`);
+        }
+
+        const allowedTypes = ({
+          Grammar: ['Grammar', MCQ, 'Fill in the Blanks', D, 'True / False'],
+          Writing: ['Writing', D],
+          Reading: ['Reading', 'Question Set', C, D],
+          Extract: ['Extract', 'Question Set', C, D],
+          'Question Set': ['Question Set', D, 'Grammar']
+        })[r.type] || [r.type];
+
+        if (!allowedTypes.includes(q.type)) {
+          issues.push(
+            `type: expected ${allowedTypes.join(' or ')}, found ${q.type || 'missing'}`
+          );
+        }
+
+        if (r.area && !r.area.split('|').includes(q.subjectArea)) {
+          issues.push(
+            `area: expected ${r.area}, found ${q.subjectArea || 'missing'}`
+          );
+        }
+
+        if (r.modelFilter &&
+            !key(q.modelType).includes(key(r.modelFilter))) {
+          issues.push(
+            `model: expected ${r.modelFilter}, found ${q.modelType || 'missing'}`
+          );
+        }
+
+        if (!patternMatches(q, r.pattern)) {
+          issues.push('subquestion pattern does not match blueprint');
+        }
+
+        if (slot.family !== 'Any' && q.family !== slot.family) {
+          issues.push(
+            `cognitive model: expected ${slot.family}, found ${q.family}`
+          );
+        }
+
+        if (!issues.length) {
+          issues.push('question structure is incompatible with this row');
+        }
+
+        errors.push(`${label}: ${issues.join('; ')}.`);
+      }
       if (q.deleted || ['class', 'board', 'subject'].some(k => settings[k] && q[k] !== settings[k]) || !(settings.chapters || []).includes(q.chapter)) errors.push(`${label}: class, subject or chapter does not match the selected setup.`);
       const fp = fingerprint(q); if (seen.has(fp)) errors.push(`${label}: duplicate question.`); seen.add(fp);
       return { ...clone(q), _targetFamily: slot.family };
@@ -12770,7 +12820,7 @@ if (cleanedErrors.length) {
       const rows = cfg.blueprint.rows.map((r, ri) => {
         const records = slots.filter(s => s.ri === ri).map(slot => {
           questionNumber++;
-          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${slot.family === 'Any' ? 'choose an accurate model' : slot.family}] [Subject: ${cfg.subject}] [Chapter: choose exactly from selected chapters] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
+          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${r.modelFilter || (slot.family === 'Any' ? 'choose an accurate model' : slot.family)}] [Subject: ${cfg.subject}] [Chapter: choose exactly from selected chapters] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
         });
         return `${r.section} — ${r.title}\nType: ${r.type}; marks each: ${r.marks}; import items: ${r.count}; printed main questions: ${r.grouped || r.attempt < r.count ? 1 : r.count}; attempt: ${r.attempt}; extra OR records: ${r.orCount}; counted marks: ${r.attempt * r.marks}.\n${r.pattern ? `Subpart pattern: ${r.pattern.map((p, i) => `${i + 1}: ${p.any ? `attempt any ${p.any} of ${p.count}, ${p.marks} mark(s) each` : `${p.marks} mark(s)${p.alternatives ? ` with ${p.alternatives} OR alternatives` : ''}`}`).join('; ')}.\n` : ''}${r.modelFilter ? `Required model: ${r.modelFilter}.\n` : ''}${r.printInstruction ? `Printed instruction: ${r.printInstruction}\n` : ''}${r.generationRules ? `Question styles: ${r.generationRules}\n` : ''}Required import records in this order:\n${records.join('\n')}`;
       }).join('\n\n');
