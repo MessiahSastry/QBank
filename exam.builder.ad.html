@@ -521,40 +521,60 @@
       : 'exam-review.html';
   }
 
-  function store(mode, action) {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
+    async function store(mode, action) {
 
-      request.onupgradeneeded = () => {
-        request.result.createObjectStore('drafts', { keyPath: 'id' });
-      };
+    // Use the same Firebase project as the administrator login.
+    const app = firebase.app();
+    const user = app.auth().currentUser;
 
-      request.onerror = () => reject(request.error);
+    if (!user) {
+      throw new Error(
+        'Administrator login required. Please sign in again.'
+      );
+    }
 
-      request.onsuccess = () => {
-        const database = request.result;
-        const transaction = database.transaction('drafts', mode);
-        let result;
+    const papers = app.firestore()
+      .collection('adminExamPapers')
+      .doc(user.uid)
+      .collection('papers');
 
-        const operation = action(transaction.objectStore('drafts'));
+    const cloud = {
 
-        operation.onsuccess = () => {
-          result = operation.result;
-        };
+      async getAll() {
+        const snapshot = await papers.get();
 
-        transaction.oncomplete = () => {
-          database.close();
-          resolve(result);
-        };
+        return snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        }));
+      },
 
-        transaction.onerror = transaction.onabort = () => {
-          database.close();
-          reject(transaction.error || new Error('Saving failed.'));
-        };
-      };
-    });
+      async put(paper) {
+        if (!paper?.id) {
+          throw new Error('Paper ID is missing.');
+        }
+
+        await papers.doc(String(paper.id)).set(
+          JSON.parse(JSON.stringify(paper))
+        );
+
+        return paper.id;
+      },
+
+      async delete(id) {
+        if (!id) {
+          throw new Error('Paper ID is missing.');
+        }
+
+        await papers.doc(String(id)).delete();
+      }
+    };
+
+    return action(cloud);
   }
 
+  // Shared Firestore storage for My Papers and CBSE drafts.
+  window.SciMentraCloudPaperStore = store;
   // One shared, question-derived blueprint for Builder and My Papers.
   function __ebBlueprintHtml(input) {
     const paper = input?._cbseBlueprintSource || input;
@@ -1046,50 +1066,329 @@
 
       const dialog = document.createElement('dialog');
 
+           dialog.className = 'sc-papers-modal';
+
       dialog.style.cssText = `
-        width:min(900px,90vw);
-        max-height:85vh;
+        width:min(720px,calc(100vw - 28px));
+        max-height:min(85vh,800px);
         border:0;
-        border-radius:16px;
-        padding:24px;
-        overflow:auto;
+        border-radius:20px;
+        padding:0;
+        overflow-y:auto;
+        box-shadow:0 24px 70px rgba(15,40,70,.23);
+        color:#19334b;
       `;
 
       dialog.innerHTML = `
-        <h2>My Papers</h2>
-        <p>Saved papers on this browser.</p>
-        <button data-close>Close</button>
-        ${
-          papers.length
-            ? papers.map((paper, index) => `
-                <article style="padding:16px 0;border-bottom:1px solid #ddd">
-                  <b>${esc(paper.examName)}</b>
-                  <p>
-                    ${esc(paper.class)} ·
-                    ${esc(paper.maxMarks)} marks
-                  </p>
-                  ${
-                    [
-                      ['open', 'Open Paper'],
-                      ['review', 'Exam Review'],
-                      ['answers', 'Download Answer Key'],
-                      ['blueprint', 'Download Blueprint'],
-                      ['delete', 'Delete']
-                    ].map(([action, label]) => `
-                      <button
-                        data-action="${action}"
-                        data-index="${index}"
-                        style="margin:4px;padding:8px">
-                        ${label}
-                      </button>
-                    `).join('')
-                  }
-                </article>
-              `).join('')
-            : '<p>No saved papers yet. Save a paper from Exam Preview.</p>'
-        }
-      `;
+        <style>
+          .sc-papers-modal::backdrop {
+            background:rgba(12,30,50,.5);
+          }
 
+          .sc-papers-modal * {
+            box-sizing:border-box;
+          }
+
+          .sc-papers-head {
+            display:flex;
+            align-items:flex-start;
+            justify-content:space-between;
+            gap:14px;
+            padding:24px 26px 14px;
+          }
+
+          .sc-papers-head h2 {
+            margin:0;
+            color:#123b63;
+            font-size:24px;
+          }
+
+          .sc-papers-head p {
+            margin:6px 0 0;
+            color:#718096;
+            font-size:13px;
+          }
+
+          .sc-papers-close {
+            display:grid;
+            place-items:center;
+            width:36px;
+            height:36px;
+            flex-shrink:0;
+            border:0;
+            border-radius:50%;
+            background:#f0f4f9;
+            color:#43576c;
+            cursor:pointer;
+            font-size:17px;
+          }
+
+          .sc-papers-list {
+            padding:6px 24px 22px;
+            display:grid;
+            gap:12px;
+          }
+
+          .sc-paper-card {
+            border:1px solid #e0e8f0;
+            border-radius:14px;
+            padding:16px 18px;
+            background:#fff;
+          }
+
+          .sc-paper-top {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            flex-wrap:wrap;
+          }
+
+          .sc-paper-name {
+            font-size:16px;
+            font-weight:700;
+            color:#173a5e;
+            overflow-wrap:anywhere;
+            line-height:1.4;
+          }
+
+          .sc-paper-name span {
+            font-weight:500;
+            color:#556a7f;
+          }
+
+          .sc-paper-meta {
+            margin:7px 0 0;
+            font-size:13px;
+            color:#687c8e;
+            line-height:1.5;
+          }
+
+          .sc-paper-toggle {
+            border:0;
+            border-radius:999px;
+            padding:10px 17px;
+            min-height:39px;
+            background:#195995;
+            color:#fff;
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+            display:inline-flex;
+            align-items:center;
+            gap:9px;
+          }
+
+          .sc-paper-toggle:hover {
+            background:#10446f;
+          }
+
+          .sc-paper-toggle[aria-expanded="true"] .fa-chevron-down {
+            transform:rotate(180deg);
+          }
+
+          .sc-paper-toggle .fa-chevron-down {
+            transition:transform .15s;
+          }
+
+          .sc-paper-menu {
+            display:grid;
+            gap:3px;
+            margin-top:13px;
+            padding:6px;
+            border-radius:12px;
+            border:1px solid #e3ebf2;
+            background:#f8fbfe;
+          }
+
+          .sc-paper-menu[hidden] {
+            display:none!important;
+          }
+
+          .sc-paper-menu button {
+            width:100%;
+            display:flex;
+            align-items:center;
+            gap:12px;
+            text-align:left;
+            padding:12px 13px;
+            border:0;
+            border-radius:8px;
+            background:transparent;
+            color:#294a66;
+            font-size:14px;
+            cursor:pointer;
+          }
+
+          .sc-paper-menu button:hover {
+            background:#eaf2fb;
+          }
+
+          .sc-paper-menu button i {
+            width:18px;
+            text-align:center;
+          }
+
+          .sc-paper-menu button.sc-delete {
+            color:#b33131;
+            border-top:1px solid #e1e7ec;
+            border-radius:0 0 8px 8px;
+            margin-top:4px;
+          }
+
+          .sc-paper-menu button.sc-delete:hover {
+            background:#fff0f0;
+          }
+
+          .sc-papers-empty {
+            padding:26px;
+            text-align:center;
+            color:#66798b;
+          }
+
+          @media(max-width:540px) {
+            .sc-papers-head {
+              padding:18px 16px 12px;
+            }
+
+            .sc-papers-list {
+              padding:6px 14px 18px;
+            }
+
+            .sc-paper-card {
+              padding:14px;
+            }
+
+            .sc-paper-top {
+              align-items:flex-start;
+            }
+
+            .sc-paper-toggle {
+              margin-left:auto;
+            }
+          }
+        </style>
+
+        <div class="sc-papers-head">
+          <div>
+            <h2>My Papers</h2>
+            <p>Saved papers in your administrator cloud account</p>
+          </div>
+
+          <button
+            type="button"
+            class="sc-papers-close"
+            data-close
+            aria-label="Close My Papers"
+            title="Close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="sc-papers-list">
+          ${
+            papers.length
+              ? papers.map((paper, index) => {
+
+                  const subjects = [...new Set(
+                    (Array.isArray(paper.subjects) ? paper.subjects : [])
+                      .map(s =>
+                        typeof s === 'string'
+                          ? s
+                          : (s?.subject || s?.name || '')
+                      )
+                      .map(s => String(s).trim())
+                      .filter(Boolean)
+                  )];
+
+                  const savedValue =
+                    paper.updatedAt || paper.createdAt;
+
+                  const savedDate = savedValue
+                    ? new Date(savedValue)
+                    : null;
+
+                  const savedLabel =
+                    savedDate && !Number.isNaN(savedDate.getTime())
+                      ? savedDate.toLocaleDateString('en-IN', {
+                          day:'2-digit',
+                          month:'short',
+                          year:'numeric'
+                        })
+                      : '';
+
+                  const details = [
+                    paper.class || '',
+                    paper.maxMarks != null
+                      ? `${paper.maxMarks} marks`
+                      : '',
+                    savedLabel ? `Saved ${savedLabel}` : ''
+                  ].filter(Boolean).map(esc).join(' &nbsp;·&nbsp; ');
+
+                  return `
+                    <article class="sc-paper-card">
+
+                      <div class="sc-paper-top">
+                        <div>
+                          <div class="sc-paper-name">
+                            ${esc(paper.examName || 'Untitled Exam')}
+                            ${subjects.length
+                              ? `<span>(${esc(subjects.join(', '))})</span>`
+                              : ''}
+                          </div>
+
+                          <p class="sc-paper-meta">
+                            ${details}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          class="sc-paper-toggle"
+                          data-menu-toggle="${index}"
+                          aria-expanded="false"
+                          aria-controls="sc-paper-menu-${index}">
+                          Actions
+                          <i class="fas fa-chevron-down"
+                             aria-hidden="true"></i>
+                        </button>
+                      </div>
+
+                      <div
+                        class="sc-paper-menu"
+                        id="sc-paper-menu-${index}"
+                        hidden>
+
+                        ${
+                          [
+                            ['open','Open Paper','fa-file-alt'],
+                            ['review','Exam Review','fa-edit'],
+                            ['answers','Download Answer Key','fa-file-download'],
+                            ['blueprint','Download Blueprint','fa-list-alt'],
+                            ['delete','Delete Paper','fa-trash-alt']
+                          ].map(([action,label,icon]) => `
+                            <button
+                              type="button"
+                              data-action="${action}"
+                              data-index="${index}"
+                              class="${action === 'delete'
+                                ? 'sc-delete'
+                                : ''}">
+                              <i class="fas ${icon}"
+                                 aria-hidden="true"></i>
+                              ${label}
+                            </button>
+                          `).join('')
+                        }
+
+                      </div>
+                    </article>
+                  `;
+                }).join('')
+              : '<p class="sc-papers-empty">No saved papers yet. Save a paper from Exam Preview.</p>'
+          }
+        </div>
+      `;
       dialog.addEventListener('close', () => dialog.remove());
 
       dialog.onclick = async event => {
@@ -1101,7 +1400,46 @@
           return;
         }
 
+               if (button.hasAttribute('data-menu-toggle')) {
+
+          const index = button.dataset.menuToggle;
+
+          const menu = dialog.querySelector(
+            `#sc-paper-menu-${index}`
+          );
+
+          if (!menu) return;
+
+          const shouldOpen = menu.hidden;
+
+          dialog.querySelectorAll('.sc-paper-menu')
+            .forEach(item => {
+              item.hidden = true;
+            });
+
+          dialog.querySelectorAll('[data-menu-toggle]')
+            .forEach(toggle => {
+              toggle.setAttribute(
+                'aria-expanded',
+                'false'
+              );
+            });
+
+          menu.hidden = !shouldOpen;
+
+          button.setAttribute(
+            'aria-expanded',
+            String(shouldOpen)
+          );
+
+          return;
+        }
+
+        if (!button.hasAttribute('data-action')) return;
+
         const paper = papers[Number(button.dataset.index)];
+
+        if (!paper) return;
 
         try {
           switch (button.dataset.action) {
@@ -1280,7 +1618,7 @@
           sessionStorage.setItem('examPaper', JSON.stringify(exam));
           sessionStorage.setItem('finalExamData', JSON.stringify(exam));
 
-          alert('Paper saved. Open My Papers in Exam Builder.');
+         alert('Paper saved to Firestore. Open My Papers in Exam Builder.');
         } catch (error) {
           alert('Could not save paper: ' + error.message);
         } finally {
@@ -10703,8 +11041,7 @@ if (cleanedErrors.length) {
       if (!sectionNames.includes(name)) sectionNames.push(name);
       return { ...r, id: `r${i + 1}`, section: `Section ${String.fromCharCode(65 + sectionNames.indexOf(name))} — ${name}`, title: r.type === MCQ ? 'Multiple choice' : r.type === AR ? 'Assertion–Reason' : r.type === C ? 'Case / source based' : r.type === 'Map' ? `${r.marks}-mark map work` : `${r.marks}-mark answer` };
     });
-    const grade = Number(String(settings.class || '').match(/\d+/)?.[0]);
-    bp.chapterScoped = true;
+        bp.chapterScoped = true;
     bp.schoolAdaptation = true;
     bp.includeMaps = includeMaps;
     bp.note = `School chapter-based ${marks}-mark paper. ${grade >= 6 && grade <= 8 ? 'Combined subject paper for Classes 6–8. ' : ''}Sections follow question types and marks. All questions come only from the selected chapters; no fixed marks are reserved for individual subject branches.`;
@@ -11852,22 +12189,30 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
     } finally { el.classList.remove('cb-measuring'); }
   }
   window.addEventListener('afterprint', () => document.body.classList.remove('cb-printing'));
-  function database() {
-    if (!dbPromise) dbPromise = new Promise((resolve, reject) => { const req = indexedDB.open('scimentra-cbse-builder-v2', 1); req.onupgradeneeded = () => req.result.createObjectStore('drafts', { keyPath: 'id' }); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); return dbPromise;
+   async function draftStore(mode, fn) {
+
+    if (
+      typeof window.SciMentraCloudPaperStore !== 'function'
+    ) {
+      throw new Error(
+        'Firestore paper storage is not ready.'
+      );
+    }
+
+    return window.SciMentraCloudPaperStore(mode, fn);
   }
-  async function draftStore(mode, fn) { const db = await database(); return new Promise((resolve, reject) => { const tx = db.transaction('drafts', mode), req = fn(tx.objectStore('drafts')); let result; if (req) req.onsuccess = () => { result = req.result; }; tx.oncomplete = () => resolve(result); tx.onerror = () => reject(tx.error); }); }
   async function saveDraft() {
     try {
       const errors = paperErrors(state.paper); if (errors.length) { errorDialog('Draft validation', errors); return; }
       state.paper.updatedAt = new Date().toISOString();
       await draftStore('readwrite', store => store.put(C.clone(state.paper)));
-      openDialog('Paper saved', '<p>Your paper and answers are saved under the examination name in Your Papers on this browser. Use Download draft for an editable backup.</p>');
-    } catch (e) { errorDialog('Could not save in this browser', [`${e.message}. Use Download draft to save a portable copy.`]); }
+      openDialog('Paper saved', '<p>Your paper and answers are saved in Firestore under your administrator account. Use Download draft for an additional backup.</p>');
+    } catch (e) { errorDialog('Could not save to Firestore', [`${e.message}. Use Download draft to save a portable copy.`]); }
   }
   async function savedDrafts() {
     try {
       const drafts = (await draftStore('readonly', store => store.getAll())) || [];
-      const dlg = openDialog('Your Papers', drafts.length ? drafts.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map((p, i) => `<div class="cb-bank-record"><b>${escape(p.examName)}</b><p>${escape(p.class)} · ${p.maxMarks} marks · ${escape(p.date || '')}</p><button type="button" class="cb-button" data-open="${i}">Open Exam Review</button><button type="button" class="cb-button" data-blueprint="${i}">Download Blueprint</button></div>`).join('') : '<p>No drafts are saved in this browser yet. You can also import a downloaded draft.</p>');
+      const dlg = openDialog('Your Papers', drafts.length ? drafts.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map((p, i) => `<div class="cb-bank-record"><b>${escape(p.examName)}</b><p>${escape(p.class)} · ${p.maxMarks} marks · ${escape(p.date || '')}</p><button type="button" class="cb-button" data-open="${i}">Open Exam Review</button><button type="button" class="cb-button" data-blueprint="${i}">Download Blueprint</button></div>`).join('') : '<p>No papers are saved in Firestore yet. You can also import a downloaded draft.</p>');
       $$('[data-open]', dlg).forEach(btn => btn.onclick = () => { const p = drafts[Number(btn.dataset.open)]; restoreDraft(p); dlg.close(); });
       $$('[data-blueprint]', dlg).forEach(btn => btn.onclick = () => downloadBlueprint(drafts[Number(btn.dataset.blueprint)]));
     } catch (e) { errorDialog('Could not load drafts', [e.message]); }
