@@ -276,6 +276,15 @@
       font-family: 'Times New Roman', Times, serif;
       text-transform: capitalize;
     }
+.school-title {
+  max-width: 100%;
+  white-space: normal !important;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.15;
+}
+
 .school-title-themed{
       color:#7A2230;
       -webkit-text-fill-color:#7A2230;
@@ -6371,8 +6380,30 @@ function cbsePrintQuestion(question, number, section) {
           white-space: normal;
         }
 
-        body.cbse-paper-preview .cbse-subquestion-content p {
+                body.cbse-paper-preview .question-text {
+          margin-bottom: 0 !important;
+        }
+
+        body.cbse-paper-preview
+        .question-text .cbse-subquestion-row {
+          margin: 2px 0 !important;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-content p,
+        body.cbse-paper-preview .cbse-subquestion-content div {
           margin: 0 !important;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-content ol,
+        body.cbse-paper-preview .cbse-subquestion-content ul {
+          margin: 2px 0 0 !important;
+          padding-left: 22px !important;
+        }
+
+        body.cbse-paper-preview .cbse-subquestion-content li {
+          margin: 0 !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
         }
 
         body.cbse-paper-preview
@@ -6462,12 +6493,15 @@ function cbsePrintQuestion(question, number, section) {
           content.appendChild(text.firstChild);
         }
 
-        content.querySelectorAll('b,strong').forEach(el => {
+                content.querySelectorAll('b,strong').forEach(el => {
           if (!el.textContent.trim()) {
             el.remove();
           }
         });
 
+        content.innerHTML = content.innerHTML
+          .replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br>')
+          .replace(/^(?:\s|<br\s*\/?>)+|(?:\s|<br\s*\/?>)+$/gi, '');
         text.append(label, content);
       }
 
