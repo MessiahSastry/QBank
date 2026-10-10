@@ -104,7 +104,8 @@
 
     /* Compact CBSE questions in Exam Review */
 
-    .question-row .question-text:has(p) {
+        .question-row .question-text:has(p),
+    .question-row .question-text:has(div) {
       white-space: normal;
     }
 
@@ -113,10 +114,26 @@
       line-height: 1.4;
     }
 
-    .question-row .question-text p.sc-subquestion {
-      padding-left: 34px;
-      text-indent: -34px;
+        .question-row .question-text .sc-subquestion {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) 3em;
+      align-items: start;
       margin: 6px 0 !important;
+      padding: 0;
+      text-indent: 0;
+    }
+
+    .sc-part-label { grid-column: 1; }
+    .sc-part-content { grid-column: 2; min-width: 0; }
+    .sc-part-marks {
+      grid-column: 3;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .question-row .question-text img {
+      max-width: 100%;
+      height: auto;
     }
 
     .question-row {
@@ -2388,7 +2405,7 @@ if (paper.instructions) {
           `${section?.label || ''} ${editor.textContent.slice(0, 100)}`
         );
 
-        const parts = [...editor.querySelectorAll('p')].filter(p =>
+                const parts = [...editor.querySelectorAll('p, div')].filter(p =>
           /^\(\d+\)/.test(p.textContent.trim()) &&
           /^\(\d+\)$/.test(p.firstElementChild?.textContent.trim() || '')
         );
@@ -2400,21 +2417,38 @@ if (paper.instructions) {
             'xi', 'xii', 'xiii', 'xiv', 'xv'
           ];
 
-          parts.forEach((p, i) => {
-            p.classList.add('sc-subquestion');
+                   const indices = new Map();
+          parts.forEach(p => {
+            const parent = p.parentElement;
+            const i = indices.get(parent) || 0;
+            indices.set(parent, i + 1);
 
-            const b = p.firstElementChild;
-
-            b.textContent = isReading
-              ? `${roman[i] || (i + 1)}.`
-              : `(${String.fromCharCode(97 + i)})`;
-
-            if (!isReading) {
+            if (!isReading && !p.querySelector('p, div')) {
               p.innerHTML = p.innerHTML.replace(
-                /(?:<br\s*\/?>\s*){2,}/gi,
-                '<br>'
+                /(?:<br\s*\/?>\s*){2,}/gi, '<br>'
               );
             }
+
+            const b = p.firstElementChild;
+            const last = p.lastElementChild;
+            const marks = last !== b &&
+              /^\[\d+(?:\.\d+)?\]$/.test(last?.textContent.trim() || '')
+              ? last : null;
+
+            p.classList.add('sc-subquestion');
+            b.classList.add('sc-part-label');
+            b.textContent = isReading
+              ? `${roman[i] || i + 1}.`
+              : `(${String.fromCharCode(97 + i)})`;
+
+            const content = document.createElement('div');
+            content.className = 'sc-part-content';
+            [...p.childNodes].forEach(node => {
+              if (node !== b && node !== marks) content.appendChild(node);
+            });
+
+            if (marks) marks.classList.add('sc-part-marks');
+            p.replaceChildren(b, content, ...(marks ? [marks] : []));
           });
 
           // Remove duplicated Attempt Any instructions.
