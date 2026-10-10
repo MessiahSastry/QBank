@@ -1227,11 +1227,13 @@ getSubjectsForBoard: function (boardName) {
     b === 'CBSE' &&
     /^(11th|12th) Class$/.test(selectedClass)
   ) {
-    return subjects.flatMap(subject =>
-      subject === 'Science'
-        ? ['Physics', 'Chemistry', 'Biology']
-        : [subject]
-    );
+   return subjects.flatMap(subject =>
+  subject === 'Science'
+    ? ['Physics', 'Chemistry', 'Biology']
+    : subject === 'Social Science'
+      ? ['History', 'Geography', 'Political Science', 'Economics']
+      : [subject]
+);
   }
 
   return subjects;
@@ -3465,6 +3467,21 @@ Don't mention the option in the explanation, but give the correct answer.
           );
       }
 
+           if (
+        isCbse &&
+        __scIsSocialSubject(sessionParams.subject) &&
+        !/^Text(?: Book)?\b/i.test(
+          String(sessionParams.questionType || '')
+        )
+      ) {
+        fullPromptForAI += '\n' +
+          __scSocialResearchRules(
+            sessionParams.class,
+            sessionParams.subject,
+            'individual questions'
+          );
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/v1/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4274,6 +4291,156 @@ Apply these extra rules ONLY to CBSE Science, Physics, Chemistry or Biology in C
 `;
 }
 
+function __scIsSocialSubject(subject) {
+  return /^(social science|social studies|history|geography|political science|economics)$/i
+    .test(String(subject || '').trim());
+}
+
+function __scSocialResearchRules(classLabel, subjectLabel, workflow) {
+  const grade = Number(
+    String(classLabel || '').match(/\d+/)?.[0] || 0
+  );
+
+  const subject = String(subjectLabel || '').trim();
+
+  if (grade < 6 || grade > 12 ||
+      !__scIsSocialSubject(subject)) return '';
+
+  const organisation = grade <= 8
+    ? `Integrated Social Science. No compulsory subject-area sections or Area tags.`
+    : grade <= 10
+      ? `One Social Science subject with the section order:
+Section A - History
+Section B - Geography
+Section C - Political Science
+Section D - Economics.
+For Class 9 this is a school adaptation.
+Use [Area: History], [Area: Geography],
+[Area: Political Science] or [Area: Economics]
+for each question according to the actual content.
+A Class 9 integrated chapter may support multiple areas.`
+      : `Independent subject: ${subject}.
+Do not combine History, Geography, Political Science
+and Economics into one examination.
+Use the selected subject's own CBSE syllabus and blueprint.`;
+
+  return `
+CBSE SOCIAL SCIENCE — VERIFIED TEXTBOOK QUESTION RULES
+Class: ${grade}
+Subject: ${subject}
+Workflow: ${workflow}
+
+1. TEXTBOOK RESEARCH
+Identify the current prescribed CBSE syllabus and textbook
+for the selected academic year, class, subject and chapters.
+
+Check official sources first:
+https://cbseacademic.nic.in/
+https://ncert.nic.in/
+https://epathshala.nic.in/
+
+Read the actual selected chapter and relevant exercises.
+Do not generate questions merely from its title, summary
+or general knowledge.
+
+2. SUBJECT ORGANISATION
+${organisation}
+
+3. CONTENT ACCURACY
+History:
+Verify chronology, events, historical personalities,
+causes, consequences, evidence and source interpretations.
+
+Geography:
+Verify locations, physical processes, resources, maps,
+spatial relationships, environmental concepts and data.
+
+Political Science:
+Verify constitutional concepts, political institutions,
+democratic processes, rights, responsibilities and case studies.
+
+Economics:
+Verify economic concepts, definitions, relationships,
+indicators, data, calculations and practical applications.
+
+Use only the actual content prescribed for the selected class.
+Do not introduce deleted or higher-class syllabus material.
+
+4. QUESTION QUALITY
+Include appropriate understanding, application, inference,
+source interpretation, analytical and competency questions.
+
+Use varied question models.
+Avoid duplicate questions and superficial rewording.
+
+Single-correct MCQs must have four plausible options
+and exactly one valid answer.
+
+Verify every factual statement and answer independently.
+
+5. CASE, SOURCE, MAP AND VISUAL QUESTIONS
+Use genuine textbook-supported source and case material.
+
+Include map work only where applicable to the selected
+class, chapter and assessment blueprint.
+
+Do not invent historical maps, boundaries, locations,
+statistics, quotations or source references.
+
+If a required map or image is not supplied, use the existing
+[Picture Needed: Yes] marker where supported.
+
+Never invent image URLs.
+
+Where visual alternatives are necessary for accessibility,
+follow the applicable official assessment pattern.
+
+6. DESCRIPTIVE ANSWERS
+Answers should be accurate, concise and point-wise
+where appropriate.
+
+Use sufficient points for the actual question.
+Do not force one point per mark.
+
+Include correct dates, terms, examples and evidence.
+
+7. QUESTION INVENTORY AND BLUEPRINT
+For individual questions, follow the teacher's selected
+question type and exact quantity.
+
+For chapter banks, follow the existing inventory without
+inventing content to meet an impossible quota.
+
+For Exam Builder, follow the exact question slots,
+chapter allocations, section order, marks, internal choices,
+case/source structure and map-work distribution.
+
+For Classes 9–10, a full four-section preset requires
+sufficient selected material from all four areas.
+If the selected chapters cannot support that blueprint,
+report the conflict instead of adding unselected content.
+
+For Classes 11–12, use separate subject-specific blueprints.
+
+8. VERIFICATION AND FINAL OUTPUT
+Check the correct textbook, chapter, facts, answers,
+question counts, marks and area allocation.
+
+Preserve all existing Q headers, metadata, answers,
+explanations, output formats and parser conventions.
+
+Preserve the DRAFT -> RECHECK -> FINAL SET procedure.
+
+If the required textbook content is inaccessible,
+stop before Q1 and request a verifiable source.
+
+Never pretend that inaccessible sources were researched.
+
+Apply these rules ONLY to CBSE Social Science and
+its separate senior-secondary subjects.
+`;
+}
+
 function __scEnglishResearchRules(classLabel, workflow) {
   const grade = Number(
     String(classLabel || '').match(/\d+/)?.[0] || 0
@@ -4692,7 +4859,15 @@ SOCIAL SCIENCE AREA RULE:
 
 This is Class ${classNum} Social Science.
 
-The chapter belongs to ONE of these four areas:
+The questions must be classified into the appropriate
+area or areas from the actual chapter content.
+
+A Class 10 chapter normally belongs to one area.
+A Class 9 interdisciplinary chapter may contain content
+from more than one area.
+
+Classify EACH QUESTION accurately rather than forcing
+every question in a chapter into one area.
 • History
 • Geography
 • Political Science
@@ -4709,7 +4884,8 @@ or
 or
 [Area: Economics]
 
-Use only the correct area for this chapter.
+Use the correct area for each question.
+Do not assign an area solely from the chapter title.
 `;
     } else if (classNum >= 6 && classNum <= 8) {
       socialAreaRule = `
@@ -4726,7 +4902,15 @@ Do NOT print an [Area: ...] tag.
     subjectPlan = `
 TARGET CHAPTER BANK INVENTORY:
 
-Generate 45 reusable question-bank records for this chapter.
+Target 45 genuinely distinct, textbook-verified Social Science
+chapter-bank records according to the inventory below.
+
+Cover the entire chapter and its relevant concepts, sources,
+activities, maps and exercises.
+
+If the verified chapter cannot support all requested question
+models, report the limitation before Q1 rather than inventing
+questions or repeating the same concept.
 
 A. OBJECTIVE / MCQ — 25 questions
 • 7 Direct Concept / Text Understanding
@@ -4937,6 +5121,10 @@ BOARD: ${board}
 CLASS: ${cls}
 SUBJECT: ${subj}
 CHAPTER: ${chap}
+
+${boardKey === 'cbse' && isSocial
+  ? __scSocialResearchRules(cls, subj, 'chapter bank')
+  : ''}
 
 PURPOSE:
 Create a reusable master inventory of high-quality questions from this ONE chapter.
@@ -5402,6 +5590,11 @@ Board: ${board}
 Subject: ${subj}
 Chapter: ${chap}
 ${requestLine}
+${isCbse && !isTextbook && __scIsSocialSubject(subj)
+  ? __scSocialResearchRules(
+      cls, subj, 'individual questions'
+    )
+  : ''}
 ${isCbse && !isTextbook
   ? __scSeniorSciencePrompt(cls, subj, 'individual questions')
   : ''}
