@@ -972,6 +972,15 @@
   margin-bottom: var(--exam-question-gap, 12px) !important;
 }
 
+/* Line spacing for questions, passages and options on each page. */
+#print-preview .exam-paginated-page
+:is(.question-container, .paragraph-set-preview, .exam-flow-piece),
+#print-preview .exam-paginated-page
+:is(.question-container, .paragraph-set-preview, .exam-flow-piece)
+*:not(mjx-container, mjx-container *, svg, svg *) {
+  line-height: var(--exam-line-spacing, 1.4) !important;
+}
+
 /* Remove the final unnecessary question gap on every page */
 .exam-paginated-page .exam-page-content > :last-child,
 .exam-paginated-page .exam-page-content > :last-child .question-container:last-child,
@@ -5051,7 +5060,8 @@ window.__examCurrentPageIndex =
 
 function getDefaultExamPageSettings() {
   return {
-    questionGap: 12,
+        questionGap: 12,
+    lineSpacing: cbsePrintEnabled() ? 1.4 : 1.25,
     margin: 1.5
   };
 }
@@ -5068,7 +5078,14 @@ function ensureExamPageSettings(pageIndex) {
     };
   }
 
-  return window.__examPageSettings[index];
+    const settings = window.__examPageSettings[index];
+  const spacing = parseFloat(settings.lineSpacing);
+
+  settings.lineSpacing = Number.isFinite(spacing)
+    ? Math.min(2, Math.max(1, spacing))
+    : getDefaultExamPageSettings().lineSpacing;
+
+  return settings;
 }
 
 function refreshExamPagePicker(totalPages) {
@@ -5131,9 +5148,14 @@ function createExamPageShell(pageNumber) {
     `${settings.margin}cm`
   );
 
-  page.style.setProperty(
+    page.style.setProperty(
     '--exam-question-gap',
     `${settings.questionGap}px`
+  );
+
+  page.style.setProperty(
+    '--exam-line-spacing',
+    String(settings.lineSpacing)
   );
 
   page.innerHTML = `
@@ -7222,7 +7244,11 @@ function renderPrintPreview() {
     <div class="heading-row">
       <img src="schoollogo1.png" class="school-logo" alt="School Logo" onerror="this.style.display='none';">
       <div class="school-headings">
-                <div class="school-title school-title-themed">${escapeHtml(getCurrentSchoolName())}</div>
+               <div class="school-title school-title-themed">${escapeHtml(getCurrentSchoolName()).replace(
+  /^(.+?)\s+(HIGH\s+SCHOOL\b.*)$/i,
+  '<span style="display:inline-block;max-width:100%;">$1</span> ' +
+  '<span style="display:inline-block;max-width:100%;">$2</span>'
+)}</div>
         ${cbsePrintEnabled() ? '' : '<div class="subtitle">IIT & NEET FOUNDATION</div>'}
         <div class="exam-title">${exam.examName || ''}</div>
       </div>
@@ -8150,6 +8176,14 @@ async function renderMathJaxToImages(containerSelector) {
         <span id="gap-slider-value">12px</span>
       </div>
     </div>
+        <div style="margin-bottom:18px;width:100%;">
+      <label style="font-weight:600;color:#185496;font-size:1em;">Gap between lines</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input id="line-spacing-slider" type="range" min="1" max="2" step="0.05" value="1.4" style="width:100%;">
+        <span id="line-spacing-slider-value" style="min-width:3em;">1.40</span>
+      </div>
+    </div>
+
     <div style="margin-bottom:22px;">
   <label style="font-weight:600;color:#185496;font-size:1em;">Page margin (cm)</label>
   <div style="display:flex;align-items:center;gap:10px;">
@@ -8268,6 +8302,12 @@ const gapValue =
     'gap-slider-value'
   );
 
+const lineSpacingSlider =
+  document.getElementById('line-spacing-slider');
+
+const lineSpacingValue =
+  document.getElementById('line-spacing-slider-value');
+
 const marginSlider =
   document.getElementById(
     'margin-slider'
@@ -8333,6 +8373,16 @@ function updateSliderUIFromPage() {
   if (gapValue) {
     gapValue.textContent =
       `${settings.questionGap}px`;
+  }
+
+    if (lineSpacingSlider) {
+    lineSpacingSlider.value =
+      String(settings.lineSpacing);
+  }
+
+  if (lineSpacingValue) {
+    lineSpacingValue.textContent =
+      settings.lineSpacing.toFixed(2);
   }
 
   if (marginSlider) {
@@ -8450,6 +8500,35 @@ function updateGap() {
   }
 }
 
+function updateLineSpacing() {
+  const settings = ensureExamPageSettings(
+    window.__examCurrentPageIndex
+  );
+
+  const spacing = parseFloat(lineSpacingSlider?.value);
+
+  settings.lineSpacing = Number.isFinite(spacing)
+    ? Math.min(2, Math.max(1, spacing))
+    : getDefaultExamPageSettings().lineSpacing;
+
+  if (lineSpacingValue) {
+    lineSpacingValue.textContent =
+      settings.lineSpacing.toFixed(2);
+  }
+
+  const targetPage = document.querySelector(
+    '.exam-paginated-page' +
+    `[data-page-index="${window.__examCurrentPageIndex}"]`
+  );
+
+  if (targetPage) {
+    targetPage.style.setProperty(
+      '--exam-line-spacing',
+      String(settings.lineSpacing)
+    );
+  }
+}
+
 function updateMargin() {
   const settings =
     ensureExamPageSettings(
@@ -8515,6 +8594,14 @@ gapSlider?.addEventListener(
   'input',
   () => {
     updateGap();
+    queueExamRepagination();
+  }
+);
+
+lineSpacingSlider?.addEventListener(
+  'input',
+  () => {
+    updateLineSpacing();
     queueExamRepagination();
   }
 );
