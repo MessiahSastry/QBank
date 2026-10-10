@@ -332,6 +332,393 @@
 
     return html;
   }
+    const __scKeyStyles = `
+    .sc-key-question {
+      display:grid;
+      grid-template-columns:2em minmax(0,1fr);
+      gap:0 8px;
+      margin:0 0 10px;
+      padding:0;
+      font:16px/1.35 'Times New Roman',Times,serif;
+      color:#000;
+    }
+
+    .sc-key-number,.sc-key-label {
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .sc-key-text,.sc-key-answer {
+      min-width:0;
+      overflow-wrap:break-word;
+    }
+
+    .sc-key-part {
+      display:grid;
+      grid-template-columns:2.8em minmax(0,1fr);
+      gap:0 6px;
+      margin:0 0 3px;
+      align-items:start;
+      break-inside:avoid;
+    }
+
+    .sc-key-question p {margin:0 0 2px;}
+    .sc-key-question ul,.sc-key-question ol {
+      margin:0;
+      padding-left:22px;
+    }
+    .sc-key-question li {margin:0 0 2px;}
+    .sc-key-question table {
+      border-collapse:collapse;
+      max-width:100%;
+    }
+    .sc-key-question td,.sc-key-question th {padding:3px 6px;}
+    .sc-key-question pre {white-space:pre-wrap;margin:0;}
+    .sc-key-question img {max-width:100%;height:auto;}
+    .sc-key-question mjx-container {
+      max-width:100%;
+      overflow-x:auto;
+    }
+
+    @media screen {
+      .sc-key-root {
+        width:100%!important;
+        max-width:100%!important;
+      }
+
+      .sc-key-root .a4-page {
+        width:100%!important;
+        max-width:850px!important;
+        min-width:0!important;
+        min-height:0!important;
+        padding:20px!important;
+      }
+
+      .sc-key-root .rect-row {
+        flex-wrap:wrap;
+        gap:4px 10px;
+      }
+    }
+
+    @media print {
+      .sc-key-question {color:#000;}
+      .sc-key-number {break-after:avoid;}
+    }
+  `;
+
+  function __scKeyValue(question) {
+    const value = [
+      question.answer,
+      question.parsedAnswer,
+      question.finalAnswer
+    ].find(value =>
+      value != null && String(value).trim() !== ''
+    );
+
+    return Array.isArray(value)
+      ? value.join(', ')
+      : String(value ?? '');
+  }
+
+  function __scKeyLeaf(question) {
+    const value = __scKeyValue(question)
+      .replace(/^(?:final\s*)?(?:answer|ans)\s*:\s*/i, '');
+
+    const html = rich(value);
+
+    const type = String(
+      question.mcqType ||
+      question.type ||
+      question.questionType ||
+      ''
+    );
+
+    if (
+      question.options?.length ||
+      /mcq|assertion|reason/i.test(type)
+    ) {
+      const holder = document.createElement('div');
+      holder.innerHTML = html;
+
+      const text = holder.textContent.trim();
+
+      const letters = text
+        .replace(/\band\b/gi, ',')
+        .split(/[,/&]+/)
+        .map(letter =>
+          letter.trim().replace(/[().:]/g, '')
+        );
+
+      if (
+        letters.length &&
+        letters.every(letter => /^[A-D]$/i.test(letter))
+      ) {
+        return letters
+          .map(letter => letter.toUpperCase() + ')')
+          .join(', ');
+      }
+
+      if (!/multiple/i.test(type)) {
+        const match = text.match(
+          /^\(?([A-D])\)?[).:]\s+/i
+        );
+
+        if (match) {
+          return match[1].toUpperCase() + ')';
+        }
+      }
+    }
+
+    return html;
+  }
+
+  function __scKeyLabel(index, reading, alternative = false) {
+    const roman = [
+      'i','ii','iii','iv','v','vi',
+      'vii','viii','ix','x','xi','xii'
+    ];
+
+    const label = alternative
+      ? String.fromCharCode(65 + index)
+      : reading
+      ? (roman[index] || index + 1)
+      : String.fromCharCode(97 + index);
+
+    return '(' + label + ')';
+  }
+
+  function __scKeyNative(question, reading) {
+    const children = [
+      question.alternatives,
+      question.parts,
+      question.mcqs
+    ].find(items =>
+      Array.isArray(items) && items.length
+    );
+
+    if (!children) return __scKeyLeaf(question);
+
+    return children.map((part, index) =>
+      '<div><b>' +
+      __scKeyLabel(
+        index,
+        reading,
+        children === question.alternatives
+      ) +
+      '</b>' +
+      __scKeyNative(part, reading) +
+      '</div>'
+    ).join('');
+  }
+
+  function __scKeyFormat(value, reading) {
+    const holder = document.createElement('div');
+    holder.innerHTML = rich(value);
+
+    holder.querySelectorAll('p,div').forEach(block => {
+      const first = block.firstElementChild;
+
+      if (
+        !first ||
+        !/^(B|STRONG)$/.test(first.tagName)
+      ) return;
+
+      const label = first.textContent.trim();
+
+      if (
+        !/^\((?:\d+|[a-z]+)\)$|^[ivxlcdm]+\.$/i.test(label)
+      ) return;
+
+      const number = label.match(/^\((\d+)\)$/);
+
+      const labelNode = document.createElement('span');
+      labelNode.className = 'sc-key-label';
+
+      labelNode.textContent = number
+        ? __scKeyLabel(Number(number[1]) - 1, reading)
+        : label;
+
+      first.remove();
+
+      const answer = document.createElement('div');
+      answer.className = 'sc-key-answer';
+
+      while (block.firstChild) {
+        answer.appendChild(block.firstChild);
+      }
+
+      while (
+        answer.firstChild &&
+        (
+          answer.firstChild.nodeName === 'BR' ||
+          (
+            answer.firstChild.nodeType === 3 &&
+            !answer.firstChild.textContent.trim()
+          )
+        )
+      ) {
+        answer.firstChild.remove();
+      }
+
+      const row = document.createElement('div');
+      row.className = 'sc-key-part';
+      row.append(labelNode, answer);
+
+      block.replaceWith(row);
+    });
+
+    return holder.innerHTML.trim();
+  }
+
+  function __scKeyQuestion(
+    question,
+    subjectName = '',
+    sectionLabel = ''
+  ) {
+    const reading = /reading|passage|extract/i.test(
+      sectionLabel + ' ' +
+      String(question.text || question.question || '')
+        .slice(0,100)
+    );
+
+    const value = __scKeyValue(question);
+
+    const hasChildren = [
+      question.alternatives,
+      question.parts,
+      question.mcqs
+    ].some(items =>
+      Array.isArray(items) && items.length
+    );
+
+    const saved =
+      question.answerKeyHtml &&
+      question.answerKeySource === value;
+
+    const html = hasChildren
+      ? __scKeyNative(question, reading)
+      : saved
+      ? question.answerKeyHtml
+      : __scKeyLeaf(question);
+
+    const number = String(question.number || '')
+      .replace(/\.$/, '');
+
+    return (
+      '<div class="sc-key-question">' +
+        '<span class="sc-key-number">' +
+          esc(number) + '.' +
+        '</span>' +
+        '<div class="sc-key-text">' +
+          (__scKeyFormat(html, reading) || '—') +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function __scKeySection(
+    section,
+    subjectName = '',
+    state = { next:1, cbse:true }
+  ) {
+    return (section.questions || []).map(question => {
+      const number = Math.max(
+        state.next,
+        Number(question.number) || state.next
+      );
+
+      if (!state.cbse && question.mcqs?.length) {
+        state.next = number + question.mcqs.length;
+
+        return question.mcqs.map((part, index) =>
+          __scKeyQuestion(
+            { ...part, number:number + index },
+            subjectName,
+            section.label || ''
+          )
+        ).join('');
+      }
+
+      state.next = number + 1;
+
+      return __scKeyQuestion(
+        { ...question, number },
+        subjectName,
+        section.label || ''
+      );
+    }).join('');
+  }
+
+  function __scKeyPrepare(paper) {
+    const source = paper?._cbseBlueprintSource;
+
+    if (
+      !source?.subjects?.some(subject =>
+        Array.isArray(subject.rows)
+      )
+    ) return paper;
+
+    const original = toReviewPaper(source);
+    const answers = new Map();
+
+    original.subjects.forEach(subject => {
+      subject.sections.forEach(section => {
+        section.questions.forEach(question => {
+          answers.set(Number(question.number), question);
+        });
+      });
+    });
+
+    const updated = copy(paper);
+
+    const plain = value => {
+      const holder = document.createElement('div');
+      holder.innerHTML = rich(value);
+
+      return holder.textContent
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    let next = 1;
+
+    updated.subjects.forEach(subject => {
+      (subject.sections || []).forEach(section => {
+        (section.questions || []).forEach(question => {
+          const number = Math.max(
+            next,
+            Number(question.number) || next
+          );
+
+          next = number + 1;
+
+          const reference = answers.get(number);
+
+          if (
+            reference &&
+            plain(__scKeyValue(question)) ===
+            plain(__scKeyValue(reference))
+          ) {
+            question.answerKeyHtml =
+              reference.answerKeyHtml;
+
+            question.answerKeySource =
+              __scKeyValue(question);
+          }
+        });
+      });
+    });
+
+    return updated;
+  }
+
+  window.SciMentraAnswerKey = {
+    styles:__scKeyStyles,
+    question:__scKeyQuestion,
+    section:__scKeySection,
+    prepare:__scKeyPrepare
+  };
+
   function answerTree(question) {
     const children =
       question.alternatives ||
@@ -365,8 +752,8 @@
     const paper = copy(source);
 
     /* Foundation papers already use the Review-page structure. */
-    if (!paper.subjects?.some(subject => Array.isArray(subject.rows))) {
-      return paper;
+       if (!paper.subjects?.some(subject => Array.isArray(subject.rows))) {
+      return __scKeyPrepare(paper);
     }
 
     let number = 0;
@@ -434,6 +821,15 @@
                             options: composite ? [] : (question.options || []),
               image: composite ? '' : imageURL(question.image),
 
+                            answerKeyHtml: __scKeyNative(
+                question,
+                /reading|passage|extract/i.test(
+                  `${row.section} ${row.title} ${text.slice(0,100)}`
+                )
+              ),
+              answerKeySource: composite
+                ? answerTree(question)
+                : String(question.answer || ''),
               answer: composite
                 ? answerTree(question)
                 : (question.answer || ''),
@@ -517,22 +913,21 @@
       </p>
     `;
 
+        const keyState = {
+      next:1,
+      cbse:String(paper.board || '').trim().toUpperCase() === 'CBSE'
+    };
+
     paper.subjects.forEach(subject => {
       body += `<h2>${esc(subject.subject)}</h2>`;
 
       if (answers) {
         subject.sections.forEach(section => {
-          body += `<h3>${esc(section.label)}</h3>`;
-
-          section.questions.forEach(question => {
-            body += `
-              <article>
-                <b>${esc(question.number)}.</b>
-                ${rich(question.text || question.question)}
-                <p><b>Answer:</b> ${answerTree(question)}</p>
-              </article>
-            `;
-          });
+          body += __scKeySection(
+            section,
+            subject.subject,
+            keyState
+          );
         });
 
         return;
@@ -600,8 +995,10 @@
       <html>
       <head>
         <meta charset="utf-8">
-        <title>${esc(paper.examName)}</title>
+               <title>${esc(paper.examName)}</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
         <style>
+          ${answers ? __scKeyStyles : ''}
           body {
             font: 16px Georgia, serif;
             max-width: 1000px;
