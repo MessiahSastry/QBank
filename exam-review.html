@@ -3419,71 +3419,90 @@ function downloadBlueprintPdf() {
       doc.setTextColor(...C.grey);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text('SciMentra Foundation | Question Paper Blueprint', margin, 291);
+      doc.text('Examination Blueprint', margin, 291);
       doc.text(`Page ${pageNo} of ${pages}`, pageWidth - margin, 291, { align: 'right' });
     }
   }
 
-  doc.setFillColor(...C.primary);
-  doc.roundedRect(margin, 11, contentWidth, 25, 3, 3, 'F');
+    // School-neutral examination blueprint header.
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(19);
-  doc.text('SciMentra', pageWidth / 2, 21, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(17);
 
-  doc.setFontSize(8.8);
-  doc.text('IIT & NEET FOUNDATION', pageWidth / 2, 28, { align: 'center' });
+  doc.text(
+    'EXAMINATION BLUEPRINT',
+    pageWidth / 2,
+    19,
+    { align: 'center' }
+  );
 
-  doc.setTextColor(...C.primary);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text('QUESTION PAPER BLUEPRINT', pageWidth / 2, 46, { align: 'center' });
+  doc.setFontSize(12);
 
-  doc.setTextColor(...C.grey);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.text(`${__bpSafeText(paper.paperType || 'Question Paper')} Pattern`, pageWidth / 2, 51, { align: 'center' });
+  doc.text(
+    __bpSafeText(paper.examName || 'Examination'),
+    pageWidth / 2,
+    27,
+    { align: 'center' }
+  );
 
-  doc.autoTable({
-    startY: 56,
-    margin: { left: margin, right: margin },
-    theme: 'grid',
-    tableWidth: contentWidth,
-    body: [
-      [
-        { content: `Class: ${__bpSafeText(paper.class || '-')}` },
-        { content: `Subject: ${subjectNames}` },
-        { content: `Board: ${__bpSafeText(paper.board || '-')}` }
-      ],
-      [
-        { content: `Exam: ${__bpSafeText(paper.examName || '-')}` },
-        { content: `Paper Type: ${__bpSafeText(paper.paperType || '-')}` },
-        { content: `Maximum Marks: ${__bpNumber(paper.maxMarks || displayedTotalMarks)}` }
-      ],
-      [
-        { content: `Time: ${__bpSafeText(paper.time || '-')} Minutes` },
-        { content: `Date: ${__bpFormatDate(paper.date)}` },
-        { content: `Difficulty: ${levelSummary ? 'As per distribution' : '-'}` }
-      ]
-    ],
-    styles: {
-      font: 'helvetica',
-      fontSize: 8.2,
-      textColor: C.text,
-      cellPadding: 2.8,
-      lineColor: C.border,
-      lineWidth: 0.25,
-      fillColor: C.veryLight
-    },
-    columnStyles: {
-      0: { cellWidth: contentWidth / 3 },
-      1: { cellWidth: contentWidth / 3 },
-      2: { cellWidth: contentWidth / 3 }
-    }
-  });
+  // Rounded examination details box.
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(
+    margin, 32, contentWidth, 24, 4, 4, 'S'
+  );
 
-  let y = doc.lastAutoTable.finalY + 4;
+  doc.setFont('times', 'bold');
+  doc.setFontSize(9.2);
+
+  const headerSubject = subjectNames.length > 36
+    ? 'MULTI SUBJECT'
+    : subjectNames.toUpperCase();
+
+  const headerTime = String(paper.time || '').trim();
+
+  // First row: Class — Subject — Date
+  doc.text(
+    `Class: ${__bpSafeText(paper.class || '-')}`,
+    margin + 5, 42
+  );
+
+  doc.text(
+    headerSubject,
+    pageWidth / 2, 42,
+    { align: 'center' }
+  );
+
+  doc.text(
+    `Date: ${__bpFormatDate(paper.date)}`,
+    pageWidth - margin - 5, 42,
+    { align: 'right' }
+  );
+
+  // Second row: Time — Maximum Marks
+  doc.text(
+    `Time: ${
+      headerTime
+        ? (/^\d+(?:\.\d+)?$/.test(headerTime)
+            ? headerTime + ' minutes'
+            : headerTime)
+        : '-'
+    }`,
+    margin + 5, 51
+  );
+
+  doc.text(
+    `Max. Marks: ${__bpNumber(
+      paper.maxMarks || displayedTotalMarks
+    )}`,
+    pageWidth - margin - 5,
+    51,
+    { align: 'right' }
+  );
+
+  // Continue the existing blueprint tables.
+  let y = 61;
 
   const chapterBody = chapterLines.length
     ? chapterLines.map(item => [{
