@@ -11709,28 +11709,74 @@ if (cleanedErrors.length) {
       ${q.parts?.length ? `${q.choice === 'any' ? `<p class="cb-choice-note">Attempt any ${q.attempt} of the following ${q.parts.length}.</p>` : ''}<ol class="cb-parts" type="${depth ? 'a' : 'i'}">${q.parts.map(p => `<li><span class="cb-part-mark">[${marksText(C.effectiveMarks(p))}]</span>${questionHTML(p, answers, depth + 1)}</li>`).join('')}</ol>` : ''}
       ${answer}${explanation}</div>`;
   }
-   function cbseChapterName(text) {
-    return String(text || '').normalize('NFKC')
-      .replace(/^\s*[-•–—]\s*/, '')
-      .replace(/^\s*(?:chapter|lesson|unit|ch\.?)\s+\d+\s*(?:[.):\-–—]\s*)?/i, '')
-      .replace(/^\s*(?:\d+\s*[.):\-–—]|\(\d+\))\s*/, '')
-      .replace(/\s+/g, ' ')
+    // Universal syllabus parser for CBSE Classes 6–12.
+  // Used across all subjects, not just English.
+
+  const cbseSyllabusHeadings =
+    /(?:^|\s)(?:grammar|writing|reading|literature|prose|poetry|supplementary|history|geography|civics|economics|physics|chemistry|biology|mathematics|science|व्याकरण|लेखन|पठन|వ్యాకరణం|రచన|పఠనం)\s*:\s*/giu;
+
+  function cbseChapterName(text) {
+    return String(text ?? '').normalize('NFKC')
+      .replace(/^\s*[-•●▪–—]\s*/u, '')
+      .replace(
+        /^\s*(?:chapter|lesson|unit|ch\.?|पाठ|अध्याय)\s*[-.]?\s*\d+\s*[:.)\-–—]*\s*/iu,
+        ''
+      )
+      .replace(
+        /^\s*(?:\d+\s*[.):\-–—]|\(\d+\))\s*/u,
+        ''
+      )
+      .replace(
+        new RegExp('^\\s*' + cbseSyllabusHeadings.source.replace('(?:^|\\s)', ''), 'iu'),
+        ''
+      )
+      .replace(/\s+/gu, ' ')
+      .replace(/[.;:\s]+$/u, '')
       .trim();
   }
 
   function cbseChapterKey(text) {
-    return cbseChapterName(text).toLocaleLowerCase();
+    return cbseChapterName(text)
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}+#]+/gu, '');
   }
 
-  function cbseManualChapters(text) {
-    return String(text || '').normalize('NFKC')
+  function cbseManualChapters(text, isManual = true) {
+    const raw = String(text ?? '').normalize('NFKC');
+
+    const grouped = new RegExp(
+      cbseSyllabusHeadings.source, 'iu'
+    ).test(raw);
+
+    let prepared = raw
+      .replace(/\r\n?/g, '\n')
+      .replace(/\s*[•●▪]\s*/g, '\n')
+      .replace(cbseSyllabusHeadings, '\n')
       .replace(
-        /\s+(?=(?:(?:chapter|lesson|unit|ch\.?)\s+)?(?:\d+[.):]|\(\d+\))\s+\p{L})/giu,
+        /\s+(?=(?:(?:chapter|lesson|unit|ch\.?)\s*[-.]?\s*)?(?:\d+[.):]|\(\d+\))\s+\p{L})/giu,
         '\n'
-      )
-      .split(/[,;\n]+/)
+      );
+
+    // Manual comma-separated lists remain supported.
+    // Individually selected chapter titles retain their commas.
+    if (isManual || grouped) {
+      prepared = prepared.replace(/,/g, '\n');
+    }
+
+    const unique = new Map();
+
+    prepared
+      .split(/[;\n]+/)
       .map(cbseChapterName)
-      .filter(Boolean);
+      .filter(Boolean)
+      .forEach(chapter => {
+        const key = cbseChapterKey(chapter);
+        if (key && !unique.has(key)) {
+          unique.set(key, chapter);
+        }
+      });
+
+    return [...unique.values()];
   }
 
   function selectedChapters(sIdx) {
@@ -11758,7 +11804,13 @@ if (cleanedErrors.length) {
 
     const unique = new Map();
 
-    for (const chapter of [...selected, ...cbseManualChapters(manual)]) {
+            const checkedChapters = selected.flatMap(chapter =>
+      cbseManualChapters(chapter, false)
+    );
+    for (const chapter of [
+      ...checkedChapters,
+      ...cbseManualChapters(manual)
+    ]) {
       const key = cbseChapterKey(chapter);
       if (key && !unique.has(key)) {
         unique.set(key, chapter.trim());
@@ -11926,10 +11978,51 @@ if (cleanedErrors.length) {
     }
     return state.pools.get(cacheKey);
   }
-  function preparedPool(raw, cfg, chapters) {
+    function preparedPool(raw, cfg, chapters) {
     const selectedClass = cfg.class || getSelectedClass();
-    return raw.map(q => C.normalize({ ...q, ...(state.overrides.get(q.id) || {}) }, { class: selectedClass, board: 'CBSE', subject: cfg.subject, chapterAreas: cfg.chapterAreas }))
-      .filter(q => q.class === selectedClass && q.board === 'CBSE' && q.subject === cfg.subject && chapters.includes(q.chapter) && !q.deleted);
+
+    const chapterLookup = new Map(
+      chapters.map(chapter => [
+        cbseChapterKey(chapter),
+        chapter
+      ])
+    );
+
+    return raw
+      .map(q => C.normalize(
+        {
+          ...q,
+          ...(state.overrides.get(q.id) || {})
+        },
+        {
+          class: selectedClass,
+          board: 'CBSE',
+          subject: cfg.subject,
+          chapterAreas: cfg.chapterAreas
+        }
+      ))
+
+      .map(q => {
+        const key = cbseChapterKey(q.chapter);
+        const matchingChapter = chapterLookup.get(key);
+
+        if (matchingChapter !== undefined) {
+          return {
+            ...q,
+            chapter: matchingChapter
+          };
+        }
+
+        return q;
+      })
+
+      .filter(q =>
+        q.class === selectedClass &&
+        q.board === 'CBSE' &&
+        q.subject === cfg.subject &&
+        chapters.includes(q.chapter) &&
+        !q.deleted
+      );
   }
   async function bankInspector(sIdx) {
     const block = $$('.subject-block')[sIdx], cfg = getConfig(block.dataset.subject), chapters = selectedChapters(sIdx);
