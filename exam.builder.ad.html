@@ -8740,23 +8740,62 @@ Do not give the FINAL SET until the teacher explicitly asks for it.
    ========================================================= */
 
 function __ebOpenAIQuestionGenerator(prompt) {
-    const url = new URL('https://chatgpt.com/');
-    url.searchParams.set('q', prompt);
+    const request = String(prompt || '').trim();
 
-    // Launch within the click event; do not wait for clipboard permission.
-    // With noopener, a null return does not prove that the popup was blocked.
-    try {
-        window.open(url.toString(), '_blank', 'noopener');
-    } catch (_) {
-        showToast('Could not open ChatGPT. Allow popups or use Copy / download request.', 'error');
+    if (!request) {
+        showToast('No question request was prepared.', 'error');
         return false;
     }
+
+    // Copy the complete request before opening ChatGPT.
     try {
-        navigator.clipboard?.writeText(prompt)?.catch(() => {});
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(request)
+                .then(() => showToast(
+                    'Question request copied. In ChatGPT, press Ctrl+V and send.',
+                    'success'
+                ))
+                .catch(() => showToast(
+                    'Copy blocked. Return here and use More Tools → Copy / download request.',
+                    'error'
+                ));
+        } else {
+            const field = document.createElement('textarea');
+            field.value = request;
+            field.style.position = 'fixed';
+            field.style.left = '-9999px';
+
+            document.body.appendChild(field);
+            field.select();
+
+            const copied = document.execCommand('copy');
+            field.remove();
+
+            if (!copied) {
+                showToast(
+                    'Use More Tools → Copy / download request to copy the prompt.',
+                    'error'
+                );
+            }
+        }
     } catch (_) {
-        // The URL carries the prompt even when clipboard access is unavailable.
+        showToast(
+            'Use More Tools → Copy / download request to copy the prompt.',
+            'error'
+        );
     }
-    showToast('Opening ChatGPT with your prompt. Paste the generated questions back here.', 'success');
+
+    // Open ChatGPT without putting the large prompt in its URL.
+    try {
+        window.open('https://chatgpt.com/', '_blank', 'noopener');
+    } catch (_) {
+        showToast(
+            'Could not open ChatGPT. Allow pop-ups and try again.',
+            'error'
+        );
+        return false;
+    }
+
     return true;
 }
 
