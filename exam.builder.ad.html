@@ -651,6 +651,113 @@
   // Shared Firestore storage for My Papers and CBSE drafts.
   window.SciMentraCloudPaperStore = store;
   // One shared, question-derived blueprint for Builder and My Papers.
+   // Common school-neutral header for Blueprints and Answer Keys.
+  const __scNeutralStyles = `
+    .sc-neutral-head {
+      font-family:'Times New Roman',Times,serif;
+      text-align:center;
+      color:#111;
+      margin:0 0 20px;
+    }
+    .sc-neutral-head h1 {
+      font-size:21px;
+      font-weight:700;
+      margin:0 0 5px;
+      letter-spacing:.025em;
+    }
+    .sc-neutral-head h2 {
+      font-size:17px;
+      font-weight:700;
+      margin:0 0 16px;
+    }
+    .sc-neutral-details {
+      border:2px solid #111;
+      border-radius:18px;
+      padding:12px 16px;
+      text-align:left;
+    }
+    .sc-neutral-row {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr);
+      gap:10px;
+      align-items:center;
+      font-size:15px;
+      font-weight:700;
+      line-height:1.5;
+    }
+    .sc-neutral-row + .sc-neutral-row {
+      margin-top:5px;
+    }
+    .sc-neutral-row > span:nth-child(2) {
+      text-align:center;
+      overflow-wrap:anywhere;
+    }
+    .sc-neutral-row > span:last-child {
+      text-align:right;
+    }
+    .sc-neutral-row.sc-neutral-two {
+      grid-template-columns:1fr 1fr;
+    }
+    @media(max-width:560px) {
+      .sc-neutral-details { padding:10px; }
+      .sc-neutral-row { font-size:12px; gap:5px; }
+      .sc-neutral-head h1 { font-size:19px; }
+    }
+    @media print {
+      .sc-neutral-head,.sc-neutral-details {
+        break-inside:avoid;
+        page-break-inside:avoid;
+      }
+    }
+  `;
+
+  function __scNeutralHeader(source, type, safe) {
+    const paper = source?._cbseBlueprintSource || source || {};
+
+    const subs = (
+      Array.isArray(paper.subjects) ? paper.subjects : []
+    ).map(s =>
+      String(s?.subject || s?.name || s || '').trim()
+    ).filter(Boolean);
+
+    const subject = [...new Set(subs)].join(', ') ||
+      String(paper.subject || '-');
+
+    const rawDate = String(paper.date || '').trim();
+
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+      ? rawDate.split('-').reverse().join('-')
+      : (rawDate || '______________');
+
+    const rawTime = String(paper.time ?? '').trim();
+
+    const time = /^\d+(?:\.\d+)?$/.test(rawTime)
+      ? rawTime + ' minutes'
+      : (rawTime || '-');
+
+    const heading = type === 'answer'
+      ? 'ANSWER KEY'
+      : 'EXAMINATION BLUEPRINT';
+
+    return `<header class="sc-neutral-head">
+      <h1>${heading}</h1>
+      <h2>${safe(paper.examName || 'Examination')}</h2>
+
+      <div class="sc-neutral-details">
+        <div class="sc-neutral-row">
+          <span>Class: ${safe(paper.class || '-')}</span>
+          <span>${safe(subject.toUpperCase())}</span>
+          <span>Date: ${safe(date)}</span>
+        </div>
+
+        <div class="sc-neutral-row sc-neutral-two">
+          <span>Time: ${safe(time)}</span>
+          <span>Max. Marks: ${safe(paper.maxMarks ?? '-')}</span>
+        </div>
+      </div>
+    </header>`;
+  }
+
   function __ebBlueprintHtml(input) {
     const paper = input?._cbseBlueprintSource || input;
     if (!paper || !Array.isArray(paper.subjects) ||
@@ -840,8 +947,7 @@
       <style>
            @page{size:A4 portrait;margin:13mm 12mm}
       *{box-sizing:border-box}body{font:13px/1.5 Arial,sans-serif;color:#172b42;max-width:1500px;margin:20px auto;padding:16px}
-      .head{text-align:center;border-bottom:2px solid #23384c;padding-bottom:10px}.head h1{font-size:22px;margin:0}.head h2{font-size:18px;margin:2px 0}
-      .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:600;margin-top:8px}
+            ${__scNeutralStyles}
       .subject{margin-top:25px;break-before:auto}.subject h2{font-size:17px;margin:20px 0 8px}
       h3{font-size:14px;margin:18px 0 8px}table{border-collapse:collapse;width:100%;font-size:11px;line-height:1.4;margin-bottom:10px}
       th,td{border:1px solid #a9b7c5;padding:6px 7px;vertical-align:top;text-align:left;overflow-wrap:anywhere}
@@ -967,8 +1073,7 @@
 
       }
       </style></head><body><div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
-      <header class="head"><h1>${escape(paper.school || paper.schoolName || 'SciMentra')}</h1><h2>${escape(paper.examName || 'Examination')} — Blueprint</h2>
-      <div class="meta"><span>Class: ${escape(paper.class || '')}</span><span>Board: CBSE</span><span>Maximum Marks: ${fmt(totalExpected)}</span><span>Time: ${escape(paper.time || '')} minutes</span><span>Date: ${escape(paper.date || '______________')}</span></div></header>
+            ${__scNeutralHeader(paper, 'blueprint', escape)}
       ${mismatch}${blocks}<p class="note">This is a chapter-scoped school assessment blueprint derived from the final saved question records, not an official CBSE-prescribed blueprint.</p></body></html>`;
   }
 
@@ -995,15 +1100,11 @@
     }
     const paper = toReviewPaper(source);
 
-    let body = `
-      <h1>${esc(paper.examName)}</h1>
-      <h2>${answers ? 'Answer Key' : 'Blueprint'}</h2>
-      <p>
-        ${esc(paper.schoolName || paper.school)} ·
-        ${esc(paper.class)} ·
-        ${esc(paper.maxMarks)} marks
-      </p>
-    `;
+        let body = __scNeutralHeader(
+      paper,
+      answers ? 'answer' : 'blueprint',
+      esc
+    );
 
     paper.subjects.forEach(subject => {
       body += `<h2>${esc(subject.subject)}</h2>`;
@@ -1099,7 +1200,8 @@
           table { border-collapse: collapse; width: 100%; }
           td, th { border: 1px solid #aaa; padding: 9px; }
           article { border-bottom: 1px solid #ddd; padding: 12px 0; }
-          img { max-width: 100%; }
+                    img { max-width: 100%; }
+          ${__scNeutralStyles}
           @media print {
             button { display: none; }
             tr { break-inside: avoid; }
