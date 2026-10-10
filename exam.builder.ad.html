@@ -968,7 +968,7 @@
       }
       </style></head><body><div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
       <header class="head"><h1>${escape(paper.school || paper.schoolName || 'SciMentra')}</h1><h2>${escape(paper.examName || 'Examination')} — Blueprint</h2>
-      <div class="meta"><span>Class: ${escape(paper.class || '')}</span><span>Board: CBSE</span><span>Maximum Marks: ${fmt(totalExpected)}</span><span>Time: ${escape(paper.time || '')} minutes</span>${paper.date ? `<span>Date: ${escape(paper.date)}</span>` : ''}</div></header>
+      <div class="meta"><span>Class: ${escape(paper.class || '')}</span><span>Board: CBSE</span><span>Maximum Marks: ${fmt(totalExpected)}</span><span>Time: ${escape(paper.time || '')} minutes</span><span>Date: ${escape(paper.date || '______________')}</span></div></header>
       ${mismatch}${blocks}<p class="note">This is a chapter-scoped school assessment blueprint derived from the final saved question records, not an official CBSE-prescribed blueprint.</p></body></html>`;
   }
 
@@ -1750,7 +1750,7 @@
                         <input type="number" id="time-input" value="90">
                     </div>
                     <div class="form-group">
-                        <label>Date</label>
+                       <label>Date (Optional)</label>
                         <input type="date" id="date-input">
                     </div>
 
@@ -8674,7 +8674,7 @@ refreshDifficultyTotalNote();
     if (el) el.addEventListener('input', refreshDifficultyTotalNote);
     if (el) el.addEventListener('change', refreshDifficultyTotalNote);
 });
-        document.getElementById('date-input').valueAsDate = new Date();
+        document.getElementById('date-input').value = '';
 
         createMultiSelectDropdown('subjects-multiselect', [], 'Select class and board to see subjects', function(){});
 
@@ -12129,7 +12129,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
     }
   }
   function paperHTML(p, answers = false, editing = false) {
-    let html = `<article class="cb-paper"><header class="cb-paper-head"><h1>${escape(p.school)}</h1><h2>${escape(p.examName)}${answers ? ' — Answer Key' : ''}</h2><p>${escape(p.class)} · CBSE</p><div><span>Time: ${p.time} minutes${p.date ? ` · Date: ${escape(p.date)}` : ''}</span><span>Maximum Marks: ${marksText(p.maxMarks)}</span></div></header>
+    let html = `<article class="cb-paper"><header class="cb-paper-head"><h1>${escape(p.school)}</h1><h2>${escape(p.examName)}${answers ? ' — Answer Key' : ''}</h2><p>${escape(p.class)} · CBSE</p><div><span>Time: ${p.time} minutes · Date: ${escape(p.date || '______________')}</span><span>Maximum Marks: ${marksText(p.maxMarks)}</span></div></header>
       ${p.instructions ? `<div class="cb-instructions">${rich(p.instructions)}</div>` : ''}<p class="cb-instructions">Answer the questions according to each group’s instructions. Where OR is given, answer only one alternative. Marks for choices are counted once.</p>`;
     p.subjects.forEach((sub, si) => {
       let number = 0, lastSection = '';
