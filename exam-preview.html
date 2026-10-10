@@ -5225,7 +5225,18 @@ function __cbseSplitLongQuestion(node) {
       part.removeAttribute('id');
     }
 
-    for (const child of element.childNodes) {
+       for (const child of element.childNodes) {
+      // Allow each complete subquestion to flow separately.
+      if (
+        child.nodeType === 1 &&
+        child.matches('.cbse-subquestion-row')
+      ) {
+        flush();
+        part.appendChild(child.cloneNode(true));
+        flush();
+        continue;
+      }
+
       if (
         child.nodeType === 1 &&
         child.tagName === 'BR'
@@ -5269,11 +5280,22 @@ function __cbseSplitLongQuestion(node) {
 
     const text = chunk.textContent.trim();
 
-    // Keep OR, alternative labels and introductory lines
-    // with the content immediately following them.
+        // Keep instructions with the first subquestion.
+    const hasSubquestion = !!chunk.querySelector(
+      '.cbse-subquestion-row'
+    );
+
+    const isInstruction =
+      /^(?:[^:\n]{1,80}:\s*)?(?:attempt|answer)\s+(?:any|all|the\s+following)\b/i.test(text);
+
+    // Keep OR, labels and instructions with the following content.
     if (
-      /^(?:OR|\([A-Z]\))$/i.test(text) ||
-      /:\s*$/.test(text)
+      !hasSubquestion &&
+      (
+        /^(?:OR|\([A-Z]\))$/i.test(text) ||
+        /:\s*$/.test(text) ||
+        isInstruction
+      )
     ) {
       continue;
     }
