@@ -6878,7 +6878,7 @@ function formatExamTextForPrint(root) {
   });
 
   // Identify instruction lines.
-  const instructionStart = /^(?:(?:\(\d+\)|\([a-z]\)|[ivxlcdm]+\.)\s*)?(?:(?:read|study|observe|examine)\s+(?:the\s+)?(?:(?:following|given)\s+)?(?:passage|extract|poem|text|table|chart|graph|data|picture|image|information|case)\b|(?:answer|attempt)\s+(?:any|all|both|each|(?:the\s+)?(?:foll(?:o)?wing|questions?))\b|choose\s+(?:the\s+)?(?:correct|appropriate|best)\b|(?:complete|rewrite|match)\s+(?:the\s+)?following\b|fill\s+(?:in\s+)?(?:the\s+)?blanks?\b|write\s+(?:a|an)\s+(?:formal|informal|letter|paragraph|report|notice|email)\b)/i;
+  const instructionStart = /^(?:(?:\(\d+\)|\([a-z]\)|[ivxlcdm]+\.)\s*)?(?:(?:read|study|observe|examine)\s+(?:the\s+)?(?:(?:following|given)\s+)?(?:(?:prose(?:\s*(?:\/|and|&)\s*drama)?|drama|poetry|poetic)\s+)?(?:passages?|extracts?|poems?|texts?|tables?|charts?|graphs?|data|pictures?|images?|information|cases?)\b|(?:answer|attempt)\s+(?:any|all|both|each|(?:the\s+)?(?:foll(?:o)?wing|questions?))\b|choose\s+(?:the\s+)?(?:correct|appropriate|best)\b|(?:complete|rewrite|match)\s+(?:the\s+)?following\b|fill\s+(?:in\s+)?(?:the\s+)?blanks?\b|write\s+(?:a|an)\s+(?:formal|informal|letter|paragraph|report|notice|email)\b)/i;
 
   root.querySelectorAll(
     '.question-text, .question-text p, .question-text div, ' +
@@ -6901,9 +6901,18 @@ function formatExamTextForPrint(root) {
         node.classList.contains('exam-print-instruction')
       );
 
+            // Do not bold complete (A)/(B) alternatives.
+      // Keep only the main question instructions bold.
+      const isAlternative =
+        /^\s*\([A-Z]\)(?:\s|$)/i.test(text) ||
+        !!block.closest(
+          '.cbse-hanging-choice, .cbse-hanging-content'
+        );
+
       if (
         run.length &&
         !alreadyMarked &&
+        !isAlternative &&
         instructionStart.test(text)
       ) {
         const instruction = document.createElement('span');
