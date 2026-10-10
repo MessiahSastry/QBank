@@ -2048,7 +2048,10 @@ function removeMetaPrefix(str) {
   return str.replace(/Q\d{1,3}.*\n?/g, '');
 }
    function formatDate(dateStr) {
-    if (!dateStr) return '';
+    if (!dateStr || !String(dateStr).trim()) {
+        return '______________';
+    }
+
     const [year, month, day] = dateStr.split('-');
     return `${day}-${month}-${year}`;
 }
