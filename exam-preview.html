@@ -7801,9 +7801,81 @@ function cbsePrintQuestion(question, number, section) {
           'sc-main-question-diagram'
         );
 
+        
         imageBlock.style.margin = '4px 0 8px';
 
+        // Place "Answer the following questions:"
+        // BELOW the diagram and ABOVE the subquestions.
+
+        const instructionPattern =
+          /^\s*(?:Answer|Attempt)\s+the\s+following\s+questions\s*:\s*$/i;
+
+        // First handle instructions stored inside HTML elements.
+        const candidates = Array.from(
+          container.querySelectorAll('p, div, span, b, strong')
+        ).filter(el =>
+          instructionPattern.test(el.textContent.trim()) &&
+          !el.contains(firstPart)
+        );
+
+        const instructionElement = candidates.find(
+          el => !candidates.includes(el.parentElement)
+        );
+
+        if (instructionElement) {
+          imageBlock.after(instructionElement);
+        } else {
+          // Also support instructions stored as plain text.
+          const walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT
+          );
+
+          let textNode;
+
+          while ((textNode = walker.nextNode())) {
+            if (!(
+              textNode.compareDocumentPosition(firstPart) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+            )) continue;
+
+            const match = textNode.textContent.match(
+              /\b(?:Answer|Attempt)\s+the\s+following\s+questions\s*:/i
+            );
+
+            if (!match) continue;
+
+            const oldBlock = textNode.parentElement.closest(
+              'p, div'
+            );
+
+            textNode.textContent =
+              textNode.textContent.slice(0, match.index) +
+              textNode.textContent.slice(
+                match.index + match[0].length
+              );
+
+            const instruction = document.createElement('div');
+            instruction.className = 'exam-print-instruction';
+            instruction.textContent = match[0].trim();
+
+            imageBlock.after(instruction);
+
+            if (
+              oldBlock &&
+              oldBlock !== container &&
+              !oldBlock.textContent.trim() &&
+              !oldBlock.querySelector('img, table, svg')
+            ) {
+              oldBlock.remove();
+            }
+
+            break;
+          }
+        }
+
         return true;
+
       }
 
       if (selectedAlternative) {
