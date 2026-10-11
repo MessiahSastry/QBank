@@ -1742,11 +1742,13 @@
           break-inside: auto;
         }
 
-        /* Table 2 starts on a fresh page */
+               /* Allow Table 2 to follow Table 1 naturally */
         .question-page {
-          break-before: page;
-          page-break-before: always;
-          margin-top: 0;
+          break-before: auto;
+          page-break-before: auto;
+          break-inside: auto;
+          page-break-inside: auto;
+          margin-top: 12px;
         }
 
         /* Keep table title with its table */
@@ -1760,11 +1762,11 @@
           display: table-header-group;
         }
 
-        /* Prevent splitting question rows */
-        tr {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
+       /* Prevent splitting table rows across pages */
+tr, td, th {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
 
       }
       </style></head><body><div class="actions"><button onclick="window.print()">Print / Save as PDF</button></div>
