@@ -1315,13 +1315,18 @@
       }
 
       [...el.attributes].forEach(attribute => {
-        if (!['src', 'alt', 'colspan', 'rowspan', 'type'].includes(attribute.name)) {
+        if (!['src', 'alt', 'colspan', 'rowspan', 'type', 'data-image-percent'].includes(attribute.name)) {
           el.removeAttribute(attribute.name);
         }
       });
 
-      if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
+           if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
         el.removeAttribute('src');
+      }
+      if (el.tagName === 'IMG') {
+        const percent = Math.min(100, Math.max(25, Number(el.getAttribute('data-image-percent')) || 60));
+        el.setAttribute('data-image-percent', String(percent));
+        el.setAttribute('style', `width:${percent}%;max-width:100%;height:auto`);
       }
     });
 
@@ -1334,7 +1339,7 @@
         ${index ? '<p style="text-align:center"><b>OR</b></p>' : ''}
         <div>
           <b>(${String.fromCharCode(65 + index)})</b>
-          ${questionTree(alternative, includeImage)}
+          ${questionTree(alternative)}
         </div>
       `).join('');
     }
@@ -1345,7 +1350,7 @@
 
     if (includeImage && imageURL(question.image)) {
       html += `<p><img src="${esc(question.image)}"
-        alt="Question figure" style="max-width:100%"></p>`;
+        alt="Question figure" data-image-percent="${Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60))}"></p>`;
     }
 
     if (question.options?.length) {
@@ -1366,7 +1371,7 @@
       html += question.parts.map((part, index) => `
         <div>
           <b>(${index + 1})</b>
-          ${questionTree(part, includeImage)}
+          ${questionTree(part)}
           <b>[${esc(part.marks)}]</b>
         </div>
       `).join('');
@@ -1849,7 +1854,7 @@
               : '';
 
             const text = instruction + (composite
-              ? questionTree(question)
+              ? questionTree(question, false)
               : rich(question.text || question.question));
 
             return {
@@ -1863,7 +1868,8 @@
               mcqType: composite ? 'Descriptive' : row.type,
                            options: composite ? [] : (question.options || []),
               
-              image: composite ? '' : imageURL(question.image),
+              image: imageURL(question.image),
+              imagePlacement: question.imagePlacement || 'whole',
               imageWidthPercent: Math.min(
                 100,
                 Math.max(
