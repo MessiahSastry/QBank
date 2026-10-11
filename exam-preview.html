@@ -1284,7 +1284,7 @@
   );
 
   const imageURL = value =>
-    /^(https?:\/\/|data:image\/(png|jpeg|jpg|gif|webp);base64,|blob:)/i
+    /^(https?:\/\/|data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,|blob:)/i
       .test(String(value || ''))
       ? String(value)
       : '';
