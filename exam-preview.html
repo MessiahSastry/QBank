@@ -7946,11 +7946,221 @@ function cbsePrintQuestion(question, number, section) {
     }
   }
 
+  
+  if (stem) __epFixNestedChoices(stem, q);
   return holder.innerHTML;
 }
 
 
+function __epFixNestedChoices(stem, question) {
+  const source = document.createElement('div');
+
+  source.innerHTML = __epStudentQuestionOnly(
+    question.text || question.question || ''
+  );
+
+  const groups = Array.from(source.children).filter(element =>
+    element.tagName === 'DIV' &&
+    /^\(\d+\)$/.test(
+      element.firstElementChild?.textContent.trim() || ''
+    )
+  );
+
+  const directAlternatives = element =>
+    Array.from(element.children).filter(child =>
+      child.tagName === 'DIV' &&
+      /^\([A-Z]\)$/.test(
+        child.firstElementChild?.textContent.trim() || ''
+      )
+    );
+
+  const directAnyInstruction = element => {
+    const paragraph = Array.from(element.children).find(child =>
+      child.tagName === 'P' &&
+      /\battempt any\b/i.test(child.textContent)
+    );
+
+    if (paragraph) return paragraph;
+
+    const directText = Array.from(element.childNodes)
+      .filter(child => child.nodeType === Node.TEXT_NODE)
+      .map(child => child.textContent)
+      .join(' ')
+      .trim();
+
+    return /\battempt any\b/i.test(directText)
+      ? { textContent: directText }
+      : null;
+  };
+
+  // Apply only to combined OR and Attempt Any structures.
+  if (
+    !groups.some(group =>
+      directAlternatives(group).length > 1
+    ) ||
+    !groups.some(group => directAnyInstruction(group))
+  ) return;
+
+  const cleanInner = element => {
+    const copy = element.cloneNode(true);
+
+    if (
+      /^\((?:\d+|[A-Z])\)$/.test(
+        copy.firstElementChild?.textContent.trim() || ''
+      )
+    ) {
+      copy.firstElementChild.remove();
+    }
+
+    if (
+      /^\[\d+(?:\.\d+)?\]$/.test(
+        copy.lastElementChild?.textContent.trim() || ''
+      )
+    ) {
+      copy.lastElementChild.remove();
+    }
+
+    return copy.innerHTML
+      .replace(/^(?:\s|<br\s*\/?>)+/gi, '')
+      .replace(/(?:\s|<br\s*\/?>)+$/gi, '');
+  };
+
+  const output = document.createDocumentFragment();
+  const selected = new Set(groups);
+
+  const roman = [
+    'i', 'ii', 'iii', 'iv',
+    'v', 'vi', 'vii', 'viii'
+  ];
+
+  Array.from(source.childNodes).forEach(node => {
+    if (!selected.has(node)) {
+      output.appendChild(node.cloneNode(true));
+      return;
+    }
+
+    const alternatives = directAlternatives(node);
+    const anyInstruction = directAnyInstruction(node);
+
+    if (alternatives.length < 2 && !anyInstruction) {
+      output.appendChild(node.cloneNode(true));
+      return;
+    }
+
+    const rawIndex = Number(
+      node.firstElementChild.textContent
+        .match(/\d+/)?.[0] || 1
+    );
+
+    const labelText =
+      `(${String.fromCharCode(96 + rawIndex)})`;
+
+    const last = node.lastElementChild;
+
+    const mark = last?.textContent.trim()
+      .match(/^\[(\d+(?:\.\d+)?)\]$/)?.[1] || '';
+
+    const row = document.createElement('div');
+    row.className = 'cbse-subquestion-row';
+
+    const text = document.createElement('div');
+    text.className = 'cbse-subquestion-text';
+
+    const label = document.createElement('span');
+    label.className = 'cbse-subquestion-label';
+    label.textContent = labelText;
+
+    const content = document.createElement('div');
+    content.className = 'cbse-subquestion-content';
+
+    if (alternatives.length > 1) {
+      const instruction = document.createElement('div');
+
+      instruction.textContent =
+        'Answer any one of the following:';
+
+      content.appendChild(instruction);
+
+      alternatives.forEach((alternative, index) => {
+        if (index) {
+          const or = document.createElement('div');
+          or.className = 'cbse-centred-or';
+          or.textContent = 'OR';
+          content.appendChild(or);
+        }
+
+        const item = document.createElement('div');
+        item.className = 'cbse-hanging-choice';
+
+        const itemLabel = document.createElement('span');
+        itemLabel.className = 'cbse-hanging-label';
+
+        itemLabel.textContent =
+          alternative.firstElementChild.textContent.trim();
+
+        const itemContent = document.createElement('div');
+        itemContent.className = 'cbse-hanging-content';
+
+        itemContent.innerHTML = cleanInner(alternative);
+
+        item.append(itemLabel, itemContent);
+        content.appendChild(item);
+      });
+
+    } else {
+      const instruction = document.createElement('div');
+
+      instruction.textContent =
+        anyInstruction.textContent.trim();
+
+      content.appendChild(instruction);
+
+      const items = Array.from(node.children).filter(child =>
+        child.tagName === 'DIV' &&
+        /^\(\d+\)$/.test(
+          child.firstElementChild?.textContent.trim() || ''
+        )
+      );
+
+      items.forEach((item, index) => {
+        const entry = document.createElement('div');
+        entry.className = 'cbse-hanging-choice';
+
+        const itemLabel = document.createElement('span');
+        itemLabel.className = 'cbse-hanging-label';
+
+        itemLabel.textContent =
+          `(${roman[index] || index + 1})`;
+
+        const itemContent = document.createElement('div');
+        itemContent.className = 'cbse-hanging-content';
+
+        itemContent.innerHTML = cleanInner(item);
+
+        entry.append(itemLabel, itemContent);
+        content.appendChild(entry);
+      });
+    }
+
+    text.append(label, content);
+    row.appendChild(text);
+
+    if (mark) {
+      const marks = document.createElement('span');
+      marks.className = 'cbse-subquestion-marks';
+      marks.textContent = `[${mark}]`;
+      row.appendChild(marks);
+    }
+
+    output.appendChild(row);
+  });
+
+  stem.replaceChildren(output);
+}
+
+
 function __epScience910() {
+
   const grade = Number(String(exam.class || exam.className || '').match(/\d+/)?.[0] || 0);
   const names = (exam.subjects || []).map(s => String(s.subject || '').trim().toLowerCase());
 
