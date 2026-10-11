@@ -7955,9 +7955,15 @@ function cbsePrintQuestion(question, number, section) {
 function __epFixNestedChoices(stem, question) {
   const source = document.createElement('div');
 
-  source.innerHTML = __epStudentQuestionOnly(
-    question.text || question.question || ''
-  );
+  
+  const rendered = document.createElement('div');
+
+  rendered.innerHTML =
+    window.SciMentraPapers.previewQuestion(question, '');
+
+  source.innerHTML =
+    rendered.querySelector('.question-text')?.innerHTML || '';
+
 
   const groups = Array.from(source.children).filter(element =>
     element.tagName === 'DIV' &&
