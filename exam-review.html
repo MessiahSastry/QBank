@@ -2570,6 +2570,16 @@ window.alert = function(message) {
 function sciMentraConfirm(message) {
   return Promise.resolve(window.confirm(message || 'Do you want to continue?'));
 }
+function __erProtectMathHtml(value) {
+  return String(value ?? '').replace(
+    /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g,
+    latex => latex
+      .replace(/&(?!(?:#\d+|#x[\da-f]+|[a-z][\w]+);)/gi, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  );
+}
+
 function renderExam() {
 
     const paper = getExamPaper();
@@ -2814,7 +2824,7 @@ if (paper.instructions) {
         html += `</div>`;
       });
     });
-        area.innerHTML = html;
+        area.innerHTML = __erProtectMathHtml(html);
 
     // Format pasted CBSE questions without changing the blueprint.
     if (String(paper.board || '').toUpperCase() === 'CBSE') {
