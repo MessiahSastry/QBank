@@ -597,13 +597,18 @@
       }
 
       [...el.attributes].forEach(attribute => {
-        if (!['src', 'alt', 'colspan', 'rowspan', 'type'].includes(attribute.name)) {
+        if (!['src', 'alt', 'colspan', 'rowspan', 'type', 'data-image-percent'].includes(attribute.name)) {
           el.removeAttribute(attribute.name);
         }
       });
 
-      if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
+           if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
         el.removeAttribute('src');
+      }
+      if (el.tagName === 'IMG') {
+        const percent = Math.min(100, Math.max(25, Number(el.getAttribute('data-image-percent')) || 60));
+        el.setAttribute('data-image-percent', String(percent));
+        el.setAttribute('style', `width:${percent}%;max-width:100%;height:auto`);
       }
     });
 
@@ -616,7 +621,7 @@
         ${index ? '<p style="text-align:center"><b>OR</b></p>' : ''}
         <div>
           <b>(${String.fromCharCode(65 + index)})</b>
-          ${questionTree(alternative, includeImage)}
+          ${questionTree(alternative)}
         </div>
       `).join('');
     }
@@ -627,7 +632,7 @@
 
     if (includeImage && imageURL(question.image)) {
       html += `<p><img src="${esc(question.image)}"
-        alt="Question figure" style="max-width:100%"></p>`;
+        alt="Question figure" data-image-percent="${Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60))}"></p>`;
     }
 
     if (question.options?.length) {
@@ -648,7 +653,7 @@
       html += question.parts.map((part, index) => `
         <div>
           <b>(${index + 1})</b>
-          ${questionTree(part, includeImage)}
+          ${questionTree(part)}
           <b>[${esc(part.marks)}]</b>
         </div>
       `).join('');
@@ -1135,7 +1140,7 @@
               : '';
 
             const text = instruction + (composite
-              ? questionTree(question)
+              ? questionTree(question, false)
               : rich(question.text || question.question));
 
             return {
@@ -1148,7 +1153,9 @@
               type: composite ? 'Descriptive' : row.type,
               mcqType: composite ? 'Descriptive' : row.type,
                            options: composite ? [] : (question.options || []),
-              image: composite ? '' : imageURL(question.image),
+             image: imageURL(question.image),
+              imageWidthPercent: Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60)),
+              imagePlacement: question.imagePlacement || 'whole',
 
                             answerKeyHtml: __scKeyNative(
                 question,
@@ -8843,7 +8850,7 @@ VISUAL QUESTION QUALITY:
 
 - Distinguish questions requiring a supplied diagram from construction questions in which students must draw their own figures.
 
-- Use [Picture Needed: Yes] for every question requiring an external visual.
+- For a suitable drawing, supply an embedded [SVG] ... [/SVG] block according to the EMBEDDED SVG DIAGRAMS rules. Use [Picture Needed: Yes] only for an external image that is still needed.
 
 - Include [Image: actual image URL] only when an actual, accessible and verified image URL is available.
 
@@ -8977,7 +8984,7 @@ ${structure}
 - Answer descriptive science questions point-wise when appropriate, using as many points as needed rather than a fixed marks-to-points formula. Give step-wise working for numericals and balanced equations where needed.
 
 4. FIGURES, PRACTICALS AND DATA
-- If a question requires a diagram, give correct labels, orientation and scientific context, and use the existing [Picture Needed: Yes] marker where supported.
+- For a suitable diagram, use an embedded [SVG] ... [/SVG] block with correct labels, orientation and scientific context. Use [Picture Needed: Yes] only for an external image that is still needed.
 - Supply [Image: actual image URL] only when verified and accessible. Never fabricate image URLs or assume a diagram was supplied.
 - Questions depending on an unavailable visual or unverified data must be replaced by self-contained questions or flagged before the final set.
 - Use observed/experimental results accurately; do not invent a result and falsely attribute it to NCERT.
@@ -9092,7 +9099,7 @@ STRICT RULES:
 
 7. Do not generate simple picture-identification questions when the selected class requires higher-order interpretation.
 
-8. If the question requires an image, use the existing [Picture Needed: Yes] marker where supported by the question format.
+8. For a suitable chart, graph or original diagram, use an embedded [SVG] ... [/SVG] block. Use [Picture Needed: Yes] only for an external image that is still needed.
 
 9. Include [Image: actual image URL] only when a genuine, accessible and verified image URL is available.
 
@@ -12449,8 +12456,11 @@ if (cleanedErrors.length) {
     if (best.minCompetency < best.requiredCompetency) errors.push(`Confirmed competency-based marks can fall to ${best.minCompetency}/${bp.marks} after choices; ${best.requiredCompetency} are required. Classify suitable bank questions or adjust the target explicitly.`);
     return { ...best, errors, shortages: [], excluded, rowsReport, pool, slots };
   }
-  function parseImport(text, context = {}) {
-    const raw = clean(text).replace(/^\s*```[^\n]*\n?/gm, '').trim();
+    function parseImport(text, context = {}) {
+    const raw = String(text ?? '')
+      .replace(/\r/g, '')
+      .replace(/^\s*`{3}[^\n]*\n?/gm, '')
+      .trim();
     if (!raw) return [];
     if (/^[\[{]/.test(raw)) {
       try {
@@ -12603,7 +12613,7 @@ if (cleanedErrors.length) {
   function safeImage(src) { return /^(https?:\/\/|data:image\/(?:png|jpe?g|gif|webp|svg\+xml);base64,|blob:)/i.test(String(src || '')) ? escape(src) : ''; }
   function questionHTML(q, answers = false, depth = 0) {
     const imgs = [...new Set([q.image, ...(q.images || [])].filter(Boolean))].map(safeImage).filter(Boolean);
-    const imageHTML = imgs.map(src => `<img class="cb-question-image" src="${src}" alt="Question figure">`).join('');
+    const imageHTML = imgs.map(src => `<img class="cb-question-image" src="${src}" alt="Question figure" style="width:${Math.min(100, Math.max(25, Number(q.imageWidthPercent) || 60))}%;max-width:100%;height:auto">`).join('');
     const body = q.parts?.length ? (q.passage || q.text || '') : (q.text || q.question || '');
     const answer = answers && q.answer ? `<div class="cb-answer"><b>Answer:</b> ${rich(q.answer, q.format)}</div>` : '';
     const explanation = answers && q.explanation ? `<div class="cb-explanation"><b>Explanation:</b> ${rich(q.explanation, q.format)}</div>` : '';
@@ -13218,7 +13228,7 @@ QUESTION STEM LENGTH — ALL SUBJECTS
 - Include every question, four options for a single-correct MCQ or Assertion–Reason, the correct answer, and an explanation where useful. An MCQ answer is just A), B), C) or D). Put each option on its own line. Define Assertion–Reason option meanings.
 - Descriptive answers for subjects other than Mathematics and English should be point-wise, with as many points as the question needs. Mathematics solutions must be step-wise. English answers should suit the task.
 - Check all facts, calculations, options, answers, marks, model tags, chapter coverage and internal choices. Avoid duplicate or ambiguous questions. Never invent a required source passage or pretend a missing figure is present.
-- Where a visual is necessary, add [Picture Needed: Yes] and [Image: actual image URL] if supplied. Otherwise explain that the picture must be provided before the paper can be built. Prefer self-contained text/data questions when the blueprint allows.
+${window.SciMentraSVG.rules}
 
 DRAFT → RECHECK → FINAL SET
 1. First give the complete DRAFT question set with answers for teacher review.
