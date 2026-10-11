@@ -7696,7 +7696,60 @@ function cbsePrintQuestion(question, number, section) {
       }
     });
 
+    
+    // Position images according to the selection made in Exam Review.
+    // Never guess image placement from question wording.
+
+    const imageBlock = holder.querySelector(
+      '.question-body > .question-img-block'
+    );
+
+    if (imageBlock) {
+      const placement = String(
+        q.imagePlacement || 'whole'
+      ).toUpperCase();
+
+      const alternatives = Array.from(
+        stem.querySelectorAll('.cbse-hanging-choice')
+      );
+
+      function findAlternative(letter) {
+        return alternatives.find(choice => {
+          const label = choice.querySelector(
+            ':scope > .cbse-hanging-label'
+          );
+
+          return label?.textContent.trim().toUpperCase()
+            === `(${letter})`;
+        });
+      }
+
+      const alternativeA = findAlternative('A');
+      const alternativeB = findAlternative('B');
+
+      if (alternativeA && alternativeB) {
+        if (placement === 'A') {
+          alternativeA.insertAdjacentElement(
+            'afterend',
+            imageBlock
+          );
+        } else if (placement === 'B') {
+          alternativeB.insertAdjacentElement(
+            'afterend',
+            imageBlock
+          );
+        } else {
+          // Whole question: image before both alternatives.
+          alternativeA.insertAdjacentElement(
+            'beforebegin',
+            imageBlock
+          );
+        }
+      }
+    }
+
     const line = stem.parentElement;
+
     line.classList.add('cbse-question-line');
 
     // Use a span so the existing bold-tag cleanup preserves this class.
