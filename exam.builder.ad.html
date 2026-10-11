@@ -12596,11 +12596,11 @@ if (cleanedErrors.length) {
       if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT', 'BUTTON', 'SVG'].includes(el.tagName)) { el.remove(); return; }
       if (!allowed.has(el.tagName)) { el.replaceWith(...el.childNodes); return; }
       for (const a of [...el.attributes]) if (!['src', 'alt', 'colspan', 'rowspan'].includes(a.name)) el.removeAttribute(a.name);
-      if (el.hasAttribute('src') && !/^(https?:\/\/|data:image\/(?:png|jpe?g|gif|webp);base64,|blob:)/i.test(el.getAttribute('src'))) el.removeAttribute('src');
+      if (el.hasAttribute('src') && !/^(https?:\/\/|data:image\/(?:png|jpe?g|gif|webp|svg\+xml);base64,|blob:)/i.test(el.getAttribute('src'))) el.removeAttribute('src');
     });
     return doc.body.innerHTML;
   }
-  function safeImage(src) { return /^(https?:\/\/|data:image\/(?:png|jpe?g|gif|webp);base64,|blob:)/i.test(String(src || '')) ? escape(src) : ''; }
+  function safeImage(src) { return /^(https?:\/\/|data:image\/(?:png|jpe?g|gif|webp|svg\+xml);base64,|blob:)/i.test(String(src || '')) ? escape(src) : ''; }
   function questionHTML(q, answers = false, depth = 0) {
     const imgs = [...new Set([q.image, ...(q.images || [])].filter(Boolean))].map(safeImage).filter(Boolean);
     const imageHTML = imgs.map(src => `<img class="cb-question-image" src="${src}" alt="Question figure">`).join('');
