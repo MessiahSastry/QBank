@@ -67,20 +67,23 @@
       margin-bottom: 12px;
     }
 
-/* Fix image sizing inside questions */
+
+/* A4-friendly image widths; individual saved percentages override this */
 .question-img {
+  display: block;
+  width: 60%;
   max-width: 100%;
   height: auto;
-  display: block;
-  margin: 6px auto;
+  margin: 4px auto;
 }
 
 @media print {
   .question-img {
-    max-width: 80mm;
+    max-width: 100%;
     height: auto;
   }
 }
+
     .question-number {
       min-width: 28px;
       padding-right: 4px;
@@ -1859,7 +1862,16 @@
               type: composite ? 'Descriptive' : row.type,
               mcqType: composite ? 'Descriptive' : row.type,
                            options: composite ? [] : (question.options || []),
+              
               image: composite ? '' : imageURL(question.image),
+              imageWidthPercent: Math.min(
+                100,
+                Math.max(
+                  25,
+                  Number(question.imageWidthPercent) || 60
+                )
+              ),
+
 
                             answerKeyHtml: __scKeyNative(
                 question,
@@ -2308,12 +2320,15 @@
           ${
             imageURL(question.image)
               ? `
-                <div class="question-img-block">
+                
+<div class="question-img-block">
                   <img
                     class="question-img"
                     src="${esc(question.image)}"
-                    alt="Question figure">
+                    alt="Question figure"
+                    style="width:${Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60))}%;max-width:100%;height:auto">
                 </div>
+
               `
               : ''
           }
@@ -4554,7 +4569,16 @@ function buildAnswerKeyDoc(examData) {
           text: q.text || '',
           html: q.html || q.renderedHTML || q.finalHTML || q.formattedHTML || '',
           options: Array.isArray(q.options) ? q.options : [],
+                    
                     image: q.image || '',
+                    imageWidthPercent: Math.min(
+                      100,
+                      Math.max(
+                        25,
+                        Number(q.imageWidthPercent) || 60
+                      )
+                    ),
+
           answerKeyHtml: q.answerKeyHtml || '',
           answerKeySource: String(q.answerKeySource ?? ''),
                     answer:
@@ -8466,7 +8490,16 @@ function renderPrintPreview() {
     }
 
     const optionsHTML = renderOptionsLayout(optionLines);
-    const imageHTML = q.image ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>` : '';
+    
+const imageWidth = Math.min(
+  100,
+  Math.max(25, Number(q.imageWidthPercent) || 60)
+);
+
+const imageHTML = q.image
+  ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" style="width:${imageWidth}%;max-width:100%;height:auto" /></div>`
+  : '';
+
 
     // <-- 3. FINAL HTML (avoid double-formatting)
        const finalQuestionHTML = (() => {
