@@ -7947,8 +7947,177 @@ function cbsePrintQuestion(question, number, section) {
   }
 
   
-  if (stem) __epFixNestedChoices(stem, q);
+  
+  if (stem) {
+    // Correct combined internal OR and Attempt Any formatting.
+    const subContent = row => row.querySelector(
+      ':scope > .cbse-subquestion-text > .cbse-subquestion-content'
+    );
+
+    const children = parent => Array.from(parent.children);
+
+    const orRow = Array.from(
+      stem.querySelectorAll('.cbse-subquestion-row')
+    ).find(row => {
+      const content = subContent(row);
+      if (!content) return false;
+
+      const direct = children(content);
+
+      return direct.some(el =>
+        /^OR$/i.test(el.textContent.trim())
+      ) && direct.filter(el =>
+        /^\([A-Z]\)$/.test(
+          el.firstElementChild?.textContent.trim() || ''
+        )
+      ).length >= 2;
+    });
+
+    const anyParent = Array.from(
+      stem.querySelectorAll('div')
+    ).find(element => {
+      if (element.classList.contains('cbse-subquestion-row')) {
+        return false;
+      }
+
+      const nested = children(element).filter(el =>
+        el.classList.contains('cbse-subquestion-row')
+      );
+
+      const introduction = Array.from(element.childNodes)
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent)
+        .join(' ');
+
+      return nested.length >= 2 &&
+        /\battempt\s+any\b/i.test(introduction);
+    });
+
+    if (orRow && anyParent) {
+      // Format the A/B internal alternatives.
+      const content = subContent(orRow);
+
+      const alternatives = children(content).filter(el =>
+        /^\([A-Z]\)$/.test(
+          el.firstElementChild?.textContent.trim() || ''
+        )
+      );
+
+      const or = children(content).find(el =>
+        /^OR$/i.test(el.textContent.trim())
+      );
+
+      const intro = document.createElement('div');
+      intro.textContent = 'Answer any one of the following:';
+      content.prepend(intro);
+
+      alternatives.forEach(alternative => {
+        const labelText =
+          alternative.firstElementChild.textContent.trim();
+
+        alternative.firstElementChild.remove();
+        alternative.className = 'cbse-hanging-choice';
+
+        const label = document.createElement('span');
+        label.className = 'cbse-hanging-label';
+        label.textContent = labelText;
+
+        const body = document.createElement('div');
+        body.className = 'cbse-hanging-content';
+
+        while (alternative.firstChild) {
+          body.appendChild(alternative.firstChild);
+        }
+
+        alternative.append(label, body);
+      });
+
+      if (or) or.classList.add('cbse-centred-or');
+
+      // Format the Attempt Any group.
+      const roman = [
+        'i', 'ii', 'iii', 'iv',
+        'v', 'vi', 'vii', 'viii'
+      ];
+
+      const nested = children(anyParent).filter(el =>
+        el.classList.contains('cbse-subquestion-row')
+      );
+
+      const instruction = Array.from(anyParent.childNodes)
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent.trim())
+        .filter(Boolean)
+        .join(' ');
+
+      const parentNumber = anyParent.firstElementChild
+        ?.textContent.trim()
+        .match(/^\((\d+)\)$/)?.[1];
+
+      const labelText = parentNumber
+        ? `(${String.fromCharCode(96 + Number(parentNumber))})`
+        : '(b)';
+
+      const row = document.createElement('div');
+      row.className = 'cbse-subquestion-row';
+
+      const text = document.createElement('div');
+      text.className = 'cbse-subquestion-text';
+
+      const label = document.createElement('span');
+      label.className = 'cbse-subquestion-label';
+      label.textContent = labelText;
+
+      const body = document.createElement('div');
+      body.className = 'cbse-subquestion-content';
+
+      const prompt = document.createElement('div');
+      prompt.className = 'exam-print-instruction';
+      prompt.textContent =
+        instruction || 'Attempt the following items.';
+
+      body.appendChild(prompt);
+
+      nested.forEach((part, index) => {
+        const choice = document.createElement('div');
+        choice.className = 'cbse-hanging-choice';
+
+        const itemLabel = document.createElement('span');
+        itemLabel.className = 'cbse-hanging-label';
+        itemLabel.textContent =
+          `(${roman[index] || index + 1})`;
+
+        const itemBody = document.createElement('div');
+        itemBody.className = 'cbse-hanging-content';
+
+        const original = subContent(part);
+
+        if (original) {
+          while (original.firstChild) {
+            itemBody.appendChild(original.firstChild);
+          }
+        }
+
+        choice.append(itemLabel, itemBody);
+        body.appendChild(choice);
+      });
+
+      const marks = document.createElement('span');
+      marks.className = 'cbse-subquestion-marks';
+
+      marks.textContent = anyParent.lastElementChild
+        ?.textContent.trim()
+        .match(/^\[\d+(?:\.\d+)?\]$/)?.[0] || '[2]';
+
+      text.append(label, body);
+      row.append(text, marks);
+
+      anyParent.replaceWith(row);
+    }
+  }
+
   return holder.innerHTML;
+
 }
 
 
