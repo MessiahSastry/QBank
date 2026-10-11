@@ -571,8 +571,15 @@
       ? String(value)
       : '';
 
+  
   function rich(value) {
-    const text = String(value || '');
+    const text = String(value || '').replace(
+      /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g,
+      math => math
+        .replace(/&(?:amp;)*lt;|</gi, '\\lt ')
+        .replace(/&(?:amp;)*gt;|>/gi, '\\gt ')
+    );
+
 
     if (!/<[a-z][^>]*>/i.test(text)) {
       return esc(text).replace(/\n/g, '<br>');
@@ -12456,11 +12463,19 @@ if (cleanedErrors.length) {
     if (best.minCompetency < best.requiredCompetency) errors.push(`Confirmed competency-based marks can fall to ${best.minCompetency}/${bp.marks} after choices; ${best.requiredCompetency} are required. Classify suitable bank questions or adjust the target explicitly.`);
     return { ...best, errors, shortages: [], excluded, rowsReport, pool, slots };
   }
+    
     function parseImport(text, context = {}) {
     const raw = String(text ?? '')
       .replace(/\r/g, '')
       .replace(/^\s*`{3}[^\n]*\n?/gm, '')
+      .replace(
+        /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g,
+        math => math
+          .replace(/&(?:amp;)*lt;|</gi, '\\lt ')
+          .replace(/&(?:amp;)*gt;|>/gi, '\\gt ')
+      )
       .trim();
+
     if (!raw) return [];
     if (/^[\[{]/.test(raw)) {
       try {
@@ -12597,8 +12612,15 @@ if (cleanedErrors.length) {
   async function math(el) {
     try { if (window.MathJax?.startup?.promise) await MathJax.startup.promise; if (window.MathJax?.typesetPromise) await MathJax.typesetPromise([el]); } catch (e) { console.warn('Math rendering unavailable', e.message); }
   }
+ 
   function rich(text, format) {
-    text = String(text || '');
+    text = String(text || '').replace(
+      /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g,
+      math => math
+        .replace(/&(?:amp;)*lt;|</gi, '\\lt ')
+        .replace(/&(?:amp;)*gt;|>/gi, '\\gt ')
+    );
+
     if (format === 'plain' || (format !== 'html' && !/<(?:p|br|table|ul|ol|li)(?:\s|>)/i.test(text))) return escape(text).replace(/\n/g, '<br>');
     const doc = new DOMParser().parseFromString(text, 'text/html');
     const allowed = new Set(['P', 'BR', 'DIV', 'SPAN', 'B', 'STRONG', 'I', 'EM', 'U', 'SUP', 'SUB', 'UL', 'OL', 'LI', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'IMG', 'PRE', 'CODE']);
