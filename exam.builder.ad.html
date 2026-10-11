@@ -12090,7 +12090,10 @@ if (cleanedErrors.length) {
       if (!hasAnswer) errors.push(`${path}: missing answer / marking guidance.`);
     }
     if (Number.isFinite(Number(q.marks)) && (q.parts?.length || q.alternatives?.length) && Math.abs(effectiveMarks(q) - Number(q.marks)) > 1e-6) errors.push(`${path}: subparts do not add to its stated marks.`);
-    if (q.pictureNeeded && !(q.image || q.images?.length || /<img\s/i.test(q.text || ''))) errors.push(`${path}: required picture is missing.`);
+   
+// Missing pictures can be added in Exam Review.
+// Allow the draft to be built without blocking.
+
     if ([MCQ, AR].includes(q.type)) {
       if (q.options?.length !== 4 || q.options.some(x => !clean(x))) errors.push(`${path}: four non-empty options are required.`);
       if (!/^[A-D][).]?$/i.test(clean(q.answer))) errors.push(`${path}: single-correct answer must be A, B, C or D.`);
