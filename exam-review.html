@@ -274,13 +274,18 @@
       }
 
       [...el.attributes].forEach(attribute => {
-        if (!['src', 'alt', 'colspan', 'rowspan', 'type'].includes(attribute.name)) {
+        if (!['src', 'alt', 'colspan', 'rowspan', 'type', 'data-image-percent'].includes(attribute.name)) {
           el.removeAttribute(attribute.name);
         }
       });
 
-      if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
+            if (el.hasAttribute('src') && !imageURL(el.getAttribute('src'))) {
         el.removeAttribute('src');
+      }
+      if (el.tagName === 'IMG') {
+        const percent = Math.min(100, Math.max(25, Number(el.getAttribute('data-image-percent')) || 60));
+        el.setAttribute('data-image-percent', String(percent));
+        el.setAttribute('style', `width:${percent}%;max-width:100%;height:auto`);
       }
     });
 
@@ -293,7 +298,7 @@
         ${index ? '<p style="text-align:center"><b>OR</b></p>' : ''}
         <div>
           <b>(${String.fromCharCode(65 + index)})</b>
-          ${questionTree(alternative, includeImage)}
+          ${questionTree(alternative)}
         </div>
       `).join('');
     }
@@ -304,7 +309,7 @@
 
     if (includeImage && imageURL(question.image)) {
       html += `<p><img src="${esc(question.image)}"
-        alt="Question figure" style="max-width:100%"></p>`;
+        alt="Question figure" data-image-percent="${Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60))}"></p>`;
     }
 
     if (question.options?.length) {
@@ -325,7 +330,7 @@
       html += question.parts.map((part, index) => `
         <div>
           <b>(${index + 1})</b>
-          ${questionTree(part, includeImage)}
+          ${questionTree(part)}
           <b>[${esc(part.marks)}]</b>
         </div>
       `).join('');
@@ -807,7 +812,7 @@
               : '';
 
             const text = instruction + (composite
-              ? questionTree(question)
+              ? questionTree(question, false)
               : rich(question.text || question.question));
 
             return {
@@ -820,7 +825,9 @@
               type: composite ? 'Descriptive' : row.type,
               mcqType: composite ? 'Descriptive' : row.type,
                             options: composite ? [] : (question.options || []),
-              image: composite ? '' : imageURL(question.image),
+              image: imageURL(question.image),
+              imageWidthPercent: Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60)),
+              imagePlacement: question.imagePlacement || 'whole',
 
                             answerKeyHtml: __scKeyNative(
                 question,
@@ -3126,6 +3133,52 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
       });
 
       btn('remove')?.addEventListener('click', clearImg);
+
+            // Separate percentage controls for diagrams within OR alternatives.
+      const editor = wrap.closest('.question-row')?.querySelector('.question-text');
+      const inlineImages = Array.from(editor?.querySelectorAll('img[data-image-percent]') || []);
+
+      inlineImages.forEach((img, imageIndex) => {
+        const bar = document.createElement('div');
+        bar.className = 'q-imgbar';
+
+        bar.innerHTML = `<span>Embedded diagram ${imageIndex + 1}</span>
+          <button type="button" data-inline-step="-5">−</button>
+          <span data-inline-percent></span>
+          <button type="button" data-inline-step="5">+</button>
+          <button type="button" data-inline-reset>Reset</button>`;
+
+        const label = bar.querySelector('[data-inline-percent]');
+        const current = () => Number(img.getAttribute('data-image-percent')) || 60;
+        label.textContent = current() + '%';
+
+        function resizeInline(value) {
+          const percent = Math.min(100, Math.max(25, value));
+          const holder = document.createElement('div');
+          holder.innerHTML = editor.dataset.raw || editor.innerHTML;
+
+          const rawImg = holder.querySelectorAll('img[data-image-percent]')[imageIndex];
+          const style = `width:${percent}%;max-width:100%;height:auto`;
+
+          img.setAttribute('data-image-percent', String(percent));
+          img.setAttribute('style', style);
+
+          if (rawImg) {
+            rawImg.setAttribute('data-image-percent', String(percent));
+            rawImg.setAttribute('style', style);
+            editor.dataset.raw = holder.innerHTML;
+          }
+
+          label.textContent = percent + '%';
+        }
+
+        bar.querySelectorAll('[data-inline-step]').forEach(button => {
+          button.onclick = () => resizeInline(current() + Number(button.dataset.inlineStep));
+        });
+
+        bar.querySelector('[data-inline-reset]').onclick = () => resizeInline(60);
+        wrap.appendChild(bar);
+      });
 
       // Display the current saved percentage.
       applyTransform();
