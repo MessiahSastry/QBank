@@ -1289,8 +1289,15 @@
       ? String(value)
       : '';
 
+  
   function rich(value) {
-    const text = String(value || '');
+    const text = String(value || '').replace(
+      /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g,
+      math => math
+        .replace(/&(?:amp;)?lt;|</gi, '\\lt ')
+        .replace(/&(?:amp;)?gt;|>/gi, '\\gt ')
+    );
+
 
     if (!/<[a-z][^>]*>/i.test(text)) {
       return esc(text).replace(/\n/g, '<br>');
