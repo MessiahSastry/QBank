@@ -205,6 +205,8 @@
 - Write labels as SVG text, using Unicode symbols where needed. Keep LaTeX in the question/answer text; do not put LaTeX commands inside SVG labels.
 - Escape XML characters in text and attributes: use &amp; for &, &lt; for < and &gt; for >. Use a single complete SVG without a separate XML declaration or Markdown fence.
 - Use readable black-and-white drawings, sufficient label spacing, accurate geometry, graph scales, data and units. Recheck each diagram against its question and answer.
+- SCIENCE: Use embedded SVG for precise, syllabus-appropriate circuits, ray diagrams, force diagrams, apparatus, graphs, particle models, simple cells and biological processes. Verify scientifically correct parts, proportions, direction arrows, labels and experimental relationships.
+- SCIENCE: Do not put identifying labels or answers on the diagram if the student is asked to label or identify those parts. For detailed human anatomy, microscopy or complex biological structures that cannot be shown accurately using basic SVG, request a verified image instead of inventing an inaccurate diagram.
 - Do not print the drawing code, markers or image instructions as student-facing prose. Include the actual SVG code in the same plain-text FINAL SET copy-code block as the questions.
 - For a photograph, complex illustration or map that cannot be represented accurately with basic SVG, use a genuine verified [Image: actual image URL] or clearly request the required image during DRAFT review. Do not invent URLs or substitute an inaccurate diagram.
 - For an embedded SVG, no separate image download, upload or placeholder is needed. Preserve the existing question headers, marks, Slot tags, options, answers, blueprint and record count.`;
@@ -3445,11 +3447,26 @@ function parsePastedQuestionsToPool(raw) {
   if (!raw) return [];
   let text = String(raw);
 
+   const svgBlocks = [];
+  text = text.replace(
+    /\[SVG(?:\s*:\s*(?:whole|A|B))?\][\s\S]*?\[\/SVG\]/gi,
+    block => {
+      const marker = `SCIMENTRA_SVG_${svgBlocks.length}_MARKER`;
+      svgBlocks.push(block);
+      return marker;
+    }
+  );
+
   if (/<[a-z][\s\S]*>/i.test(text)) {
     text = htmlToPlainText(text);
   } else {
     text = text.replace(/\r/g, '').trim();
   }
+
+  text = text.replace(
+    /SCIMENTRA_SVG_(\d+)_MARKER/g,
+    (_, index) => svgBlocks[Number(index)] || ''
+  );
 
   // Remove Markdown copy-code fences without touching LaTeX.
   text = text
@@ -11076,10 +11093,15 @@ if (effective === 'AI Generate') {
 
 if (rawText) {
 
-    const pool =
-        parsePastedQuestionsToPool(
-            rawText
+       const pool = parsePastedQuestionsToPool(rawText).map(block => {
+        const figure = window.SciMentraSVG.read(block);
+        if (!figure.image) return block;
+
+        return block.replace(
+            /\[SVG(?:\s*:\s*(?:whole|A|B))?\]\s*[\s\S]*?\s*\[\/SVG\]/i,
+            `\n<img src="${figure.image}" alt="Question figure" data-image-percent="60">\n`
         );
+    });
 
     if (!pool.length) {
 
@@ -12274,7 +12296,40 @@ if (cleanedErrors.length) {
     const format = q.format || (/computer|information technology/i.test(q.subject || context.subject || '') ? 'plain' : '');
     const applyFormat = p => { p.format = p.format || format; (p.parts || []).forEach(applyFormat); (p.alternatives || []).forEach(applyFormat); };
     parts.forEach(applyFormat);
-    const images = [q.image, q.imageUrl, q.imageURL, ...(Array.isArray(q.images) ? q.images.map(x => typeof x === 'string' ? x : x.url || x.src) : [])].filter(Boolean);
+        const images = [...new Set([
+      q.image,
+      q.imageUrl,
+      q.imageURL,
+      ...(Array.isArray(q.images)
+        ? q.images.map(x => typeof x === 'string' ? x : x.url || x.src)
+        : [])
+    ].filter(Boolean))];
+
+    const imagePlacement = String(q.imagePlacement || 'whole').trim().toUpperCase();
+
+    if (images.length && (imagePlacement === 'A' || imagePlacement === 'B')) {
+      const pairs = [];
+      const findPairs = nodes => {
+        (nodes || []).forEach(node => {
+          if (Array.isArray(node.alternatives) && node.alternatives.length === 2) {
+            pairs.push(node.alternatives);
+          }
+          findPairs(node.parts);
+          (node.alternatives || []).forEach(alt => findPairs(alt.parts));
+        });
+      };
+      findPairs(parts);
+      if (Array.isArray(q.alternatives) && q.alternatives.length === 2) {
+        pairs.push(q.alternatives);
+      }
+      if (pairs.length !== 1) {
+        throw new Error('An [SVG: A] or [SVG: B] diagram requires exactly one A/B internal choice in the same question.');
+      }
+      const target = pairs[0][imagePlacement === 'A' ? 0 : 1];
+      target.image = images[0];
+      target.images = images;
+      target.imageWidthPercent = Number(q.imageWidthPercent) || 60;
+    }
     const rawAnswer = answerText(q.answer || q.parsedAnswer || q.finalAnswer || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.answer));
     const m = Number(q.marks || (meta.match(/(\d+(?:\.\d+)?)\s*Marks?/i) || [])[1] || 0);
     const competency = clean(q.competency || q.cognitiveSkill || metaField(meta, 'Competency'));
@@ -12284,7 +12339,10 @@ if (cleanedErrors.length) {
       subject: clean(q.subject || context.subject || ''), chapter: clean(q.chapter || metaField(meta, 'Chapter') || context.chapter || ''),
       text, question: text, type: qtype, mcqType: qtype, marks: m, modelType: model, family: family(model), subjectArea: qArea,
       slot: clean(q.slot || metaField(meta, 'Slot')), category: clean(q.category || metaField(meta, 'Category')), competency, competencyBased: cb,
-      options, answer: rawAnswer, explanation: stripTags(q.explanation || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.explanation)), image: images[0] || '', images, passage, parts, format,
+            options, answer: rawAnswer, explanation: stripTags(q.explanation || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.explanation)),
+      image: (imagePlacement === 'A' || imagePlacement === 'B') ? '' : (images[0] || ''),
+      images: (imagePlacement === 'A' || imagePlacement === 'B') ? [] : images,
+      passage, parts, format,
       pictureNeeded: qtype === 'Map' || q.pictureNeeded === true || /\[Picture Needed:\s*Yes\]/i.test([meta, q.body, q.text, q.fullText, q.question, q.answer].join('\n')),
       deleted: q.deleted === true || q.isDeleted === true || key(q.status) === 'deleted'
     };
