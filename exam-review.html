@@ -192,7 +192,7 @@
 }
      /* --- Per-question image box --- */
   .q-imgwrap{margin:.5rem 0 1rem 0}
-  .q-imgbar{display:flex;gap:.5rem;align-items:center;margin:.25rem 0 .5rem}
+  .q-imgbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.25rem 0 .5rem}
   .q-imgbar button,.q-imgbar input[type="file"]{padding:.35rem .6rem;border:1px solid #bcd6ef;border-radius:6px;background:#f7fafd;cursor:pointer}
    .q-imgbox{width:100%;max-width:680px;min-height:0;padding:8px;border:1.3px dashed #bcd6ef;border-radius:10px;background:#fbfdff;display:flex;align-items:center;justify-content:center;position:relative;box-sizing:border-box}
   .q-imgbox.empty{min-height:160px}
@@ -2773,8 +2773,27 @@ if (paper.instructions) {
           <span data-image-percent style="min-width:42px;text-align:center;font-weight:700;color:#17518a">60%</span>
           <button type="button" data-act="zin">+</button>
           <button type="button" data-act="reset">Reset</button>
+          
           <button type="button" data-act="remove">Remove</button>
+
+          ${(
+            (Array.isArray(q.alternatives) && q.alternatives.length > 1) ||
+            (/\(\s*A\s*\)/i.test(fullRaw) &&
+             /\(\s*B\s*\)/i.test(fullRaw) &&
+             /\bOR\b/i.test(fullRaw))
+          ) ? `
+            <label style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:13px">
+              Image belongs to
+              <select data-image-placement style="padding:5px;border:1px solid #bcd6ef;border-radius:6px">
+                <option value="whole" ${!['A','B'].includes(q.imagePlacement) ? 'selected' : ''}>Whole question</option>
+                <option value="A" ${q.imagePlacement === 'A' ? 'selected' : ''}>(A)</option>
+                <option value="B" ${q.imagePlacement === 'B' ? 'selected' : ''}>(B)</option>
+              </select>
+            </label>
+          ` : ''}
+
           <input type="file" accept="image/png,image/jpeg,image/webp" hidden>
+
         </div>
         <div class="q-imgbox ${q.image ? '' : 'empty'}" tabindex="0">
           ${q.image ? `<img src="${q.image}" alt="question image">` : ''}
@@ -3508,10 +3527,21 @@ if (optNodes && optNodes.length === 4) {
         delete q.image;
       }
 
+      
       q.imageWidthPercent = Math.max(
         25,
         Math.min(100, Number(box?._percent) || 60)
       );
+
+      // Save whether the image belongs to A, B or the whole question.
+      const imagePlacementSelect = wrap.querySelector(
+        '[data-image-placement]'
+      );
+
+      q.imagePlacement = imagePlacementSelect
+        ? imagePlacementSelect.value
+        : 'whole';
+
     }
 
   });
