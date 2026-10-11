@@ -5077,7 +5077,11 @@ async function renderAnswerKeyPageFromUrl() {
 
     subjects.forEach(subjectBlock => {
       if (subjects.length > 1) {
-        contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#000;">Subject: ${escapeHtml(subjectBlock.subject || '')}</div>`;
+        
+      if (!__epScience910()) {
+        contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${subjectBlock.subject || ''}</div>`;
+      }
+
       }
 
       (subjectBlock.sections || []).forEach(section => {
@@ -7945,12 +7949,38 @@ function cbsePrintQuestion(question, number, section) {
   return holder.innerHTML;
 }
 
+
+function __epScience910() {
+  const grade = Number(String(exam.class || exam.className || '').match(/\d+/)?.[0] || 0);
+  const names = (exam.subjects || []).map(s => String(s.subject || '').trim().toLowerCase());
+
+  return cbsePrintEnabled() && [9, 10].includes(grade) &&
+    ((names.length === 1 && /^science\b/.test(names[0])) ||
+     (names.length === 3 && ['biology', 'chemistry', 'physics'].every(n =>
+       names.some(s => s.startsWith(n)))));
+}
+
 function cbsePrintSectionName(subject, section, combined = false) {
   const label = String(section.label || section.name || '');
   const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
   const name = match ? match[1] : label;
 
+  if (__epScience910()) {
+    const source = [subject.subject, section.area, label].join(' ');
+    const named = source.match(/\b(Biology|Chemistry|Physics)\b/i)?.[1] || '';
+    const letter = label.match(/\bSection\s+([ABC])\b/i)?.[1]?.toUpperCase();
+
+    const area = (named || ({ A: 'Biology', B: 'Chemistry', C: 'Physics' }[letter] || ''))
+      .toLowerCase();
+
+    if (area) {
+      const title = area[0].toUpperCase() + area.slice(1);
+      return `Section ${{ Biology: 'A', Chemistry: 'B', Physics: 'C' }[title]} — ${title}`;
+    }
+  }
+
   if (!/^english\b/i.test(String(subject.subject || ''))) return name;
+
   if (/^Section\s+A$/i.test(name)) return 'Section A — Reading Skills';
   if (/^Section\s+C$/i.test(name)) return 'Section C — Literature Textbook';
 
@@ -8106,9 +8136,11 @@ function cbseFormatSectionBoxes(page) {
     }
 
     for (const group of subjectGroups.values()) {
-      const prefix = subjects.length > 1
+     
+      const prefix = subjects.length > 1 && !__epScience910()
         ? `${subject.subject}: `
         : '';
+
 
       let text =
         `${prefix}${group.name} contains ${group.count} questions`;
@@ -8529,9 +8561,13 @@ function renderPrintPreview() {
      <div class="rect-row">
         <span class="rect-label">Class: ${exam.class || ''}</span>
         <span class="rect-subject">${
-  (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
-    ? (exam.subjects[0].subject || '').toUpperCase()
-    : (exam.subject || '').toUpperCase()
+  
+  __epScience910()
+    ? 'SCIENCE'
+    : (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
+      ? (exam.subjects[0].subject || '').toUpperCase()
+      : (exam.subject || '').toUpperCase()
+
 }</span>
         <span class="rect-label">Date: ${formatDate(exam.date) || ''}</span>
       </div>
