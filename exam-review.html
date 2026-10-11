@@ -194,9 +194,10 @@
   .q-imgwrap{margin:.5rem 0 1rem 0}
   .q-imgbar{display:flex;gap:.5rem;align-items:center;margin:.25rem 0 .5rem}
   .q-imgbar button,.q-imgbar input[type="file"]{padding:.35rem .6rem;border:1px solid #bcd6ef;border-radius:6px;background:#f7fafd;cursor:pointer}
-  .q-imgbox{width:100%;max-width:680px;min-height:160px;border:1.3px dashed #bcd6ef;border-radius:10px;background:#fbfdff;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;touch-action:pan-x pan-y}
+   .q-imgbox{width:100%;max-width:680px;min-height:0;padding:8px;border:1.3px dashed #bcd6ef;border-radius:10px;background:#fbfdff;display:flex;align-items:center;justify-content:center;position:relative;box-sizing:border-box}
+  .q-imgbox.empty{min-height:160px}
   .q-imgbox.empty::after{content:"Paste / Drop / Click to add image";color:#678;position:absolute;font-size:.95rem}
-  .q-imgbox img{max-width:none;max-height:none;will-change:transform;user-select:none;pointer-events:none}
+  .q-imgbox img{display:block;width:60%;max-width:100%;height:auto;user-select:none;pointer-events:none}
   .q-imghint{font-size:.82rem;color:#678;margin-top:.35rem}
 
   /* right column container */
@@ -2767,8 +2768,9 @@ if (paper.instructions) {
       <div class="q-imgwrap" data-qkey="${subjIdx}|${sIdx}|${qIdx}">
         <div class="q-imgbar">
           <button type="button" data-act="pick">Upload</button>
-          <button type="button" data-act="fit">Fit</button>
-          <button type="button" data-act="zout">-</button>
+           <button type="button" data-act="fit">Fit</button>
+          <button type="button" data-act="zout">−</button>
+          <span data-image-percent style="min-width:42px;text-align:center;font-weight:700;color:#17518a">60%</span>
           <button type="button" data-act="zin">+</button>
           <button type="button" data-act="reset">Reset</button>
           <button type="button" data-act="remove">Remove</button>
@@ -2777,7 +2779,7 @@ if (paper.instructions) {
         <div class="q-imgbox ${q.image ? '' : 'empty'}" tabindex="0">
           ${q.image ? `<img src="${q.image}" alt="question image">` : ''}
         </div>
-        <div class="q-imghint">Tip: Ctrl/Cmd+V to paste, drag & drop to add. Wheel to zoom, drag to pan.</div>
+        <div class="q-imghint">Tip: Ctrl/Cmd+V to paste, or drag and drop an image. Use − / + to adjust width by 5%. Fit or Reset restores 60%.</div>
       </div>
     </div>
   </div>`;
@@ -2968,8 +2970,13 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
       const btn = act => wrap.querySelector(`[data-act="${act}"]`);
       const qkey = wrap.dataset.qkey; // "subj|sec|q"
 
-      // init transform state
-      box._scale = 1; box._tx = 0; box._ty = 0;
+      
+      // Restore saved percentage or use the A4-friendly default.
+      box._percent = Math.max(
+        25,
+        Math.min(100, Number(getQ()?.imageWidthPercent) || 60)
+      );
+
 
       // helpers
       function getPaper(){ try { return JSON.parse(sessionStorage.getItem("examPaper")||"null"); } catch { return null; } }
@@ -3002,26 +3009,47 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
         if (q && q.image){ delete q.image; setPaper(paper); }
         resetView();
       }
+      
       function applyTransform(){
         const img = box.querySelector('img');
-        if (!img) return;
-        img.style.transform = `translate(${box._tx}px, ${box._ty}px) scale(${box._scale})`;
+
+        if (img){
+          img.style.width = box._percent + '%';
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.transform = 'none';
+        }
+
+        const label = wrap.querySelector('[data-image-percent]');
+        if (label) label.textContent = box._percent + '%';
       }
-      function resetView(){ box._scale = 1; box._tx = 0; box._ty = 0; applyTransform(); }
+
+      function setPercent(value){
+        box._percent = Math.max(
+          25,
+          Math.min(100, Math.round(value / 5) * 5)
+        );
+
+        const paper = getPaper();
+        const [si, se, qi] = qkey.split('|').map(Number);
+        const q = paper?.subjects?.[si]?.sections?.[se]?.questions?.[qi];
+
+        if (q){
+          q.imageWidthPercent = box._percent;
+          setPaper(paper);
+        }
+
+        applyTransform();
+      }
+
+      function resetView(){
+        setPercent(60);
+      }
+
       function fit(){
-        const img = box.querySelector('img'); if (!img) return;
-        const bw = box.clientWidth, bh = Math.max(160, box.clientHeight || 160);
-        const natural = () => new Promise(res=>{
-          if (img.naturalWidth) return res([img.naturalWidth, img.naturalHeight]);
-          img.onload = ()=>res([img.naturalWidth, img.naturalHeight]);
-        });
-        natural().then(([iw, ih])=>{
-          if(!iw||!ih) return resetView();
-          const s = Math.min(bw/iw, bh/ih);
-          box._scale = Math.max(0.1, Math.min(5, s));
-          box._tx = 0; box._ty = 0; applyTransform();
-        });
+        setPercent(60);
       }
+
 
       // upload via file picker
       btn('pick')?.addEventListener('click', ()=> fileInput.click());
@@ -3064,44 +3092,25 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
         r.readAsDataURL(f);
       });
 
-      // zoom with wheel
-      box.addEventListener('wheel', e=>{
-        const img = box.querySelector('img'); if (!img) return;
-        e.preventDefault();
-        const delta = Math.sign(e.deltaY) * -0.1; // wheel up = zoom in
-        const newScale = Math.min(5, Math.max(0.1, box._scale + delta));
-        const rect = box.getBoundingClientRect();
-        const cx = e.clientX - rect.left - rect.width/2;
-        const cy = e.clientY - rect.top  - rect.height/2;
-        const factor = newScale / box._scale;
-        box._tx = cx - factor*(cx - box._tx);
-        box._ty = cy - factor*(cy - box._ty);
-        box._scale = newScale;
-        applyTransform();
-      }, { passive:false });
-
-      // pan by drag
-      let dragging = false, sx=0, sy=0;
-      box.addEventListener('pointerdown', e=>{
-        if (!box.querySelector('img')) return;
-        dragging = true; sx = e.clientX; sy = e.clientY; box.setPointerCapture(e.pointerId);
-      });
-      box.addEventListener('pointermove', e=>{
-        if (!dragging) return;
-        box._tx += (e.clientX - sx);
-        box._ty += (e.clientY - sy);
-        sx = e.clientX; sy = e.clientY;
-        applyTransform();
-      });
-      box.addEventListener('pointerup',   ()=> dragging=false);
-      box.addEventListener('pointercancel',()=> dragging=false);
-
-      // toolbar buttons
+      
+      // Percentage controls for question images.
+      // Normal page scrolling is preserved.
       btn('fit')?.addEventListener('click', fit);
       btn('reset')?.addEventListener('click', resetView);
-      btn('zin')?.addEventListener('click', ()=>{ box._scale=Math.min(5, box._scale+0.2); applyTransform(); });
-      btn('zout')?.addEventListener('click', ()=>{ box._scale=Math.max(0.1, box._scale-0.2); applyTransform(); });
+
+      btn('zin')?.addEventListener('click', ()=>{
+        setPercent(box._percent + 5);
+      });
+
+      btn('zout')?.addEventListener('click', ()=>{
+        setPercent(box._percent - 5);
+      });
+
       btn('remove')?.addEventListener('click', clearImg);
+
+      // Display the current saved percentage.
+      applyTransform();
+
     });
   }
 
@@ -3483,16 +3492,28 @@ if (optNodes && optNodes.length === 4) {
         ((expNode.dataset && expNode.dataset.raw) ? expNode.dataset.raw : (expNode.innerHTML || expNode.innerText || '')).trim();
     }
 
-    // Sync image (if present)
+    
+    // Save the image and its selected width percentage.
     const wrap = qr.querySelector('.q-imgwrap');
+
     if (wrap){
       const img = wrap.querySelector('.q-imgbox img');
+      const box = wrap.querySelector('.q-imgbox');
+      const q = paper.subjects[subjIdx]
+        .sections[secIdx].questions[qIdx];
+
       if (img && img.src){
-        paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image = img.src;
+        q.image = img.src;
       } else {
-        delete paper.subjects[subjIdx].sections[secIdx].questions[qIdx].image;
+        delete q.image;
       }
+
+      q.imageWidthPercent = Math.max(
+        25,
+        Math.min(100, Number(box?._percent) || 60)
+      );
     }
+
   });
 
   // Re-number questions continuously across ALL subjects and sections
