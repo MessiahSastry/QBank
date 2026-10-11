@@ -2632,28 +2632,69 @@ if (paper.instructions) {
   </div>`;
 }
 
-(paper.subjects || []).forEach((subjectBlock, subjIdx) => {
-      html += `<h3 style="color:#0f3d6b; margin:22px 0 8px 0;">Subject: ${subjectBlock.subject}</h3>`;
-            (subjectBlock.sections || []).forEach((section, sIdx) => {
 
-        // Section Header (centered)
-       html += `
+const __scGrade = Number(String(paper.class || paper.className || '').match(/\d+/)?.[0] || 0);
+const __scNames = (paper.subjects || []).map(s => String(s.subject || '').trim().toLowerCase());
+
+const __scScience910 =
+  String(paper.board || '').trim().toUpperCase() === 'CBSE' &&
+  [9, 10].includes(__scGrade) &&
+  ((__scNames.length === 1 && /^science\b/.test(__scNames[0])) ||
+   (__scNames.length === 3 &&
+    ['biology', 'chemistry', 'physics'].every(n =>
+      __scNames.some(s => s.startsWith(n)))));
+
+(paper.subjects || []).forEach((subjectBlock, subjIdx) => {
+  const __scShown = new Set();
+
+  if (!__scScience910) {
+    html += `<h3 style="color:#0f3d6b; margin:22px 0 8px 0;">Subject: ${subjectBlock.subject}</h3>`;
+  }
+
+  (subjectBlock.sections || []).forEach((section, sIdx) => {
+    const __scLabel = String(section.label || section.name || '');
+
+    const __scNamed = [subjectBlock.subject, section.area, __scLabel]
+      .join(' ').match(/\b(Biology|Chemistry|Physics)\b/i)?.[1] || '';
+
+    const __scCode = __scLabel.match(/\bSection\s+([ABC])\b/i)?.[1]?.toUpperCase();
+
+    const __scArea = (__scNamed || ({ A: 'Biology', B: 'Chemistry', C: 'Physics' }[__scCode] || ''))
+      .toLowerCase();
+
+    const __scAreaName = __scArea ? __scArea[0].toUpperCase() + __scArea.slice(1) : '';
+
+    const __scTitle = __scAreaName
+      ? `Section ${{ Biology: 'A', Chemistry: 'B', Physics: 'C' }[__scAreaName]} — ${__scAreaName}`
+      : __scLabel;
+
+    const __scHidden = __scScience910 && __scAreaName && __scShown.has(__scTitle);
+
+    if (__scScience910 && __scAreaName) __scShown.add(__scTitle);
+
+    // Section Header (centered)
+    html += `
+
   <div class="section-block" style="margin-bottom: 18px;">
     <!-- Centered Section Header -->
     <div class="section-header"
-        style="text-align:center; justify-content: center;"
+         style="text-align:center; justify-content:center; ${__scHidden ? 'display:none;' : ''}"
         contenteditable="true"
         spellcheck="true"
         data-subject="${subjIdx}"
         data-section="${sIdx}">
-      ${(
-  section.label && section.mcqType &&
-  !section.label.toUpperCase().includes(section.mcqType.toUpperCase()) &&
-  section.mcqType.toUpperCase() !== 'DESCRIPTIVE'
-    ? section.label + ` (${section.mcqType})`
-    : (section.label || 'Section')
-).replace(/\s*\(?\s*descriptive\s*\)?/i, '').trim()
-}
+      
+      ${__scScience910 && __scAreaName
+        ? __scTitle
+        : (
+            section.label && section.mcqType &&
+            !section.label.toUpperCase().includes(section.mcqType.toUpperCase()) &&
+            section.mcqType.toUpperCase() !== 'DESCRIPTIVE'
+              ? section.label + ` (${section.mcqType})`
+              : (section.label || 'Section')
+          ).replace(/\s*\(?\s*descriptive\s*\)?/i, '').trim()
+      }
+
       <i class="fas fa-pen edit-icon"></i>
     </div>
     <!-- Instructions and Total in one row -->
