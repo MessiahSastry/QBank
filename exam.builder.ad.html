@@ -13235,8 +13235,22 @@ DRAFT → RECHECK → FINAL SET
 2. The teacher may ask you to recheck questions, answers, difficulty, models, marks or chapter coverage, or to replace weak questions. Make all requested corrections and retain the exact blueprint.
 3. Do NOT give the copy-code FINAL SET until the teacher explicitly asks “final set” or “give me the final set”.
 4. Then give ALL corrected records from Q1 to Q${questionNumber}, not only changed questions, in ONE plain-text copy-code block. No introduction, headings or commentary outside that block. Do not return JSON.
+
 5. Use ONLY inline LaTeX for mathematical expressions: \\( ... \\). Do not use display math, \\[ ... \\] or $$ ... $$. Keep ordinary prose and metadata outside LaTeX. Use normal LaTeX backslashes, not JSON escaping.
+
+LATEX CURRENCY AND SYMBOL FORMATTING — MANDATORY:
+- Keep currency symbols such as ₹, $, € and £ outside inline LaTeX delimiters.
+- Place only valid mathematical expressions inside \\( ... \\).
+- Correct: \\(40+180\\) = ₹220.
+- Incorrect: \\(40+180=₹220\\).
+- Correct: Additional amount = \\(220-160\\) = ₹60.
+- Never insert unsupported currency symbols or ordinary text directly inside LaTeX expressions.
+- Apply this rule to questions, options, answers, explanations, case studies and internal choices.
+- Before delivering the DRAFT or FINAL SET, check every mathematical expression for invalid LaTeX syntax and currency-symbol placement.
+- Ensure all mathematical expressions render correctly in MathJax without Math input errors.
+
 6. Preserve the headers, marks, types, models, subject, chapter, class, Slot, competency tags, options, answers, explanations and all passage/subquestion structures. Do not put answers or metadata inside the student-facing question wording.
+
 
 FINAL SET FORMAT (structure examples only; use the actual required records above)
 Q1: 1 Mark [MCQ (Single)] [Model: Direct Concept] [Subject: exact subject] [Chapter: exact chapter] [Class: ${snapshot.class}] [Slot: 0:0:0] [Competency: Understanding] [CompetencyBased: No]
