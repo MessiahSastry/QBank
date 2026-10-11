@@ -5,6 +5,217 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <meta charset="UTF-8" />
+
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const tags = new Set(
+    (
+      'svg g path line polyline polygon rect circle ellipse ' +
+      'text tspan defs marker clipPath title desc'
+    ).toLowerCase().split(' ')
+  );
+
+  const attrs = new Set(
+    (
+      'xmlns viewBox width height x y dx dy x1 y1 x2 y2 ' +
+      'cx cy r rx ry d points transform fill fill-rule fill-opacity stroke ' +
+      'stroke-width stroke-linecap stroke-linejoin stroke-dasharray stroke-dashoffset ' +
+      'stroke-opacity opacity font-family font-size font-weight font-style ' +
+      'text-anchor dominant-baseline alignment-baseline letter-spacing id ' +
+      'marker-start marker-mid marker-end markerWidth markerHeight markerUnits ' +
+      'refX refY orient clip-path clipPathUnits vector-effect preserveAspectRatio'
+    ).toLowerCase().split(' ')
+  );
+
+  function image(source) {
+    if (
+      source.length > 250000 ||
+      /<!DOCTYPE|<!ENTITY|<\?/i.test(source)
+    ) {
+      throw new Error(
+        'SVG diagram must be a self-contained drawing without XML declarations.'
+      );
+    }
+
+    const doc = new DOMParser().parseFromString(
+      source.trim(),
+      'image/svg+xml'
+    );
+
+    const svg = doc.documentElement;
+
+    if (
+      doc.querySelector('parsererror') ||
+      svg.localName !== 'svg' ||
+      svg.namespaceURI !== NS
+    ) {
+      throw new Error(
+        'Invalid SVG diagram. Include xmlns="' + NS +
+        '" and a complete closing </svg> tag.'
+      );
+    }
+
+    const view = (svg.getAttribute('viewBox') || '')
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
+
+    if (
+      view.length !== 4 ||
+      !view.every(Number.isFinite) ||
+      view[2] <= 0 ||
+      view[3] <= 0
+    ) {
+      throw new Error(
+        'SVG diagram needs a valid viewBox, for example viewBox="0 0 420 240".'
+      );
+    }
+
+    const elements = [svg, ...svg.querySelectorAll('*')];
+
+    if (elements.length > 2000) {
+      throw new Error('SVG diagram has too many drawing elements.');
+    }
+
+    for (const el of elements) {
+      if (
+        el.namespaceURI !== NS ||
+        !tags.has(el.localName.toLowerCase())
+      ) {
+        throw new Error(
+          'Unsupported SVG element: ' + el.localName +
+          '. Use basic shapes and text.'
+        );
+      }
+
+      for (const a of [...el.attributes]) {
+        const name = a.name.toLowerCase();
+
+        if (!attrs.has(name)) {
+          el.removeAttribute(a.name);
+          continue;
+        }
+
+        if (name === 'xmlns') continue;
+
+        const value = a.value;
+
+        if (
+          /javascript:|https?:|data:|\/\/|@import|expression\s*\(/i.test(value) ||
+          (
+            /url\s*\(/i.test(value) &&
+            !/^url\(\s*#[\w.-]+\s*\)$/i.test(value)
+          )
+        ) {
+          throw new Error(
+            'SVG diagrams must not load external resources.'
+          );
+        }
+      }
+    }
+
+    svg.setAttribute('width', String(view[2]));
+    svg.setAttribute('height', String(view[3]));
+
+    const xml = new XMLSerializer().serializeToString(svg);
+
+    let bytes = '';
+
+    for (const b of new TextEncoder().encode(xml)) {
+      bytes += String.fromCharCode(b);
+    }
+
+    return 'data:image/svg+xml;base64,' + btoa(bytes);
+  }
+
+  function read(value) {
+    const source = String(value || '');
+
+    let src = '';
+    let placement = 'whole';
+    let count = 0;
+
+    const text = source.replace(
+      /\[SVG(?:\s*:\s*(whole|A|B))?\]\s*([\s\S]*?)\s*\[\/SVG\]/gi,
+      (_, target, drawing) => {
+        if (++count > 1) {
+          throw new Error(
+            'Use one SVG block per question record. Combine related figures into one drawing.'
+          );
+        }
+
+        src = image(drawing);
+
+        placement = /^[AB]$/i.test(target || '')
+          ? target.toUpperCase()
+          : 'whole';
+
+        return '\n';
+      }
+    );
+
+    if (/\[\/?SVG\b[^\]]*\]|<\/?svg\b/i.test(text)) {
+      throw new Error(
+        'Incomplete SVG block. Use [SVG], a complete <svg> drawing, then [/SVG].'
+      );
+    }
+
+    return {
+      text,
+      image: src,
+      imagePlacement: placement
+    };
+  }
+
+  function question(raw) {
+    const q = { ...raw };
+
+    const figure = read(
+      q.body ||
+      q.parsedBody ||
+      q.text ||
+      q.fullText ||
+      q.question ||
+      ''
+    );
+
+    if (!figure.image) return q;
+
+    return {
+      ...q,
+      body: figure.text,
+      image: figure.image,
+      images: [figure.image],
+      imagePlacement: figure.imagePlacement,
+      imageWidthPercent: Number(q.imageWidthPercent) || 60
+    };
+  }
+
+  const rules = `EMBEDDED SVG DIAGRAMS — ALL CLASSES AND SUBJECTS
+
+- Supply suitable diagrams as SVG drawing code inside their question records. The Builder will insert them automatically.
+- Put one [SVG] ... [/SVG] block after the main question/context, before options, "Answer the following questions:", subquestions and all answers.
+- Use one SVG block per Q record. Combine related figures or panels into one SVG with clear labels. Each independent OR record may have its own SVG.
+- Only for an A/B choice contained in a single record, use [SVG: A] or [SVG: B] to identify the owning alternative. Close either with [/SVG].
+- Start with <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240"> and end with </svg>. Adjust the viewBox to fit the drawing closely without clipping labels.
+- Use only svg, g, path, line, polyline, polygon, rect, circle, ellipse, text, tspan, defs, marker, clipPath, title and desc elements.
+- Use presentation attributes such as fill, stroke, stroke-width, font-size and text-anchor. Do not use style elements, style attributes, scripts, event handlers, foreignObject, image, use, external files, fonts or URLs.
+- Write labels as SVG text, using Unicode symbols where needed. Keep LaTeX in the question/answer text; do not put LaTeX commands inside SVG labels.
+- Escape XML characters in text and attributes: use &amp; for &, &lt; for < and &gt; for >. Use a single complete SVG without a separate XML declaration or Markdown fence.
+- Use readable black-and-white drawings, sufficient label spacing, accurate geometry, graph scales, data and units. Recheck each diagram against its question and answer.
+- Do not print the drawing code, markers or image instructions as student-facing prose. Include the actual SVG code in the same plain-text FINAL SET copy-code block as the questions.
+- For a photograph, complex illustration or map that cannot be represented accurately with basic SVG, use a genuine verified [Image: actual image URL] or clearly request the required image during DRAFT review. Do not invent URLs or substitute an inaccurate diagram.
+- For an embedded SVG, no separate image download, upload or placeholder is needed. Preserve the existing question headers, marks, Slot tags, options, answers, blueprint and record count.`;
+
+  window.SciMentraSVG = {
+    read,
+    question,
+    rules
+  };
+})();
+</script>
     <title>Exam Builder - Multi Subject | SciMentra</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -355,7 +566,7 @@
   );
 
   const imageURL = value =>
-    /^(https?:\/\/|data:image\/(png|jpeg|jpg|gif|webp);base64,|blob:)/i
+    /^(https?:\/\/|data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,|blob:)/i
       .test(String(value || ''))
       ? String(value)
       : '';
@@ -12019,7 +12230,7 @@ if (cleanedErrors.length) {
     return { passage: body.slice(0, matches[0].index).replace(/^\s*(?:Case\/Source|Case|Source|Passage)\s*:\s*/i, '').trim(), parts };
   }
   function normalize(raw, context = {}) {
-    const q = { ...raw };
+       const q = window.SciMentraSVG.question(raw);
     const meta = clean(q.metaLine || q.parsedMeta || '');
     const metaType = (meta.match(/\[(?!\w+\s*:)([^\]]+)\]/) || [])[1];
     const qt = type(metaType || q.mcqType || q.type);
