@@ -2326,7 +2326,7 @@
                     class="question-img"
                     src="${esc(question.image)}"
                     alt="Question figure"
-                    style="width:${Math.min(100, Math.max(25, Number(question.imageWidthPercent) || 60))}%;max-width:100%;height:auto">
+                    style="width:${Math.min(100, Math.max(10, parseFloat(question.imageWidthPercent) || 60))}%;max-width:100%;height:auto">
                 </div>
 
               `
@@ -4571,13 +4571,15 @@ function buildAnswerKeyDoc(examData) {
           options: Array.isArray(q.options) ? q.options : [],
                     
                     image: q.image || '',
-                    imageWidthPercent: Math.min(
-                      100,
-                      Math.max(
-                        25,
-                        Number(q.imageWidthPercent) || 60
-                      )
-                    ),
+                    
+imageWidthPercent: Math.min(
+  100,
+  Math.max(
+    10,
+    parseFloat(question.imageWidthPercent) || 60
+  )
+),
+
 
           answerKeyHtml: q.answerKeyHtml || '',
           answerKeySource: String(q.answerKeySource ?? ''),
@@ -8895,7 +8897,16 @@ if (section.questions && section.questions.length > 0) {
     }
 
     const optionsHTML = renderOptionsLayout(optionLines);
-    const imageHTML = q.image ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" /></div>` : '';
+    
+const imageWidth = Math.min(
+  100,
+  Math.max(10, parseFloat(q.imageWidthPercent) || 60)
+);
+
+const imageHTML = q.image
+  ? `<div class="question-img-block"><img class="question-img" src="${q.image}" alt="Question Image" style="width:${imageWidth}%;max-width:100%;height:auto" /></div>`
+  : '';
+
 
     // <-- 3. FINAL HTML (avoid double-formatting)
        const finalQuestionHTML = (() => {
