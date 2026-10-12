@@ -125,11 +125,39 @@
 
     .sc-part-label { grid-column: 1; }
     .sc-part-content { grid-column: 2; min-width: 0; }
+    
     .sc-part-marks {
       grid-column: 3;
       text-align: right;
       white-space: nowrap;
     }
+
+    /* Nested Roman-numbered choices */
+    .question-row .question-text .sc-nested-choice {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-items: start;
+      margin: 3px 0;
+    }
+
+    .question-row .question-text .sc-nested-label {
+      grid-column: 1;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .question-row .question-text .sc-nested-content {
+      grid-column: 2;
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
+
+    .question-row .question-text
+    .sc-part-content > .sc-subquestion {
+      grid-template-columns: 34px minmax(0, 1fr);
+      margin: 3px 0 !important;
+    }
+
 
     .question-row .question-text img {
       max-width: 100%;
@@ -2911,23 +2939,95 @@ const __scScience910 =
               /^\[\d+(?:\.\d+)?\]$/.test(last?.textContent.trim() || '')
               ? last : null;
 
+           
+            const nestedItem = parts.some(outer =>
+              outer !== p && outer.contains(p)
+            );
+
             p.classList.add('sc-subquestion');
             b.classList.add('sc-part-label');
-            b.textContent = isReading
+
+            b.textContent = isReading && !nestedItem
               ? `${roman[i] || i + 1}.`
+              : nestedItem
+              ? `(${roman[i] || i + 1})`
               : `(${String.fromCharCode(97 + i)})`;
 
             const content = document.createElement('div');
             content.className = 'sc-part-content';
+
             [...p.childNodes].forEach(node => {
-              if (node !== b && node !== marks) content.appendChild(node);
+              if (node !== b && node !== marks) {
+                content.appendChild(node);
+              }
             });
 
-            if (marks) marks.classList.add('sc-part-marks');
-            p.replaceChildren(b, content, ...(marks ? [marks] : []));
+            if (marks && !nestedItem) {
+              marks.classList.add('sc-part-marks');
+            }
+
+           
+            p.replaceChildren(
+              b,
+              content,
+              ...(marks && !nestedItem ? [marks] : [])
+            );
           });
 
+          // Format nested OR choices as Roman-numbered items.
+          const mainParts = Array.from(editor.children).filter(el =>
+            el.classList.contains('sc-subquestion')
+          );
+
+          const hasAttemptAny = mainParts.some(part =>
+            /\battempt\s+any\b/i.test(
+              part.querySelector(':scope > .sc-part-content')
+                ?.textContent || ''
+            )
+          );
+
+          if (hasAttemptAny) {
+            mainParts.forEach(part => {
+              const content = part.querySelector(
+                ':scope > .sc-part-content'
+              );
+
+              if (!content) return;
+
+              const alternatives = Array.from(
+                content.children
+              ).filter(choice =>
+                choice.tagName === 'DIV' &&
+                /^\([A-Z]\)$/.test(
+                  choice.firstElementChild?.textContent.trim() || ''
+                )
+              );
+
+              if (alternatives.length < 2) return;
+
+              alternatives.forEach((choice, index) => {
+                const label = choice.firstElementChild;
+
+                label.textContent =
+                  `(${roman[index] || index + 1})`;
+
+                label.classList.add('sc-nested-label');
+
+                const body = document.createElement('div');
+                body.className = 'sc-nested-content';
+
+                while (label.nextSibling) {
+                  body.appendChild(label.nextSibling);
+                }
+
+                choice.classList.add('sc-nested-choice');
+                choice.appendChild(body);
+              });
+            });
+          }
+
           // Remove duplicated Attempt Any instructions.
+
           editor.querySelectorAll('p').forEach(p => {
             if (
               /^Attempt any \d+ of the following \d+\.?$/i.test(
