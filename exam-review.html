@@ -2893,7 +2893,239 @@ const __scScience910 =
         html += `</div>`;
       });
     });
+        
         area.innerHTML = __erProtectMathHtml(html);
+
+        // Fix combined OR + Attempt Any groups BEFORE
+        // the ordinary CBSE subquestion formatter runs.
+        // Handles both original and previously saved HTML.
+
+        function __erFixCombinedChoices(editor) {
+          const directLabel = el =>
+            el?.firstElementChild?.matches(
+              'b,strong,span.sc-part-label,span.sc-nested-label'
+            )
+              ? el.firstElementChild.textContent.trim()
+              : '';
+
+          const tops = Array.from(editor.children).filter(
+            el => el.tagName === 'DIV'
+          );
+
+          const descendants = (node, re) =>
+            Array.from(node.querySelectorAll('div')).filter(
+              el =>
+                re.test(directLabel(el)) &&
+                !Array.from(el.children).some(child =>
+                  re.test(directLabel(child))
+                )
+            );
+
+          const options = node =>
+            descendants(node, /^\((?:A|B|i|ii)\)$/i);
+
+          const entries = node =>
+            descendants(
+              node,
+              /^\((?:[1-9]\d*|[a-z]|i|ii|iii|iv|v|vi)\)$/i
+            );
+
+          const first = tops.find(
+            el =>
+              options(el).length === 2 &&
+              /\bOR\b/i.test(el.textContent)
+          );
+
+          const second = first && tops.find(
+            el =>
+              el !== first &&
+              /\battempt\s+any\b/i.test(el.textContent) &&
+              entries(el).length >= 2
+          );
+
+          if (!first || !second) return false;
+
+          const alternatives = options(first);
+          const items = entries(second).filter(
+            el =>
+              el !== second &&
+              !Array.from(el.children).some(
+                child => entries(child).length
+              )
+          );
+
+          if (
+            alternatives.length !== 2 ||
+            items.length < 2
+          ) return false;
+
+          const roman = [
+            'i', 'ii', 'iii', 'iv',
+            'v', 'vi', 'vii', 'viii'
+          ];
+
+          const markOf = (el, fallback) => {
+            const mark = Array.from(el.children).find(
+              child =>
+                /^\[\d+(?:\.\d+)?\]$/.test(
+                  child.textContent.trim()
+                ) &&
+                child.matches(
+                  'b,strong,span.sc-part-marks'
+                )
+            );
+
+            return mark?.textContent.trim() ||
+              `[${fallback}]`;
+          };
+
+          function makeNested(source, index) {
+            const copy = source.cloneNode(true);
+
+            // Remove the original numeric or alphabetic label.
+            copy.firstElementChild?.remove();
+
+            // Remove the individual item's marks.
+            const last = copy.lastElementChild;
+
+            if (
+              last &&
+              /^\[\d+(?:\.\d+)?\]$/.test(
+                last.textContent.trim()
+              )
+            ) {
+              last.remove();
+            }
+
+            const existingBody = copy.querySelector(
+              ':scope > .sc-nested-content, ' +
+              ':scope > .sc-part-content'
+            );
+
+            const inner = existingBody
+              ? existingBody.innerHTML
+              : copy.innerHTML;
+
+            const entry = document.createElement('div');
+            entry.className = 'sc-nested-choice';
+
+            const label = document.createElement('b');
+            label.className = 'sc-nested-label';
+            label.textContent =
+              `(${roman[index] || index + 1})`;
+
+            const body = document.createElement('div');
+            body.className = 'sc-nested-content';
+
+            body.innerHTML = inner.replace(
+              /^(?:\s|<br\s*\/?\s*>)+|(?:\s|<br\s*\/?\s*>)+$/gi,
+              ''
+            );
+
+            entry.append(label, body);
+            return entry;
+          }
+
+          function makeMain(letter, content, marksValue) {
+            const row = document.createElement('div');
+            row.className = 'sc-subquestion';
+
+            const label = document.createElement('b');
+            label.className = 'sc-part-label';
+            label.textContent = `(${letter})`;
+
+            const body = document.createElement('div');
+            body.className = 'sc-part-content';
+
+            while (content.firstChild) {
+              body.appendChild(content.firstChild);
+            }
+
+            const marks = document.createElement('b');
+            marks.className = 'sc-part-marks';
+            marks.textContent = marksValue;
+
+            row.append(label, body, marks);
+            return row;
+          }
+
+          // Main subquestion (a): (i) OR (ii).
+          const aContent = document.createElement('div');
+
+          alternatives.forEach((option, index) => {
+            if (index) {
+              const or = document.createElement('div');
+              or.className = 'or-line';
+              or.textContent = 'OR';
+              aContent.appendChild(or);
+            }
+
+            aContent.appendChild(
+              makeNested(option, index)
+            );
+          });
+
+          // Main subquestion (b): Attempt Any.
+          const bContent = document.createElement('div');
+
+          const source =
+            second.querySelector(
+              ':scope > .sc-part-content'
+            ) || second;
+
+          const instruction = Array.from(
+            source.childNodes
+          )
+            .filter(node =>
+              node.nodeType === Node.TEXT_NODE ||
+              (
+                node.nodeType === Node.ELEMENT_NODE &&
+                node.matches('p') &&
+                !node.querySelector('div')
+              )
+            )
+            .map(node => node.textContent)
+            .join(' ')
+            .replace(/^\s*\((?:2|b)\)\s*/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          if (!/\battempt\s+any\b/i.test(instruction)) {
+            return false;
+          }
+
+          const title = document.createElement('div');
+          title.textContent = instruction;
+          title.style.fontWeight = '700';
+
+          bContent.appendChild(title);
+
+          items.forEach((item, index) => {
+            bContent.appendChild(
+              makeNested(item, index)
+            );
+          });
+
+          const firstMarks = markOf(first, 1);
+          const secondMarks = markOf(second, 2);
+
+          first.replaceWith(
+            makeMain('a', aContent, firstMarks)
+          );
+
+          second.replaceWith(
+            makeMain('b', bContent, secondMarks)
+          );
+
+          return true;
+        }
+
+        area.querySelectorAll(
+          '.question-row .question-text'
+        ).forEach(editor => {
+          __erFixCombinedChoices(editor);
+        });
+
 
     // Format pasted CBSE questions without changing the blueprint.
     if (String(paper.board || '').toUpperCase() === 'CBSE') {
