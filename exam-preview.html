@@ -1831,8 +1831,18 @@
     );
   }
 
-  function toReviewPaper(source) {
+    function toReviewPaper(source) {
     const paper = copy(source);
+
+    // Preserve the original CBSE blueprint, including
+    // English Grammar, Writing, Attempt Any and OR metadata.
+    if (
+      paper.subjects?.some(subject =>
+        Array.isArray(subject.rows)
+      )
+    ) {
+      paper._cbseBlueprintSource = copy(source);
+    }
 
     /* Foundation papers already use the Review-page structure. */
         if (!paper.subjects?.some(subject => Array.isArray(subject.rows))) {
@@ -7145,6 +7155,30 @@ function cbsePrintQuestion(question, number, section) {
   const stem = holder.querySelector('.question-text');
 
   if (stem) {
+        // Preserve bold English question instructions.
+    // Do not alter the question body or allocated marks.
+    if (
+      /^english\b/i.test(
+        String(
+          exam.subjects?.[0]?.subject ||
+          exam.subject ||
+          ''
+        )
+      )
+    ) {
+      const lead = stem.querySelector(':scope > p');
+
+      if (
+        lead &&
+        /^(?:read|complete|answer|attempt|write|draft|prepare|study)\b/i
+          .test(lead.textContent.trim())
+      ) {
+        lead.classList.add(
+          'exam-print-instruction'
+        );
+      }
+    }
+
     // Correct nested OR and Attempt Any formatting.
     __epFixNestedChoices(stem, q);
 
@@ -8651,7 +8685,10 @@ function cbsePrintSectionName(subject, section, combined = false) {
     if (/grammar/i.test(type + ' ' + task)) {
       return 'Section B — Grammar';
     }
-    if (/writing|letter|analytical/i.test(type + ' ' + task)) {
+        if (
+      /writing|letter|analytical|notice|message|poster|speech|debate|advertis|article|report|invitation|email|diary|story/i
+        .test(type + ' ' + task)
+    ) {
       return 'Section B — Writing';
     }
     return /writing/i.test(label) && !/grammar/i.test(label)
@@ -9030,9 +9067,18 @@ function cbseFormatSectionBoxes(page) {
 
                box.append(instruction, marks);
         block.append(heading);
-        if (!/^english\b/i.test(String(subject.subject || ''))) {
-          block.append(box);
+               if (
+          /^english\b/i.test(
+            String(subject.subject || '')
+          )
+        ) {
+          instruction.textContent =
+            'Follow the instructions printed with each question. ' +
+            'For Attempt Any groups, answer only the required ' +
+            'number of items. Where OR is given, answer one alternative.';
         }
+
+        block.append(box);
 
         group.shown = true;
       }
