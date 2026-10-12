@@ -8448,34 +8448,195 @@ function __epFixNestedChoices(stem, question) {
 }
 
 
+function __ep910Area(value, mode) {
+  const name = String(value || '');
+  const areas = mode === 'social'
+    ? [
+        ['HISTORY', /\bhistory\b/i],
+        ['GEOGRAPHY', /\bgeography\b/i],
+        ['POLITICAL SCIENCE', /\bpolitical\s+science\b|\bcivics\b/i],
+        ['ECONOMICS', /\beconomics\b/i]
+      ]
+    : [
+        ['CHEMISTRY', /\bchemistry\b/i],
+        ['PHYSICS', /\bphysics\b/i],
+        ['BIOLOGY', /\bbiology\b/i]
+      ];
+
+  return areas.find(([, pattern]) => pattern.test(name))?.[0] || '';
+}
+
+function __ep910Mode() {
+  const grade = Number(
+    String(exam.class || exam.className || '').match(/\d+/)?.[0] || 0
+  );
+
+  if (!cbsePrintEnabled() || ![9, 10].includes(grade)) return '';
+
+  const names = (exam.subjects || [])
+    .map(s => String(s.subject || '').trim())
+    .filter(Boolean);
+
+  const title = [exam.subject || '', ...names].join(' ');
+
+  if (
+    /\bsocial\s+(?:science|studies)\b/i.test(title) ||
+    (names.length && names.every(name => __ep910Area(name, 'social')))
+  ) {
+    return 'social';
+  }
+
+  if (
+    /^\s*science\s*$/i.test(String(exam.subject || '')) ||
+    names.some(name => /^\s*science\s*$/i.test(name)) ||
+    (names.length && names.every(name => __ep910Area(name, 'science')))
+  ) {
+    return 'science';
+  }
+
+  return '';
+}
+
 function __epScience910() {
+  return __ep910Mode() === 'science';
+}
 
-  const grade = Number(String(exam.class || exam.className || '').match(/\d+/)?.[0] || 0);
-  const names = (exam.subjects || []).map(s => String(s.subject || '').trim().toLowerCase());
+function __epPrintSubjects910() {
+  const original = exam.subjects || [];
+  const mode = __ep910Mode();
 
-  return cbsePrintEnabled() && [9, 10].includes(grade) &&
-    ((names.length === 1 && /^science\b/.test(names[0])) ||
-     (names.length === 3 && ['biology', 'chemistry', 'physics'].every(n =>
-       names.some(s => s.startsWith(n)))));
+  if (!mode) return original;
+
+  const found = [];
+
+  original.forEach(subject => {
+    (subject.sections || []).forEach(section => {
+      if (!(section.questions || []).length) return;
+
+      const area =
+        __ep910Area(section.area, mode) ||
+        __ep910Area(section.subject, mode) ||
+        __ep910Area(subject.subject, mode) ||
+        __ep910Area(section.label || section.name, mode);
+
+      found.push({ area, section });
+    });
+  });
+
+  // Do not guess when subject identification is missing.
+  if (found.some(item => !item.area)) {
+    return original.map(subject => ({
+      ...subject,
+      sections: (subject.sections || []).filter(
+        s => (s.questions || []).length
+      )
+    })).filter(subject => subject.sections.length);
+  }
+
+  const order = mode === 'social'
+    ? ['HISTORY', 'GEOGRAPHY', 'POLITICAL SCIENCE', 'ECONOMICS']
+    : ['CHEMISTRY', 'PHYSICS', 'BIOLOGY'];
+
+  const result = [];
+  let questionNumber = 0;
+
+  order.forEach(area => {
+    const matches = found.filter(item => item.area === area);
+
+    if (!matches.length) return;
+
+    const letter = String.fromCharCode(65 + result.length);
+
+    result.push({
+      subject: area,
+
+      sections: matches.map(({ section }) => ({
+        ...section,
+
+        _epPrintHeading: `SECTION-${letter} ${area}`,
+
+        questions: section.questions.map(q => ({
+          ...q,
+          number: ++questionNumber
+        }))
+      }))
+    });
+  });
+
+  return result;
+}
+
+function __epSocialScience910() {
+  const grade = Number(
+    String(exam.class || exam.className || '')
+      .match(/\d+/)?.[0] || 0
+  );
+
+  if (!cbsePrintEnabled() || ![9, 10].includes(grade)) {
+    return false;
+  }
+
+  const names = (exam.subjects || []).map(s =>
+    String(s.subject || '').trim().toLowerCase()
+  );
+
+  const title = [exam.subject || '', ...names]
+    .join(' ')
+    .toLowerCase();
+
+  return (
+    /\bsocial(?:\s+(?:science|studies))?\b|\bs\.?\s*st\.?\b/i.test(title) ||
+    (
+      names.length === 4 &&
+      ['history', 'geography', 'economics'].every(
+        area => names.includes(area)
+      ) &&
+      names.some(area =>
+        /^(?:political science|civics)$/.test(area)
+      )
+    )
+  );
 }
 
 function cbsePrintSectionName(subject, section, combined = false) {
   const label = String(section.label || section.name || '');
   const match = label.match(/^\s*(Section\s+[A-Z0-9]+)/i);
-  const name = match ? match[1] : label;
+    const name = match ? match[1] : label;
 
-  if (__epScience910()) {
-    const source = [subject.subject, section.area, label].join(' ');
-    const named = source.match(/\b(Biology|Chemistry|Physics)\b/i)?.[1] || '';
-    const letter = label.match(/\bSection\s+([ABC])\b/i)?.[1]?.toUpperCase();
+  if (__epSocialScience910()) {
+    const areas = {
+      A: 'HISTORY',
+      B: 'GEOGRAPHY',
+      C: 'POLITICAL SCIENCE',
+      D: 'ECONOMICS'
+    };
 
-    const area = (named || ({ A: 'Biology', B: 'Chemistry', C: 'Physics' }[letter] || ''))
-      .toLowerCase();
+    const detectArea = value => {
+      if (/\bhistory\b/i.test(value)) return 'A';
+      if (/\bgeography\b/i.test(value)) return 'B';
+      if (/\b(?:political\s+science|civics)\b/i.test(value)) return 'C';
+      if (/\beconomics\b/i.test(value)) return 'D';
+      return '';
+    };
 
-    if (area) {
-      const title = area[0].toUpperCase() + area.slice(1);
-      return `Section ${{ Biology: 'A', Chemistry: 'B', Physics: 'C' }[title]} — ${title}`;
+    const detected = [
+      subject.subject || '',
+      section.area || '',
+      label
+    ].map(detectArea).find(Boolean);
+
+    const letter = detected || (
+      label.match(/\bsection\s*[-–— ]*\s*([A-D])\b/i)?.[1]
+        ?.toUpperCase()
+    );
+
+    if (letter && areas[letter]) {
+      return `Section-${letter} ${areas[letter]}`;
     }
+  }
+
+    if (section._epPrintHeading) {
+    return section._epPrintHeading;
   }
 
   if (!/^english\b/i.test(String(subject.subject || ''))) return name;
@@ -8597,7 +8758,7 @@ function cbseFormatSectionBoxes(page) {
     element => element.remove()
   );
 
-  const subjects = exam.subjects || [];
+    const subjects = __epPrintSubjects910();
   const sections = subjects.flatMap(
     subject => subject.sections || []
   );
@@ -8636,7 +8797,7 @@ function cbseFormatSectionBoxes(page) {
 
     for (const group of subjectGroups.values()) {
      
-      const prefix = subjects.length > 1 && !__epScience910()
+            const prefix = subjects.length > 1 && !__ep910Mode() && !__epSocialScience910()
         ? `${subject.subject}: `
         : '';
 
@@ -8738,7 +8899,7 @@ function cbseFormatSectionBoxes(page) {
 
   let blockIndex = 0;
 
-  for (const subject of exam.subjects || []) {
+    for (const subject of subjects) {
     const groups = new Map();
 
         const entries = (subject.sections || []).map(section => {
@@ -9061,7 +9222,11 @@ function renderPrintPreview() {
         <span class="rect-label">Class: ${exam.class || ''}</span>
         <span class="rect-subject">${
   
-  __epScience910()
+   __epSocialScience910()
+    ? 'SOCIAL SCIENCE'
+    :   __ep910Mode() === 'social'
+    ? 'SOCIAL SCIENCE'
+    : __epScience910()
     ? 'SCIENCE'
     : (Array.isArray(exam.subjects) && exam.subjects.length === 1 && exam.subjects[0] && exam.subjects[0].subject)
       ? (exam.subjects[0].subject || '').toUpperCase()
@@ -9080,11 +9245,17 @@ function renderPrintPreview() {
     </div>
   `;
 
+    const printSubjects = __epPrintSubjects910();
+
   let qNum = 1;       // global continuous numbering
   let contentHTML = '';
-  if (exam.subjects && exam.subjects.length > 1) {
-    for (const subjectBlock of exam.subjects) {
-      contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${subjectBlock.subject || ''}</div>`;
+
+  if (printSubjects.length > 1) {
+    for (const subjectBlock of printSubjects) {
+      if (!__ep910Mode()) {
+        contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${subjectBlock.subject || ''}</div>`;
+      }
+      }
       /* qNum is global; no per-section reset */
       for (const section of (subjectBlock.sections || [])) {
         contentHTML += `
@@ -9291,8 +9462,8 @@ const imageHTML = q.image
       }
       }
     }
-  } else if (exam.subjects && exam.subjects.length === 1) {
-    for (const subjectBlock of exam.subjects) {
+    } else if (printSubjects.length === 1) {
+    for (const subjectBlock of printSubjects) {
       /* qNum is global; no per-section reset */
       for (const section of (subjectBlock.sections || [])) {
         contentHTML += `
