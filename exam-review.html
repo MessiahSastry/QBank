@@ -782,8 +782,18 @@
     );
   }
 
-  function toReviewPaper(source) {
+    function toReviewPaper(source) {
     const paper = copy(source);
+
+    // Preserve original CBSE blueprint metadata,
+    // including Grammar/Writing topics and OR slots.
+    if (
+      paper.subjects?.some(subject =>
+        Array.isArray(subject.rows)
+      )
+    ) {
+      paper._cbseBlueprintSource = copy(source);
+    }
 
     /* Foundation papers already use the Review-page structure. */
        if (!paper.subjects?.some(subject => Array.isArray(subject.rows))) {
@@ -1380,9 +1390,62 @@
   // Remove tags anywhere in the text, not only at the beginning
   return str.replace(/\s*\[(?:Descriptive|MCQ|Multiple|Single)\]\s*/gi, '').trim();
 }
-  function getExamPaper() {
+    function getExamPaper() {
     try {
-      return JSON.parse(sessionStorage.getItem("examPaper") || "null");
+      const paper = JSON.parse(
+        sessionStorage.getItem("examPaper") || "null"
+      );
+
+      const source = paper?._cbseBlueprintSource;
+
+      if (!source?.subjects) return paper;
+
+      for (const subject of paper.subjects || []) {
+        if (
+          !/^english\b/i.test(
+            String(subject.subject || '')
+          )
+        ) continue;
+
+        const original = source.subjects.find(item =>
+          String(item.subject || '')
+            .trim()
+            .toLowerCase() ===
+          String(subject.subject || '')
+            .trim()
+            .toLowerCase()
+        );
+
+        if (!Array.isArray(original?.rows)) continue;
+
+        (subject.sections || []).forEach(
+          (section, index) => {
+            const row = original.rows[index];
+
+            if (!row || section._scEnglishRow) return;
+
+            section._scEnglishRow = {
+              count: Number(row.count) || 0,
+              attempt: Number(row.attempt) || 0,
+              marks: Number(row.marks) || 0,
+
+              grouped: Boolean(
+                row.grouped ||
+                row.attempt < row.count
+              ),
+
+              orCount: Number(row.orCount) || 0,
+
+              topics: Array.isArray(row.slotChapters)
+                ? row.slotChapters.filter(Boolean)
+                : []
+            };
+          }
+        );
+      }
+
+      return paper;
+
     } catch {
       return null;
     }
@@ -2680,7 +2743,16 @@ const __scScience910 =
   }
 
   (subjectBlock.sections || []).forEach((section, sIdx) => {
-    const __scLabel = String(section.label || section.name || '');
+        const __scLabel = String(
+      section.label || section.name || ''
+    );
+
+    const __erEnglishRow =
+      /^english\b/i.test(
+        String(subjectBlock.subject || '')
+      )
+        ? section._scEnglishRow
+        : null;
 
     const __scNamed = [subjectBlock.subject, section.area, __scLabel]
       .join(' ').match(/\b(Biology|Chemistry|Physics)\b/i)?.[1] || '';
@@ -2729,26 +2801,74 @@ const __scScience910 =
     <div class="section-flex-row" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0; padding:7px 18px 7px 18px;">
   <div style="font-weight: 600; color: #1762a7; font-size: 1.08em; text-align:left;">
     ${
-      section.type === "all"
-        ? `Answer all ${section.numQuestions} questions`
-        : section.type === "any"
-          ? `Answer any ${section.attemptAny || section.numQuestions} questions`
-          : section.type === "internal"
-            ? `Answer all ${section.numPairs} pairs`
-            : ""
+            __erEnglishRow
+        ? (
+            __erEnglishRow.grouped
+              ? (
+                  __erEnglishRow.attempt <
+                  __erEnglishRow.count
+                    ? `Attempt any ${__erEnglishRow.attempt} of ${__erEnglishRow.count} tasks`
+                    : `Complete all ${__erEnglishRow.count} tasks`
+                )
+              : __erEnglishRow.orCount > 0
+                ? (
+                    __erEnglishRow.count === 1
+                      ? 'Answer any one alternative'
+                      : `Answer all ${__erEnglishRow.count} questions, choosing one where OR is given`
+                  )
+                : (
+                    __erEnglishRow.count === 1
+                      ? 'Answer the following question'
+                      : `Answer all ${__erEnglishRow.count} questions`
+                  )
+          )
+        : section.type === "all"
+          ? `Answer all ${section.numQuestions} questions`
+          : section.type === "any"
+            ? `Answer any ${section.attemptAny || section.numQuestions} questions`
+            : section.type === "internal"
+              ? `Answer all ${section.numPairs} pairs`
+              : ""
     }
   </div>
    <div style="font-weight:600; color:#1762a7; font-size:1.08em; text-align:right; min-width:120px;">
-    <span contenteditable="plaintext-only" tabindex="0" class="num-questions no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin-right:2px;">
+    <span contenteditable="${__erEnglishRow ? 'false' : 'plaintext-only'}" tabindex="0" class="num-questions no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin-right:2px;">
       ${section.type === "internal" ? (section.numPairs || 0) : (section.numQuestions || 0)}
     </span>
     x
-    <span contenteditable="plaintext-only" tabindex="0" class="marks-per-question no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin:0 2px;">
+    <span contenteditable="${__erEnglishRow ? 'false' : 'plaintext-only'}" tabindex="0" class="marks-per-question no-mjx" data-subject="${subjIdx}" data-section="${sIdx}" style="outline:1.2px solid #bcd6ef; border-radius:5px; padding:1px 6px; margin:0 2px;">
       ${section.marksPerQuestion}
     </span>
     = ${((section.type === "internal" ? (section.numPairs || 0) : (section.numQuestions || 0)) * (section.marksPerQuestion || 0))} Marks
   </div>
 </div>
+
+  ${
+    __erEnglishRow?.topics?.length &&
+    /grammar|writing/i.test(__scLabel)
+
+      ? `
+        <div style="
+          font-size:12px;
+          color:#315c7f;
+          margin:6px 0 10px;
+          padding:8px 10px;
+          background:#eef5fd;
+          border-radius:6px;
+          line-height:1.6;
+        ">
+          <b>Assigned syllabus topics:</b>
+          ${
+            [...new Set(__erEnglishRow.topics)]
+              .map(__erEscapeReviewHtml)
+              .join(' · ')
+          }
+        </div>
+      `
+
+      : ''
+  }
+
 `;
                 (section.questions || []).forEach((q, qIdx) => {
         {
@@ -2848,7 +2968,7 @@ const __scScience910 =
                `
         )
       }
-      <span class="marks-box no-mjx" contenteditable="plaintext-only" tabindex="0">${q.marks || section.marksPerQuestion || ''}</span>
+      <span class="marks-box no-mjx" contenteditable="${__erEnglishRow ? 'false' : 'plaintext-only'}" tabindex="0">${q.marks || section.marksPerQuestion || ''}</span>
       <span class="marks-label">Marks</span>
 
       <div class="q-imgwrap" data-qkey="${subjIdx}|${sIdx}|${qIdx}">
@@ -3784,9 +3904,17 @@ function saveEdits(showAlert = true) {
     paper.subjects[subjIdx].sections[secIdx].label = sec.textContent.replace(/<[^>]+>/g,'').replace(/Edited$/,'').trim();
   });
   // Number of Questions and Marks Per Question (editable)
-    document.querySelectorAll('.num-questions').forEach(span => {
-    const subjIdx = +span.dataset.subject, secIdx = +span.dataset.section;
-    let val = parseInt(span.textContent.trim());
+     document.querySelectorAll('.num-questions').forEach(span => {
+    const subjIdx = +span.dataset.subject,
+          secIdx = +span.dataset.section;
+
+    if (
+      paper.subjects[subjIdx]
+        .sections[secIdx]
+        ._scEnglishRow
+    ) return;
+
+    let val = Number(span.textContent.trim());
     if (!isNaN(val) && val > 0) {
       if (paper.subjects[subjIdx].sections[secIdx].type === 'internal') {
         paper.subjects[subjIdx].sections[secIdx].numPairs = val;
@@ -3795,9 +3923,17 @@ function saveEdits(showAlert = true) {
       }
     }
   });
-  document.querySelectorAll('.marks-per-question').forEach(span => {
-    const subjIdx = +span.dataset.subject, secIdx = +span.dataset.section;
-    let val = parseInt(span.textContent.trim());
+    document.querySelectorAll('.marks-per-question').forEach(span => {
+    const subjIdx = +span.dataset.subject,
+          secIdx = +span.dataset.section;
+
+    if (
+      paper.subjects[subjIdx]
+        .sections[secIdx]
+        ._scEnglishRow
+    ) return;
+
+    let val = Number(span.textContent.trim());
     if (!isNaN(val) && val > 0) paper.subjects[subjIdx].sections[secIdx].marksPerQuestion = val;
   });
   // Instructions (editable flex row)
@@ -3812,7 +3948,13 @@ function saveEdits(showAlert = true) {
         // Marks
     const newMarks = qr.querySelector('.marks-box')?.innerText?.trim() ?? '';
     const currentQuestion = paper.subjects[subjIdx].sections[secIdx].questions[qIdx];
-    currentQuestion.marks = newMarks;
+       if (
+      !paper.subjects[subjIdx]
+        .sections[secIdx]
+        ._scEnglishRow
+    ) {
+      currentQuestion.marks = newMarks;
+    }
 
     if (__erIsParagraphBasedQuestion(currentQuestion)) {
       const passageNode = qr.querySelector('.paragraph-passage-text');
