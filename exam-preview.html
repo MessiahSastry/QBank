@@ -9250,13 +9250,14 @@ function renderPrintPreview() {
   let qNum = 1;       // global continuous numbering
   let contentHTML = '';
 
-  if (printSubjects.length > 1) {
+  
+if (printSubjects.length > 1) {
     for (const subjectBlock of printSubjects) {
       if (!__ep910Mode()) {
         contentHTML += `<div style="text-align:center;font-weight:bold;font-size:1.14em;margin:22px 0 7px 0;color:#7A2230;">Subject: ${subjectBlock.subject || ''}</div>`;
       }
-      }
       /* qNum is global; no per-section reset */
+
       for (const section of (subjectBlock.sections || [])) {
         contentHTML += `
           <div class="section-block" style="margin-bottom: 6px;">
