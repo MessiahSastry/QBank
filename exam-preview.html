@@ -7113,10 +7113,15 @@ function cbsePrintQuestion(question, number, section) {
   holder.innerHTML =
     window.SciMentraPapers.previewQuestion(q, number);
 
+ 
   const stem = holder.querySelector('.question-text');
 
   if (stem) {
+    // Correct nested OR and Attempt Any formatting.
+    __epFixNestedChoices(stem, q);
+
     // Remove empty paragraphs that push the question below its number.
+
     stem.querySelectorAll('p').forEach(p => {
       if (
         !p.textContent.trim() &&
@@ -8270,8 +8275,10 @@ function __epFixNestedChoices(stem, question) {
         const itemLabel = document.createElement('span');
         itemLabel.className = 'cbse-hanging-label';
 
+       
         itemLabel.textContent =
-          alternative.firstElementChild.textContent.trim();
+          `(${roman[index] || index + 1})`;
+
 
         const itemContent = document.createElement('div');
         itemContent.className = 'cbse-hanging-content';
