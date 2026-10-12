@@ -11426,7 +11426,7 @@ if (cleanedErrors.length) {
     Geography: [['geography', 'Geography (029)']],
     'Political Science': [['political_science', 'Political Science (028)']],
     Economics: [['economics', 'Economics (030)']],
-    English: [['english', 'English Language & Literature (184)']],
+    English: [['english', 'English — class-specific SciMentra school paper']],
     Hindi: [['hindi_b', 'Hindi B (085)'], ['hindi_a', 'Hindi A (002)']],
     Sanskrit: [['sanskrit', 'Sanskrit (122)']],
     'Computer Science / IT': [['computer', 'Computer Applications (165)'], ['custom', 'IT / other course — Custom blueprint']],
@@ -12059,12 +12059,124 @@ if (cleanedErrors.length) {
     const year = variant === 'telugu' ? '2025–26; the 2026–27 index has no active Telugu AP paper link' : '2026–27';
     return { variant, marks, rows, custom: false, referenceMarks, source: sourceURL(variant), note: marks === referenceMarks ? `Class 10 reference structure (${year}). For Classes 6–9 this is a school-selected use of that structure; content stays within the selected class.` : `School adaptation of the Class 10 ${referenceMarks}-mark structure (${year}). Counts and choices are adjusted explicitly to ${marks} marks.` };
   }
+  // English school syllabus classification. Manual Area mapping takes priority.
+  // Do not confuse literary titles such as "A Letter to God" with writing topics.
+  function englishSyllabusTopics(chapters = [], chapterAreas = {}) {
+    const groups = { Grammar: [], Writing: [], Reading: [], Prose: [], Poetry: [], Drama: [], Supplementary: [], Literature: [] };
+    const grammar = /^(?:tense(?:s)?|modal(?:s)?|article(?:s)?|determiner(?:s)?|preposition(?:s)?|conjunction(?:s)?|clause(?:s)?|gap[ -]?fill(?:ing)?|sentence (?:rearrangement|transformation|correction|structure)|subject[ -]?verb agreement|active (?:and|&) passive|passive voice|voice change|voice|direct (?:and|&) indirect|reported speech|narration|editing|omission|error correction|verb forms?|auxiliar(?:y|ies)|parts of speech|nouns?|pronouns?|adjectives?|adverbs?|punctuation|non[ -]?finites?|conditionals?|transformation of sentences?)\b/i;
+    const writing = /^(?:writing skills?|formal letter(?: writing)?|informal letter(?: writing)?|letter writing|letter to (?:the )?editor|application writing|notice(?: writing)?|message(?: writing)?|poster(?: writing)?|classified advertis(?:ement|ing)(?: writing)?|advertis(?:ement|ing)(?: writing)?|speech(?: writing)?|debate(?: writing)?|story writing|diary entry|diary writing|article writing|report writing|paragraph writing|analytical paragraph|descriptive paragraph|email writing|e[ -]?mail writing|invitation(?:s)?(?: and replies)?|reply to invitation|bio[ -]?data(?: writing)?|job application(?: writing)?|essay writing|creative writing|note writing)\b/i;
+    const reading = /^(?:unseen|reading comprehension|discursive passage|case[ -]?based factual passage|factual passage|note[ -]?making|summari[sz](?:ing|ation)|summary writing)\b/i;
+    for (const ch of chapters) {
+      const mapped = clean(chapterAreas[ch] || '');
+      let group = Object.keys(groups).find(g => key(g) === key(mapped));
+      if (!group) group = grammar.test(ch) ? 'Grammar' : writing.test(ch) ? 'Writing' : reading.test(ch) ? 'Reading' : 'Literature';
+      if (!groups[group].includes(ch)) groups[group].push(ch);
+    }
+    return groups;
+  }
+
+  function configureEnglishBlueprint(bp, grade, marks, settings) {
+    const topics = englishSyllabusTopics(settings.chapters || [], settings.chapterAreas || {});
+    const issues = [];
+    const a = 'Section A — Reading Skills', c = 'Section C — Literature Textbook';
+
+    // XI: Class XII-style school question formats with the fixed SciMentra
+    // Reading 20 + Grammar/Writing 20 + Literature 40 allocation.
+    if (grade === 11 && marks === 80) {
+      const base = bp.rows;
+      bp.rows = [
+        ...base.slice(0, 5),
+        row(c, 'Hornbill prose extract', 'Extract', 1, 3, { orCount: 1, area: 'Prose|Drama', pattern: [1,1,1].map(marks => ({marks})), printInstruction: 'Answer ANY ONE prose extract:', generationRules: 'Verified selected Hornbill prose extracts; three one-mark inference/interpretation questions per alternative.' }),
+        row(c, 'Hornbill poetry extract', 'Extract', 1, 3, { orCount: 1, area: 'Poetry', pattern: [1,1,1].map(marks => ({marks})), printInstruction: 'Answer ANY ONE poetry extract:', generationRules: 'Verified selected poem extracts; three one-mark interpretation and poetic-technique questions per alternative.' }),
+        row(c, 'Snapshots extract', 'Extract', 1, 4, { orCount: 1, area: 'Supplementary', pattern: [1,1,1,1].map(marks => ({marks})), printInstruction: 'Answer ANY ONE supplementary extract:', generationRules: 'Verified selected Snapshots prose extracts; four one-mark comprehension/inference questions per alternative.' }),
+        base[7], base[8], base[9], base[10]
+      ];
+      bp.source = '';
+      bp.note = 'Class XI English Core: Class XII-style question groups adapted to SciMentra school marks (Reading 20, Grammar/Writing 20, Literature 40). Select only taught Class XI syllabus topics; this is not the official CBSE Class XI mark distribution.';
+      // If the selected XI syllabus includes both note-making and summarising,
+      // fit them into the existing 20 reading marks instead of omitting them.
+      const note = topics.Reading.find(t => /^note[ -]?making$/i.test(t));
+      const summary = topics.Reading.find(t => /^summari[sz](?:ing|ation)$|^summary writing$/i.test(t));
+      if (note && summary) {
+        bp.rows.splice(0, 2,
+          row(a, 'Unseen discursive passage', 'Reading', 1, 7, {area:'Reading', pattern:Array.from({length:7},()=>({marks:1}))}),
+          row(a, 'Case-based factual passage', 'Reading', 1, 5, {area:'Reading', pattern:Array.from({length:5},()=>({marks:1}))}),
+          row(a, 'Note-making', D, 1, 5, {area:'Reading', fixedChapter:note, generationRules:'One complete note-making task based on an original passage; provide title, headings, subheadings, indenting and abbreviation key.'}),
+          row(a, 'Summarising', D, 1, 3, {area:'Reading', fixedChapter:summary, generationRules:'Summarise the note-making passage. The summary must refer to the same passage and contain a complete model answer.'})
+        );
+      } else if (note || summary) {
+        issues.push('Class XI: select both Note-making and Summarising to use the 20-mark reading adaptation, or choose a compatible Custom Paper.');
+      }
+    }
+
+    // Classes VI–IX use main-reader literature; no compulsory supplementary row.
+    // Other classes also avoid an out-of-syllabus supplementary row in PT tests.
+    const noSupplementary = (grade >= 6 && grade <= 9) ||
+      (topics.Supplementary.length === 0 && topics.Literature.length === 0);
+    for (const r of bp.rows) {
+      if (r.area === 'Supplementary' && noSupplementary) {
+        r.area = 'Prose|Poetry|Drama|Literature';
+        r.title = r.title.replace(/Supplementary|Snapshots/gi, 'Main reader additional');
+        r.generationRules = 'Use only selected main-reader literature. Do not refer to an unselected supplementary book or lesson.';
+      }
+      if (r.area === 'Poetry' && topics.Poetry.length === 0 && topics.Literature.length === 0) {
+        r.area = 'Prose|Drama|Literature';
+        r.title = 'Selected main-reader extract';
+        r.generationRules = 'Use only selected main-reader prose or drama; do not invent an unselected poem.';
+      }
+      if (r.area === 'Prose|Drama' && !topics.Prose.length && !topics.Drama.length && !topics.Literature.length) {
+        r.area = 'Poetry|Literature';
+        r.title = 'Selected main-reader extract';
+      }
+    }
+    if (grade >= 6 && grade <= 9 && topics.Supplementary.length) {
+      issues.push('Classes VI–IX: selected lessons are classified Supplementary. Reclassify them as the intended main reader, or remove them.');
+    }
+    if (!topics.Prose.length && !topics.Poetry.length && !topics.Drama.length && !topics.Literature.length && !topics.Supplementary.length) {
+      issues.push('Select at least one literature lesson for the fixed Literature section.');
+    }
+
+    // Guarantee representation in printed records; OR and Attempt Any are
+    // allowed, but each selected grammar/writing topic must occupy a record.
+    for (const [type, names] of [['Grammar', topics.Grammar], ['Writing', topics.Writing]]) {
+      const rows = bp.rows.filter(r => r.type === type);
+      const slots = rows.reduce((n,r) => n + r.count + r.orCount, 0);
+      if (!names.length && slots) issues.push(`No ${type.toLowerCase()} topics selected. Select the taught topics before generating the question paper.`);
+      if (names.length > slots) issues.push(`${type}: ${names.length} selected topics but only ${slots} printed/import alternatives. Use a Custom Paper or reduce the selected topics; no topics will be silently omitted.`);
+      let offset = 0;
+      for (const r of rows) {
+        const count = r.count + r.orCount;
+        r.slotChapters = names.length ? Array.from({length:count},(_,i)=> names[(offset+i) % names.length]) : [];
+        offset += count;
+        r.generationRules = type === 'Grammar'
+          ? 'Write ONE independent question for the specific grammar topic named in each record Chapter tag. Match only the selected taught topics. Vary task formats; do not combine unrelated topics in one one-mark item.'
+          : 'Write ONE complete independent writing task for the exact writing format named in each record Chapter tag. OR alternatives are separate tasks. Do not combine formats or use an unselected format. Supply a full model answer and format-appropriate word limit.';
+        if (type === 'Writing' && r.slotChapters.length) {
+          r.title = 'Writing choice — ' + [...new Set(r.slotChapters)].join(' OR ');
+        }
+      }
+    }
+    bp.rows = bp.rows.map((r,i) => ({...r,id:`r${i+1}`,models:modelWeights('english',r.type)}));
+    bp.englishTopics = topics;
+    bp.englishIssues = issues;
+    bp.schoolAdaptation = true;
+    if (grade !== 11) {
+      bp.note = `Class ${grade} SciMentra school English blueprint: preserve fixed section marks; select only taught grammar, writing and literature topics. No unsupported topics are inserted.`;
+      bp.source = '';
+    }
+    return bp;
+  }
+
       function buildChapterPreset(variant, marks = 80, settings = {}) {
     const bp = buildPreset(variant, marks);
 
     const grade = Number(
       String(settings.class || '').match(/\d+/)?.[0] || 0
     );
+
+    if (variant === 'english') {
+      return configureEnglishBlueprint(bp, grade, marks, settings);
+    }
 
     if ([
       'history', 'geography',
@@ -12442,7 +12554,11 @@ if (cleanedErrors.length) {
       for (let i = 0; i < r.count; i++) {
         const positions = r.orPositions?.length === r.orCount ? r.orPositions : Array.from({ length: r.orCount }, (_, n) => n);
         const variants = positions.includes(i) ? 2 : 1;
-        for (let v = 0; v < variants; v++) slots.push({ id: `${ri}:${i}:${v}`, ri, index: i, variant: v, family: families[i], row: r });
+        for (let v = 0; v < variants; v++) {
+          const targetIndex = slots.filter(s => s.ri === ri).length;
+          const targetChapter = r.fixedChapter || r.slotChapters?.[targetIndex] || '';
+          slots.push({ id: `${ri}:${i}:${v}`, ri, index: i, variant: v, family: families[i], row: r, targetChapter });
+        }
       }
     });
     return slots;
@@ -12471,7 +12587,10 @@ if (cleanedErrors.length) {
       if (!unique.has(fp)) unique.set(fp, q);
     }
     const pool = [...unique.values()], slots = planSlots(bp, settings.strictModels !== false);
-    const shortages = [], edges = slots.map(s => pool.map((q, i) => compatible(q, s.row, s.family) ? i : -1).filter(i => i >= 0));
+    const shortages = [], edges = slots.map(s => pool.map((q, i) =>
+      compatible(q, s.row, s.family) &&
+      (!s.targetChapter || key(q.chapter) === key(s.targetChapter)) ? i : -1
+    ).filter(i => i >= 0));
     const rowsReport = bp.rows.flatMap((r, ri) => {
       const fs = [...new Set(slots.filter(s => s.ri === ri).map(s => s.family))];
       return fs.map(f => {
@@ -12573,6 +12692,9 @@ if (cleanedErrors.length) {
       if (!q) { errors.push(`Missing question for ${slot.row.title}, slot ${slot.id}.`); return null; }
       const label = `Question ${i + 1} (${slot.row.title})`;
       errors.push(...nodeErrors(q, label));
+      if (slot.targetChapter && key(q.chapter) !== key(slot.targetChapter)) {
+        errors.push(`${label}: expected selected topic "${slot.targetChapter}", found "${q.chapter}".`);
+      }
             if (!compatible({ ...q, _errors: [] }, slot.row, slot.family)) {
         const r = slot.row;
         const issues = [];
@@ -12826,6 +12948,18 @@ if (cleanedErrors.length) {
       state.subjects.set(subject, { subject, variant, marks, blueprint: C.buildChapterPreset(variant, marks, { class: getSelectedClass() }), chapterAreas: {}, includeMaps: true, strictModels: true, requireCoverage: true, competencyMinimum: 0 });
     }
     const cfg = state.subjects.get(subject);
+    if (cfg.variant === 'english' && !cfg.blueprint.custom) {
+      const index = getSelectedSubjects().indexOf(subject);
+      const chapters = index < 0 ? [] : selectedChapters(index);
+      const grade = getSelectedClass();
+      const signature = JSON.stringify([grade, cfg.marks, chapters, cfg.chapterAreas]);
+      if (cfg.englishSignature !== signature) {
+        cfg.blueprint = C.buildChapterPreset('english', cfg.marks, {
+          class: grade, chapters, chapterAreas: cfg.chapterAreas
+        });
+        cfg.englishSignature = signature;
+      }
+    }
     if (['science', 'social'].includes(cfg.variant) && !cfg.blueprint.custom && !cfg.blueprint.chapterScoped) {
       cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false });
     }
@@ -12855,6 +12989,7 @@ if (cleanedErrors.length) {
       <button type="button" class="cb-button cb-custom">Edit as Custom Paper</button>
       <button type="button" class="cb-button cb-bank">Check bank & classify</button></div>
       <p class="cb-muted">${escape(cfg.blueprint.note)} ${cfg.blueprint.source ? `<a href="${escape(cfg.blueprint.source)}" target="_blank" rel="noopener">Official reference</a>` : ''}</p>
+      ${cfg.variant === 'english' ? `<div class="cb-notice ${cfg.blueprint.englishIssues?.length ? 'cb-error' : 'cb-good'}"><b>English syllabus coverage</b><br>Grammar: ${(cfg.blueprint.englishTopics?.Grammar || []).length} selected topic(s) | Writing: ${(cfg.blueprint.englishTopics?.Writing || []).length} selected format(s).<br>${cfg.blueprint.englishIssues?.length ? cfg.blueprint.englishIssues.map(escape).join('<br>') : 'Selected topics have assigned question records. Final Set import verifies their Chapter tags.'}</div>` : ''}
       ${cfg.variant === 'social' && !cfg.blueprint.custom ? `<label class="cb-check"><input type="checkbox" class="cb-include-maps" ${cfg.includeMaps !== false ? 'checked' : ''}> Include map questions from the selected chapters</label><p class="cb-muted">Turn this off when the selected chapters have no map work. The total marks stay the same; the revised question groups are shown below.</p>` : ''}
       ${cfg.blueprint.custom ? `<label>Subject target marks <input class="cb-target" type="number" min="0.5" step="0.5" value="${cfg.marks}"></label>` : ''}
       <div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Section / question group</th><th>Type</th><th>Printed</th><th>Attempt</th><th>Marks each</th><th>OR slots</th><th>Counted marks</th><th>Details</th></tr></thead><tbody>
@@ -12915,9 +13050,16 @@ if (cleanedErrors.length) {
   }
   function updateChapterMap(sIdx) {
     const block = $$('.subject-block')[sIdx], host = $('.cb-chapter-map', block || document.createElement('div')); if (!host) return;
-    const cfg = getConfig(block.dataset.subject), areas = cfg.blueprint.rows.some(r => r.area) ? C.AREAS[cfg.variant] || [] : [], chapters = selectedChapters(sIdx);
+    const cfg = getConfig(block.dataset.subject), grade = Number(getSelectedClass().match(/\d+/)?.[0] || 0);
+    const areas = cfg.blueprint.rows.some(r => r.area)
+      ? (C.AREAS[cfg.variant] || []).filter(a => cfg.variant !== 'english' || grade > 9 || a !== 'Supplementary')
+      : [];
+    const chapters = selectedChapters(sIdx);
     host.innerHTML = !areas.length ? '' : `<h4>Map selected chapters to subject areas</h4><p class="cb-muted">A question’s own Area tag takes priority. For an integrated chapter, classify individual questions using “Check bank & classify”.</p>${chapters.map(ch => `<label>${escape(ch)}<select data-cb-chapter="${escape(ch)}">${option('', 'Use question Area tags', cfg.chapterAreas[ch] || '')}${areas.map(a => option(a, a, cfg.chapterAreas[ch])).join('')}</select></label>`).join('') || '<p>Select chapters above to map them here.</p>'}`;
-    $$('select[data-cb-chapter]', host).forEach(sel => sel.onchange = () => { cfg.chapterAreas[sel.dataset.cbChapter] = sel.value; });
+    $$('select[data-cb-chapter]', host).forEach(sel => sel.onchange = () => {
+      cfg.chapterAreas[sel.dataset.cbChapter] = sel.value;
+      if (cfg.variant === 'english' && !cfg.blueprint.custom) renderSubject(sIdx);
+    });
   }
   function rowEditor(cfg, index, sIdx) {
     const r = C.clone(cfg.blueprint.rows[index]), editable = cfg.blueprint.custom;
@@ -13047,10 +13189,17 @@ if (cleanedErrors.length) {
     if (!getSelectedSubjects().length) errors.push('Select at least one subject.');
     if (!value('exam-name-input').trim()) errors.push('Enter the exam name.');
     if (!(Number(value('time-input')) > 0)) errors.push('Enter a positive time in minutes.');
+    if (/^\s*RT[\s-]*[12]\s*$/i.test(value('exam-name-input')) &&
+        getSelectedClass() !== '12th Class' && getSelectedSubjects().includes('English')) {
+      errors.push('English RT-1 and RT-2 are available only for Class XII.');
+    }
     getSelectedSubjects().forEach((subject, i) => {
       const cfg = getConfig(subject), chapters = selectedChapters(i);
       if (!chapters.length) errors.push(`${subject}: select or enter the chapter names.`);
       errors.push(...C.validateBlueprint(cfg.blueprint).map(e => `${subject}: ${e}`));
+      if (cfg.variant === 'english') {
+        errors.push(...(cfg.blueprint.englishIssues || []).map(e => `English: ${e}`));
+      }
     });
     const total = getSelectedSubjects().reduce((s, subject) => s + getConfig(subject).marks, 0);
     if (Number(value('max-marks-input')) !== total) errors.push(`Max Marks must equal the subject totals (${total}).`);
@@ -13169,7 +13318,10 @@ if (cleanedErrors.length) {
         const pool = source === 'Question Bank' ? preparedPool(await rawPool(cfg.subject, true), cfg, cfg.chapters) : preparedPool(imported, cfg, cfg.chapters);
         const result = source === 'Question Bank'
           ? C.solve(cfg.blueprint, pool, { ...cfg, chapters: cfg.chapters })
-          : C.assembleFinalSet(cfg.blueprint, pool, { ...cfg, board: 'CBSE', chapters: cfg.chapters, requireCoverage: false });
+          : C.assembleFinalSet(cfg.blueprint, pool, {
+              ...cfg, board: 'CBSE', chapters: cfg.chapters,
+              requireCoverage: cfg.variant === 'english' ? true : false
+            });
         reports.push({ subject: cfg.subject, ...result });
         failures.push(...result.errors.map(e => `${cfg.subject}: ${e}`));
         if (!result.errors.length) built.push({ subject: cfg.subject, chapters: cfg.chapters, marks: cfg.marks, variant: cfg.variant, blueprint: cfg.blueprint, rows: result.rows, policy: { strictModels: cfg.strictModels, requireCoverage: cfg.requireCoverage, competencyMinimum: cfg.competencyMinimum }, minCompetency: result.minCompetency });
@@ -13195,11 +13347,11 @@ if (cleanedErrors.length) {
       const rows = cfg.blueprint.rows.map((r, ri) => {
         const records = slots.filter(s => s.ri === ri).map(slot => {
           questionNumber++;
-          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${r.modelFilter || (slot.family === 'Any' ? 'choose an accurate model' : slot.family)}] [Subject: ${cfg.subject}] [Chapter: choose exactly from selected chapters] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
+          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${r.modelFilter || (slot.family === 'Any' ? 'choose an accurate model' : slot.family)}] [Subject: ${cfg.subject}] [Chapter: ${slot.targetChapter || 'choose exactly from selected chapters'}] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
         });
         return `${r.section} — ${r.title}\nType: ${r.type}; marks each: ${r.marks}; import items: ${r.count}; printed main questions: ${r.grouped || r.attempt < r.count ? 1 : r.count}; attempt: ${r.attempt}; extra OR records: ${r.orCount}; counted marks: ${r.attempt * r.marks}.\n${r.pattern ? `Subpart pattern: ${r.pattern.map((p, i) => `${i + 1}: ${p.any ? `attempt any ${p.any} of ${p.count}, ${p.marks} mark(s) each` : `${p.marks} mark(s)${ p.alternatives > 1 ? ` with ${p.alternatives} total choices (including the first choice; answer only one)` : ''}`}`).join('; ')}.\n` : ''}${r.modelFilter ? `Required model: ${r.modelFilter}.\n` : ''}${r.printInstruction ? `Printed instruction: ${r.printInstruction}\n` : ''}${r.generationRules ? `Question styles: ${r.generationRules}\n` : ''}Required import records in this order:\n${records.join('\n')}`;
       }).join('\n\n');
-      return `SUBJECT: ${cfg.subject}\nCLASS: ${snapshot.class}\nSELECTED CHAPTERS: ${cfg.chapters.join('; ')}\nSUBJECT MARKS: ${cfg.marks}\nMinimum confirmed competency-based marks: ${cfg.competencyMinimum || 0}% after OR/Attempt Any choices.\n${rows}`;
+      return `SUBJECT: ${cfg.subject}\nCLASS: ${snapshot.class}\nSELECTED CHAPTERS: ${cfg.chapters.join('; ')}\n${cfg.variant === 'english' ? `SELECTED GRAMMAR TOPICS: ${(cfg.blueprint.englishTopics?.Grammar || []).join('; ') || 'None'}\nSELECTED WRITING FORMATS: ${(cfg.blueprint.englishTopics?.Writing || []).join('; ') || 'None'}\nSCHOOL BLUEPRINT: Fixed section marks; exact [Chapter] topic in every grammar/writing record is mandatory.\n` : ''}SUBJECT MARKS: ${cfg.marks}\nMinimum confirmed competency-based marks: ${cfg.competencyMinimum || 0}% after OR/Attempt Any choices.\n${rows}`;
     }).join('\n\n');
     return `You are generating an examination question set for the SciMentra Exam Builder.
 Generate questions and answers only. The Builder handles the question-paper layout, sections, final numbering and printing. Q headers below identify import records, not final printed question numbers. Preserve separate records for every Grammar item, Attempt Any item and independent OR alternative. Keep the specified headers and Slot tags; the Builder groups and renumbers them for printing. Do not copy blueprint titles or printed instructions into the question body; the Builder adds them.
@@ -13213,6 +13365,14 @@ DATE: ${snapshot.date || 'Not specified'}
 
 SELECTED BLUEPRINT AND REQUIRED RECORDS
 ${plan}
+
+${snapshot.subjects.some(s => s.variant === 'english')
+  ? `ENGLISH COURSE: ${Number(snapshot.class.match(/\d+/)?.[0] || 0) >= 11
+      ? 'English Core (301), SciMentra school-adapted paper'
+      : Number(snapshot.class.match(/\d+/)?.[0] || 0) >= 9
+        ? 'English Language and Literature (184), SciMentra school-adapted paper'
+        : 'SciMentra school English, class-appropriate syllabus'}.\nUse only the selected syllabus topics.\n`
+  : ''}
 
 ${snapshot.subjects.some(s =>
   /^english\b/i.test(String(s.subject || ''))
@@ -13714,8 +13874,25 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
     };
     $('#exam-setup-form').addEventListener('submit', event => { if (!cbse()) return; event.preventDefault(); event.stopImmediatePropagation(); build(); }, true);
     $('#ai-get-questions-btn')?.addEventListener('click', event => { if (!cbse()) return; event.preventDefault(); event.stopImmediatePropagation(); openCBSEInChatGPT(); }, true);
-    $('#subjects-sections-area').addEventListener('change', e => { if (cbse() && e.target.closest('[id^="chapters-multiselect-"]')) { const block = e.target.closest('.subject-block'); updateChapterMap(Number(block.dataset.cbIndex)); } });
-    $('#subjects-sections-area').addEventListener('input', e => { if (cbse() && e.target.matches('.ai-manual-chapters-input')) updateChapterMap(Number(e.target.closest('.subject-block').dataset.cbIndex)); });
+    $('#subjects-sections-area').addEventListener('change', e => {
+      if (!cbse()) return;
+      const block = e.target.closest('.subject-block');
+      if (!block) return;
+      const index = Number(block.dataset.cbIndex);
+      if (e.target.closest('[id^="chapters-multiselect-"]') ||
+          e.target.matches('.ai-manual-chapters-input')) {
+        const cfg = getConfig(block.dataset.subject);
+        if (cfg.variant === 'english' && !cfg.blueprint.custom) renderSubject(index);
+        else updateChapterMap(index);
+      }
+    });
+    $('#subjects-sections-area').addEventListener('input', e => {
+      if (!cbse() || !e.target.matches('.ai-manual-chapters-input')) return;
+      const index = Number(e.target.closest('.subject-block').dataset.cbIndex);
+      updateChapterMap(index);
+      // Re-evaluate English only after editing is committed; avoid destroying
+      // a teacher's text input while it is being typed.
+    });
   }
   function syncBoard() {
     initPanel(); const is = cbse(), board = getSelectedBoard(); document.body.classList.toggle('cb-mode', is); $('#cb-panel').hidden = !is;
