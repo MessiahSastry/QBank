@@ -2903,9 +2903,189 @@ const __scScience910 =
         const question = section?.questions?.[Number(row.dataset.question)];
         const editor = row.querySelector('.question-text');
 
+        
         if (!question?._cbseBridge || !editor) return;
 
+        // Handle a main OR subpart followed by an Attempt Any
+        // subpart, preserving the original questions and marks.
+        function fixNestedChoices(editor) {
+          const directLabel = node =>
+            node?.firstElementChild?.textContent.trim() || '';
+
+          const children = node => Array.from(node.children);
+
+          const choices = node => children(node).filter(child =>
+            child.tagName === 'DIV' &&
+            /^\([A-Z]\)$/.test(directLabel(child))
+          );
+
+          const items = node => children(node).filter(child =>
+            child.tagName === 'DIV' &&
+            /^\(\d+\)$/.test(directLabel(child))
+          );
+
+          const first = Array.from(
+            editor.querySelectorAll('div')
+          ).find(node =>
+            directLabel(node) === '(1)' &&
+            choices(node).length === 2
+          );
+
+          const second = first &&
+            children(first.parentElement).find(node =>
+              directLabel(node) === '(2)' &&
+              items(node).length >= 2 &&
+              /\battempt\s+any\b/i.test(node.textContent)
+            );
+
+          if (!first || !second) return false;
+
+          const roman = [
+            'i', 'ii', 'iii', 'iv',
+            'v', 'vi', 'vii', 'viii'
+          ];
+
+          const markOf = node => {
+            const value =
+              node.lastElementChild?.textContent.trim() || '';
+
+            return /^\[\d+(?:\.\d+)?\]$/.test(value)
+              ? value : '';
+          };
+
+          function nested(source, index) {
+            const copy = source.cloneNode(true);
+            copy.firstElementChild?.remove();
+
+            const last = copy.lastElementChild;
+
+            if (
+              last &&
+              /^\[\d+(?:\.\d+)?\]$/.test(
+                last.textContent.trim()
+              )
+            ) {
+              last.remove();
+            }
+
+            const entry = document.createElement('div');
+            entry.className = 'sc-nested-choice';
+
+            const label = document.createElement('b');
+            label.className = 'sc-nested-label';
+            label.textContent =
+              `(${roman[index] || index + 1})`;
+
+            const body = document.createElement('div');
+            body.className = 'sc-nested-content';
+
+            while (copy.firstChild) {
+              body.appendChild(copy.firstChild);
+            }
+
+            while (
+              body.firstChild &&
+              (
+                body.firstChild.nodeName === 'BR' ||
+                (
+                  body.firstChild.nodeType === 3 &&
+                  !body.firstChild.textContent.trim()
+                )
+              )
+            ) {
+              body.firstChild.remove();
+            }
+
+            entry.append(label, body);
+            return entry;
+          }
+
+          function makeRow(letter, source, content) {
+            const row = document.createElement('div');
+            row.className = 'sc-subquestion';
+
+            const label = document.createElement('b');
+            label.className = 'sc-part-label';
+            label.textContent = `(${letter})`;
+
+            content.className = 'sc-part-content';
+            row.append(label, content);
+
+            const value = markOf(source);
+
+            if (value) {
+              const mark = document.createElement('b');
+              mark.className = 'sc-part-marks';
+              mark.textContent = value;
+              row.appendChild(mark);
+            }
+
+            return row;
+          }
+
+          // Subpart (a): (i) OR (ii).
+          const firstContent = document.createElement('div');
+
+          choices(first).forEach((choice, index) => {
+            if (index) {
+              const or = document.createElement('div');
+              or.className = 'or-line';
+              or.textContent = 'OR';
+              firstContent.appendChild(or);
+            }
+
+            firstContent.appendChild(
+              nested(choice, index)
+            );
+          });
+
+          // Subpart (b): Attempt Any with Roman items.
+          const secondContent = document.createElement('div');
+
+          const instruction =
+            children(second)
+              .filter(element =>
+                element.tagName === 'P' &&
+                /\battempt\s+any\b/i.test(
+                  element.textContent
+                )
+              )
+              .map(element => element.textContent)
+              .join(' ') ||
+            Array.from(second.childNodes)
+              .filter(node => node.nodeType === 3)
+              .map(node => node.textContent)
+              .join(' ');
+
+          const title = document.createElement('div');
+          title.textContent =
+            instruction.replace(/\s+/g, ' ').trim();
+          title.style.fontWeight = '700';
+
+          secondContent.appendChild(title);
+
+          items(second).forEach((item, index) => {
+            secondContent.appendChild(
+              nested(item, index)
+            );
+          });
+
+          first.replaceWith(
+            makeRow('a', first, firstContent)
+          );
+
+          second.replaceWith(
+            makeRow('b', second, secondContent)
+          );
+
+          return true;
+        }
+
+        // Do not run ordinary numbering on nested choices.
+        if (fixNestedChoices(editor)) return;
+
         const isReading = /reading|passage|extract/i.test(
+
           `${section?.label || ''} ${editor.textContent.slice(0, 100)}`
         );
 
