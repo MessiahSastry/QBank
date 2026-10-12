@@ -193,9 +193,50 @@
     };
   }
 
-  const rules = `EMBEDDED SVG DIAGRAMS — ALL CLASSES AND SUBJECTS
+  
+const rules = `SUBJECT-WISE IMAGE FORMAT — ALL CLASSES AND SUBJECTS
 
-- Supply suitable diagrams as SVG drawing code inside their question records. The Builder will insert them automatically.
+MANDATORY IMAGE FORMAT POLICY
+
+- Mathematics: Use embedded SVG diagrams.
+- Physics: Use embedded SVG diagrams.
+- Chemistry: Use separate PNG images only.
+- Biology: Use separate PNG images only.
+- Social Science: Use separate PNG images only.
+- English: Use separate PNG images only.
+- Telugu, Hindi and other language subjects: Use separate PNG images when appropriate.
+
+- Apply these rules to all supported classes and CBSE examinations.
+- For integrated Science in Classes 6–8 and combined Science in Classes 9–10, determine the image format from the actual scientific branch assessed by each question.
+- Physics topics use SVG. Chemistry and Biology topics use PNG.
+- For History, Geography, Political Science and Economics in Classes 11–12, use PNG.
+
+PNG REQUIREMENTS
+
+- Never generate SVG code for Chemistry, Biology, Social Science, English or other language subjects.
+- Generate accurate, high-resolution PNG images as separate downloadable files.
+- Use clean textbook-style illustrations suitable for A4 printing.
+- Prefer black-and-white images unless colour is scientifically or educationally necessary.
+- Aim for approximately 300 DPI at the intended printing dimensions.
+- Ensure all structures, labels, scales, symbols and directions are correct.
+- Never reveal the correct answer through labels or annotations.
+- Name images according to their question records, such as Q12_Chemical_Apparatus.png.
+- Insert [Picture Needed: Yes] immediately after the main question or passage, before options and subquestions.
+- Supply the corresponding PNG file separately for manual insertion through the Exam Review page.
+- Deliver required PNG files during DRAFT or RECHECK, before the FINAL SET.
+- Never insert sandbox paths or invented URLs into [Image: ...] tags.
+- Never claim an image has been supplied when it is unavailable.
+- If a required image is unavailable, identify the affected question and report the missing figure before finalisation.
+- Preserve question headers, marks, Slot tags, options, answers and internal choices.
+
+VISUAL QUESTION QUALITY
+
+- Include images only when they genuinely improve assessment.
+- Do not add artificial visual questions.
+- Do not convert ordinary text, equations or answer explanations into images unnecessarily.
+- Recheck every image against the question and answer.
+- SVG-specific instructions below apply exclusively to Mathematics and Physics.
+
 - Put one [SVG] ... [/SVG] block after the main question/context, before options, "Answer the following questions:", subquestions and all answers.
 - Use one SVG block per Q record. Combine related figures or panels into one SVG with clear labels. Each independent OR record may have its own SVG.
 - Only for an A/B choice contained in a single record, use [SVG: A] or [SVG: B] to identify the owning alternative. Close either with [/SVG].
@@ -205,11 +246,22 @@
 - Write labels as SVG text, using Unicode symbols where needed. Keep LaTeX in the question/answer text; do not put LaTeX commands inside SVG labels.
 - Escape XML characters in text and attributes: use &amp; for &, &lt; for < and &gt; for >. Use a single complete SVG without a separate XML declaration or Markdown fence.
 - Use readable black-and-white drawings, sufficient label spacing, accurate geometry, graph scales, data and units. Recheck each diagram against its question and answer.
-- SCIENCE: Use embedded SVG for precise, syllabus-appropriate circuits, ray diagrams, force diagrams, apparatus, graphs, particle models, simple cells and biological processes. Verify scientifically correct parts, proportions, direction arrows, labels and experimental relationships.
-- SCIENCE: Do not put identifying labels or answers on the diagram if the student is asked to label or identify those parts. For detailed human anatomy, microscopy or complex biological structures that cannot be shown accurately using basic SVG, request a verified image instead of inventing an inaccurate diagram.
-- Do not print the drawing code, markers or image instructions as student-facing prose. Include the actual SVG code in the same plain-text FINAL SET copy-code block as the questions.
-- For a photograph, complex illustration or map that cannot be represented accurately with basic SVG, use a genuine verified [Image: actual image URL] or clearly request the required image during DRAFT review. Do not invent URLs or substitute an inaccurate diagram.
-- For an embedded SVG, no separate image download, upload or placeholder is needed. Preserve the existing question headers, marks, Slot tags, options, answers, blueprint and record count.`;
+
+- MATHEMATICS: Use embedded SVG for geometry, constructions, coordinate graphs, number lines, mathematical diagrams and suitable data representations.
+- PHYSICS: Use embedded SVG for circuits, ray diagrams, force diagrams, graphs, vectors and simple experimental apparatus.
+- CHEMISTRY: Use separate PNG images for molecular structures, experimental apparatus, chemical processes and suitable diagrams. Keep ordinary equations and formulae as correctly formatted text or inline LaTeX.
+- BIOLOGY: Use separate PNG images for cells, tissues, anatomy, plant structures, biological processes and suitable textbook illustrations.
+- SOCIAL SCIENCE: Use PNG for maps, historical illustrations, geographical diagrams, photographs, charts and visual source materials.
+- ENGLISH: Use PNG for picture comprehension, posters, advertisements, cartoons, infographics and relevant lesson illustrations.
+- TELUGU AND HINDI: Use PNG for appropriate picture-based comprehension and language assessment.
+- ALL SUBJECTS: Verify content accuracy, labels, orientation, scale and relevance to the question.
+- Do not include identifying labels that disclose answers in identification-based questions.
+- For Mathematics and Physics, preserve the embedded SVG code inside the relevant question record.
+- For PNG subjects, include [Picture Needed: Yes] in the question record and supply the actual PNG separately.
+- Do not print SVG code, image markers or image instructions in the student-facing question paper.
+- Do not fabricate image URLs or reference unavailable images.
+- The image-format policy must not alter marks, headers, question types, Slot tags, internal choices or Builder record counts.
+
 
   window.SciMentraSVG = {
     read,
@@ -8955,7 +9007,19 @@ Class: ${grade}; Subject: ${subject}
 - Verify dates, places, definitions, institutions, maps, economic terms and historical facts. Distinguish fact from interpretation.
 - Write clear, syllabus-appropriate and competency-based questions, including case/source/map questions only when the blueprint and chapter content support them.
 - Give point-wise descriptive answers where appropriate; use as many points as the question requires, not an automatic marks-to-points rule.
-- Do not invent unavailable sources or maps. If the chapter or selected blueprint cannot be verified or supported, report the limitation before generating questions.
+
+- SOCIAL SCIENCE PNG-ONLY RULE: Use separate PNG images for every required map, photograph, chart, timeline, historical illustration or geographical diagram.
+- Never generate embedded SVG code for Social Science questions.
+- Apply this rule to Classes 6–10 Social Science and Classes 11–12 History, Geography, Political Science and Economics.
+- Maps must be geographically accurate, readable and suitable for A4 printing.
+- Use authentic, verified maps when required by the syllabus or examination.
+- Do not invent historical photographs, locations, geographical features or source illustrations.
+- Do not reveal map answers by prelabelling locations students are expected to identify.
+- Use [Picture Needed: Yes] for required PNG images and supply the actual files separately.
+- Do not add unnecessary images or artificial map-based questions.
+- If an essential image, map or source is unavailable, identify the limitation during DRAFT review.
+- Preserve the blueprint, marks, question metadata and internal choices.
+
 - Preserve the requested DRAFT → RECHECK → FINAL SET process and every question record's metadata.
 `;
 }
@@ -9010,7 +9074,23 @@ ${structure}
 - Answer descriptive science questions point-wise when appropriate, using as many points as needed rather than a fixed marks-to-points formula. Give step-wise working for numericals and balanced equations where needed.
 
 4. FIGURES, PRACTICALS AND DATA
-- For a suitable diagram, use an embedded [SVG] ... [/SVG] block with correct labels, orientation and scientific context. Use [Picture Needed: Yes] only for an external image that is still needed.
+
+- SCIENCE IMAGE FORMAT RULE: Physics diagrams must use embedded SVG when an accurate vector representation is suitable. Chemistry and Biology diagrams must use separate PNG files only.
+- In Classes 6–10, determine the scientific branch from the actual question or chapter content, rather than relying only on the overall Science subject name.
+- For Chemistry, use PNG for molecular structures, chemical apparatus, reaction illustrations and other necessary diagrams.
+- For Biology, use PNG for cell structures, anatomy, tissue structures, plant structures and biological processes.
+- Never embed SVG code in Chemistry or Biology question records.
+- Preserve chemical equations, formulae, symbols and numerical expressions as text or valid inline LaTeX wherever appropriate.
+
+- When a visual is educationally necessary, provide a scientifically accurate, high-resolution PNG image as a separate downloadable file.
+- Use clear black-and-white, textbook-style diagrams suitable for A4 examination printing.
+- Use identification labels A, B, C, etc., only where necessary. Never reveal an answer in the diagram.
+- Name each PNG according to its question record, e.g. Q29_Chloroplast.png.
+- Insert [Picture Needed: Yes] immediately after the main question or passage, before options and subquestions.
+- Supply the corresponding PNG separately for insertion through the Review page.
+- Never fabricate an image URL or place sandbox file paths inside [Image: ...] tags.
+- Include diagrams only when they genuinely improve the assessment. Do not add artificial visual questions.
+- Verify biological accuracy, labels, proportions, orientation and printing suitability.
 - Supply [Image: actual image URL] only when verified and accessible. Never fabricate image URLs or assume a diagram was supplied.
 - Questions depending on an unavailable visual or unverified data must be replaced by self-contained questions or flagged before the final set.
 - Use observed/experimental results accurately; do not invent a result and falsely attribute it to NCERT.
@@ -9185,7 +9265,18 @@ STRICT RULES:
 
 7. Do not generate simple picture-identification questions when the selected class requires higher-order interpretation.
 
-8. For a suitable chart, graph or original diagram, use an embedded [SVG] ... [/SVG] block. Use [Picture Needed: Yes] only for an external image that is still needed.
+
+8. ENGLISH PNG-ONLY RULE:
+- Use PNG images exclusively for all visual questions.
+- Never generate embedded SVG code.
+- Suitable images include posters, advertisements, illustrations, photographs, cartoons, charts and infographics.
+- Use textbook illustrations only when their content has been verified and their use is permitted.
+- Generate an original, relevant PNG when appropriate.
+- Place [Picture Needed: Yes] after the question or passage.
+- Supply the corresponding PNG file separately for Exam Review insertion.
+- Do not make images compulsory for every lesson.
+- Do not insert a picture merely to decorate a question.
+
 
 9. Include [Image: actual image URL] only when a genuine, accessible and verified image URL is available.
 
