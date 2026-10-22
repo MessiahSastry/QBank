@@ -3865,7 +3865,7 @@ area.querySelectorAll('.num-questions, .marks-per-question').forEach(el => {
         });
 
         bar.querySelector('[data-inline-reset]').onclick = () => resizeInline(60);
-        wrap.appendChild(bar);
+        editor.before(bar);
       });
 
       // Display the current saved percentage.
