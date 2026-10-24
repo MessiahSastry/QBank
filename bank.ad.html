@@ -5790,13 +5790,6 @@ function __qbSyncEnglishFilters() {
       .forEach(b=>b.checked=false);
   }
 }
-  const level = document.getElementById('level-dropdown'), group = level?.closest('.form-group');
-  if (group) group.style.display = active || __qbIsEntranceExamBoard(document.getElementById('board-value')?.value) ? 'none' : '';
-  if (active) {
-    const hidden = document.getElementById('level-values'); if (hidden) hidden.value = '';
-    level?.querySelectorAll('input[type="checkbox"]').forEach(b=>b.checked=false);
-  }
-}
 function __qbEnglishRefreshFacets(records) {
   if (!__qbEnglishContext()) return;
 
