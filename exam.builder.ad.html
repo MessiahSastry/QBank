@@ -593,6 +593,9 @@ VISUAL QUESTION QUALITY
  body.cb-printing a{color:inherit;text-decoration:none}
 }
 .cb-mode::after{content:"SciMentra\A CBSE"}
+.cb-mode .cb-subject-content select,.cb-mode .cb-subject-content input:not([type="checkbox"]),.cb-mode .cb-panel select,.cb-mode .cb-panel input{min-height:44px;border:1.3px solid #bcd6ef;border-radius:6px;background:#f7fafd;color:#12416c;font:inherit;padding:10px 12px;box-sizing:border-box}
+.cb-mode [hidden]{display:none!important}
+.cb-mode .cb-subject-content select:focus-visible,.cb-mode .cb-panel select:focus-visible{outline:3px solid #80b6e6;outline-offset:2px}
 .cb-alternative{padding-left:28px}.cb-alternative>b{margin-left:-28px}
 
 </style>
@@ -1139,6 +1142,11 @@ VISUAL QUESTION QUALITY
     );
   }
 
+  function englishSelectionMetadata(question) {
+    if (question.alternatives?.length) return question.alternatives.flatMap(englishSelectionMetadata);
+    if (!question.englishSection && question.parts?.length) return question.parts.flatMap(englishSelectionMetadata);
+    return [{bankId:question.id || '',chapter:question.chapter || '',section:question.englishSection || '',area:question.subjectArea || '',topic:question.grammarTopic || '',format:question.writingFormat || '',readingKind:question.readingKind || '',exercise:question.exercise || ''}];
+  }
   function toReviewPaper(source) {
     const paper = copy(source);
 
@@ -1237,7 +1245,14 @@ VISUAL QUESTION QUALITY
                 : (question.explanation || ''),
 
               chapter: question.chapter || '',
-              modelType: question.modelType || ''
+              modelType: question.modelType || '',
+              subjectArea: question.subjectArea || '',
+              englishSection: question.englishSection || (['Grammar','Writing','Reading'].includes(row.type) ? row.type : 'Literature'),
+              englishMetadata: englishSelectionMetadata(question),
+              grammarTopic: question.grammarTopic || '',
+              writingFormat: question.writingFormat || '',
+              readingKind: question.readingKind || '',
+              exercise: question.exercise || ''
             };
           })
         };
@@ -2590,25 +2605,6 @@ tr, td, th {
                         </div>
                     </div>
 
-                    <h3><i class="fas fa-list-ol"></i> Exam Details</h3>
-                    <div class="form-group">
-                        <label>Exam Name</label>
-                        <input type="text" id="exam-name-input" placeholder="e.g., FA2 / Revision Test 3"
-                       spellcheck="true" autocapitalize="characters" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>Max Marks</label>
-                        <input type="number" id="max-marks-input" placeholder="e.g. 100">
-                    </div>
-                    <div class="form-group">
-                        <label>Time (in minutes)</label>
-                        <input type="number" id="time-input" value="90">
-                    </div>
-                    <div class="form-group">
-                       <label>Date (Optional)</label>
-                        <input type="date" id="date-input">
-                    </div>
-
                    <div class="form-grid-2-col">
     <div class="form-group">
         <label>Question Source</label>
@@ -2629,12 +2625,6 @@ tr, td, th {
                   
 
     
-
-                   <div class="form-group" id="global-upload-wrap" style="display:none;">
-                    <label>Upload a .docx file (all questions in order)</label>
-                    <input type="file" id="global-docx-input" accept=".docx" />
-                    <div id="global-docx-status" style="color:#54656f;font-size:.9em;margin-top:6px;">No file chosen</div>
-                </div>
 
                 <div class="form-group" id="paste-docx-shuffle" style="display:none;">
                     <label>Arrangement</label>
@@ -2685,6 +2675,33 @@ tr, td, th {
 
  <div id="subjects-sections-area">
 </div>
+<div id="cb-paper-details">
+                    <h3><i class="fas fa-list-ol"></i> Exam Details</h3>
+                    <div class="form-group">
+                        <label>Exam Name</label>
+                        <input type="text" id="exam-name-input" placeholder="e.g., FA2 / Revision Test 3"
+                       spellcheck="true" autocapitalize="characters" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Marks</label>
+                        <input type="number" id="max-marks-input" placeholder="e.g. 100">
+                    </div>
+                    <div class="form-group">
+                        <label>Time (in minutes)</label>
+                        <input type="number" id="time-input" value="90">
+                    </div>
+                    <div class="form-group">
+                       <label>Date (Optional)</label>
+                        <input type="date" id="date-input">
+                    </div>
+
+</div>
+                   <div class="form-group" id="global-upload-wrap" style="display:none;">
+                    <label>Upload a .docx file (all questions in order)</label>
+                    <input type="file" id="global-docx-input" accept=".docx" />
+                    <div id="global-docx-status" style="color:#54656f;font-size:.9em;margin-top:6px;">No file chosen</div>
+                </div>
+
 
 <div class="form-group" id="global-paste-wrap" style="display:none; margin-top:20px;">
 
@@ -6822,6 +6839,7 @@ async function __ebReloadVisibleChapterDropdowns() {
         display.classList.add(
             'placeholder'
         );
+        chapterDropdown.dispatchEvent(new Event('change', {bubbles:true}));
     }
 }
 
@@ -9139,8 +9157,9 @@ Do not use a fixed historical textbook list.
 
 For Classes 11 and 12, distinguish English Core from English Elective. If the course is unclear, ask before generating.
 
-2. OFFICIAL WEBSITE RESEARCH
-Use available browsing or retrieval tools to check:
+2. LIBRARY-FIRST TEXTBOOK RESEARCH
+First locate and open the matching actual textbook in the user's ChatGPT Library. Verify the class, prescribed course, edition and selected lesson; filenames and catalogue entries alone do not prove that the text was read. Read the actual chapter and relevant exercises. Check quoted wording against page images when OCR is uncertain.
+If the required book or chapter cannot be accessed there, use the official online textbook. Use available browsing or retrieval tools to check:
 https://cbseacademic.nic.in/
 https://ncert.nic.in/
 https://epathshala.nic.in/
@@ -9166,7 +9185,7 @@ Cover distinct portions of the complete lesson.
 
 Do not invent characters, incidents, quotations, textbook exercises, page numbers or source claims.
 
-Do not reproduce long copyrighted extracts. Use brief permissible extracts or accurate textual references when suitable.
+Use actual continuous textbook wording for every literature extract. Preserve wording, punctuation and verse line breaks. Never replace an extract with a paraphrase, summary or a label such as "Verified brief textual reference". Respect applicable quotation limits and report any genuine source-access limitation.
 
 4. TEXTBOOK-BASED QUESTION RULE
 Every literature question and its answer must be supported by the verified lesson.
@@ -9213,7 +9232,7 @@ MANDATORY CBSE ENGLISH LITERATURE EXTRACT RULE — ALL APPLICABLE CLASSES
 
 11. For prose and supplementary extracts, select a coherent narrative, descriptive or dialogue passage that supports all required questions.
 
-12. Use verified textbook material. Do not invent quotations, combine unrelated passages or present paraphrased text as an authentic textbook extract. Respect applicable quotation and copyright restrictions. If a sufficiently substantial authentic extract cannot be reproduced, request a suitable user-supplied extract rather than fabricating one.
+12. Use the actual textbook already available in the user's ChatGPT Library, with an official online edition as fallback. Do not invent quotations, combine unrelated passages or substitute paraphrases. Do not ask for another upload before checking both sources. Respect applicable quotation limits; if a suitable extract remains inaccessible, identify the exact missing source and affected question instead of claiming verification.
 
 13. Where the blueprint specifies independent OR extracts, use different meaningful extracts, preferably from different selected lessons, while preserving the same marks and question type.
 
@@ -11631,7 +11650,7 @@ if (cleanedErrors.length) {
     if (/extract/.test(s)) return 'Extract';
     if (/grammar/.test(s)) return 'Grammar';
     if (/writing|creative/.test(s)) return 'Writing';
-    if (/comprehensive|paragraph.*mcq|question set|composite/.test(s)) return 'Question Set';
+    if (/comprehensive|paragraph.*mcq|question\s*set|composite/.test(s)) return 'Question Set';
     if (/true.*false/.test(s)) return 'True / False';
     if (/fill.*blank/.test(s)) return 'Fill in the Blanks';
     if (/mcq|multiple choice/.test(s)) return /multiple\)|multi.correct/.test(s) ? 'MCQ (Multiple)' : 'MCQ (Single)';
@@ -12211,6 +12230,63 @@ if (cleanedErrors.length) {
     const year = variant === 'telugu' ? '2025–26; the 2026–27 index has no active Telugu AP paper link' : '2026–27';
     return { variant, marks, rows, custom: false, referenceMarks, source: sourceURL(variant), note: marks === referenceMarks ? `Class 10 reference structure (${year}). For Classes 6–9 this is a school-selected use of that structure; content stays within the selected class.` : `School adaptation of the Class 10 ${referenceMarks}-mark structure (${year}). Counts and choices are adjusted explicitly to ${marks} marks.` };
   }
+  // English bank records retain their literature lesson as Chapter.
+  // Topic, Format and Reading Kind are selection metadata, never chapter aliases.
+  const englishTopicKey = value => key(value).replace(/^grammar\s*(?:[:\-]\s*)?/, '').trim();
+  const englishFormatKey = value => key(value).replace(/^writing\s*(?:[:\-]\s*)?/, '').replace(/\s+writing$/, '').trim();
+  function modelMatches(value, filter) {
+    const needle = key(filter).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return !needle || new RegExp('(?:^|[^a-z0-9])' + needle + '(?:$|[^a-z0-9])', 'i').test(key(value));
+  }
+  function englishReadingModel(value) {
+    const s = key(value);
+    if (/poetry|poem/.test(s)) return 'Poetry';
+    if (/factual|informational|data/.test(s)) return 'Factual';
+    if (/discursive|narrative/.test(s)) return 'Discursive';
+    return s;
+  }
+  function singleAnswer(value, options) {
+    const answer = answerText(value);
+    if (/^\(?[A-D]\)?[).:]?$/i.test(answer)) return answer.replace(/[^a-d]/gi, '').toUpperCase();
+    const m = answer.match(/^\(?([A-D])\)?[).:]\s*(.+)$/is);
+    if (m && options?.length === 4 && key(m[2]) === key(options[m[1].toUpperCase().charCodeAt(0)-65])) return m[1].toUpperCase();
+    return answer;
+  }
+  function englishBankCatalogue(input, settings = {}) {
+    const groups = { Grammar: [], Writing: [], Reading: [], Prose: [], Poetry: [], Drama: [], Supplementary: [], Literature: [] };
+    const counts = { Reading: 0, Grammar: 0, Writing: 0, Literature: 0 };
+    const topicCounts = {}, formatCounts = {}, readingKinds = {}, literaryAreas = {}, excluded = [];
+    const seen = new Set();
+    const add = (list, name, canonical = key) => { if (name && !list.some(x => canonical(x) === canonical(name))) list.push(name); };
+    for (const raw of input || []) {
+      const q = normalize(raw, settings);
+      if (q.deleted || (settings.chapters && !settings.chapters.includes(q.chapter))) continue;
+      if (['class','board','subject'].some(f => settings[f] && q[f] !== settings[f])) continue;
+      const errors = nodeErrors(q);
+      if (errors.length) { excluded.push({id:q.id, chapter:q.chapter, errors}); continue; }
+      const fp = fingerprint(q);
+      if (!fp || seen.has(fp)) continue;
+      seen.add(fp);
+      const section = q.englishSection;
+      if (Object.hasOwn(counts, section)) counts[section]++;
+      if (section === 'Grammar') {
+        add(groups.Grammar, q.grammarTopic, englishTopicKey);
+        if (q.grammarTopic) topicCounts[q.grammarTopic] = (topicCounts[q.grammarTopic] || 0) + 1;
+      } else if (section === 'Writing') {
+        add(groups.Writing, q.writingFormat, englishFormatKey);
+        if (q.writingFormat) formatCounts[q.writingFormat] = (formatCounts[q.writingFormat] || 0) + 1;
+      } else if (section === 'Reading') {
+        if (q.readingKind) readingKinds[q.readingKind] = (readingKinds[q.readingKind] || 0) + 1;
+        add(groups.Reading, q.modelType);
+      } else if (section === 'Literature') {
+        const domain = Object.hasOwn(groups, q.subjectArea) ? q.subjectArea : 'Literature';
+        add(groups[domain], q.chapter);
+        literaryAreas[q.chapter] = q.subjectArea || 'Literature';
+      }
+    }
+    return { groups, counts, topicCounts, formatCounts, readingKinds, literaryAreas, excluded };
+  }
+
   // English school syllabus classification. Manual Area mapping takes priority.
   // Do not confuse literary titles such as "A Letter to God" with writing topics.
   function englishSyllabusTopics(chapters = [], chapterAreas = {}) {
@@ -12228,8 +12304,17 @@ if (cleanedErrors.length) {
   }
 
   function configureEnglishBlueprint(bp, grade, marks, settings) {
-    const topics = englishSyllabusTopics(settings.chapters || [], settings.chapterAreas || {});
+    const bankMode = settings.source === 'Question Bank';
+    const bank = settings.englishBank || null;
+    const topics = bankMode && bank
+      ? clone(bank.groups)
+      : englishSyllabusTopics(settings.chapters || [], settings.chapterAreas || {});
+    if (bankMode && bank) {
+      if (Array.isArray(settings.englishGrammar)) topics.Grammar = topics.Grammar.filter(t => settings.englishGrammar.some(s => englishTopicKey(s) === englishTopicKey(t)));
+      if (Array.isArray(settings.englishWriting)) topics.Writing = topics.Writing.filter(t => settings.englishWriting.some(s => englishFormatKey(s) === englishFormatKey(t)));
+    }
     const issues = [];
+    if (bankMode && !bank) issues.push('Read the selected lessons from the Question Bank before building.');
     const a = 'Section A — Reading Skills', c = 'Section C — Literature Textbook';
 
     // XI: Class XII-style school question formats with the fixed SciMentra
@@ -12288,27 +12373,47 @@ if (cleanedErrors.length) {
       issues.push('Select at least one literature lesson for the fixed Literature section.');
     }
 
-    // Guarantee representation in printed records; OR and Attempt Any are
-    // allowed, but each selected grammar/writing topic must occupy a record.
+    // The bank offers eligible topics/formats. An exam uses the number of
+    // questions required by its blueprint, not the whole chapter stock.
     for (const [type, names] of [['Grammar', topics.Grammar], ['Writing', topics.Writing]]) {
       const rows = bp.rows.filter(r => r.type === type);
       const slots = rows.reduce((n,r) => n + r.count + r.orCount, 0);
       if (!names.length && slots) issues.push(`No ${type.toLowerCase()} topics selected. Select the taught topics before generating the question paper.`);
-      if (names.length > slots) issues.push(`${type}: ${names.length} selected topics but only ${slots} printed/import alternatives. Use a Custom Paper or reduce the selected topics; no topics will be silently omitted.`);
+      if (!bankMode && names.length > slots) issues.push(`${type}: ${names.length} selected topics but only ${slots} printed/import alternatives. Use a Custom Paper or reduce the selected topics; no topics will be silently omitted.`);
       let offset = 0;
       for (const r of rows) {
         const count = r.count + r.orCount;
-        r.slotChapters = names.length ? Array.from({length:count},(_,i)=> names[(offset+i) % names.length]) : [];
+        r.slotChapters = !bankMode && names.length ? Array.from({length:count},(_,i)=> names[(offset+i) % names.length]) : [];
+        if (bankMode) {
+          r.englishSection = type;
+          if (type === 'Grammar') r.allowedTopics = names.slice();
+          else { r.allowedFormats = names.slice(); r.title = `Writing task ${bp.rows.filter(x => x.type === 'Writing').indexOf(r) + 1} — selected formats`; }
+        }
         offset += count;
         r.generationRules = type === 'Grammar'
           ? 'Write ONE independent question for the specific grammar topic named in each record Chapter tag. Match only the selected taught topics. Vary task formats; do not combine unrelated topics in one one-mark item.'
           : 'Write ONE complete independent writing task for the exact writing format named in each record Chapter tag. OR alternatives are separate tasks. Do not combine formats or use an unselected format. Supply a full model answer and format-appropriate word limit.';
+        if (bankMode) r.generationRules = type === 'Grammar'
+          ? 'Keep the selected literature lesson in [Chapter]. Supply [Section: Grammar], [Area: Grammar], [Topic: exact eligible topic] and [Exercise: actual exercise]. One independent item per record.'
+          : 'Keep the selected literature lesson in [Chapter]. Supply [Section: Writing], [Area: Writing] and [Format: exact eligible format]. One complete task per record, with a full model answer and marking rubric.';
         if (type === 'Writing' && r.slotChapters.length) {
           r.title = 'Writing choice — ' + [...new Set(r.slotChapters)].join(' OR ');
         }
       }
     }
     bp.rows = bp.rows.map((r,i) => ({...r,id:`r${i+1}`,models:modelWeights('english',r.type)}));
+    if (bankMode) {
+      bp.bankLessonLinked = true;
+      bp.englishBankCounts = clone(bank?.counts || {});
+      bp.rows.forEach(r => {
+        if (r.type === 'Reading') {
+          r.englishSection = 'Reading';
+          r.readingKind = 'Prose';
+          if (marks === 80 && /discursive/i.test(r.title)) r.readingModel = 'Discursive';
+          if (marks === 80 && /factual/i.test(r.title)) r.readingModel = 'Factual';
+        } else if (r.type === 'Extract' || r.type === D) r.englishSection = 'Literature';
+      });
+    }
     bp.englishTopics = topics;
     bp.englishIssues = issues;
     bp.schoolAdaptation = true;
@@ -12495,6 +12600,11 @@ if (cleanedErrors.length) {
     const rec = splitRecord(p.text || p.question || p.body || '');
     const parsed = optionRecord(rec.body);
     const out = { ...p, text: parsed.text, marks: Number(p.marks), answer: answerText(p.answer || p.parsedAnswer || p.finalAnswer || rec.answer), explanation: p.explanation || rec.explanation, options: p.options?.length ? p.options.map(String) : parsed.options };
+    if (out.options?.length) {
+      out.options = out.options.map(x => clean(x).replace(/^[A-D][).:]\s*/i, ''));
+      out.answer = singleAnswer(out.answer, out.options);
+      out.type = type(p.type || p.mcqType || 'MCQ (Single)');
+    }
     if (p.parts) out.parts = p.parts.map(normalPart);
     if (p.alternatives) out.alternatives = p.alternatives.map(normalPart);
     if (p.attempt != null) out.attempt = Number(p.attempt);
@@ -12529,7 +12639,7 @@ if (cleanedErrors.length) {
       }
     });
     parts.forEach(p => delete p._choiceLetter);
-    return { passage: body.slice(0, matches[0].index).replace(/^\s*(?:Case\/Source|Case|Source|Passage)\s*:\s*/i, '').trim(), parts };
+    return { passage: body.slice(0, matches[0].index).replace(/^\s*(?:Case\/Source|Case|Source|Passage|Poem|Extract)\s*:\s*/i, '').trim(), parts };
   }
   function normalize(raw, context = {}) {
        const q = window.SciMentraSVG.question(raw);
@@ -12538,7 +12648,22 @@ if (cleanedErrors.length) {
     const qt = type(metaType || q.mcqType || q.type);
     const rec = splitRecord(q.body || q.parsedBody || q.text || q.fullText || q.question || '');
     const model = clean(q.modelType || q.questionModel || q.model || metaField(meta, 'Model'));
-    const qArea = area(q.subjectArea || q.area || metaField(meta, 'Area') || context.chapterAreas?.[q.chapter] || '');
+    const rawSection = clean(q.englishSection || metaField(meta, 'Section') || q.section || '');
+    const section = ['Reading','Grammar','Writing','Literature'].find(s => key(s) === key(rawSection)) || '';
+    const qArea = area(q.subjectArea || q.area || metaField(meta, 'Area') ||
+      (['Reading','Grammar','Writing'].includes(section) ? section : '') ||
+      (['Reading','Grammar','Writing'].includes(qt) ? qt : '') || context.chapterAreas?.[q.chapter] || '');
+    const englishSection = section || (['Reading','Grammar','Writing'].includes(qArea) ? qArea : ['Prose','Poetry','Drama','Supplementary','Literature'].includes(qArea) ? 'Literature' : '');
+    const chapter = clean(q.chapter || metaField(meta, 'Chapter') || context.chapter || '');
+    const grammarTopic = clean(q.grammarTopic || q.topic || metaField(meta, 'Topic') ||
+      (englishSection === 'Grammar' && /^(?:Grammar\s*[-:]|Tenses?$|Articles?$|Nouns?$|Pronouns?$|Adjectives?$|Adverbs?$|Prepositions?$|Conjunctions?$|Reported Speech$|Editing$|Omitting$)/i.test(chapter) ? chapter.replace(/^Grammar\s*[-:]\s*/i,'') : ''));
+    const writingFormat = clean(q.writingFormat || metaField(meta, 'Format') ||
+      (englishSection === 'Writing' && /^Writing\s*[-:]/i.test(chapter) ? chapter.replace(/^Writing\s*[-:]\s*/i,'') : '') ||
+      (englishSection === 'Writing' && model && family(model) === 'Creative' ? model : ''));
+    const rawKind = clean(q.readingKind || metaField(meta, 'Reading Kind'));
+    const readingKind = /^(?:poetry|poem)$/i.test(rawKind) ? 'Poetry' : /^prose$/i.test(rawKind) ? 'Prose' :
+      englishSection === 'Reading' ? (/^\s*Poem\s*:/i.test(q.body || q.text || '') || /poetry|poem/i.test(model) ? 'Poetry' :
+        /^\s*Passage\s*:/i.test(q.body || q.text || '') || /discursive|narrative|factual|informational|data/i.test(model) ? 'Prose' : '') : '';
     const qtype = ['Reading', 'Extract', 'Grammar', 'Writing'].includes(qt) ? qt : qt;
     let options = Array.isArray(q.options) ? q.options.map(x => clean(x).replace(/^[A-D][).:]\s*/i, '')) : q.options && typeof q.options === 'object' ? ['A', 'B', 'C', 'D'].map(k => clean(q.options[k])) : [];
     let text = rec.body;
@@ -12602,8 +12727,10 @@ if (cleanedErrors.length) {
       ...q, id: clean(q.id || q.srcId || q.bankId || context.id || ''), class: clean(q.class || context.class || ''), board: clean(q.board || context.board || ''),
       subject: clean(q.subject || context.subject || ''), chapter: clean(q.chapter || metaField(meta, 'Chapter') || context.chapter || ''),
       text, question: text, type: qtype, mcqType: qtype, marks: m, modelType: model, family: family(model), subjectArea: qArea,
+      englishSection, grammarTopic, writingFormat, readingKind,
+      exercise: clean(q.exercise || metaField(meta, 'Exercise')),
       slot: clean(q.slot || metaField(meta, 'Slot')), category: clean(q.category || metaField(meta, 'Category')), competency, competencyBased: cb,
-            options, answer: rawAnswer, explanation: stripTags(q.explanation || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.explanation)),
+            options, answer: options.length && qtype !== 'MCQ (Multiple)' ? singleAnswer(rawAnswer, options) : rawAnswer, explanation: stripTags(q.explanation || ((bodyParts || q.parts?.length || q.subQuestions?.length) ? '' : rec.explanation)),
       image: (imagePlacement === 'A' || imagePlacement === 'B') ? '' : (images[0] || ''),
       images: (imagePlacement === 'A' || imagePlacement === 'B') ? [] : images,
       passage, parts, format,
@@ -12643,9 +12770,16 @@ if (cleanedErrors.length) {
 // Missing pictures can be added in Exam Review.
 // Allow the draft to be built without blocking.
 
-    if ([MCQ, AR].includes(q.type)) {
+    if ([MCQ, AR].includes(q.type) || (q.options?.length && q.type !== 'MCQ (Multiple)')) {
       if (q.options?.length !== 4 || q.options.some(x => !clean(x))) errors.push(`${path}: four non-empty options are required.`);
+      if (q.options?.length === 4 && new Set(q.options.map(key)).size !== 4) errors.push(`${path}: options must be distinct.`);
       if (!/^[A-D][).]?$/i.test(clean(q.answer))) errors.push(`${path}: single-correct answer must be A, B, C or D.`);
+    }
+    if (/^english$/i.test(q.subject || '')) {
+      if (q.englishSection === 'Grammar' && !q.grammarTopic) errors.push(`${path}: Grammar needs its Topic tag.`);
+      if (q.englishSection === 'Writing' && !q.writingFormat) errors.push(`${path}: Writing needs its Format tag.`);
+      if (q.englishSection === 'Reading' && !q.readingKind) errors.push(`${path}: Reading needs Reading Kind: Prose or Poetry.`);
+      if (['Reading','Grammar','Writing'].includes(q.englishSection) && q.subjectArea !== q.englishSection) errors.push(`${path}: Section and Area tags disagree.`);
     }
     return errors;
   }
@@ -12675,7 +12809,14 @@ if (cleanedErrors.length) {
     if (r.type === 'Question Set') okType = ['Question Set', D, 'Grammar'].includes(q.type) && q.parts.length > 0;
     if (r.type === D && q.parts?.length && [C, 'Extract', 'Reading'].includes(q.type)) okType = false;
     if (!okType || !patternMatches(q, r.pattern)) return false;
-    if (r.modelFilter && !key(q.modelType).includes(key(r.modelFilter))) return false;
+    if (r.englishSection && q.englishSection !== r.englishSection) return false;
+    if (r.readingKind && key(q.readingKind) !== key(r.readingKind)) return false;
+    if (r.readingModel && englishReadingModel(q.modelType) !== englishReadingModel(r.readingModel)) return false;
+    if (r.grammarTopic && englishTopicKey(q.grammarTopic) !== englishTopicKey(r.grammarTopic)) return false;
+    if (r.writingFormat && englishFormatKey(q.writingFormat) !== englishFormatKey(r.writingFormat)) return false;
+    if (r.allowedTopics && !r.allowedTopics.some(t => englishTopicKey(q.grammarTopic) === englishTopicKey(t))) return false;
+    if (r.allowedFormats && !r.allowedFormats.some(t => englishFormatKey(q.writingFormat) === englishFormatKey(t))) return false;
+    if (r.modelFilter && !(/^english$/i.test(q.subject || '') ? modelMatches(q.writingFormat || q.modelType, r.modelFilter) : key(q.modelType).includes(key(r.modelFilter)))) return false;
     return f === 'Any' || q.family === f;
   }
   function validateBlueprint(bp) {
@@ -12758,10 +12899,11 @@ if (cleanedErrors.length) {
     for (let attempt = 0; attempt < 32; attempt++) {
       const order = slots.map((_, i) => i).sort((a, b) => edges[a].length - edges[b].length || slots[a].variant - slots[b].variant);
       const owner = new Array(pool.length).fill(-1), assignment = new Array(slots.length).fill(-1);
-      const selectedChapters = new Map();
+      const selectedChapters = new Map(), selectedEnglish = new Map();
+      const englishGroup = q => q.englishSection === 'Grammar' ? 'Grammar:' + englishTopicKey(q.grammarTopic) : q.englishSection === 'Writing' ? 'Writing:' + englishFormatKey(q.writingFormat) : '';
       const search = (si, seen) => {
         const candidates = edges[si].slice();
-        candidates.sort((a, b) => (selectedChapters.get(pool[a].chapter) || 0) - (selectedChapters.get(pool[b].chapter) || 0) || ((a * 37 + attempt * 19) % 101) - ((b * 37 + attempt * 19) % 101));
+        candidates.sort((a, b) => (selectedChapters.get(pool[a].chapter) || 0) - (selectedChapters.get(pool[b].chapter) || 0) || (selectedEnglish.get(englishGroup(pool[a])) || 0) - (selectedEnglish.get(englishGroup(pool[b])) || 0) || ((a * 37 + attempt * 19) % 101) - ((b * 37 + attempt * 19) % 101));
         for (const qi of candidates) {
           if (seen.has(qi)) continue;
           seen.add(qi);
@@ -12772,7 +12914,12 @@ if (cleanedErrors.length) {
       let complete = true;
       for (const si of order) {
         if (!search(si, new Set())) { complete = false; break; }
-        selectedChapters.clear(); assignment.filter(i => i >= 0).forEach(i => selectedChapters.set(pool[i].chapter, (selectedChapters.get(pool[i].chapter) || 0) + 1));
+        selectedChapters.clear(); selectedEnglish.clear();
+        assignment.filter(i => i >= 0).forEach(i => {
+          selectedChapters.set(pool[i].chapter, (selectedChapters.get(pool[i].chapter) || 0) + 1);
+          const group = englishGroup(pool[i]);
+          if (group) selectedEnglish.set(group, (selectedEnglish.get(group) || 0) + 1);
+        });
       }
       if (!complete) continue;
       const rows = bp.rows.map((r, ri) => ({ ...clone(r), items: Array.from({ length: r.count }, (_, index) => {
@@ -12876,12 +13023,15 @@ if (cleanedErrors.length) {
         }
 
         if (r.modelFilter &&
-            !key(q.modelType).includes(key(r.modelFilter))) {
+            !(/^english$/i.test(q.subject || '') ? modelMatches(q.writingFormat || q.modelType, r.modelFilter) : key(q.modelType).includes(key(r.modelFilter)))) {
           issues.push(
             `model: expected ${r.modelFilter}, found ${q.modelType || 'missing'}`
           );
         }
 
+        if (r.readingKind && q.readingKind !== r.readingKind) issues.push(`reading kind: expected ${r.readingKind}, found ${q.readingKind || 'missing'}`);
+        if (r.allowedTopics && !r.allowedTopics.some(t => englishTopicKey(t) === englishTopicKey(q.grammarTopic))) issues.push(`grammar Topic is outside the selected bank topics`);
+        if (r.allowedFormats && !r.allowedFormats.some(t => englishFormatKey(t) === englishFormatKey(q.writingFormat))) issues.push(`writing Format is outside the selected bank formats`);
         if (!patternMatches(q, r.pattern)) {
           issues.push('subquestion pattern does not match blueprint');
         }
@@ -12913,7 +13063,7 @@ if (cleanedErrors.length) {
     if (minCompetency < bp.marks * Number(settings.competencyMinimum || 0) / 100) errors.push('The final set does not meet the selected competency target after choices.');
     return { rows, minCompetency, errors, rowsReport: [], excluded: [] };
   }
-  root.SciMentraCBSE = { clone, key, type, area, family, normalize, normalPart, effectiveMarks, nodeErrors, patternMatches, compatible, fingerprint, allocateCounts, buildPreset, buildChapterPreset, validateBlueprint, planSlots, solve, competencyMinimum, parseImport, assembleFinalSet, TYPES, FAMILIES, VARIANTS, AREAS, sourceURL };
+  root.SciMentraCBSE = { clone, key, type, area, family, normalize, normalPart, effectiveMarks, nodeErrors, patternMatches, compatible, fingerprint, allocateCounts, buildPreset, buildChapterPreset, validateBlueprint, planSlots, solve, competencyMinimum, parseImport, assembleFinalSet, TYPES, FAMILIES, VARIANTS, AREAS, sourceURL, englishBankCatalogue, englishTopicKey, englishFormatKey };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.SciMentraCBSE;
 })(typeof window === 'undefined' ? globalThis : window);
 
@@ -13088,6 +13238,97 @@ if (cleanedErrors.length) {
 
     return [...unique.values()];
   }
+  const englishBankRequests = new Map();
+  function englishBankKey(subject, chapters) {
+    return JSON.stringify([getSelectedClass(), getSelectedBoard(), subject, chapters]);
+  }
+  async function loadEnglishBank(sIdx, refresh = false) {
+    const block = $$('.subject-block')[sIdx];
+    if (!block || !cbse()) return null;
+    const subject = block.dataset.subject, chapters = selectedChapters(sIdx);
+    if (subject !== 'English' || !chapters.length) return null;
+    const cfg = state.subjects.get(subject) || getConfig(subject);
+    const requestKey = englishBankKey(subject, chapters), selectedClass = getSelectedClass();
+    if (englishBankRequests.has(requestKey)) return englishBankRequests.get(requestKey);
+    if (!refresh && cfg.englishBankKey === requestKey) return cfg.englishBank;
+    cfg.englishLoadingKey = requestKey;
+    delete cfg.englishError;
+    delete cfg.englishErrorKey;
+    const task = (async () => {
+      try {
+        const raw = await rawPool(subject, refresh, selectedClass);
+        const pool = preparedPool(raw, {...cfg, class:selectedClass}, chapters);
+        const bank = C.englishBankCatalogue(pool, {class:selectedClass,board:'CBSE',subject,chapters});
+        if (state.subjects.get(subject) === cfg && requestKey === englishBankKey(subject, selectedChapters(sIdx))) {
+          cfg.englishBank = bank;
+          cfg.englishBankKey = requestKey;
+          cfg.englishSignature = '';
+          for (const [field, names, canonical] of [['englishGrammar',bank.groups.Grammar,C.englishTopicKey], ['englishWriting',bank.groups.Writing,C.englishFormatKey]]) {
+            if (Array.isArray(cfg[field])) cfg[field] = cfg[field].filter(t => names.some(n => canonical(n) === canonical(t)));
+          }
+          if (cfg.blueprint.custom) cfg.blueprint.rows.forEach(r => {
+            if (r.allowedTopics) r.allowedTopics = (cfg.englishGrammar || bank.groups.Grammar).slice();
+            if (r.allowedFormats) r.allowedFormats = (cfg.englishWriting || bank.groups.Writing).slice();
+          });
+        }
+        return bank;
+      } catch (error) {
+        if (state.subjects.get(subject) === cfg && requestKey === englishBankKey(subject, selectedChapters(sIdx))) {
+          cfg.englishError = error.message || String(error);
+          cfg.englishErrorKey = requestKey;
+          delete cfg.englishBank;
+          delete cfg.englishBankKey;
+          cfg.englishSignature = '';
+        }
+        throw error;
+      } finally {
+        englishBankRequests.delete(requestKey);
+        if (cfg.englishLoadingKey === requestKey) delete cfg.englishLoadingKey;
+        if (state.subjects.get(subject) === cfg && requestKey === englishBankKey(subject, selectedChapters(sIdx)) && getSourceTypeGlobal() === 'Question Bank') renderSubject(sIdx);
+      }
+    })();
+    englishBankRequests.set(requestKey, task);
+    return task;
+  }
+  function englishBankPanel(cfg, sIdx) {
+    const issues = cfg.blueprint.englishIssues || [];
+    if (getSourceTypeGlobal() !== 'Question Bank') return `<div class="cb-notice ${issues.length ? 'cb-error' : 'cb-good'}"><b>English syllabus coverage</b><br>Grammar: ${(cfg.blueprint.englishTopics?.Grammar || []).length} topic(s) · Writing: ${(cfg.blueprint.englishTopics?.Writing || []).length} format(s).<br>${issues.length ? issues.map(escape).join('<br>') : 'The selected topics and the import blueprint are ready.'}</div>`;
+    if (cfg.englishLoadingKey) return '<p class="cb-notice" role="status">Reading saved English questions from the selected lessons…</p>';
+    if (cfg.englishError) return `<div class="cb-notice cb-error" role="alert">Could not read the bank: ${escape(cfg.englishError)}<br><button type="button" class="cb-button cb-refresh-english">Try again</button></div>`;
+    const bank = cfg.englishBank;
+    if (!bank) return '<p class="cb-notice">Select chapters to read their saved English questions.</p>';
+    const counts = bank.counts;
+    const selected = (field, name, canonical) => !Array.isArray(cfg[field]) || cfg[field].some(t => canonical(t) === canonical(name));
+    const checklist = (section, field, names, numbers, canonical) => `<fieldset class="cb-node"><legend>${section}</legend>${names.length ? names.map(name => `<label class="cb-check"><input type="checkbox" data-english-filter="${field}" value="${escape(name)}" ${selected(field,name,canonical) ? 'checked' : ''}>${escape(name)} (${numbers[name] || 0})</label>`).join('') : '<p class="cb-muted">No eligible tagged records found in the selected lessons.</p>'}</fieldset>`;
+    const raw = state.pools.get(`${getSelectedClass()}|${cfg.subject}`) || [];
+    const pool = preparedPool(raw, cfg, selectedChapters(sIdx)).filter(q => !C.nodeErrors(q).length);
+    const distinct = new Map(pool.map(q => [C.fingerprint(q),q]));
+    const readiness = cfg.blueprint.rows.map(r => ({r,need:r.count+r.orCount,available:[...distinct.values()].filter(q => C.compatible(q,r,'Any')).length}));
+    return `<div class="cb-notice"><b>Saved questions in the selected lessons</b><br>Reading: ${counts.Reading || 0} complete sets (${bank.readingKinds.Prose || 0} prose, ${bank.readingKinds.Poetry || 0} poetry) · Grammar: ${counts.Grammar || 0} · Writing: ${counts.Writing || 0} · Literature: ${counts.Literature || 0}.<br>Chapter names stay attached to every saved record. The paper uses the questions required by the selected blueprint.<br><button type="button" class="cb-button cb-refresh-english">Refresh saved questions</button></div>
+      <details class="cb-details"><summary>Eligible grammar topics and writing formats</summary><p class="cb-muted">Use these checkboxes to restrict this paper to taught topics and formats. The blueprint determines how many records are selected.</p>${checklist('Grammar topics','englishGrammar',bank.groups.Grammar,bank.topicCounts,C.englishTopicKey)}${checklist('Writing formats','englishWriting',bank.groups.Writing,bank.formatCounts,C.englishFormatKey)}</details>
+      ${issues.length ? `<div class="cb-notice cb-error">${issues.map(escape).join('<br>')}</div>` : ''}
+      <details class="cb-details"><summary>Question availability for this blueprint</summary><p class="cb-muted">Counts include OR alternatives and check marks, kind, topic/format and subquestion pattern. Model-family quotas, duplicate overlaps and chapter coverage are checked when building. Complete sets keep their saved marks; a 10-mark passage is not shortened into a 5-mark record.</p><div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Question group</th><th>Marks each</th><th>Required records</th><th>Eligible saved records</th></tr></thead><tbody>${readiness.map(({r,need,available}) => `<tr${available < need ? ' class="cb-short"' : ''}><td>${escape(r.title)}</td><td>${r.marks}</td><td>${need}</td><td>${available}</td></tr>`).join('')}</tbody></table></div>${bank.excluded.length ? `<p class="cb-error">${bank.excluded.length} incomplete record(s) excluded. Use “Check bank & classify” to inspect them.</p>` : ''}</details>`;
+  }
+  function wireEnglishBankPanel(cfg, list, sIdx) {
+    if (cfg.variant !== 'english') return;
+    $('.cb-refresh-english',list)?.addEventListener('click', () => {
+      loadEnglishBank(sIdx,true).catch(error => status(`Could not read saved questions: ${error.message}`,true));
+      renderSubject(sIdx);
+    });
+    $$('[data-english-filter]',list).forEach(input => input.addEventListener('change', () => {
+      const field = input.dataset.englishFilter;
+      cfg[field] = $$(`[data-english-filter="${field}"]:checked`,list).map(x => x.value);
+      cfg.englishSignature = '';
+      if (cfg.blueprint.custom) {
+        cfg.blueprint.rows.forEach(r => {
+          if (r.type === 'Grammar' && field === 'englishGrammar') r.allowedTopics = cfg[field].slice();
+          if (r.type === 'Writing' && field === 'englishWriting') r.allowedFormats = cfg[field].slice();
+        });
+      }
+      renderSubject(sIdx);
+    }));
+  }
+
   function getConfig(subject) {
     if (!state.subjects.has(subject)) {
       const variant = (C.VARIANTS[subject] || [['custom']])[0][0];
@@ -13104,10 +13345,10 @@ if (cleanedErrors.length) {
       const index = getSelectedSubjects().indexOf(subject);
       const chapters = index < 0 ? [] : selectedChapters(index);
       const grade = getSelectedClass();
-      const signature = JSON.stringify([grade, cfg.marks, chapters, cfg.chapterAreas]);
+      const signature = JSON.stringify([grade, cfg.marks, chapters, cfg.chapterAreas, getSourceTypeGlobal(), cfg.englishBank, cfg.englishGrammar, cfg.englishWriting]);
       if (cfg.englishSignature !== signature) {
         cfg.blueprint = C.buildChapterPreset('english', cfg.marks, {
-          class: grade, chapters, chapterAreas: cfg.chapterAreas
+          class: grade, chapters, chapterAreas: cfg.chapterAreas, source: getSourceTypeGlobal(), englishBank: cfg.englishBank, englishGrammar: cfg.englishGrammar, englishWriting: cfg.englishWriting
         });
         cfg.englishSignature = signature;
       }
@@ -13127,9 +13368,17 @@ if (cleanedErrors.length) {
     const subject = block.dataset.subject, cfg = getConfig(subject), list = $(`#sections-list-${sIdx}`, block);
     if (!list) return;
     const group = list.parentElement;
-    $('label', group).textContent = 'CBSE subject blueprint';
+    $('label', group).textContent = 'Available Blueprint';
     $('.add-section-btn', block).style.display = 'none';
     list.classList.add('cb-subject-content');
+    const chapters = selectedChapters(sIdx);
+    if (!chapters.length) { list.innerHTML = '<p class="cb-notice">Select the chapters / lessons above to see the available blueprints.</p>'; syncSource(); return; }
+    if (cfg.variant === 'english' && getSourceTypeGlobal() === 'Question Bank') {
+      const bankKey = englishBankKey(subject, chapters);
+      if (cfg.englishBankKey !== bankKey && cfg.englishLoadingKey !== bankKey && cfg.englishErrorKey !== bankKey) {
+        loadEnglishBank(sIdx).catch(() => {});
+      }
+    }
     const variants = C.VARIANTS[subject] || [['custom', 'School-defined Custom blueprint']];
            const choices =
       ['physics', 'chemistry', 'biology', 'geography'].includes(cfg.variant)
@@ -13137,11 +13386,11 @@ if (cleanedErrors.length) {
         : [20, 40, ...(cfg.variant === 'computer' ? [50] : []), 80];
     const rows = cfg.blueprint.rows;
     list.innerHTML = `<div class="cb-flex"><label>Reference course<select class="cb-variant">${variants.map(([v, l]) => option(v, l, cfg.variant)).join('')}</select></label>
-      <label>Paper size<select class="cb-size">${choices.map(n => option(n, `${n} marks`, cfg.marks)).join('')}${option('custom', 'Custom Paper', cfg.blueprint.custom ? 'custom' : cfg.marks)}</select></label>
+      <label>Available Blueprint<select class="cb-size">${choices.map(n => option(n, `${n}-mark school blueprint`, cfg.marks)).join('')}${option('custom', 'Custom Paper', cfg.blueprint.custom ? 'custom' : cfg.marks)}</select></label>
       <button type="button" class="cb-button cb-custom">Edit as Custom Paper</button>
       <button type="button" class="cb-button cb-bank">Check bank & classify</button></div>
       <p class="cb-muted">${escape(cfg.blueprint.note)} ${cfg.blueprint.source ? `<a href="${escape(cfg.blueprint.source)}" target="_blank" rel="noopener">Official reference</a>` : ''}</p>
-      ${cfg.variant === 'english' ? `<div class="cb-notice ${cfg.blueprint.englishIssues?.length ? 'cb-error' : 'cb-good'}"><b>English syllabus coverage</b><br>Grammar: ${(cfg.blueprint.englishTopics?.Grammar || []).length} selected topic(s) | Writing: ${(cfg.blueprint.englishTopics?.Writing || []).length} selected format(s).<br>${cfg.blueprint.englishIssues?.length ? cfg.blueprint.englishIssues.map(escape).join('<br>') : 'Selected topics have assigned question records. Final Set import verifies their Chapter tags.'}</div>` : ''}
+      ${cfg.variant === 'english' ? englishBankPanel(cfg, sIdx) : ''}
       ${cfg.variant === 'social' && !cfg.blueprint.custom ? `<label class="cb-check"><input type="checkbox" class="cb-include-maps" ${cfg.includeMaps !== false ? 'checked' : ''}> Include map questions from the selected chapters</label><p class="cb-muted">Turn this off when the selected chapters have no map work. The total marks stay the same; the revised question groups are shown below.</p>` : ''}
       ${cfg.blueprint.custom ? `<label>Subject target marks <input class="cb-target" type="number" min="0.5" step="0.5" value="${cfg.marks}"></label>` : ''}
       <div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Section / question group</th><th>Type</th><th>Printed</th><th>Attempt</th><th>Marks each</th><th>OR slots</th><th>Counted marks</th><th>Details</th></tr></thead><tbody>
@@ -13158,7 +13407,7 @@ if (cleanedErrors.length) {
         <div class="cb-chapter-map"></div>
       </details>`;
        $('.cb-variant', list).onchange = e => {
-      cfg.variant = e.target.value;
+      cfg.variant = e.target.value; cfg.englishSignature = '';
 
       cfg.marks =
                ['physics', 'chemistry', 'biology', 'geography'].includes(cfg.variant)
@@ -13183,6 +13432,7 @@ if (cleanedErrors.length) {
     };
     $('.cb-size', list).value = cfg.blueprint.custom ? 'custom' : String(cfg.marks);
     $('.cb-size', list).onchange = e => {
+      cfg.englishSignature = '';
       if (e.target.value === 'custom') cfg.blueprint.custom = true;
       else { cfg.marks = Number(e.target.value); cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false }); }
       renderSubject(sIdx); syncTotal();
@@ -13198,7 +13448,7 @@ if (cleanedErrors.length) {
     $$('[data-delete-row]', list).forEach(btn => btn.onclick = () => { cfg.blueprint.rows.splice(Number(btn.dataset.deleteRow), 1); renderSubject(sIdx); });
     $('.cb-add-row', list)?.addEventListener('click', () => { cfg.blueprint.rows.push({ id: `r${Date.now()}`, section: 'Section A', title: 'New group', type: 'Descriptive', count: 1, attempt: 1, marks: 1, orCount: 0, area: '', grouped: false, models: {}, pattern: null }); rowEditor(cfg, cfg.blueprint.rows.length - 1, sIdx); });
     const manual = $('.ai-manual-chapters-group', block); if (manual) manual.classList.add('cb-manual-chapters');
-    updateChapterMap(sIdx); syncTotal(); syncSource();
+    wireEnglishBankPanel(cfg, list, sIdx); updateChapterMap(sIdx); syncTotal(); syncSource();
   }
   function updateChapterMap(sIdx) {
     const block = $$('.subject-block')[sIdx], host = $('.cb-chapter-map', block || document.createElement('div')); if (!host) return;
@@ -13225,7 +13475,8 @@ if (cleanedErrors.length) {
         <label>Attempted slots<input name="attempt" type="number" min="1" value="${r.attempt}"></label>
         <label>Marks per slot<input name="marks" type="number" min="0.5" step="0.5" value="${r.marks}"></label>
         <label>Slots with an OR alternative<input name="orCount" type="number" min="0" value="${r.orCount}"></label>
-        <label>Specific model contains (optional)<input name="modelFilter" value="${escape(r.modelFilter || '')}" placeholder="e.g. Letter"></label>
+        <label>Specific model phrase (optional)<input name="modelFilter" value="${escape(r.modelFilter || '')}" placeholder="e.g. Letter"></label>
+        ${cfg.variant === 'english' ? `<label>Reading kind<select name="readingKind">${['','Prose','Poetry'].map(t => option(t,t || 'Any kind',r.readingKind || '')).join('')}</select></label><label>Exact grammar topic (optional)<input name="grammarTopic" value="${escape(r.grammarTopic || '')}"></label><label>Exact writing format (optional)<input name="writingFormat" value="${escape(r.writingFormat || '')}"></label>` : ''}
         <label class="cb-check"><input name="grouped" type="checkbox" ${r.grouped ? 'checked' : ''}> Print this group under one main question number</label></div>
       <h3>Model-family weights</h3><p class="cb-muted">Weights allocate the primary printed slots by largest remainder. Zero in all boxes allows any model. These are school rules.</p>
       <div class="cb-edit-grid">${C.FAMILIES.map(f => `<label>${f}<input data-family="${f}" type="number" min="0" max="100" value="${r.models[f] || 0}"></label>`).join('')}</div>
@@ -13233,9 +13484,18 @@ if (cleanedErrors.length) {
     const dlg = openDialog(`${editable ? 'Edit' : 'View'} blueprint group`, html, editable ? [{ label: 'Save group', primary: true, action: el => {
       const next = { ...r };
       for (const name of ['section', 'title', 'type', 'area', 'modelFilter']) next[name] = $(`[name="${name}"]`, el).value.trim();
+      if (cfg.variant === 'english') for (const name of ['readingKind','grammarTopic','writingFormat']) next[name] = $(`[name="${name}"]`, el).value.trim();
       for (const name of ['count', 'attempt', 'marks', 'orCount']) next[name] = Number($(`[name="${name}"]`, el).value);
       next.grouped = $('[name="grouped"]', el).checked; next.models = Object.fromEntries($$('[data-family]', el).map(x => [x.dataset.family, Number(x.value)])); delete next.orPositions;
       next.pattern = readPattern(el);
+      if (cfg.variant === 'english' && cfg.blueprint.bankLessonLinked) {
+        next.englishSection = ['Reading','Grammar','Writing'].includes(next.type) ? next.type : 'Literature';
+        if (next.type === 'Grammar') next.allowedTopics = cfg.englishGrammar || cfg.englishBank?.groups.Grammar || [];
+        else { delete next.allowedTopics; delete next.grammarTopic; }
+        if (next.type === 'Writing') next.allowedFormats = cfg.englishWriting || cfg.englishBank?.groups.Writing || [];
+        else { delete next.allowedFormats; delete next.writingFormat; }
+        if (next.type !== 'Reading') { delete next.readingKind; delete next.readingModel; }
+      }
       const test = { marks: next.attempt * next.marks, rows: [next] }, errors = C.validateBlueprint(test);
       if (errors.length) { $('.cb-row-error', el).textContent = errors.join(' '); return; }
       cfg.blueprint.rows[index] = next; el.close(); renderSubject(sIdx);
@@ -13318,13 +13578,14 @@ if (cleanedErrors.length) {
     if (!chapters.length) { errorDialog('Select chapters', ['Select at least one chapter before checking its question bank.']); return; }
     status(`Reading ${cfg.subject} question bank…`);
     const raw = await rawPool(cfg.subject, true), qs = preparedPool(raw, cfg, chapters);
+    if (cfg.variant === 'english') { cfg.englishBank = C.englishBankCatalogue(qs, {class:getSelectedClass(),board:'CBSE',subject:cfg.subject,chapters}); cfg.englishBankKey = englishBankKey(cfg.subject, chapters); cfg.englishSignature = ''; }
     status(`${qs.length} active question records found in the selected chapters.`);
     const dlg = openDialog(`${cfg.subject} — bank readiness`, `<p>These corrections belong to this Builder draft and are saved with it. The shared Question Bank is not changed.</p><label>Search question / chapter<input class="cb-bank-search" type="search"></label><div class="cb-bank-list"></div>`, [{ label: 'Done', primary: true, action: el => { el.close(); } }]);
     function draw() {
       const term = C.key($('.cb-bank-search', dlg).value);
-      const displayed = qs.map(q => C.normalize({ ...q, ...(state.overrides.get(q.id) || {}) }, { chapterAreas: cfg.chapterAreas })).filter(q => !term || C.key(`${q.chapter} ${q.text} ${q.modelType}`).includes(term));
+      const displayed = qs.map(q => C.normalize({ ...q, ...(state.overrides.get(q.id) || {}) }, { chapterAreas: cfg.chapterAreas })).filter(q => !term || C.key(`${q.chapter} ${q.text} ${q.modelType} ${q.grammarTopic || ''} ${q.writingFormat || ''} ${q.readingKind || ''}`).includes(term));
       $('.cb-bank-list', dlg).innerHTML = `<p>${displayed.length} matching records</p>` + displayed.slice(0, 100).map(q => {
-        const errs = C.nodeErrors(q); return `<article class="cb-bank-record"><div class="cb-flex"><strong>${escape(q.chapter)} · ${marksText(q.marks)} marks · ${escape(q.type)}</strong><button type="button" class="cb-button" data-edit-id="${escape(q.id)}">Edit / classify</button></div><p>${escape((q.passage || q.text).slice(0, 280))}</p><small>Model: ${escape(q.modelType || 'Missing')} (${escape(q.family || 'unclassified')}) · Area: ${escape(q.subjectArea || 'Missing')} · Competency: ${q.competencyBased === null ? 'Unconfirmed' : q.competencyBased ? 'Yes' : 'No'}</small>${errs.length ? `<p class="cb-error">${escape(errs.join(' '))}</p>` : ''}</article>`;
+        const errs = C.nodeErrors(q); return `<article class="cb-bank-record"><div class="cb-flex"><strong>${escape(q.chapter)} · ${marksText(q.marks)} marks · ${escape(q.type)}</strong><button type="button" class="cb-button" data-edit-id="${escape(q.id)}">Edit / classify</button></div><p>${escape((q.passage || q.text).slice(0, 280))}</p><small>Model: ${escape(q.modelType || 'Missing')} (${escape(q.family || 'unclassified')}) · Area: ${escape(q.subjectArea || 'Missing')}${q.grammarTopic ? ` · Topic: ${escape(q.grammarTopic)}` : ''}${q.writingFormat ? ` · Format: ${escape(q.writingFormat)}` : ''}${q.readingKind ? ` · Reading: ${escape(q.readingKind)}` : ''} · Competency: ${q.competencyBased === null ? 'Unconfirmed' : q.competencyBased ? 'Yes' : 'No'}</small>${errs.length ? `<p class="cb-error">${escape(errs.join(' '))}</p>` : ''}</article>`;
       }).join('') + (displayed.length > 100 ? '<p>Refine the search to see the remaining records.</p>' : '');
       $$('[data-edit-id]', dlg).forEach(btn => btn.onclick = () => {
         const q = displayed.find(x => x.id === btn.dataset.editId);
@@ -13453,7 +13714,14 @@ if (cleanedErrors.length) {
     return questions;
   }
   async function build() {
-    if (state.busy) return;
+    if (state.busy || state.bankPreparing) return;
+    if (getSourceTypeGlobal() === 'Question Bank') {
+      state.bankPreparing = true;
+      try {
+        await Promise.all(getSelectedSubjects().map((subject,i) => subject === 'English' && selectedChapters(i).length ? loadEnglishBank(i, true) : null));
+      } catch (error) { errorDialog('Could not read the English Question Bank', [error.message]); return; }
+      finally { state.bankPreparing = false; }
+    }
     const errors = setupErrors(); if (errors.length) { errorDialog('Complete the CBSE setup', errors); return; }
     state.busy = true; const btn = $('.submit-btn'); btn.disabled = true; btn.textContent = 'Checking CBSE blueprint…';
     try {
@@ -13469,7 +13737,7 @@ if (cleanedErrors.length) {
         status(`Checking ${cfg.subject}: marks, models, choices and chapter coverage…`);
         const pool = source === 'Question Bank' ? preparedPool(await rawPool(cfg.subject, true), cfg, cfg.chapters) : preparedPool(imported, cfg, cfg.chapters);
         const result = source === 'Question Bank'
-          ? C.solve(cfg.blueprint, pool, { ...cfg, chapters: cfg.chapters })
+          ? C.solve(cfg.blueprint, pool, { ...cfg, board: 'CBSE', chapters: cfg.chapters })
           : C.assembleFinalSet(cfg.blueprint, pool, {
               ...cfg, board: 'CBSE', chapters: cfg.chapters,
               requireCoverage: cfg.variant === 'english' ? true : false
@@ -13499,11 +13767,11 @@ if (cleanedErrors.length) {
       const rows = cfg.blueprint.rows.map((r, ri) => {
         const records = slots.filter(s => s.ri === ri).map(slot => {
           questionNumber++;
-          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${r.modelFilter || (slot.family === 'Any' ? 'choose an accurate model' : slot.family)}] [Subject: ${cfg.subject}] [Chapter: ${slot.targetChapter || 'choose exactly from selected chapters'}] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
+          return `Q${questionNumber}: ${r.marks} Mark(s) [${r.type}] [Model: ${r.modelFilter || (slot.family === 'Any' ? 'choose an accurate model' : slot.family)}] [Subject: ${cfg.subject}] [Chapter: ${slot.targetChapter || 'choose exactly from selected chapters'}] [Class: ${snapshot.class}] [Slot: ${slot.id}] [Competency: accurate cognitive skill] [CompetencyBased: Yes or No]${r.area ? ` [Area: choose from ${r.area}]` : ''}${r.englishSection ? ` [Section: ${r.englishSection}]` : ''}${r.type === 'Grammar' && r.allowedTopics ? ` [Topic: choose from ${r.allowedTopics.join('; ')}] [Exercise: accurate task type]` : ''}${r.type === 'Writing' && r.allowedFormats ? ` [Format: choose from ${r.allowedFormats.join('; ')}]` : ''}${r.readingKind ? ` [Reading Kind: ${r.readingKind}]` : ''}${slot.variant ? ' — independent OR alternative to the preceding record' : ''}`;
         });
         return `${r.section} — ${r.title}\nType: ${r.type}; marks each: ${r.marks}; import items: ${r.count}; printed main questions: ${r.grouped || r.attempt < r.count ? 1 : r.count}; attempt: ${r.attempt}; extra OR records: ${r.orCount}; counted marks: ${r.attempt * r.marks}.\n${r.pattern ? `Subpart pattern: ${r.pattern.map((p, i) => `${i + 1}: ${p.any ? `attempt any ${p.any} of ${p.count}, ${p.marks} mark(s) each` : `${p.marks} mark(s)${ p.alternatives > 1 ? ` with ${p.alternatives} total choices (including the first choice; answer only one)` : ''}`}`).join('; ')}.\n` : ''}${r.modelFilter ? `Required model: ${r.modelFilter}.\n` : ''}${r.printInstruction ? `Printed instruction: ${r.printInstruction}\n` : ''}${r.generationRules ? `Question styles: ${r.generationRules}\n` : ''}Required import records in this order:\n${records.join('\n')}`;
       }).join('\n\n');
-      return `SUBJECT: ${cfg.subject}\nCLASS: ${snapshot.class}\nSELECTED CHAPTERS: ${cfg.chapters.join('; ')}\n${cfg.variant === 'english' ? `SELECTED GRAMMAR TOPICS: ${(cfg.blueprint.englishTopics?.Grammar || []).join('; ') || 'None'}\nSELECTED WRITING FORMATS: ${(cfg.blueprint.englishTopics?.Writing || []).join('; ') || 'None'}\nSCHOOL BLUEPRINT: Fixed section marks; exact [Chapter] topic in every grammar/writing record is mandatory.\n` : ''}SUBJECT MARKS: ${cfg.marks}\nMinimum confirmed competency-based marks: ${cfg.competencyMinimum || 0}% after OR/Attempt Any choices.\n${rows}`;
+      return `SUBJECT: ${cfg.subject}\nCLASS: ${snapshot.class}\nSELECTED CHAPTERS: ${cfg.chapters.join('; ')}\n${cfg.variant === 'english' ? `SELECTED GRAMMAR TOPICS: ${(cfg.blueprint.englishTopics?.Grammar || []).join('; ') || 'None'}\nSELECTED WRITING FORMATS: ${(cfg.blueprint.englishTopics?.Writing || []).join('; ') || 'None'}\nSCHOOL BLUEPRINT: Fixed section marks. ${cfg.blueprint.bankLessonLinked ? 'Preserve the literature lesson in Chapter and the exact eligible Topic or Format in separate tags.' : 'Exact Chapter topic in every grammar/writing record is mandatory.'}\n` : ''}SUBJECT MARKS: ${cfg.marks}\nMinimum confirmed competency-based marks: ${cfg.competencyMinimum || 0}% after OR/Attempt Any choices.\n${rows}`;
     }).join('\n\n');
     return `You are generating an examination question set for the SciMentra Exam Builder.
 Generate questions and answers only. The Builder handles the question-paper layout, sections, final numbering and printing. Q headers below identify import records, not final printed question numbers. Preserve separate records for every Grammar item, Attempt Any item and independent OR alternative. Keep the specified headers and Slot tags; the Builder groups and renumbers them for printing. Do not copy blueprint titles or printed instructions into the question body; the Builder adds them.
@@ -13915,6 +14183,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       <label>Chapter<input data-top="chapter" value="${escape(draft.chapter)}"></label><label>Type<select data-top="type">${C.TYPES.map(t => option(t, t, draft.type)).join('')}</select></label>
       <label>Exact question model<input data-top="modelType" value="${escape(draft.modelType)}" placeholder="e.g. Application, Analyse"></label>
       <label>Subject area<input data-top="subjectArea" value="${escape(draft.subjectArea)}" list="cb-area-suggestions"></label><datalist id="cb-area-suggestions">${[...new Set(Object.values(C.AREAS).flat())].map(a => `<option value="${a}">`).join('')}</datalist>
+      ${/^english$/i.test(draft.subject || '') ? `<label>Section<select data-top="englishSection">${['Reading','Grammar','Writing','Literature'].map(t => option(t,t,draft.englishSection)).join('')}</select></label><label>Grammar topic<input data-top="grammarTopic" value="${escape(draft.grammarTopic || '')}"></label><label>Writing format<input data-top="writingFormat" value="${escape(draft.writingFormat || '')}"></label><label>Reading kind<select data-top="readingKind">${['','Prose','Poetry'].map(t => option(t,t || 'Not a reading set',draft.readingKind)).join('')}</select></label><label>Exercise<input data-top="exercise" value="${escape(draft.exercise || '')}"></label>` : ''}
       <label>Cognitive competency<input data-top="competency" value="${escape(draft.competency)}" placeholder="e.g. Application, Evaluation"></label>
       <label>Competency-based?<select data-top="competencyBased">${option('unknown', 'Unconfirmed', draft.competencyBased === null ? 'unknown' : String(draft.competencyBased))}${option('true', 'Yes — verified by teacher', String(draft.competencyBased))}${option('false', 'No', String(draft.competencyBased))}</select></label>
       <label class="cb-check"><input data-top="pictureNeeded" type="checkbox" ${draft.pictureNeeded ? 'checked' : ''}> Picture required</label>
@@ -13982,7 +14251,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
     const eligible = pool.filter(q => !used.has(C.fingerprint(q)) && !C.nodeErrors(q).length && C.compatible(q, loc.r, loc.q._targetFamily || 'Any'));
     const dlg = openDialog('Choose a replacement question', `<p>${eligible.length} eligible questions. Matches ${marksText(loc.r.marks)} marks, type, area and required model family.</p><label>Search<input class="cb-replace-search" type="search"></label><div class="cb-replacements"></div>`);
     function draw() {
-      const term = C.key($('.cb-replace-search', dlg).value), list = eligible.filter(q => C.key(`${q.chapter} ${q.text} ${q.modelType}`).includes(term));
+      const term = C.key($('.cb-replace-search', dlg).value), list = eligible.filter(q => C.key(`${q.chapter} ${q.text} ${q.modelType} ${q.grammarTopic || ''} ${q.writingFormat || ''} ${q.readingKind || ''}`).includes(term));
       $('.cb-replacements', dlg).innerHTML = list.slice(0, 60).map(q => `<article class="cb-bank-record"><p><b>${escape(q.chapter)} · ${escape(q.modelType)}</b><button type="button" class="cb-button" data-pick="${escape(q.id)}">Use this question</button></p>${questionHTML(q, true)}</article>`).join('');
       $$('[data-pick]', dlg).forEach(btn => btn.onclick = () => {
         const next = C.clone(eligible.find(q => q.id === btn.dataset.pick)); next._targetFamily = loc.q._targetFamily;
@@ -14085,12 +14354,14 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       $('#global-paste-area').placeholder = 'Get Questions → review and recheck in ChatGPT → ask for the final set → paste its complete inline-LaTeX copy-code block here → Build Exam Draft → Exam Review.';
     }
     $('#paste-docx-shuffle').style.display = 'none'; // Exact slot order and answer labels are retained.
+    const promptButton = $('#cb-prompt-btn'); if (promptButton) promptButton.hidden = source !== 'AI Generate';
+    const copyButton = $('#cb-copy-prompt-btn'); if (copyButton) copyButton.hidden = source === 'Question Bank';
   }
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
     panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–12</h3><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><details class="cb-more-tools"><summary class="cb-button"><i class="fas fa-ellipsis-h" aria-hidden="true" style="margin-right:8px"></i>More Tools</summary><div class="cb-more-tools-menu"><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div></details></div><div id="cb-status" class="cb-notice" hidden></div>`;
-    $('#subjects-sections-area').before(panel);
+    $('#subjects-sections-area').after(panel);
     $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
     $('#cb-import-file').onchange = async e => {
@@ -14116,7 +14387,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       if (e.target.closest('[id^="chapters-multiselect-"]') ||
           e.target.matches('.ai-manual-chapters-input')) {
         const cfg = getConfig(block.dataset.subject);
-        if (cfg.variant === 'english' && !cfg.blueprint.custom) renderSubject(index);
+        if (cfg.variant === 'english') renderSubject(index);
         else updateChapterMap(index);
       }
     });
@@ -14136,6 +14407,11 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       const nextContext = `${getSelectedClass()}|CBSE`;
       if (state.context !== nextContext) { state.subjects.clear(); state.pools.clear(); state.context = nextContext; }
       syncSource();
+    }
+    const source = getSourceTypeGlobal();
+    if (is && state.lastSource !== source) {
+      state.lastSource = source;
+      $$('.subject-block').forEach((block, index) => renderSubject(index));
     }
     previousBoard = board;
   }
