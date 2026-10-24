@@ -5235,6 +5235,14 @@ broadSnapshot.forEach(doc => {
                 chapter: data.chapter
             });
 
+                       if (
+                data.deleted === true ||
+                data.isDeleted === true ||
+                String(data.status || '').trim().toLowerCase() === 'deleted'
+            ) {
+                return;
+            }
+
             if (data.chapter) chapterSet.add(String(data.chapter).trim());
         });
 
