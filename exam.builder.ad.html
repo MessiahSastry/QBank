@@ -12038,17 +12038,46 @@ if (cleanedErrors.length) {
         add(c, 'Supplementary: any 2 of 3', D, 3, 3, { attempt: 2, grouped: true, area: 'Supplementary' });
         add(c, 'Main reader long answer', D, 1, 6, { orCount: 1, area: 'Prose|Poetry|Drama|Literature' });
         add(c, 'Supplementary long answer', D, 1, 6, { orCount: 1, area: 'Supplementary' });
-      } else if (marks === 40) {
-        add(a, 'Reading passages', 'Reading', 2, 5, { area: 'Reading' });
-        add(b, 'Grammar', 'Grammar', 6, 1, { attempt: 5, area: 'Grammar', grouped: true });
-                add(b, 'Writing choice — letters', 'Writing', 1, 2.5, { orCount: 1, area: 'Writing' });
-        add(b, 'Writing choice — other selected writing formats', 'Writing', 1, 2.5, { orCount: 1, area: 'Writing' });
-        add(c, 'Prose / drama extract', 'Extract', 1, 4, { orCount: 1, area: 'Prose|Drama' });
-        add(c, 'Poetry extract', 'Extract', 1, 4, { orCount: 1, area: 'Poetry' });
-        add(c, 'Main reader short answers', D, 3, 2, { attempt: 2, grouped: true, area: 'Prose|Poetry|Drama|Literature' });
-        add(c, 'Supplementary short answer', D, 2, 2, { attempt: 1, grouped: true, area: 'Supplementary' });
-        add(c, 'Main reader extended answer', D, 1, 3, { orCount: 1, area: 'Prose|Poetry|Drama|Literature' });
-        add(c, 'Supplementary extended answer', D, 1, 3, { orCount: 1, area: 'Supplementary' });
+            } else if (marks === 40) {
+        add(a, 'Unseen reading set', 'Reading', 1, 10, {
+          area: 'Reading'
+        });
+
+        add(b, 'Grammar: any 5 of 6', 'Grammar', 6, 1, {
+          attempt: 5,
+          area: 'Grammar',
+          grouped: true,
+          printInstruction: 'Complete ANY FIVE of the following six tasks, as directed:'
+        });
+
+        add(b, 'Writing: choose one task', 'Writing', 1, 5, {
+          orCount: 1,
+          area: 'Writing',
+          printInstruction: 'Answer ANY ONE of the following two writing tasks:'
+        });
+
+        add(c, 'Literature extract: choose one', 'Extract', 1, 5, {
+          orCount: 1,
+          area: 'Prose|Poetry|Drama|Supplementary|Literature',
+          pattern: [1, 1, 1, 2].map(marks => ({ marks })),
+          printInstruction: 'Read the extracts and answer the questions for ANY ONE of the two:',
+          generationRules: 'Two independent exact textbook extracts from selected lessons. Each alternative has its complete extract and four subquestions worth 1, 1, 1 and 2 marks, with answers.'
+        });
+
+        add(c, 'Literature short answers: any 3 of 4', D, 4, 3, {
+          attempt: 3,
+          grouped: true,
+          area: 'Prose|Poetry|Drama|Supplementary|Literature',
+          printInstruction: 'Answer ANY THREE of the following four questions:',
+          generationRules: 'Four independent three-mark questions from selected literature lessons. Supply complete supported model answers appropriate to the class.'
+        });
+
+        add(c, 'Literature long answer: choose one', D, 1, 6, {
+          orCount: 1,
+          area: 'Prose|Poetry|Drama|Supplementary|Literature',
+          printInstruction: 'Answer ANY ONE of the following two questions:',
+          generationRules: 'Two independent six-mark literature alternatives from selected lessons, each with a complete supported model answer. Use only texts that support the required depth. Report a shortfall when suitable questions are unavailable.'
+        });
       } else {
         add(a, 'Reading passage', 'Reading', 1, 5, { area: 'Reading' });
         add(b, 'Grammar', 'Grammar', 4, 1, { attempt: 3, area: 'Grammar', grouped: true });
@@ -12401,7 +12430,11 @@ if (cleanedErrors.length) {
         }
       }
     }
-    bp.rows = bp.rows.map((r,i) => ({...r,id:`r${i+1}`,models:modelWeights('english',r.type)}));
+       bp.rows = bp.rows.map((r, i) => ({
+      ...r,
+      id: `r${i + 1}`,
+      models: marks === 40 ? {} : modelWeights('english', r.type)
+    }));
     if (bankMode) {
       bp.bankLessonLinked = true;
       bp.englishBankCounts = clone(bank?.counts || {});
@@ -12417,10 +12450,38 @@ if (cleanedErrors.length) {
     bp.englishTopics = topics;
     bp.englishIssues = issues;
     bp.schoolAdaptation = true;
-    if (grade !== 11) {
+        if (grade !== 11) {
       bp.note = `Class ${grade} SciMentra school English blueprint: preserve fixed section marks; select only taught grammar, writing and literature topics. No unsupported topics are inserted.`;
       bp.source = '';
     }
+
+    if (marks === 40) {
+      bp.note = `Class ${grade} SciMentra 40-mark school practice pattern: Reading 10 + Grammar 5 + Writing 5 + Literature 20. Complete saved sets retain their marks. This is a school pattern, not an official CBSE paper blueprint.`;
+      bp.source = '';
+
+      const reading = bp.rows.find(r => r.type === 'Reading');
+
+      if (reading) {
+        reading.readingKind =
+          settings.englishReadingKind === 'Poetry'
+            ? 'Poetry'
+            : 'Prose';
+
+        reading.title =
+          reading.readingKind === 'Poetry'
+            ? 'Unseen poem set'
+            : 'Unseen prose set';
+
+        reading.printInstruction =
+          reading.readingKind === 'Poetry'
+            ? 'Read the poem and answer all the questions that follow:'
+            : 'Read the passage and answer all the questions that follow:';
+
+        reading.generationRules =
+          `One complete original unseen ${reading.readingKind === 'Poetry' ? 'poem' : 'prose passage'} set, totalling 10 marks. Include the complete text, all subquestions with marks and answers, and [Reading Kind: ${reading.readingKind}]. Preserve verse line breaks for poetry.`;
+      }
+    }
+
     return bp;
   }
 
@@ -13290,6 +13351,559 @@ if (cleanedErrors.length) {
     englishBankRequests.set(requestKey, task);
     return task;
   }
+  function freshReadingEnabled(cfg) {
+    return cfg.variant === 'english' &&
+      [40, 80].includes(Number(cfg.marks)) &&
+      getSourceTypeGlobal() === 'Question Bank' &&
+      cfg.englishReadingSource !== 'bank';
+  }
+
+  function readingChapters(cfg) {
+    return cfg.chapters ||
+      selectedChapters(getSelectedSubjects().indexOf(cfg.subject));
+  }
+
+  function readingSlots(cfg) {
+    return C.planSlots(cfg.blueprint, cfg.strictModels)
+      .filter(s => s.row.type === 'Reading');
+  }
+
+  function applyFreshReadingKinds(cfg) {
+    if (
+      !freshReadingEnabled(cfg) ||
+      cfg.marks !== 80 ||
+      cfg.blueprint.custom
+    ) return;
+
+    cfg.blueprint.rows.forEach(r => {
+      if (
+        r.type !== 'Reading' ||
+        cfg.englishFreshKinds?.[r.id] !== 'Poetry'
+      ) return;
+
+      r.readingKind = 'Poetry';
+      r.readingModel = '';
+      r.title = 'Unseen poetry set';
+
+      r.pattern = [1, 1, 2, 1, 1, 1, 2, 1]
+        .map(marks => ({ marks }));
+
+      r.printInstruction =
+        'Read the poem and answer all the questions that follow:';
+
+      r.generationRules =
+        'One original unseen poem with eight subquestions worth 1,1,2,1,1,1,2,1 marks. Include comprehension, inference, vocabulary and class-appropriate poetic interpretation, with complete answers. Preserve verse line breaks.';
+    });
+  }
+
+  function freshReadingPanel(cfg) {
+    if (
+      cfg.variant !== 'english' ||
+      ![40, 80].includes(Number(cfg.marks)) ||
+      getSourceTypeGlobal() !== 'Question Bank'
+    ) return '';
+
+    const slots = readingSlots(cfg);
+    if (!slots.length) return '';
+
+    const enabled = freshReadingEnabled(cfg);
+
+    const choices =
+      cfg.marks === 80 && !cfg.blueprint.custom
+        ? cfg.blueprint.rows
+            .filter(r => r.type === 'Reading')
+            .map((r, i) => `
+              <label>
+                Reading ${i + 1}
+                <select
+                  class="cb-fresh-kind"
+                  data-reading-row="${escape(r.id)}">
+                  ${option(
+                    'Prose',
+                    'Unseen prose',
+                    cfg.englishFreshKinds?.[r.id] || 'Prose'
+                  )}
+                  ${option(
+                    'Poetry',
+                    'Unseen poetry — school pattern',
+                    cfg.englishFreshKinds?.[r.id] || 'Prose'
+                  )}
+                </select>
+              </label>
+            `).join('')
+        : '';
+
+    const readingMarks = cfg.blueprint.rows
+      .filter(r => r.type === 'Reading')
+      .reduce((n, r) => n + r.attempt * r.marks, 0);
+
+    return `
+      <div class="cb-node">
+        <div class="cb-flex">
+          <label>
+            Reading source
+            <select class="cb-reading-source">
+              ${option(
+                'fresh',
+                'Generate Fresh in ChatGPT & Paste',
+                enabled ? 'fresh' : 'bank'
+              )}
+              ${option(
+                'bank',
+                'Select from Question Bank',
+                enabled ? 'fresh' : 'bank'
+              )}
+            </select>
+          </label>
+        </div>
+
+        ${enabled ? `
+          <div class="cb-flex">${choices}</div>
+
+          <p class="cb-muted">
+            Paste ${slots.length} complete reading set(s).
+            Reading counts for ${readingMarks} marks.
+            Other sections come from the bank.
+            Originality and answers must be reviewed in ChatGPT
+            before pasting.
+          </p>
+
+          <button
+            type="button"
+            class="cb-button cb-reading-prompt">
+            Get Reading Prompt
+          </button>
+
+          <label>
+            Fresh reading sets, including all questions and answers
+            <textarea
+              class="cb-fresh-paste"
+              rows="10"
+              style="width:100%;box-sizing:border-box;font:inherit"
+              placeholder="Paste the complete Q1: reading record here. For two reading sets, include Q2: as well."
+            >${escape(cfg.englishFreshReadingText || '')}</textarea>
+          </label>
+
+          <button
+            type="button"
+            class="cb-button cb-reading-review">
+            Parse & Review Reading
+          </button>
+
+          <p class="cb-muted">
+            Checks compare against available bank texts and saved
+            papers for this class. They cannot establish every
+            student's previous exposure.
+            Fresh reading is stored with the paper.
+          </p>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  function freshReadingPrompt(cfg) {
+    const chapters = readingChapters(cfg);
+
+    const records = readingSlots(cfg).map((s, i) => {
+      const r = s.row;
+
+      const pattern = r.pattern
+        ? r.pattern.map(p => p.marks).join(', ')
+        : 'Use one-mark and two-mark subquestions totalling exactly ' +
+          r.marks;
+
+      const model = r.readingModel ||
+        (r.readingKind === 'Poetry'
+          ? 'Poetry Comprehension'
+          : 'Discursive or Factual/Data');
+
+      return `Q${i + 1}: ${r.marks} Marks [Reading] [Section: Reading] [Area: Reading] [Reading Kind: ${r.readingKind || 'Prose'}] [Model: ${model}] [Class: ${cfg.class || getSelectedClass()}] [Subject: English] [Chapter: ${chapters[0]}] [Slot: ${s.id}]
+Required marks in order: ${pattern}.
+Requirements: ${r.generationRules || 'A complete original unseen text and its questions and answers.'}`;
+    });
+
+    return `Act as a CBSE English setter and independent academic reviewer.
+
+Prepare ONLY the following original unseen reading sets for Class ${cfg.class || getSelectedClass()}, for a ${cfg.marks}-mark SciMentra school paper.
+
+Write entirely new prose or poetry, appropriate in vocabulary, length and difficulty to the class and allotted marks. Do not copy or paraphrase textbook passages, published poems, previous papers or question banks. Different reading sets must use different texts.
+
+Include meaningful comprehension, inference, contextual vocabulary and competency questions. For poetry, preserve verse and stanza breaks. Verify every factual claim; avoid unsupported statistics. Use text-only stimuli and provide all required data.
+
+Independently check the complete text, every question, all calculations/data, answers, plausible distinct MCQ options, exactly one correct MCQ key, marks and any ambiguity. Correct all errors before the FINAL SET. Generation alone does not prove that students have never encountered similar material.
+
+Return only complete import records. Copy each header below, replacing model descriptions with an accurate model. Preserve its Class, Subject, Chapter, Reading Kind and Slot. No Exam/Course tags.
+
+After each header use Passage: or Poem:, followed by the COMPLETE text. Then use:
+
+Sub-question 1 (1 Mark):
+Complete question, followed by A) B) C) D) on separate lines when it is an MCQ.
+Answer: Complete answer, or the single correct option letter for MCQs.
+
+Repeat for every required subquestion, with its actual marks. Keep explanations with their corresponding answers. Do not add questions from other sections.
+
+${records.join('\n\n')}`;
+  }
+
+  function readingTextKey(value) {
+    return C.key(
+      String(value || '').replace(/<[^>]*>/g, ' ')
+    ).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  }
+
+  function readingTextRepeated(a, b) {
+    const x = readingTextKey(a);
+    const y = readingTextKey(b);
+
+    if (!x || !y) return false;
+    if (x === y) return true;
+
+    const xw = x.split(' ');
+    const yw = y.split(' ');
+
+    if (Math.min(xw.length, yw.length) < 20) return false;
+    if (x.includes(y) || y.includes(x)) return true;
+
+    const chunks = words => new Set(
+      words.slice(0, -4).map(
+        (_, i) => words.slice(i, i + 5).join(' ')
+      )
+    );
+
+    const xs = chunks(xw);
+    const ys = chunks(yw);
+
+    const shared = [...xs].filter(s => ys.has(s)).length;
+
+    return shared / Math.min(xs.size, ys.size) >= 0.85;
+  }
+
+  function parseFreshReading(cfg) {
+    const slots = readingSlots(cfg);
+    const chapters = readingChapters(cfg);
+    const text = String(cfg.englishFreshReadingText || '').trim();
+
+    if (!text) {
+      throw new Error(
+        'Paste the fresh reading sets, then use Parse & Review Reading.'
+      );
+    }
+
+    const qs = C.parseImport(text, {
+      class: cfg.class || getSelectedClass(),
+      board: 'CBSE',
+      subject: 'English',
+      chapter: chapters[0]
+    });
+
+    if (qs.length !== slots.length) {
+      throw new Error(
+        `Fresh reading needs exactly ${slots.length} complete record(s); found ${qs.length}.`
+      );
+    }
+
+    const tagged = qs.some(q => q.slot);
+    const ids = new Set();
+    const checked = [];
+
+    for (let i = 0; i < slots.length; i++) {
+      const s = slots[i];
+      const q = tagged
+        ? qs.find(q => q.slot === s.id)
+        : qs[i];
+
+      if (
+        !q ||
+        (tagged && (!q.slot || ids.has(q.slot)))
+      ) {
+        throw new Error(
+          `Missing or repeated reading Slot ${s.id}. Copy the complete reading headers.`
+        );
+      }
+
+      ids.add(q.slot);
+
+      if (
+        tagged &&
+        qs.filter(p => p.slot === s.id).length !== 1
+      ) {
+        throw new Error(`Repeated reading Slot ${s.id}.`);
+      }
+
+      const chapter = chapters.find(
+        ch => cbseChapterKey(ch) === cbseChapterKey(q.chapter)
+      );
+
+      if (
+        !chapter ||
+        q.class !== (cfg.class || getSelectedClass()) ||
+        q.subject !== 'English' ||
+        q.board !== 'CBSE'
+      ) {
+        throw new Error(
+          `Reading ${i + 1}: class, subject or chapter does not match the setup.`
+        );
+      }
+
+      q.chapter = chapter;
+
+      const errors = C.nodeErrors(q, `Reading ${i + 1}`);
+
+      if (!q.passage?.trim() || !q.parts?.length) {
+        errors.push(
+          'The complete prose/poem and subquestions are required.'
+        );
+      }
+
+      if (q.parts?.some(p =>
+        p.parts?.length ||
+        p.alternatives?.length ||
+        !p.answer
+      )) {
+        errors.push(
+          'Each reading subquestion needs its own complete answer, with no unrequested choices.'
+        );
+      }
+
+      if (!C.compatible(
+        { ...q, _errors: [] },
+        s.row,
+        s.family
+      )) {
+        errors.push(
+          'Reading kind, marks, model or subquestion pattern does not match the blueprint.'
+        );
+      }
+
+      if (errors.length) {
+        throw new Error(errors.join('\n'));
+      }
+
+      if (checked.some(p =>
+        readingTextRepeated(p.passage, q.passage)
+      )) {
+        throw new Error(
+          'The fresh reading sets repeat the same or substantially overlapping text.'
+        );
+      }
+
+      checked.push({
+        ...q,
+        id: `fresh-reading-${i + 1}`,
+        readingSource: 'Fresh ChatGPT paste'
+      });
+    }
+
+    return checked;
+  }
+
+  async function checkFreshReading(cfg, bankRaw) {
+    const qs = parseFreshReading(cfg);
+    const oldTexts = [];
+
+    for (const raw of bankRaw || []) {
+      const q = C.normalize(raw, {
+        class: cfg.class || getSelectedClass(),
+        board: 'CBSE',
+        subject: 'English'
+      });
+
+      if (!q.deleted && q.passage) {
+        oldTexts.push(q.passage);
+      }
+    }
+
+    const user =
+      (typeof currentUser !== 'undefined' && currentUser) ||
+      window.firebase?.auth?.().currentUser;
+
+    if (!user) {
+      throw new Error(
+        'Sign in to check the fresh reading against saved papers.'
+      );
+    }
+
+    let papers;
+
+    try {
+      papers = await firestore
+        .collection('adminExamPapers')
+        .doc(user.uid)
+        .collection('papers')
+        .where('class', '==', cfg.class || getSelectedClass())
+        .get();
+    } catch (error) {
+      throw new Error(
+        'Could not check saved papers: ' + error.message
+      );
+    }
+
+    const collect = q => {
+      if (q.passage || q.text || q.question) {
+        oldTexts.push(q.passage || q.text || q.question);
+      }
+
+      (q.alternatives || []).forEach(collect);
+      (q.parts || []).forEach(collect);
+    };
+
+    papers.forEach(doc => {
+      const saved = doc.data();
+      const p = saved._cbseBlueprintSource || saved;
+
+      (p.subjects || [])
+        .filter(s => C.key(s.subject) === 'english')
+        .forEach(s => {
+          (s.rows || []).forEach(r =>
+            (r.items || []).forEach(collect)
+          );
+
+          (s.sections || []).forEach(r =>
+            (r.questions || []).forEach(collect)
+          );
+        });
+    });
+
+    for (const q of qs) {
+      if (oldTexts.some(text =>
+        readingTextRepeated(q.passage, text)
+      )) {
+        throw new Error(
+          'A fresh reading text repeats or substantially overlaps a bank text or saved paper. Generate a different text.'
+        );
+      }
+    }
+
+    return qs.map(q => ({
+      ...q,
+      freshnessCheckedAt: new Date().toISOString(),
+      freshnessScope:
+        'Available current-class bank and saved papers'
+    }));
+  }
+
+  function wireFreshReading(cfg, list, sIdx) {
+    $('.cb-reading-source', list)?.addEventListener(
+      'change',
+      e => {
+        cfg.englishReadingSource =
+          e.target.value === 'bank' ? 'bank' : 'fresh';
+
+        cfg.englishSignature = '';
+        renderSubject(sIdx);
+      }
+    );
+
+    $$('select.cb-fresh-kind', list).forEach(el =>
+      el.addEventListener('change', () => {
+        cfg.englishFreshKinds = {
+          ...cfg.englishFreshKinds,
+          [el.dataset.readingRow]:
+            el.value === 'Poetry' ? 'Poetry' : 'Prose'
+        };
+
+        cfg.englishSignature = '';
+        renderSubject(sIdx);
+      })
+    );
+
+    $('.cb-fresh-paste', list)?.addEventListener(
+      'input',
+      e => {
+        cfg.englishFreshReadingText = e.target.value;
+      }
+    );
+
+    $('.cb-reading-prompt', list)?.addEventListener(
+      'click',
+      () => {
+        const prompt = freshReadingPrompt(cfg);
+
+        openDialog(
+          'Fresh unseen reading prompt',
+          `
+            <textarea
+              class="cb-prompt"
+              rows="16"
+              readonly>${escape(prompt)}</textarea>
+            <p class="cb-copy-status">
+              Copy this prompt into ChatGPT.
+              Recheck there before requesting the final set.
+            </p>
+          `,
+          [
+            {
+              label: 'Copy prompt',
+              primary: true,
+              action: async el => {
+                try {
+                  await navigator.clipboard.writeText(prompt);
+                  $('.cb-copy-status', el).textContent = 'Copied.';
+                } catch {
+                  const box = $('.cb-prompt', el);
+                  box.select();
+
+                  $('.cb-copy-status', el).textContent =
+                    'Press Ctrl+C to copy.';
+                }
+              }
+            },
+            {
+              label: 'Open ChatGPT',
+              action: () => window.open(
+                'https://chatgpt.com/',
+                '_blank',
+                'noopener'
+              )
+            }
+          ]
+        );
+      }
+    );
+
+    $('.cb-reading-review', list)?.addEventListener(
+      'click',
+      async e => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+
+        try {
+          cfg.englishFreshReadingText =
+            $('.cb-fresh-paste', list).value;
+
+          const qs = await checkFreshReading(
+            cfg,
+            await rawPool(cfg.subject, false)
+          );
+
+          const dlg = openDialog(
+            'Review fresh reading',
+            `
+              <p class="cb-notice">
+                Format and reuse checks passed.
+                These checks do not certify factual accuracy
+                or answer correctness.
+              </p>
+              ${qs.map((q, i) => `
+                <h3>Reading ${i + 1} — ${q.marks} marks</h3>
+                ${questionHTML(q, true)}
+              `).join('')}
+            `
+          );
+
+          await math($('.cb-dialog-body', dlg));
+        } catch (error) {
+          errorDialog(
+            'Check the fresh reading',
+            [error.message]
+          );
+        } finally {
+          btn.disabled = false;
+        }
+      }
+    );
+  }
+
   function englishBankPanel(cfg, sIdx) {
     const issues = cfg.blueprint.englishIssues || [];
     if (getSourceTypeGlobal() !== 'Question Bank') return `<div class="cb-notice ${issues.length ? 'cb-error' : 'cb-good'}"><b>English syllabus coverage</b><br>Grammar: ${(cfg.blueprint.englishTopics?.Grammar || []).length} topic(s) · Writing: ${(cfg.blueprint.englishTopics?.Writing || []).length} format(s).<br>${issues.length ? issues.map(escape).join('<br>') : 'The selected topics and the import blueprint are ready.'}</div>`;
@@ -13303,11 +13917,27 @@ if (cleanedErrors.length) {
     const raw = state.pools.get(`${getSelectedClass()}|${cfg.subject}`) || [];
     const pool = preparedPool(raw, cfg, selectedChapters(sIdx)).filter(q => !C.nodeErrors(q).length);
     const distinct = new Map(pool.map(q => [C.fingerprint(q),q]));
-    const readiness = cfg.blueprint.rows.map(r => ({r,need:r.count+r.orCount,available:[...distinct.values()].filter(q => C.compatible(q,r,'Any')).length}));
+        let fresh = [];
+
+    if (freshReadingEnabled(cfg)) {
+      try {
+        fresh = parseFreshReading(cfg);
+      } catch (_) {}
+    }
+
+    const readiness = cfg.blueprint.rows.map(r => ({
+      r,
+      need: r.count + r.orCount,
+      available: (
+        r.type === 'Reading' && freshReadingEnabled(cfg)
+          ? fresh
+          : [...distinct.values()]
+      ).filter(q => C.compatible(q, r, 'Any')).length
+    }));
     return `<div class="cb-notice"><b>Saved questions in the selected lessons</b><br>Reading: ${counts.Reading || 0} complete sets (${bank.readingKinds.Prose || 0} prose, ${bank.readingKinds.Poetry || 0} poetry) · Grammar: ${counts.Grammar || 0} · Writing: ${counts.Writing || 0} · Literature: ${counts.Literature || 0}.<br>Chapter names stay attached to every saved record. The paper uses the questions required by the selected blueprint.<br><button type="button" class="cb-button cb-refresh-english">Refresh saved questions</button></div>
       <details class="cb-details"><summary>Eligible grammar topics and writing formats</summary><p class="cb-muted">Use these checkboxes to restrict this paper to taught topics and formats. The blueprint determines how many records are selected.</p>${checklist('Grammar topics','englishGrammar',bank.groups.Grammar,bank.topicCounts,C.englishTopicKey)}${checklist('Writing formats','englishWriting',bank.groups.Writing,bank.formatCounts,C.englishFormatKey)}</details>
       ${issues.length ? `<div class="cb-notice cb-error">${issues.map(escape).join('<br>')}</div>` : ''}
-      <details class="cb-details"><summary>Question availability for this blueprint</summary><p class="cb-muted">Counts include OR alternatives and check marks, kind, topic/format and subquestion pattern. Model-family quotas, duplicate overlaps and chapter coverage are checked when building. Complete sets keep their saved marks; a 10-mark passage is not shortened into a 5-mark record.</p><div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Question group</th><th>Marks each</th><th>Required records</th><th>Eligible saved records</th></tr></thead><tbody>${readiness.map(({r,need,available}) => `<tr${available < need ? ' class="cb-short"' : ''}><td>${escape(r.title)}</td><td>${r.marks}</td><td>${need}</td><td>${available}</td></tr>`).join('')}</tbody></table></div>${bank.excluded.length ? `<p class="cb-error">${bank.excluded.length} incomplete record(s) excluded. Use “Check bank & classify” to inspect them.</p>` : ''}</details>`;
+      <details class="cb-details"><summary>Question availability for this blueprint</summary><p class="cb-muted">Counts include OR alternatives and check marks, kind, topic/format and subquestion pattern. Model-family quotas, duplicate overlaps and chapter coverage are checked when building. Complete sets keep their saved marks; a 10-mark passage is not shortened into a 5-mark record.</p><div class="cb-table-wrap"><table class="cb-table"><thead><tr><th>Question group</th><th>Marks each</th><th>Required records</th><th>Eligible records — bank or fresh paste</th></tr></thead><tbody>${readiness.map(({r,need,available}) => `<tr${available < need ? ' class="cb-short"' : ''}><td>${escape(r.title)}</td><td>${r.marks}</td><td>${need}</td><td>${available}</td></tr>`).join('')}</tbody></table></div>${bank.excluded.length ? `<p class="cb-error">${bank.excluded.length} incomplete record(s) excluded. Use “Check bank & classify” to inspect them.</p>` : ''}</details>`;
   }
   function wireEnglishBankPanel(cfg, list, sIdx) {
     if (cfg.variant !== 'english') return;
@@ -13345,10 +13975,28 @@ if (cleanedErrors.length) {
       const index = getSelectedSubjects().indexOf(subject);
       const chapters = index < 0 ? [] : selectedChapters(index);
       const grade = getSelectedClass();
-      const signature = JSON.stringify([grade, cfg.marks, chapters, cfg.chapterAreas, getSourceTypeGlobal(), cfg.englishBank, cfg.englishGrammar, cfg.englishWriting]);
+            const signature = JSON.stringify([
+        grade,
+        cfg.marks,
+        chapters,
+        cfg.chapterAreas,
+        getSourceTypeGlobal(),
+        cfg.englishBank,
+        cfg.englishGrammar,
+        cfg.englishWriting,
+        cfg.englishReadingKind || 'Prose'
+      ]);
+
       if (cfg.englishSignature !== signature) {
         cfg.blueprint = C.buildChapterPreset('english', cfg.marks, {
-          class: grade, chapters, chapterAreas: cfg.chapterAreas, source: getSourceTypeGlobal(), englishBank: cfg.englishBank, englishGrammar: cfg.englishGrammar, englishWriting: cfg.englishWriting
+          class: grade,
+          chapters,
+          chapterAreas: cfg.chapterAreas,
+          source: getSourceTypeGlobal(),
+          englishBank: cfg.englishBank,
+          englishGrammar: cfg.englishGrammar,
+          englishWriting: cfg.englishWriting,
+          englishReadingKind: cfg.englishReadingKind || 'Prose'
         });
         cfg.englishSignature = signature;
       }
@@ -13356,6 +14004,7 @@ if (cleanedErrors.length) {
     if (['science', 'social'].includes(cfg.variant) && !cfg.blueprint.custom && !cfg.blueprint.chapterScoped) {
       cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false });
     }
+        applyFreshReadingKinds(cfg);
     return cfg;
   }
   function patternText(pattern) {
@@ -13386,10 +14035,12 @@ if (cleanedErrors.length) {
         : [20, 40, ...(cfg.variant === 'computer' ? [50] : []), 80];
     const rows = cfg.blueprint.rows;
     list.innerHTML = `<div class="cb-flex"><label>Reference course<select class="cb-variant">${variants.map(([v, l]) => option(v, l, cfg.variant)).join('')}</select></label>
-      <label>Available Blueprint<select class="cb-size">${choices.map(n => option(n, `${n}-mark school blueprint`, cfg.marks)).join('')}${option('custom', 'Custom Paper', cfg.blueprint.custom ? 'custom' : cfg.marks)}</select></label>
+            <label>Available Blueprint<select class="cb-size">${choices.map(n => option(n, `${n}-mark school blueprint`, cfg.marks)).join('')}${option('custom', 'Custom Paper', cfg.blueprint.custom ? 'custom' : cfg.marks)}</select></label>
+      ${cfg.variant === 'english' && cfg.marks === 40 && !cfg.blueprint.custom ? `<label>Reading set<select class="cb-reading-kind">${option('Prose', 'Unseen prose — 10 marks', cfg.englishReadingKind || 'Prose')}${option('Poetry', 'Unseen poetry — 10 marks', cfg.englishReadingKind || 'Prose')}</select></label>` : ''}
       <button type="button" class="cb-button cb-custom">Edit as Custom Paper</button>
       <button type="button" class="cb-button cb-bank">Check bank & classify</button></div>
       <p class="cb-muted">${escape(cfg.blueprint.note)} ${cfg.blueprint.source ? `<a href="${escape(cfg.blueprint.source)}" target="_blank" rel="noopener">Official reference</a>` : ''}</p>
+           ${freshReadingPanel(cfg)}
       ${cfg.variant === 'english' ? englishBankPanel(cfg, sIdx) : ''}
       ${cfg.variant === 'social' && !cfg.blueprint.custom ? `<label class="cb-check"><input type="checkbox" class="cb-include-maps" ${cfg.includeMaps !== false ? 'checked' : ''}> Include map questions from the selected chapters</label><p class="cb-muted">Turn this off when the selected chapters have no map work. The total marks stay the same; the revised question groups are shown below.</p>` : ''}
       ${cfg.blueprint.custom ? `<label>Subject target marks <input class="cb-target" type="number" min="0.5" step="0.5" value="${cfg.marks}"></label>` : ''}
@@ -13437,7 +14088,20 @@ if (cleanedErrors.length) {
       else { cfg.marks = Number(e.target.value); cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps !== false }); }
       renderSubject(sIdx); syncTotal();
     };
-    $('.cb-custom', list).onclick = () => { cfg.blueprint.custom = true; cfg.blueprint.note = 'Custom Paper. Counts, marks, models and choice rules are teacher-defined.'; renderSubject(sIdx); };
+        $('.cb-reading-kind', list)?.addEventListener('change', e => {
+      cfg.englishReadingKind =
+        e.target.value === 'Poetry' ? 'Poetry' : 'Prose';
+
+      cfg.englishSignature = '';
+      renderSubject(sIdx);
+    });
+
+    $('.cb-custom', list).onclick = () => {
+      cfg.blueprint.custom = true;
+      cfg.blueprint.note =
+        'Custom Paper. Counts, marks, models and choice rules are teacher-defined.';
+      renderSubject(sIdx);
+    };
     $('.cb-include-maps', list)?.addEventListener('change', e => { cfg.includeMaps = e.target.checked; cfg.blueprint = C.buildChapterPreset(cfg.variant, cfg.marks, { class: getSelectedClass(), includeMaps: cfg.includeMaps }); renderSubject(sIdx); });
     $('.cb-bank', list).onclick = () => bankInspector(sIdx).catch(e => errorDialog('Could not read question bank', [e.message]));
     $('.cb-target', list)?.addEventListener('change', e => { cfg.marks = Number(e.target.value); cfg.blueprint.marks = cfg.marks; renderSubject(sIdx); syncTotal(); });
@@ -13448,6 +14112,7 @@ if (cleanedErrors.length) {
     $$('[data-delete-row]', list).forEach(btn => btn.onclick = () => { cfg.blueprint.rows.splice(Number(btn.dataset.deleteRow), 1); renderSubject(sIdx); });
     $('.cb-add-row', list)?.addEventListener('click', () => { cfg.blueprint.rows.push({ id: `r${Date.now()}`, section: 'Section A', title: 'New group', type: 'Descriptive', count: 1, attempt: 1, marks: 1, orCount: 0, area: '', grouped: false, models: {}, pattern: null }); rowEditor(cfg, cfg.blueprint.rows.length - 1, sIdx); });
     const manual = $('.ai-manual-chapters-group', block); if (manual) manual.classList.add('cb-manual-chapters');
+        wireFreshReading(cfg, list, sIdx);
     wireEnglishBankPanel(cfg, list, sIdx); updateChapterMap(sIdx); syncTotal(); syncSource();
   }
   function updateChapterMap(sIdx) {
@@ -13735,7 +14400,23 @@ if (cleanedErrors.length) {
       const built = [], reports = [], failures = [];
       for (const cfg of snapshot.subjects) {
         status(`Checking ${cfg.subject}: marks, models, choices and chapter coverage…`);
-        const pool = source === 'Question Bank' ? preparedPool(await rawPool(cfg.subject, true), cfg, cfg.chapters) : preparedPool(imported, cfg, cfg.chapters);
+               const bankRaw = source === 'Question Bank'
+          ? await rawPool(cfg.subject, true)
+          : null;
+
+        let pool = source === 'Question Bank'
+          ? preparedPool(bankRaw, cfg, cfg.chapters)
+          : preparedPool(imported, cfg, cfg.chapters);
+
+        if (freshReadingEnabled(cfg)) {
+          const fresh = await checkFreshReading(cfg, bankRaw);
+
+          pool = pool.filter(q =>
+            q.englishSection !== 'Reading' &&
+            q.subjectArea !== 'Reading' &&
+            q.type !== 'Reading'
+          ).concat(fresh);
+        }
         const result = source === 'Question Bank'
           ? C.solve(cfg.blueprint, pool, { ...cfg, board: 'CBSE', chapters: cfg.chapters })
           : C.assembleFinalSet(cfg.blueprint, pool, {
@@ -14243,7 +14924,14 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
     $$('[data-node][data-field]', el).forEach(input => { const n = nodeAt(q, input.dataset.node), f = input.dataset.field; n[f] = ['marks', 'attempt'].includes(f) ? Number(input.value) : f === 'options' ? input.value.split('\n').map(x => x.trim()).filter(Boolean) : input.value; });
   }
   async function replaceQuestion(path) {
-    const loc = locate(path), cfg = state.paper.setup.subjects.find(s => s.subject === loc.sub.subject);
+       const loc = locate(path), cfg = state.paper.setup.subjects.find(s => s.subject === loc.sub.subject);
+
+    if (loc.q.readingSource === 'Fresh ChatGPT paste') {
+      errorDialog('Replace fresh reading', [
+        'Return to the Builder, generate and paste a new reading set, then rebuild. Fresh reading uses the dedicated Reading input.'
+      ]);
+      return;
+    }
     if (state.paper.source !== 'Question Bank') { errorDialog('Question replacement', ['For an imported paper, use Edit question / answer, or import an expanded inventory and rebuild.']); return; }
     const raw = await rawPool(loc.sub.subject, true, state.paper.class);
     const pool = preparedPool(raw, cfg, loc.sub.chapters);
