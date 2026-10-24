@@ -1435,6 +1435,8 @@ printable.prepend(avoidCSS);
       printable.style.padding = "0";
       printable.style.lineHeight = "1";
 function __qbBuildSchoolHeaderHTML(name, withStroke = true) {
+  if (__qbEnglishContext()) return '';
+
   const cleanName = __qbFormatSchoolNameForHeader(name);
 
   if (!cleanName) return '';
@@ -2271,26 +2273,19 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
   t.className = 'chapter-start-block';
   t.setAttribute('data-chapter-name', String(text || ''));
 
-  if (__qbEnglishContext()) {
+    if (__qbEnglishContext()) {
     const title = __qbSplitChapterDisplay(text).mainTitle || text;
 
     t.style.cssText =
-      "font-family:'Times New Roman',serif;text-align:center;" +
-      "margin:8px 0 14px;break-inside:avoid;page-break-inside:avoid;" +
+      "display:block;width:100%;box-sizing:border-box;" +
+      "font-family:'Times New Roman',serif;" +
+      "font-size:26pt;font-weight:700;color:#000;" +
+      "text-align:center;line-height:1.25;" +
+      "margin:6px 0 18px;overflow-wrap:break-word;" +
+      "break-inside:avoid;page-break-inside:avoid;" +
       "break-after:avoid;page-break-after:avoid;";
 
-    t.innerHTML = `
-      <div style="font-size:12pt;font-weight:700;color:#183f63;margin-bottom:5px;">
-        ENGLISH QUESTION BANK${includeKey ? ' - ANSWERS' : ''}
-      </div>
-      <div style="font-size:18pt;font-weight:700;color:#7A2639;margin-bottom:5px;">
-        ${__qbEscapeHtml(title)}
-      </div>
-      <div style="font-size:11pt;color:#444;">
-        ${__qbEscapeHtml(
-          ['CBSE', classVal, chapterLabel].filter(Boolean).join(' | ')
-        )}
-      </div>`;
+    t.textContent = String(title || '').trim();
 
     printable.appendChild(t);
     return t;
@@ -4520,7 +4515,205 @@ page.appendChild(footerWrap);
 
       return { page, inner, content };
     }
+function __qbFitEnglishOptions(root) {
+  root.querySelectorAll('.english-options').forEach(function(grid) {
+    const cells = Array.from(grid.children);
+    if (!cells.length) return;
+
+    const width = grid.getBoundingClientRect().width;
+    if (width <= 0) return;
+
+    const gap = parseFloat(getComputedStyle(grid).columnGap) || 20;
+
+    const multiline = cells.some(function(cell) {
+      return cell.textContent.indexOf(String.fromCharCode(10)) !== -1;
+    });
+
+    const widths = cells.map(function(cell) {
+      const original = cell.style.cssText;
+
+      cell.style.cssText +=
+        ';position:absolute;width:max-content;max-width:none;white-space:pre;';
+
+      const measured = Math.ceil(cell.getBoundingClientRect().width);
+      cell.style.cssText = original;
+
+      return measured;
+    });
+
+    let columns = 1;
+
+    if (!multiline && cells.length === 4) {
+      const totalWidth = widths.reduce(function(a,b) {
+        return a+b;
+      },0);
+
+      if (totalWidth + gap*3 + 2 <= width) {
+        columns = 4;
+      } else if (
+        Math.max(widths[0],widths[2]) +
+        Math.max(widths[1],widths[3]) +
+        gap + 2 <= width
+      ) {
+        columns = 2;
+      }
+    }
+
+    grid.style.gridTemplateColumns = columns === 1
+      ? 'minmax(0,1fr)'
+      : 'repeat(' + columns + ',max-content)';
+
+    grid.dataset.columns = String(columns);
+  });
+}
+
+function __qbEnglishHeadingOverflows(block, blocks, content, settings) {
+  const isHeading = function(node) {
+    return node.nodeType === 1 && (
+      node.matches('.english-print-heading,.english-set-heading') ||
+      (
+        node.classList.contains('keep-with-next-pair') &&
+        node.querySelector('.english-print-heading') &&
+        !node.querySelector('.english-print-row,.english-flow-text')
+      )
+    );
+  };
+
+  if (!isHeading(block)) return false;
+
+  const probes = [];
+
+  for (let i = 1; i < blocks.length; i++) {
+    const next = blocks[i];
+    if (next.nodeType !== 1) continue;
+
+    const probe = next.cloneNode(true);
+
+    if (
+      !isHeading(next) &&
+      next.matches('.english-flow-text,.english-print-answer')
+    ) {
+      probe.style.maxHeight = '3em';
+      probe.style.overflow = 'hidden';
+    }
+
+    content.appendChild(probe);
+    probes.push(probe);
+
+    if (!isHeading(next)) break;
+  }
+
+  normalizeBlockSpacing(content,settings);
+
+  const overflow = content.scrollHeight > content.clientHeight + 0.2;
+
+  probes.forEach(function(probe) {
+    probe.remove();
+  });
+
+  return overflow;
+}
+
+function __qbSplitEnglishFlow(block, content, settings) {
+  if (
+    block.nodeType !== 1 ||
+    !block.matches('.english-flow-text,.english-print-answer')
+  ) {
+    return null;
+  }
+
+  const text = block.textContent || '';
+  if (text.length < 2) return null;
+
+  const nodes = [];
+  const walker = document.createTreeWalker(block,4);
+  let node;
+
+  while ((node = walker.nextNode())) {
+    nodes.push(node);
+  }
+
+  const cutAt = function(offset) {
+    let left = offset;
+    let point = null;
+
+    for (const item of nodes) {
+      if (left <= item.textContent.length) {
+        point = {node:item,offset:left};
+        break;
+      }
+
+      left -= item.textContent.length;
+    }
+
+    if (!point) return null;
+
+    const head = block.cloneNode(false);
+    const tail = block.cloneNode(false);
+    const range = document.createRange();
+
+    range.selectNodeContents(block);
+    range.setEnd(point.node,point.offset);
+    head.appendChild(range.cloneContents());
+
+    range.selectNodeContents(block);
+    range.setStart(point.node,point.offset);
+    tail.appendChild(range.cloneContents());
+
+    head.style.marginBottom = '0';
+    tail.style.marginTop = '0';
+
+    return {head:head,tail:tail};
+  };
+
+  let low = 1;
+  let high = text.length-1;
+  let best = 0;
+
+  while (low <= high) {
+    const middle = Math.floor((low+high)/2);
+    const parts = cutAt(middle);
+
+    if (!parts) break;
+
+    content.appendChild(parts.head);
+    normalizeBlockSpacing(content,settings);
+
+    const fits = content.scrollHeight <= content.clientHeight + 0.2;
+    parts.head.remove();
+
+    if (fits) {
+      best = middle;
+      low = middle+1;
+    } else {
+      high = middle-1;
+    }
+  }
+
+  if (!best) return null;
+
+  let boundary = best;
+
+  while (
+    boundary > 0 &&
+    [9,10,13,32].indexOf(text.charCodeAt(boundary-1)) === -1
+  ) {
+    boundary--;
+  }
+
+  if (boundary > 0) best = boundary;
+
+  const result = cutAt(best);
+
+  return result &&
+    result.head.textContent.trim() &&
+    result.tail.textContent.trim()
+      ? result
+      : null;
+}
+
 function normalizeBlockSpacing(root, settings){
+  __qbFitEnglishOptions(root);
   const qBlocks = Array.from(
     root.querySelectorAll('.worksheet-flow-block, .page-flow-block, .question-gap-block')
   );
@@ -4983,10 +5176,34 @@ const __pageHasOnlySchoolHeader =
   measureShell.content.appendChild(testBlock);
   normalizeBlockSpacing(measureShell.page, settings);
 
-  const overflow = measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2;
+    const overflow =
+    measureShell.content.scrollHeight > measureShell.content.clientHeight + 0.2 ||
+    __qbEnglishHeadingOverflows(
+      nextBlock,
+      blocks,
+      measureShell.content,
+      settings
+    );
 
           if (overflow) {
-                measureShell.content.removeChild(testBlock);
+            measureShell.content.removeChild(testBlock);
+
+            const split = __qbSplitEnglishFlow(
+              nextBlock,
+              measureShell.content,
+              settings
+            );
+
+            if (split) {
+              blocks.shift();
+              blocks.unshift(split.tail);
+
+              measureShell.content.appendChild(split.head);
+              normalizeBlockSpacing(measureShell.page,settings);
+
+              pageHasContent = true;
+              break;
+            }
 
             if (
               nextBlock.nodeType === 1 &&
@@ -5898,11 +6115,7 @@ function __qbEnglishGroups(nodes, wantedTypes) {
             : `Literature Questions - ${marks} marks each`;
     }
 
-    const key = [
-      section,
-      topic,
-      section === 'Grammar' ? exercise + '|' + mcq : ''
-    ].join('|');
+       const key = [section, topic].join('|');
 
     const topicKey = section + '|' + topic;
 
@@ -5993,23 +6206,11 @@ function __qbEnglishPrintHeadings(parent, group, state) {
   if (group.section === 'Grammar') {
     const ex = group.exercise;
 
-    const instruction = group.mcq
-      ? 'Choose the correct option.'
-      : /gap|blank/i.test(ex)
-        ? 'Fill in the blanks.'
-        : /complet/i.test(ex)
-          ? 'Complete the sentences as directed.'
-          : /edit|correct/i.test(ex)
-            ? 'Correct the errors as directed.'
-            : /omi[st]/i.test(ex)
-              ? 'Supply the missing words as directed.'
-              : /rewrit|transform/i.test(ex)
-                ? 'Rewrite the sentences as directed.'
-                : ex.replace(/[.!?]$/, '') + '.';
-
-    heading(
-      'Exercise ' + (++state.exerciseNumber) + '. ' + instruction,
-      'exercise'
+        heading(
+      group.section === 'Grammar'
+        ? group.topic.toUpperCase()
+        : roman(number) + '. ' + group.topic,
+      'topic'
     );
   }
 }
@@ -6017,20 +6218,14 @@ function __qbEnglishPrintHeadings(parent, group, state) {
 function __qbEnglishPrintRow(label, text, marks, options = []) {
   const e = __qbEscapeHtml;
 
-  const columns = options.some(option =>
-    String(option).length > 75 || /\n/.test(option)
-  ) ? 1 : 2;
-
   const choices = options.length
-    ? `<div style="display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:3px 20px;margin-top:5px;">` +
-      options.map((option, i) =>
-        `<div style="min-width:0;overflow-wrap:break-word;">
-          ${String.fromCharCode(65 + i)}) ${e(
-            String(option).replace(/^[A-D][).]\s*/i, '')
-          )}
-        </div>`
-      ).join('') +
-      '</div>'
+    ? '<div class="english-options" style="display:grid;grid-template-columns:minmax(0,1fr);column-gap:20px;row-gap:3px;margin-top:5px;min-width:0;width:100%;">'+
+      options.map((option,i)=>
+        '<div class="english-option" style="min-width:0;white-space:pre-wrap;overflow-wrap:break-word;">'+
+        String.fromCharCode(65+i)+') '+
+        e(String(option).replace(/^[A-D][).]\s*/i,''))+
+        '</div>'
+      ).join('')+'</div>'
     : '';
 
   return `
@@ -6043,7 +6238,7 @@ function __qbEnglishPrintRow(label, text, marks, options = []) {
         <div style="white-space:pre-wrap;overflow-wrap:break-word;">${e(text)}</div>
         ${choices}
       </div>
-      <div style="text-align:right;white-space:nowrap;">(${Number(marks) || 0})</div>
+      <div style="text-align:right;white-space:nowrap;">(${Number(marks)||0})</div>
     </div>`;
 }
 
@@ -6079,22 +6274,21 @@ function __qbEnglishAppendPrint(
       ? 'Extract'
       : info.readingKind === 'Poetry' ? 'Poem' : 'Passage';
 
-    const passage = info.readingKind === 'Poetry'
-      ? `<div style="white-space:pre-wrap;">${e(parsed.passage)}</div>`
-      : parsed.passage.split(/\n\s*\n/).map(paragraph =>
-          `<div style="white-space:pre-wrap;margin-bottom:8px;">${e(paragraph)}</div>`
+       const passage = info.readingKind === 'Poetry'
+      ? parsed.passage.split(/\n/).map(line=>
+          `<div class="english-flow-text" style="white-space:pre-wrap;overflow-wrap:break-word;line-height:1.5;">${line ? e(line) : '&nbsp;'}</div>`
+        ).join('')
+      : parsed.passage.split(/\n\s*\n/).map(paragraph=>
+          `<div class="english-flow-text" style="white-space:pre-wrap;overflow-wrap:break-word;line-height:1.5;margin-bottom:8px;">${e(paragraph)}</div>`
         ).join('');
 
     wrap.innerHTML = `
-      <div class="paragraph-first-part"
-        style="margin-bottom:10px;line-height:1.5;">
-        <div style="display:flex;justify-content:space-between;
-          gap:12px;margin-bottom:6px;">
-          <b>${label} ${number}</b>
-          <span>(${Number(data.marks) || 0})</span>
-        </div>
-        ${passage}
-      </div>` +
+      <div class="english-set-heading" style="display:flex;
+        justify-content:space-between;gap:12px;
+        margin-bottom:6px;line-height:1.5;">
+        <b>${label} ${number}</b>
+        <span>(${Number(data.marks)||0})</span>
+      </div>` + passage +
       parsed.parts.map((part, i) =>
         `<div class="english-print-part"
           style="break-inside:avoid;page-break-inside:avoid;">` +
