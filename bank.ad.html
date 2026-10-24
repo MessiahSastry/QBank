@@ -6203,20 +6203,7 @@ function __qbEnglishPrintHeadings(parent, group, state) {
     heading(roman(number) + '. ' + group.topic, 'topic');
   }
 
-  if (group.section === 'Grammar') {
-    const ex = group.exercise;
-
-            const topicTitle = roman(number) + '. ' + group.topic;
-
-    const alreadyShown = Array.from(parent.children).some(node =>
-      node.classList.contains('english-print-heading') &&
-      node.textContent.trim() === topicTitle
-    );
-
-    if (!alreadyShown) {
-      heading(topicTitle, 'topic');
-    }
-  }
+   // Each topic heading is printed once in the block above.
 }
 
 function __qbEnglishPrintRow(label, text, marks, options = []) {
