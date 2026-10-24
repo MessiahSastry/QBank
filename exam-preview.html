@@ -7000,6 +7000,46 @@ function formatSectionTotal(value) {
 function formatExamTextForPrint(root) {
   if (!root) return;
 
+  const instructionKey = value => String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  const englishInstructionLines = new Set();
+
+  const paper = typeof exam !== 'undefined' ? exam : null;
+  const source = paper?._cbseBlueprintSource || paper;
+
+  for (const subject of source?.subjects || []) {
+    if (
+      !/^english\b/i.test(
+        String(subject.subject || '')
+      )
+    ) continue;
+
+    for (const row of subject.rows || []) {
+      const direction = row.printInstruction ||
+        (
+          row.grouped || row.attempt < row.count
+            ? row.title
+            : ''
+        );
+
+      if (!direction) continue;
+
+      [
+        direction,
+        ...String(direction).split(/\r?\n/)
+      ].forEach(line => {
+        const key = instructionKey(line);
+
+        if (key) {
+          englishInstructionLines.add(key);
+        }
+      });
+    }
+  }
+
   // Convert embedded MCQ lists into the automatic option layout.
   root.querySelectorAll('.question-text ol').forEach(list => {
     const items = Array.from(list.children).filter(
@@ -7068,7 +7108,7 @@ function formatExamTextForPrint(root) {
   });
 
   // Identify instruction lines.
-  const instructionStart = /^(?:(?:\(\d+\)|\([a-z]\)|[ivxlcdm]+\.)\s*)?(?:(?:read|study|observe|examine)\s+(?:the\s+)?(?:(?:following|given)\s+)?(?:(?:prose(?:\s*(?:\/|and|&)\s*drama)?|drama|poetry|poetic)\s+)?(?:passages?|extracts?|poems?|texts?|tables?|charts?|graphs?|data|pictures?|images?|information|cases?)\b|(?:answer|attempt)\s+(?:any|all|both|each|(?:the\s+)?(?:foll(?:o)?wing|questions?))\b|choose\s+(?:the\s+)?(?:correct|appropriate|best)\b|(?:complete|rewrite|match)\s+(?:the\s+)?following\b|fill\s+(?:in\s+)?(?:the\s+)?blanks?\b|write\s+(?:a|an)\s+(?:formal|informal|letter|paragraph|report|notice|email)\b)/i;
+  const instructionStart = /^(?:(?:\(\d+\)|\([a-z]\)|[ivxlcdm]+\.)\s*)?(?:(?:read|study|observe|examine)\s+(?:the\s+)?(?:(?:following|given)\s+)?(?:(?:prose(?:\s*(?:\/|and|&)\s*drama)?|drama|poetry|poetic)\s+)?(?:passages?|extracts?|poems?|texts?|tables?|charts?|graphs?|data|pictures?|images?|information|cases?)\b|(?:answer|attempt)\s+(?:any|all|both|each|(?:the\s+)?(?:foll(?:o)?wing|questions?))\b|choose\s+(?:the\s+)?(?:correct|appropriate|best)\b|(?:complete|rewrite|match)\s+(?:(?:any|all|both|each)\b|(?:the\s+)?following\b)|fill\s+(?:in\s+)?(?:the\s+)?blanks?\b|write\s+(?:a|an)\s+(?:formal|informal|letter|paragraph|report|notice|email)\b)/i;
 
   root.querySelectorAll(
     '.question-text, .question-text p, .question-text div, ' +
@@ -7103,7 +7143,10 @@ function formatExamTextForPrint(root) {
         run.length &&
         !alreadyMarked &&
         !isAlternative &&
-        instructionStart.test(text)
+               (
+          instructionStart.test(text) ||
+          englishInstructionLines.has(instructionKey(text))
+        )
       ) {
         const instruction = document.createElement('span');
         instruction.className = 'exam-print-instruction';
@@ -8676,7 +8719,7 @@ function cbsePrintSectionName(subject, section, combined = false) {
   if (!/^english\b/i.test(String(subject.subject || ''))) return name;
 
   if (/^Section\s+A$/i.test(name)) return 'Section A — Reading Skills';
-  if (/^Section\s+C$/i.test(name)) return 'Section C — Literature Textbook';
+  if (/^Section\s+C$/i.test(name)) return 'Section C — Literature';
 
   if (/^Section\s+B$/i.test(name)) {
     if (combined) return 'Section B — Grammar and Writing';
@@ -9068,17 +9111,12 @@ function cbseFormatSectionBoxes(page) {
                box.append(instruction, marks);
         block.append(heading);
                if (
-          /^english\b/i.test(
+          !/^english\b/i.test(
             String(subject.subject || '')
           )
         ) {
-          instruction.textContent =
-            'Follow the instructions printed with each question. ' +
-            'For Attempt Any groups, answer only the required ' +
-            'number of items. Where OR is given, answer one alternative.';
+          block.append(box);
         }
-
-        block.append(box);
 
         group.shown = true;
       }
