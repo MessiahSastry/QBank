@@ -5716,8 +5716,238 @@
   window.CBSE_SUBJECTS = canonicalSubjects;
   window.CBSE_SUBJECT_ALIASES = aliases;
   window.CBSE_SYLLABUS_NOTES = notes;
-  window.CBSE_CHAPTERS_VERSION = "2026-27.2026-10-10";
+  window.CBSE_CHAPTERS_VERSION = "2026-27.2026-10-24-english-lesson";
   window.getCBSEChapters = getChapters;
   window.getCBSEChapterMetadata = getMetadata;
   window.getCBSESubjects = getSubjects;
+})();
+
+/* School-assigned English lesson packages: practice policy, not official chapter content. */
+(function () {
+  "use strict";
+  const policy = {
+    scope: "CBSE English Classes 6–12",
+    reading: {proseSets: 2, poemSets: 2, marksPerSet: 10},
+    grammar: {minTopics: 2, maxTopics: 3, exerciseCount: "AI decides by topic", marksPerItem: 1},
+    writing: {tasksPerFormat: 5, marksPerTask: 5},
+    literature: {extractSets: 3, extractMarks: 5, shortAnswers: 8, shortMarks: 3, longAnswers: 3, longMarks: 6, longAnswersRequireTextSupport: true},
+    note: "School practice-bank inventory. Actual exams require their prescribed class/course blueprint. Reading, grammar and writing remain linked to the selected lesson."
+  };
+  const class6Plan = {
+  "A Bottle of Dew": {
+    "unit": 1,
+    "unitTitle": "Fables and Folk Tales",
+    "grammarTopics": [
+      "Nouns",
+      "Articles",
+      "Sentence Parts and Types"
+    ],
+    "writingFormats": [
+      "Paragraph Writing"
+    ]
+  },
+  "The Raven and the Fox": {
+    "unit": 1,
+    "unitTitle": "Fables and Folk Tales",
+    "grammarTopics": [
+      "Pronouns",
+      "Adjectives",
+      "Nouns"
+    ],
+    "writingFormats": [
+      "Short Story Writing"
+    ]
+  },
+  "Rama to the Rescue": {
+    "unit": 1,
+    "unitTitle": "Fables and Folk Tales",
+    "grammarTopics": [
+      "Verbs",
+      "Helping Verbs",
+      "Articles"
+    ],
+    "writingFormats": [
+      "Message Writing"
+    ]
+  },
+  "The Unlikely Best Friends": {
+    "unit": 2,
+    "unitTitle": "Friendship",
+    "grammarTopics": [
+      "Tenses",
+      "Adverbs",
+      "Sentence Parts and Types"
+    ],
+    "writingFormats": [
+      "Informal Letters"
+    ]
+  },
+  "A Friend's Prayer": {
+    "unit": 2,
+    "unitTitle": "Friendship",
+    "grammarTopics": [
+      "Prepositions",
+      "Conjunctions",
+      "Pronouns"
+    ],
+    "writingFormats": [
+      "Formal Letters"
+    ]
+  },
+  "The Chair": {
+    "unit": 2,
+    "unitTitle": "Friendship",
+    "grammarTopics": [
+      "Synonyms",
+      "Antonyms",
+      "Adjectives"
+    ],
+    "writingFormats": [
+      "Notice Writing"
+    ]
+  },
+  "Neem Baba": {
+    "unit": 3,
+    "unitTitle": "Nurturing Nature",
+    "grammarTopics": [
+      "Gap Filling",
+      "Fill in the Blanks",
+      "Verbs"
+    ],
+    "writingFormats": [
+      "Article Writing"
+    ]
+  },
+  "What a Bird Thought": {
+    "unit": 3,
+    "unitTitle": "Nurturing Nature",
+    "grammarTopics": [
+      "Jumbled Words / Sentence Reordering",
+      "One-word Substitution",
+      "Helping Verbs"
+    ],
+    "writingFormats": [
+      "Paragraph Writing"
+    ]
+  },
+  "Spices that Heal Us": {
+    "unit": 3,
+    "unitTitle": "Nurturing Nature",
+    "grammarTopics": [
+      "Editing",
+      "Omitting",
+      "Tenses"
+    ],
+    "writingFormats": [
+      "Application to Principal"
+    ]
+  },
+  "Change of Heart": {
+    "unit": 4,
+    "unitTitle": "Sports and Wellness",
+    "grammarTopics": [
+      "Conditional / If Clauses",
+      "Question Tags",
+      "Prepositions"
+    ],
+    "writingFormats": [
+      "Notice Writing"
+    ]
+  },
+  "The Winner": {
+    "unit": 4,
+    "unitTitle": "Sports and Wellness",
+    "grammarTopics": [
+      "Non-finite Verbs",
+      "Conjunctions",
+      "Adverbs"
+    ],
+    "writingFormats": [
+      "Message Writing"
+    ]
+  },
+  "Yoga - A Way of Life": {
+    "unit": 4,
+    "unitTitle": "Sports and Wellness",
+    "grammarTopics": [
+      "Active and Passive Voice",
+      "Synonyms",
+      "Antonyms"
+    ],
+    "writingFormats": [
+      "Application to Principal"
+    ]
+  },
+  "Hamara Bharat - Incredible India!": {
+    "unit": 5,
+    "unitTitle": "Culture and Tradition",
+    "grammarTopics": [
+      "Direct and Indirect Speech",
+      "Gap Filling",
+      "Fill in the Blanks"
+    ],
+    "writingFormats": [
+      "Article Writing"
+    ]
+  },
+  "The Kites": {
+    "unit": 5,
+    "unitTitle": "Culture and Tradition",
+    "grammarTopics": [
+      "Jumbled Words / Sentence Reordering",
+      "One-word Substitution",
+      "Non-finite Verbs"
+    ],
+    "writingFormats": [
+      "Short Story Writing"
+    ]
+  },
+  "Ila Sachani: Embroidering Dreams with her Feet": {
+    "unit": 5,
+    "unitTitle": "Culture and Tradition",
+    "grammarTopics": [
+      "Active and Passive Voice",
+      "Direct and Indirect Speech",
+      "Editing"
+    ],
+    "writingFormats": [
+      "Formal Letters"
+    ]
+  },
+  "National War Memorial": {
+    "unit": 5,
+    "unitTitle": "Culture and Tradition",
+    "grammarTopics": [
+      "Omitting",
+      "Conditional / If Clauses",
+      "Question Tags"
+    ],
+    "writingFormats": [
+      "Informal Letters"
+    ]
+  }
+};
+  const identity = value => String(value == null ? "" : value).normalize("NFKC").toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9]+/g, " ").trim();
+  window.CBSE_ENGLISH_LESSON_BANK = {version: "2026-10-24", policy, class6Plan};
+  window.getCBSEEnglishChapterPlan = function (classValue, chapterValue, subjectValue) {
+    if (!/^english(?:\s|$)/i.test(String(subjectValue || "English").trim())) return null;
+    const grade = Number((String(classValue || "").match(/\d+/) || [0])[0]);
+    if (grade < 6 || grade > 12) return null;
+    const metadata = typeof window.getCBSEChapterMetadata === "function" ? window.getCBSEChapterMetadata(classValue, subjectValue || "English") : [];
+    const fallback = metadata.length ? metadata : window.getCBSEChapterMetadata?.(classValue, "English") || [];
+    const found = fallback.find(item => identity(item.title) === identity(chapterValue));
+    if (!found) return null;
+    const assignedKey = grade === 6 ? Object.keys(class6Plan).find(title => identity(title) === identity(found.title)) : null;
+    const assigned = assignedKey ? class6Plan[assignedKey] : {};
+    return {
+      title: found.title, book: found.book || "", part: found.part || null,
+      area: found.area || "", unit: found.unit || assigned.unit || null,
+      unitTitle: assigned.unitTitle || "", source: found.source || "",
+      course: grade >= 11 ? "English Core — verify against the selected current course" : "",
+      grammarTopics: [...(assigned.grammarTopics || [])],
+      writingFormats: [...(assigned.writingFormats || [])],
+      assignmentSource: assignedKey ? "Proposed school annual plan; verify actual lesson language work" : "AI selects from verified actual lesson and class/course syllabus",
+      inventory: JSON.parse(JSON.stringify(policy))
+    };
+  };
 })();
