@@ -97,7 +97,62 @@
       .setup-form-container button[type="submit"] { background: linear-gradient(90deg, #1762a7, #0f3d6b); color: #fff; font-weight: bold; cursor: pointer; padding: 12px 0; margin-top: 15px; width: 100%; border-radius: 8px; border: none; font-size: 1.05em; }
 
       .custom-dropdown { position: relative; }
-      .selected-option { padding: 10px 12px; color: #12416c; background: #f7fafd; border-radius: 6px; border: 1.3px solid #bcd6ef; cursor: pointer; }
+     .selected-option {
+  padding:10px 12px;
+  color:#12416c;
+  background:#f7fafd;
+  border-radius:6px;
+  border:1.3px solid #bcd6ef;
+  cursor:pointer;
+}
+
+.setup-form-container .selected-option,
+#english-lesson-bank-options select {
+  box-sizing:border-box;
+  min-height:44px;
+  font:inherit;
+  line-height:1.25;
+}
+
+#english-lesson-bank-options {
+  border:0 !important;
+  border-top:1px solid #d9e8f7 !important;
+  border-radius:0 !important;
+  padding:18px 0 0 !important;
+  background:transparent !important;
+}
+
+#english-lesson-bank-options select,
+#english-lesson-bank-options textarea {
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+  padding:10px 12px !important;
+  margin:4px 0 12px !important;
+  font:inherit;
+  line-height:1.25;
+  color:#12416c;
+  background:#f7fafd;
+  border:1.3px solid #bcd6ef;
+  border-radius:6px;
+}
+
+#english-lesson-bank-options select {
+  appearance:none;
+  -webkit-appearance:none;
+  cursor:pointer;
+}
+
+#english-lesson-bank-options textarea {
+  min-height:64px;
+  resize:vertical;
+}
+
+#english-lesson-bank-options select:focus-visible,
+#english-lesson-bank-options textarea:focus-visible {
+  outline:2px solid #1762a7;
+  outline-offset:2px;
+}
       .dropdown-options {
   display: none; position: absolute; top: 100%; left: 0; right: 0;
   background: #fff; border: 1.3px solid #bcd6ef; border-top: none;
@@ -861,7 +916,7 @@ Assigned writing formats: ${writing}
 - Do not write labels such as "Verified brief textual reference", "paraphrased from the middle of the story", "adapted from the lesson" or similar commentary before or inside the extract.
 - Check every quoted word against the actual textbook page before finalising. Source titles, URLs and page references belong outside the final question-record block.
 - Each extract question must be answerable from the printed extract and any explicitly requested lesson context; verify its answer against the actual text.
-- If a suitable verbatim extract cannot be accessed, verified or reproduced, STOP BEFORE Q1 and request the relevant textbook pages or lesson text. Do not replace it with a paraphrase or a placeholder.
+- Obtain the exact extract from the prescribed textbook already in the user's ChatGPT Library. If that book cannot be accessed, independently check matching official online textbook sources. Do not request another upload. If a suitable verbatim extract still cannot be accessed, verified or reproduced, STOP BEFORE Q1 and state the precise limitation. Do not substitute a paraphrase, summary, invented quotation or placeholder.
 - This exact-text rule applies to Literature extracts. Unseen Reading prose and poems remain original material.
 - 8 distinct short written responses, 3 marks each.
 - Up to 3 distinct long written responses, 6 marks each, only where the actual text supports the demand and marks.
@@ -895,7 +950,13 @@ CBSE QUESTION STANDARD — MANDATORY
 - Independently review the complete batch for CBSE class-level suitability, source accuracy, answers, clarity, difficulty, marks and duplicates before the final set.
 
 SOURCE AND ACADEMIC REQUIREMENTS
-- Check the current class, academic-session curriculum, actual prescribed textbook/course and selected lesson using CBSE Academic, NCERT, ePathshala or a school-supplied actual text.
+- The prescribed textbooks are already kept in the user's ChatGPT Library. First locate and open the matching textbook using available Library access. Confirm the class, board, English course, book, edition and exact selected lesson.
+- Read the actual lesson and its relevant textbook exercises from that Library book before preparing Literature questions. A filename, search snippet, contents list or catalogue entry is not evidence that the lesson has been read.
+- Select brief permissible Literature extracts directly from the accessed textbook. Preserve every word, spelling, punctuation mark, dialogue and poetry line break. Check the original page image whenever extracted text or OCR is uncertain.
+- Check the current prescribed course and curriculum through official CBSE/NCERT sources as needed. If the Library book cannot be found or opened, or Library access is unavailable in this session, independently locate the matching actual chapter through NCERT, ePathshala or another verified official textbook source.
+- If an official link fails, try another available official chapter PDF, textbook edition or full-book PDF. Summaries, coaching notes, external question banks and search snippets are not substitutes for the actual textbook.
+- In review notes outside the final question-record block, identify the Library filename and relevant textbook pages, or the accessed official URL and pages. Never invent source details or claim access that did not occur.
+- Do not ask the user to upload, paste, photograph or transcribe textbook pages again. If neither the existing Library book nor an official online source can be accessed and verified, report the precise limitation before Q1.
 - The catalogue supplies titles and metadata; it is not proof that the full chapter has been read.
 - Read the actual lesson and relevant language/writing exercises before claiming textbook alignment. Preserve their coverage alongside appropriate school-assigned practice.
 - For Classes 11–12, confirm English Core/Elective from the actual source/course. Do not use another course's literature, writing formats or grammar requirements.
@@ -1468,7 +1529,13 @@ function __scEditEnglishRecord(index) {
     if (!plan.grammarTopics.length) prompt = prompt.replace(/GRAMMAR MCQ:\n[\s\S]*?(?=\n\nWRITING:)/, '');
     if (!plan.writingFormats.length) prompt = prompt.replace(/WRITING:\nQ4:[\s\S]*?(?=\n\nLITERATURE ANSWER:)/, '');
     prompt = prompt.replaceAll('[Topic: Tenses]', '[Topic: ' + (plan.grammarTopics[0] || 'not applicable') + ']');
-    prompt = prompt.replaceAll(`[Chapter: ${params.chapter}]`, `[Chapter: ${params.chapter}] [Exam: ${plan.exam}] [Course: ${plan.course}]`);
+       prompt += `
+
+QUESTION HEADER RULE
+- Do not add Exam or Course metadata tags to any question header.
+- Keep all required question-type, marks, Section, Area, Model, Chapter, Topic, Exercise, Format and Reading Kind tags where applicable.
+- Use the syllabus allocation and course internally to select suitable content. The final records form a reusable lesson-wise question bank.
+`;
     prompt = prompt.replace('Requested section(s): Reading, Grammar, Writing and Literature',
       'Requested section(s): ' + ['Reading', plan.grammarTopics.length ? 'Grammar' : '', plan.writingFormats.length ? 'Writing' : '', 'Literature'].filter(Boolean).join(', '));
     return prompt;
@@ -1485,8 +1552,7 @@ function __scEditEnglishRecord(index) {
     }
     questions.forEach((q, i) => {
       const meta = q.parsedMeta || q.metaLine || '', section = __scEnglishTag(meta, 'Section');
-      if (!same(__scEnglishTag(meta, 'Exam'), plan.exam)) result.errors.push(`Q${i + 1}: Exam tag must match ${plan.exam}.`);
-      if (!same(__scEnglishTag(meta, 'Course'), plan.course)) result.errors.push(`Q${i + 1}: Course tag must match ${plan.course}.`);
+            // Exam and Course tags are optional; lesson, topic and format checks continue below.
       if (same(section, 'Grammar') && !plan.grammarTopics.some(t => same(t, __scEnglishTag(meta, 'Topic')))) result.errors.push(`Q${i + 1}: grammar topic is not assigned to this lesson and exam.`);
       if (same(section, 'Writing') && !plan.writingFormats.some(t => same(t, __scEnglishTag(meta, 'Format')))) result.errors.push(`Q${i + 1}: writing format is not assigned to this lesson and exam.`);
     });
@@ -5365,7 +5431,11 @@ For literature extract questions, use brief permissible verbatim excerpts from t
 
 Print only the textbook excerpt after Extract:. Do not substitute paraphrases, summaries, reconstructed scenes or textual references. Do not insert "Verified brief textual reference", "paraphrased from the middle of the story" or similar labels.
 
-Compare the complete excerpt word for word with the source. If a suitable exact extract cannot be accessed, verified or reproduced, stop before Q1 and request the relevant textbook pages or lesson text. Never invent a replacement extract.
+First locate and read the prescribed textbook already available in the user's ChatGPT Library. Compare the complete excerpt word for word with its original page; a Library filename or search snippet alone is insufficient.
+
+If the Library book cannot be accessed, independently find and open the matching actual chapter through NCERT, ePathshala or another verified official textbook source.
+
+Do not ask the user to upload textbook pages again or paste the lesson. If no suitable exact extract can be accessed, verified or reproduced through the Library or official online sources, stop before Q1 and state the precise limitation. Never invent a replacement extract or substitute a paraphrase.
 
 4. TEXTBOOK-BASED QUESTION RULE
 Every literature question and its answer must be supported by the verified lesson.
@@ -5459,19 +5529,20 @@ Keep research URLs outside the final question-record body so the existing HTML p
 
 Provide source references separately only when requested.
 
-8. SOURCE UNAVAILABLE OR INSUFFICIENT
-If browsing is unavailable, the actual literature lesson cannot be confirmed or read, or the verified content cannot support the required question inventory:
+8. LIBRARY-FIRST TEXTBOOK VERIFICATION
+The textbooks are already in the user's ChatGPT Library. First locate and open the prescribed book, confirm its class/course/edition, and read the actual selected lesson and relevant exercises.
 
-STOP BEFORE Q1.
+A Library filename, contents list, search snippet or catalogue entry does not prove that the lesson has been read. Use the actual text and check page images when OCR is uncertain.
 
-Clearly state the missing source or conflicting requirement.
+If the Library book is missing, unreadable or unavailable to this session, independently search matching official NCERT/ePathshala textbook sources online. Try other official chapter or full-book PDFs when a link fails.
 
-Request the official chapter PDF, chapter link, lesson text or a suitable blueprint adjustment.
+Use exact source wording for Literature extracts. Preserve punctuation and poetry line breaks. Identify the Library filename and textbook pages, or official source URL and pages, in review notes outside question records.
 
-Never pretend to have browsed or verified a source that was not accessed.
+Do not ask the user to upload, paste, photograph or transcribe textbook pages again.
 
-Never invent questions merely to complete a quota.
+If neither the Library book nor an official online source can be accessed and verified, an extract cannot be reproduced, or the actual lesson cannot support the requested inventory, STOP BEFORE Q1 and report the precise unresolved limitation.
 
+Never claim Library reading or online research that was not performed. Never fabricate extracts, source details or questions to fill a quota. Never replace an exact extract with a summary or paraphrase.
 Apply these additional rules ONLY to CBSE English.
 Do not change instructions for another subject.
 `;
@@ -5856,7 +5927,9 @@ A. OBJECTIVE / MCQ — 18 questions
 • Competency / interpretation
 
 B. EXTRACT-BASED — 5 sets
-• Use meaningful extracts from, or faithful short references to, the selected lesson/poem where legally and educationally appropriate.
+• First locate and read the prescribed lesson or poem in the textbook already kept in the user's ChatGPT Library. Use verified official online textbook sources if Library access is unavailable.
+• Use meaningful, brief permissible extracts copied word for word from the actual textbook, preserving punctuation and poetry line breaks.
+• Print only the actual excerpt under Extract:. Do not substitute textual references, summaries or paraphrases, and do not ask the user to upload the textbook again.
 • Each set should test comprehension, inference, vocabulary/literary understanding and interpretation.
 
 C. SHORT-ANSWER — 12 questions
