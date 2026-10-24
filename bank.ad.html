@@ -1020,6 +1020,7 @@ function __qbAiCleanText(value) {
 }
 
 function __qbBuildAiPromptFromQuestionData(data) {
+  if (__qbEnglishManaged(data)) return __qbGetAiInstruction() + '\n\n' + data.metaLine + '\n' + __qbEnglishQuestionText(data);
   if (__qbIsParagraphBasedQuestion(data)) {
     const passage = __qbAiCleanText(data.passage || '');
     const mcqs = Array.isArray(data.mcqs) ? data.mcqs : [];
@@ -1240,6 +1241,7 @@ async function __qbOpenAiHelperByQuestionId(questionId) {
 
 function initializeApp() {
   setupDropdowns();
+  __qbSyncEnglishFilters();
   // Do NOT fetch on load; wait until Class + Subject are chosen
   document.getElementById('questions-display-area').innerHTML =
     '<p class="no-questions-message">Select Class, Board and Subject to view questions.</p>';
@@ -1261,7 +1263,9 @@ function initializeApp() {
           document.querySelectorAll('#questions-display-area .question-item')
         );
 
-        const shuffleResult = await __qbEnsureWorkbookShuffleForQuestionNodes(currentQuestionNodes);
+        const shuffleResult = __qbEnglishContext()
+          ? {didSaveNew:false}
+          : await __qbEnsureWorkbookShuffleForQuestionNodes(currentQuestionNodes);
 
         if (shuffleResult.didSaveNew) {
           await fetchAndDisplayQuestions();
@@ -1361,7 +1365,8 @@ const __typesOrderHdr = [
     'Matching List',
   'Paragraph-Based MCQ (Single Correct)',
   'Fill in the Blanks',
-  'Descriptive'
+  'Descriptive',
+  'Reading', 'Extract', 'Grammar', 'Writing', 'QuestionSet'
 ];
 const __chosenTypes = (selectedQtypes.length === 0)
   ? __typesOrderHdr
@@ -1841,7 +1846,12 @@ function buildQuestionHTML(item, __parent = printable) {
        const docId = item.getAttribute('data-id');
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
-    if (source && __qbIsParagraphBasedQuestion(source)) {
+    if (source && __qbEnglishManaged(source)) {
+    const wrap = __qbEnglishAppendPrint(__parent, source, Number(source.questionNumber)||qCounter, false, docId);
+    qCounter++;
+    return wrap;
+  }
+  if (source && __qbIsParagraphBasedQuestion(source)) {
     const __displayQNo = Number(source.questionNumber) > 0
       ? Number(source.questionNumber)
       : qCounter;
@@ -2782,6 +2792,9 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const docId = item.getAttribute('data-id');
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
+  if (source && __qbEnglishManaged(source)) {
+    return __qbEnglishAppendPrint(__parent, source, Number(source.questionNumber)||qNum, true, docId);
+  }
   if (source && __qbIsParagraphBasedQuestion(source)) {
     const subjectText = String(source.subject || '').trim();
     const __theme = __qbGetSubjectTheme(subjectText || subjectVal);
@@ -3131,7 +3144,8 @@ if (includeWorksheet) {
     'Fill in the Blanks',
     'Descriptive',
     'Case Based',
-    'Map'
+    'Map',
+    'Reading', 'Extract', 'Grammar', 'Writing', 'QuestionSet'
   ];
   const __wantedWorksheetTypes = (selectedQtypes.length === 0)
     ? __worksheetTypesOrder
@@ -3273,6 +3287,18 @@ if (includeWorksheet) {
   }
 
   function __qbRenderWorksheetLevelWise(listScope) {
+    if (__qbEnglishContext()) {
+      let previousSection = '';
+      __qbEnglishGroups(listScope, __wantedWorksheetTypes).forEach(group=>{
+        const section = __qbCreateKeepBlock();
+        if (group.section !== previousSection) renderTypeHeading(group.section.toUpperCase(), section);
+        previousSection = group.section;
+        renderLeftHeading(group.label, section);
+        buildQuestionHTML(group.items[0], section);
+        group.items.slice(1).forEach(item=>buildQuestionHTML(item));
+      });
+      return;
+    }
     const levelBuckets = __qbGetLevelBuckets(listScope);
 
         levelBuckets.forEach(bucket => {
@@ -3386,7 +3412,8 @@ if (includeKey) {
     'Fill in the Blanks',
     'Descriptive',
     'Case Based',
-    'Map'
+    'Map',
+    'Reading', 'Extract', 'Grammar', 'Writing', 'QuestionSet'
   ];
 
   const __wantedKeyTypes = (selectedQtypes.length === 0)
@@ -3519,6 +3546,18 @@ if (includeKey) {
   }
 
   function __qbRenderKeyLevelWise(listScope) {
+    if (__qbEnglishContext()) {
+      let previousSection = '';
+      __qbEnglishGroups(listScope, __wantedKeyTypes).forEach(group=>{
+        const section = __qbCreateKeyKeepBlock();
+        if (group.section !== previousSection) renderTypeHeading(group.section.toUpperCase(), section);
+        previousSection = group.section;
+        renderLeftHeading(group.label, section);
+        __renderKeyQuestion(group.items[0], section);
+        group.items.slice(1).forEach(item=>__renderKeyQuestion(item));
+      });
+      return;
+    }
     const levelBuckets = __qbGetKeyLevelBuckets(listScope);
 
         levelBuckets.forEach(bucket => {
@@ -3613,6 +3652,14 @@ await __waitForImages(printable);
 
       let qNo = 1;
       for (const q of questions) {
+        const englishSource = window.__pdfQuestionDataMap?.[q.getAttribute('data-id')];
+        if (englishSource && __qbEnglishManaged(englishSource)) {
+          const lines = __qbEnglishQuestionText(englishSource).split('\n');
+          docChildren.push(new Paragraph({children:[new TextRun({text:`${qNo}. (${Number(englishSource.marks)||0} marks)`,bold:true,size:26})]}));
+          for (const line of lines) docChildren.push(new Paragraph({children:[new TextRun({text:line,size:26})],spacing:{after:60}}));
+          qNo++;
+          continue;
+        }
         let qText = decodeAndClean(q.querySelector('.question-text').innerHTML);
         let lines = qText.split('\n').map(l => l.trim()).filter(Boolean);
 
@@ -5323,6 +5370,7 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
 
   document.getElementById('questions-display-area').innerHTML =
     '<p class="no-questions-message">Select Class, Board, Subject and Chapter to view questions.</p>';
+  __qbSyncEnglishFilters();
 }
     function onBoardChange() {
   const boardName = document.getElementById('board-value').value;
@@ -5349,8 +5397,10 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
 
   document.getElementById('questions-display-area').innerHTML =
     '<p class="no-questions-message">Select Subject to load chapters.</p>';
+  __qbSyncEnglishFilters();
 }
     function onSubjectChange() {
+  __qbSyncEnglishFilters();
   updateChapterDropdown();
 }
 
@@ -5377,6 +5427,9 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
       .where('subject', '==', subjectVal);
 
     const snapshot = await q.get();
+    if (classVal !== document.getElementById('class-value').value ||
+        boardVal !== document.getElementById('board-value').value ||
+        subjectVal !== document.getElementById('subject-value').value) return;
     const chapters = new Set();
 
     snapshot.forEach(doc => {
@@ -5413,6 +5466,275 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
     displayArea.innerHTML = '<p class="no-questions-message">Failed to load chapters.</p>';
   }
 }
+/* English lesson-bank metadata and complete-set support: CBSE Classes 6–12. */
+function __qbEnglishKey(value) {
+  return String(value ?? '').normalize('NFKC').toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function __qbEnglishTag(data, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (String(data.metaLine || '').match(new RegExp('\\[' + escaped + ':\\s*([^\\]]+)\\]', 'i')) || [])[1]?.trim() || '';
+}
+function __qbEnglishContext(data) {
+  const p = data || {
+    class: document.getElementById('class-value')?.value,
+    board: document.getElementById('board-value')?.value,
+    subject: document.getElementById('subject-value')?.value
+  };
+  const grade = Number((String(p.class || '').match(/\d+/) || [0])[0]);
+  return grade >= 6 && grade <= 12 && __qbEnglishKey(p.board) === 'cbse' && /^english(?:\s|$)/i.test(p.subject || '');
+}
+function __qbEnglishInfo(data = {}) {
+  if (!__qbEnglishContext(data)) return null;
+  const tag = name => __qbEnglishTag(data, name), type = __qbNormalizeQuestionType(data);
+  const sectionName = tag('Section'), area = data.subjectArea || tag('Area');
+  let section = ['Reading', 'Grammar', 'Writing', 'Literature'].find(s => __qbEnglishKey(s) === __qbEnglishKey(sectionName)) || '';
+  if (!section) {
+    const direct = ['Reading', 'Grammar', 'Writing'].find(s => __qbEnglishKey(s) === __qbEnglishKey(area));
+    section = direct || (['Reading','Grammar','Writing'].includes(type) ? type :
+      type === 'Extract' || /^(prose|poetry|drama|supplementary(?: reader)?|literature)$/i.test(area) ? 'Literature' : 'Unclassified');
+  }
+  return {section, type, topic:tag('Topic'), format:tag('Format'), exercise:tag('Exercise'),
+    exam:tag('Exam'), course:tag('Course'), readingKind:tag('Reading Kind')};
+}
+function __qbEnglishManaged(data = {}) {
+  return __qbEnglishContext(data) && (!!__qbEnglishTag(data, 'Section') ||
+    ['Reading','Extract','Grammar','Writing','QuestionSet'].includes(__qbNormalizeQuestionType(data)));
+}
+function __qbEnglishSectionKey(data) {
+  if (data.sectionKey) return String(data.sectionKey);
+  const type=__qbNormalizeQuestionType(data), clean=value=>String(value||'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'').toUpperCase();
+  if (type==='MCQ (Single)') return 'CHAPTER_BANK_MCQ_SINGLE';
+  if (type==='MCQ (Multiple)') return 'CHAPTER_BANK_MCQ_MULTIPLE';
+  if (type==='Descriptive') return `CHAPTER_BANK_DESCRIPTIVE_${clean(data.category||data.descriptiveType||__qbEnglishTag(data,'Category'))||'GENERAL'}_${Number(data.marks)||0}`;
+  return `CHAPTER_BANK_${clean(type)}_${Number(data.marks)||0}`;
+}
+function __qbEnglishRawBody(data = {}) {
+  return String(data.body || data.question || data.text || '').replace(/\r\n?/g, '\n').replace(/^\s*Q\s*\d+\s*:[^\n]*\n/i, '').trim();
+}
+function __qbEnglishParseSet(data = {}) {
+  const body = __qbEnglishRawBody(data);
+  const re = /(?:^|\n)\s*Sub[- ]question\s+(\d+)\s*\((\d+(?:\.\d+)?)\s*Marks?\)\s*:\s*/gi;
+  const matches = [...body.matchAll(re)];
+  const passage = (matches.length ? body.slice(0, matches[0].index) : body).replace(/^\s*(?:Passage|Poem|Extract)\s*:\s*/i, '').trim();
+  const parts = matches.map((m, i) => {
+    const block = body.slice(m.index + m[0].length, matches[i+1]?.index ?? body.length).trim();
+    const answer = block.match(/(?:^|\n)\s*(?:Answer|Ans)\s*:\s*([\s\S]*?)(?=\n\s*Explanation\s*:|$)/i)?.[1]?.trim() || '';
+    const explanation = block.match(/(?:^|\n)\s*Explanation\s*:\s*([\s\S]*)$/i)?.[1]?.trim() || '';
+    const stem = block.split(/(?:^|\n)\s*(?:Answer|Ans|Explanation)\s*:/i)[0].trim();
+    const options = [...stem.matchAll(/(?:^|\n)\s*([A-D])[).]\s*([^\n]+)/g)];
+    return {number:Number(m[1]), marks:Number(m[2]), text:options.length ? stem.slice(0, options[0].index).trim() : stem,
+      options:options.map(o=>o[2].trim()), labels:options.map(o=>o[1]), answer, explanation};
+  });
+  return {passage, parts};
+}
+function __qbEnglishIsSet(data = {}) {
+  return ['Reading','Extract','QuestionSet'].includes(__qbNormalizeQuestionType(data));
+}
+function __qbEnglishQuestionText(data = {}) {
+  if (__qbEnglishIsSet(data)) {
+    const set = __qbEnglishParseSet(data), info = __qbEnglishInfo(data);
+    const label = info?.type === 'Extract' ? 'Extract' : info?.readingKind === 'Poetry' ? 'Poem' : 'Passage';
+    return `${label}:\n${set.passage}\n\n` + set.parts.map(p=>
+      `Sub-question ${p.number} (${p.marks} Mark${p.marks===1?'':'s'}):\n${p.text}` +
+      (p.options.length ? '\n'+p.options.map((o,i)=>String.fromCharCode(65+i)+') '+o).join('\n') : '')).join('\n\n');
+  }
+  const options = Array.isArray(data.options) ? data.options : [];
+  const raw = options.length ? String(data.question || __qbEnglishRawBody(data)) : __qbEnglishRawBody(data);
+  let stem = raw.split(/(?:^|\n)\s*(?:Answer|Ans|Explanation)\s*:/i)[0].trim();
+  if (options.length && /(?:^|\n)\s*A[).]\s*/.test(stem)) stem = stem.split(/(?:^|\n)\s*A[).]\s*/)[0].trim();
+  return stem + (options.length ? '\n'+options.map((o,i)=>String.fromCharCode(65+i)+') '+String(o).replace(/^[A-D][).]\s*/i,'')).join('\n') : '');
+}
+function __qbEnglishAnswerText(data = {}, includeExplanation = true) {
+  if (__qbEnglishIsSet(data)) return __qbEnglishParseSet(data).parts.map(p=>
+    `Sub-question ${p.number} (${p.marks} Mark${p.marks===1?'':'s'}): ${p.answer || 'Answer missing'}`+
+    (includeExplanation && p.explanation ? '\nExplanation: '+p.explanation : '')).join('\n\n');
+  let answer = String(data.parsedAnswer || data.answer || data.finalAnswer || '').replace(/^\s*(?:Answer|Ans)\s*:\s*/i, '').trim();
+  if (includeExplanation && data.explanation) answer += '\n\nExplanation: '+String(data.explanation).replace(/^\s*Explanation\s*:\s*/i,'');
+  return answer;
+}
+function __qbEnglishBodyHTML(data = {}, includeAnswers = false) {
+  const escape = __qbEscapeHtml;
+  if (__qbEnglishIsSet(data)) {
+    const {passage, parts} = __qbEnglishParseSet(data), info = __qbEnglishInfo(data);
+    const label = info?.type === 'Extract' ? 'Extract' : info?.readingKind === 'Poetry' ? 'Poem' : 'Passage';
+    return `<div class="english-set-text" style="white-space:pre-wrap;line-height:1.6;font-weight:400;"><b>${label}:</b>\n${escape(passage)}</div>`+
+      parts.map(p=>`<div class="english-set-part" style="margin-top:12px;break-inside:avoid;page-break-inside:avoid;">
+        <b>Sub-question ${p.number} (${p.marks} Mark${p.marks===1?'':'s'}):</b>
+        <div style="white-space:pre-wrap;">${escape(p.text)}</div>
+        ${p.options.map((o,i)=>`<div style="margin-left:16px;"><b>${String.fromCharCode(65+i)})</b> ${escape(o)}</div>`).join('')}
+        ${includeAnswers ? `<div class="english-answer" style="white-space:pre-wrap;margin-top:5px;"><b>Answer:</b> ${escape(p.answer)}${p.explanation?'\nExplanation: '+escape(p.explanation):''}</div>` : ''}
+      </div>`).join('') + (!parts.length ? '<p style="color:#a32a20;">No marked Sub-question blocks were recognised. Repair the complete record before exporting.</p>' : '');
+  }
+  return `<div style="white-space:pre-wrap;line-height:1.6;">${escape(__qbEnglishQuestionText(data))}</div>`+
+    (includeAnswers ? `<div class="english-answer" style="white-space:pre-wrap;margin-top:10px;"><b>Answer:</b> ${escape(__qbEnglishAnswerText(data))}</div>` : '');
+}
+function __qbEnglishMetaHTML(data, number) {
+  const info = __qbEnglishInfo(data), e = __qbEscapeHtml;
+  return `Q${number}: ${Number(data.marks)||0} Mark${Number(data.marks)===1?'':'s'} [${e(info.type)}]`+
+    `<div style="font-size:13px;font-weight:500;margin-top:4px;">${[
+      info.section, info.readingKind, info.topic, info.exercise, info.format,
+      'Lesson: '+(data.chapter || 'Unassigned'), 'Exam: '+(info.exam || 'No exam tag'),
+      'Course: '+(info.course || 'No course tag')].filter(Boolean).map(e).join(' · ')}</div>`;
+}
+function __qbEnglishSelectedFilters() {
+  const out = {};
+  for (const key of ['section','detail','exam','course','reading']) out[key] = document.getElementById('qb-english-'+key)?.value || '';
+  return out;
+}
+function __qbEnglishMatches(data, filters) {
+  const info = __qbEnglishInfo(data);
+  if (!info) return true;
+  const values = {section:info.section, detail:info.topic ? 'Grammar: '+info.topic : info.format ? 'Writing: '+info.format : '',
+    exam:info.exam, course:info.course, reading:info.readingKind};
+  return Object.keys(values).every(key => !filters[key] || (filters[key] === '__missing__' ? !values[key] : values[key] === filters[key]));
+}
+function __qbSyncEnglishFilters() {
+  const form = document.getElementById('filter-form');
+  if (!form) return;
+  let panel = document.getElementById('qb-english-filters');
+  if (!panel) {
+    panel = document.createElement('div'); panel.id = 'qb-english-filters';
+    panel.style.cssText = 'grid-column:1/-1;border:1px solid #c7d8e8;border-radius:12px;padding:12px;background:#f6faff;';
+    panel.innerHTML = '<b>English lesson bank</b><p style="font-size:13px;margin:6px 0 12px;">Choose lessons above, then filter their saved Reading, Grammar, Writing and Literature records.</p>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">'+
+      [['section','Section'],['detail','Grammar topic / Writing format'],['exam','Saved exam tag'],['course','Course'],['reading','Reading kind']].map(([key,label])=>
+        `<label style="font-weight:600;font-size:13px;">${label}<select id="qb-english-${key}" style="display:block;width:100%;padding:8px;margin-top:4px;"><option value="">All</option></select></label>`).join('')+
+      '</div><p id="qb-english-summary" style="font-size:13px;margin:10px 0 0;"></p>';
+    form.appendChild(panel);
+    for (const key of ['section','detail','exam','course','reading']) document.getElementById('qb-english-'+key).addEventListener('change', fetchAndDisplayQuestions);
+  }
+  const active = __qbEnglishContext(), context = ['class','board','subject'].map(k=>document.getElementById(k+'-value')?.value||'').join('|');
+  panel.hidden = !active;
+  if (panel.dataset.context !== context) {
+    const wasActive = panel.dataset.active === 'true';
+    panel.dataset.context = context;
+    panel.dataset.active = String(active);
+    window.__qbEnglishFetchSerial = (window.__qbEnglishFetchSerial || 0) + 1;
+    for (const key of ['section','detail','exam','course','reading']) document.getElementById('qb-english-'+key).innerHTML = '<option value="">All</option>';
+    document.getElementById('qb-english-summary').textContent = '';
+    const dd = document.getElementById('qtype-dropdown');
+    if (dd && (active || wasActive)) {
+      const board = document.getElementById('board-value')?.value || '';
+      const types = [...__qbGetQuestionTypesForBoard(board), ...(active ? ['Reading','Extract','Grammar','Writing','QuestionSet'] : [])];
+      dd.innerHTML = createMultiDropdownHTML('qtype', [...new Set(types)], 'All');
+      addMultiDropdownListener('qtype-dropdown', fetchAndDisplayQuestions);
+    }
+  }
+  const level = document.getElementById('level-dropdown'), group = level?.closest('.form-group');
+  if (group) group.style.display = active || __qbIsEntranceExamBoard(document.getElementById('board-value')?.value) ? 'none' : '';
+  if (active) {
+    const hidden = document.getElementById('level-values'); if (hidden) hidden.value = '';
+    level?.querySelectorAll('input[type="checkbox"]').forEach(b=>b.checked=false);
+  }
+}
+function __qbEnglishRefreshFacets(records) {
+  if (!__qbEnglishContext()) return;
+  const infos = records.map(__qbEnglishInfo).filter(Boolean);
+  const pools = {section:['Reading','Grammar','Writing','Literature','Unclassified'],
+    detail:infos.map(i=>i.topic?'Grammar: '+i.topic:i.format?'Writing: '+i.format:''),
+    exam:infos.map(i=>i.exam), course:infos.map(i=>i.course), reading:infos.map(i=>i.readingKind)};
+  for (const [key,pool] of Object.entries(pools)) {
+    const select = document.getElementById('qb-english-'+key); if (!select) continue;
+    const before = select.value;
+    const values = [...new Set(pool.filter(Boolean))]; if (key !== 'section') values.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+    select.innerHTML = '<option value="">All</option>'+values.map(value=>`<option value="${__qbEscapeHtml(value)}">${__qbEscapeHtml(value)}</option>`).join('')+
+      (['exam','course'].includes(key) && pool.some(t=>!t) ? '<option value="__missing__">No '+key+' tag (older records)</option>' : '');
+    select.value = [...select.options].some(o=>o.value===before) ? before : '';
+  }
+}
+function __qbEnglishGroups(nodes, wantedTypes) {
+  const groups = new Map(), order = ['Reading','Grammar','Writing','Literature','Unclassified'];
+  for (const node of nodes) {
+    const data = window.__pdfQuestionDataMap?.[node.getAttribute('data-id')] || {}, info = __qbEnglishInfo(data);
+    const type = node.getAttribute('data-type') || '';
+    if (!wantedTypes.includes(type)) continue;
+    const section = info?.section || 'Unclassified';
+    const label = section === 'Reading' ? (info.readingKind || type) : section === 'Grammar' ? (info.topic || type) :
+      section === 'Writing' ? (info.format || type) : `${type} — ${Number(data.marks)||0} marks`;
+    const key = section+'|'+label;
+    if (!groups.has(key)) groups.set(key,{section,label,items:[]});
+    groups.get(key).items.push(node);
+  }
+  return [...groups.values()].sort((a,b)=>order.indexOf(a.section)-order.indexOf(b.section)||a.label.localeCompare(b.label,undefined,{numeric:true}));
+}
+function __qbEnglishAppendPrint(parent, data, number, includeAnswers, docId = '') {
+  if (__qbEnglishIsSet(data) && !__qbEnglishParseSet(data).parts.length) throw new Error('Repair the complete English passage/extract set before exporting.');
+  const wrap = document.createElement('div'); wrap.className = 'worksheet-flow-block';
+  wrap.style.cssText = 'font-size:12pt;color:#000;margin:0 0 14px;break-inside:auto;page-break-inside:auto;';
+  wrap.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Q${number}. ${__qbEscapeHtml(__qbEnglishInfo(data)?.section || '')} · ${Number(data.marks)||0} marks</div>`+__qbEnglishBodyHTML(data,includeAnswers)+
+    (data.image ? `<img src="${__qbEscapeHtml(data.image)}" style="max-width:170px;max-height:110px;margin:8px 0;">` : '')+
+    (includeAnswers && docId ? `<div style="display:flex;justify-content:flex-end;margin-top:8px;" data-qr-link="${__qbEscapeHtml(__qbGetAiHelperUrl(docId))}"><img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;margin=2&amp;data=${encodeURIComponent(__qbGetAiHelperUrl(docId))}" style="width:58px;height:58px;margin:0;"></div>` : '');
+  parent.appendChild(wrap); return wrap;
+}
+function __qbEnglishEditableText(data) {
+  if (__qbEnglishIsSet(data)) return __qbEnglishHeader(data)+'\n'+__qbEnglishRawBody(data);
+  return __qbEnglishHeader(data)+'\n'+__qbEnglishQuestionText(data)+'\nAnswer: '+__qbEnglishAnswerText(data,false)+
+    (data.explanation?'\nExplanation: '+String(data.explanation).replace(/^\s*Explanation\s*:\s*/i,''):'');
+}
+function __qbEnglishHeader(data) {
+  return String(data.metaLine || `Q${Number(data.questionNumber)||1}: ${Number(data.marks)||0} Marks [${__qbNormalizeQuestionType(data)}] [Section: ${__qbEnglishInfo(data)?.section || 'Literature'}] [Chapter: ${data.chapter || ''}]`).trim();
+}
+function __qbEnglishContentSignature(data) {
+  return JSON.stringify([data.metaLine,data.type,data.mcqType,data.marks,data.chapter,data.body,data.question,data.answer,data.parsedAnswer,data.finalAnswer,data.explanation,data.options]);
+}
+function __qbEnglishEditedFields(data, input) {
+  const text = String(input).replace(/\r\n?/g,'\n').trim(), header = text.split('\n')[0].trim();
+  if (header !== __qbEnglishHeader(data)) throw new Error('Keep the original header and lesson/exam mapping unchanged.');
+  const body = text.slice(text.indexOf('\n')+1).trim(), type = __qbNormalizeQuestionType(data);
+  if (!body || text.indexOf('\n') < 0) throw new Error('Complete question content is required.');
+  if (/(?:^|\n)\s*Q\s*\d+\s*:/i.test(body)) throw new Error('Keep exactly one complete question record.');
+  let question, answer, explanation='', options;
+  if (__qbEnglishIsSet(data)) {
+    const set = __qbEnglishParseSet({...data,body});
+    if (!set.passage || !set.parts.length || set.parts.some((p,i)=>p.number!==i+1||!p.text||!p.answer||!(p.marks>0)) ||
+        set.parts.reduce((n,p)=>n+p.marks,0)!==Number(data.marks)) throw new Error('Keep the complete passage, consecutively marked subquestions, all answers and the correct marks total.');
+    for(const p of set.parts)if(p.options.length && (p.options.length!==4||p.labels.join('')!=='ABCD'||new Set(p.options.map(__qbEnglishKey)).size!==4||
+      !/^[A-D](?:[).:]|\b)/i.test(p.answer)||/^[A-D][).:]?\s*(?:[,;&/]|and\b|or\b)\s*[A-D]\b/i.test(p.answer))) throw new Error('Each MCQ subquestion needs four distinct options and one correct answer key.');
+    question=body;answer='Answer:\n'+set.parts.map(p=>`${p.number}. ${p.answer}`).join('\n');
+  } else {
+    const match = body.match(/(?:^|\n)\s*(?:Answer|Ans)\s*:\s*([\s\S]*?)(?=\n\s*Explanation\s*:|$)/i);
+    if (!match?.[1]?.trim()) throw new Error('A complete answer/model response is required.');
+    answer='Answer: '+match[1].trim();question=body.slice(0,match.index).trim();
+    explanation=body.match(/(?:^|\n)\s*Explanation\s*:\s*([\s\S]*)$/i)?.[1]?.trim() || '';
+    if (type==='MCQ (Single)') {
+      const opts=[...question.matchAll(/(?:^|\n)\s*([A-D])[).]\s*([^\n]+)/g)];
+      const key=match[1].trim();
+      if(opts.length!==4||opts.map(o=>o[1]).join('')!=='ABCD'||new Set(opts.map(o=>__qbEnglishKey(o[2]))).size!==4||!/^([A-D])[).]?$/i.test(key)) throw new Error('An MCQ needs four distinct A–D options and exactly one A–D answer key.');
+      options=opts.map(o=>o[2].trim());question=question.slice(0,opts[0].index).trim();answer='Ans: '+key.toUpperCase();
+    }
+    if(!question) throw new Error('Question text is required.');
+    if(type==='Writing'&&!/Marking Rubric\s*:/i.test(answer))throw new Error('Keep the complete writing model and its Marking Rubric.');
+  }
+  return {metaLine:header,type,question,body:__qbEnglishIsSet(data)?body:question,text:header+'\n'+body,
+    answer,parsedAnswer:answer,finalAnswer:'',explanation,...(options?{options,mcqType:type}:{})};
+}
+function __qbShowEnglishEditor(docId,data) {
+  document.querySelectorAll('.edit-popup').forEach(p=>p.remove());
+  const popup=document.createElement('div');popup.className='edit-popup';
+  popup.style.cssText='position:fixed;inset:0;background:rgba(12,29,68,.3);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:20px 10px;overflow:auto;box-sizing:border-box;';
+  popup.innerHTML='<div style="background:#fff;border-radius:14px;padding:20px;width:760px;max-width:96vw;"><h3>Edit complete English record</h3><p>Keep the header, all passage/poem text, marked subquestions, options, answers and writing rubric. The header keeps the lesson and exam mapping.</p><textarea rows="22" style="width:100%;box-sizing:border-box;"></textarea><p role="status"></p><div style="display:flex;justify-content:flex-end;gap:10px;"><button type="button" data-cancel>Cancel</button><button type="button" data-save>Save</button></div></div>';
+  const box=popup.querySelector('textarea'), status=popup.querySelector('[role="status"]'), button=popup.querySelector('[data-save]');
+  box.value=__qbEnglishEditableText(data);popup.querySelector('[data-cancel]').onclick=()=>popup.remove();
+  button.onclick=async()=>{
+    button.disabled=true;status.textContent='';
+    try{
+      const update=__qbEnglishEditedFields(data,box.value), ref=questionsDb.collection('questions').doc(docId);
+      const del=firebase.firestore.FieldValue.delete();
+      const payload={...update,workbookShuffledOptions:del,workbookShuffledAnswer:del,workbookShuffleSavedAt:del};
+      await questionsDb.runTransaction(async transaction=>{
+        const latest=await transaction.get(ref);
+        if(!latest.exists||latest.data()?.deleted===true)throw new Error('This record is no longer active. Refresh the bank.');
+        if(__qbEnglishContentSignature(latest.data())!==__qbEnglishContentSignature(data))throw new Error('This record changed after it was opened. Refresh before editing again.');
+        transaction.update(ref,payload);
+      });
+      const saved=await ref.get();
+      if(!saved.exists||Object.keys(update).some(k=>JSON.stringify(saved.data()[k])!==JSON.stringify(update[k])))throw new Error('The save could not be confirmed. Refresh and inspect the record.');
+      popup.remove();await fetchAndDisplayQuestions();
+    }catch(error){status.textContent=error.message;button.disabled=false;}
+  };
+  document.body.appendChild(popup);
+}
+
    function __qbGetRawQuestionType(data = {}) {
 
   const storedMcqType =
@@ -5430,7 +5752,7 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
   ===================================================== */
 
   const metaTypeMatch = metaLine.match(
-    /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Fill in the Blanks|Matching Matrix|Matching List|Numerical Value|Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i
+    /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Fill in the Blanks|Matching Matrix|Matching List|Numerical Value|Paragraph-Based MCQ \(Single Correct\)|Comprehensive|Reading|Extract|Grammar|Writing|QuestionSet)\]/i
   );
 
   const metaType =
@@ -5477,6 +5799,8 @@ addDropdownListener('subject-dropdown', onSubjectChange, 'subject-value', 'Selec
        function __qbNormalizeQuestionType(data = {}) {
   const rawType = __qbGetRawQuestionType(data);
   const lowerType = rawType.toLowerCase();
+  const englishType = ['Reading','Extract','Grammar','Writing','QuestionSet'].find(t => t.toLowerCase() === lowerType);
+  if (englishType) return englishType;
 
   if (
     lowerType === 'comprehensive' ||
@@ -5697,6 +6021,8 @@ function __qbStripPictureNeededTag(value = '') {
 
 async function fetchAndDisplayQuestions() {
       if (!currentUser) return;
+      __qbSyncEnglishFilters();
+      const __englishRequest = window.__qbEnglishFetchSerial = (window.__qbEnglishFetchSerial || 0) + 1;
 
       const displayArea = document.getElementById('questions-display-area');
 
@@ -5746,6 +6072,10 @@ if (selChapters.length === 1) {
 }
 
 const snapshot = await query.get();
+if (__englishRequest !== window.__qbEnglishFetchSerial) return;
+__qbEnglishRefreshFacets(snapshot.docs.map(doc=>doc.data()||{}).filter(data=>data.deleted!==true && selChapters.includes(data.chapter)));
+const __englishFilters = __qbEnglishSelectedFilters();
+const __englishVisible = [];
 window.__pdfQuestionDataMap = {};
 
 if (snapshot.empty) {
@@ -5841,6 +6171,8 @@ if (!__isEntranceExam && selMarks.length > 0) {
   if (!wanted.has(m)) return;
 }
 
+if (__qbEnglishContext() && !__qbEnglishMatches(data, __englishFilters)) return;
+
 // Question Type (supports MCQ/Desc + Text Book (MCQ Single/Multiple))
 if (selQtypes.length > 0) {
   const wantsTBS = selQtypes.includes('Text Book (MCQ Single)');
@@ -5863,6 +6195,7 @@ if (selQtypes.length > 0) {
           const __displayOptions = __qbGetWorkbookOptions(data);
 
           questionCount++;
+if (__qbEnglishContext()) __englishVisible.push(data);
 const __savedQNo = Number(data.questionNumber || 0) > 0 ? Number(data.questionNumber) : questionCount;
 questionsHTML += `
            <div class="question-item"
@@ -5878,7 +6211,9 @@ questionsHTML += `
 
                                                        <div class="question-meta">
   ${
-    data.bankMode === 'chapter'
+    __qbEnglishManaged(data)
+      ? __qbEnglishMetaHTML(data, __savedQNo)
+      : data.bankMode === 'chapter'
       ? (
           `Q${__savedQNo}: ${data.marks ?? 'N/A'} Mark${Number(data.marks) === 1 ? '' : 's'} [${__normType}]` +
           `${data.category ? ` [Category: ${data.category}]` : ''}` +
@@ -5892,7 +6227,9 @@ questionsHTML += `
 </div>
               <div class="question-text">
                                ${
-                  __qbIsParagraphBasedQuestion(data)
+                  __qbEnglishManaged(data)
+                    ? __qbEnglishBodyHTML(data, false)
+                    : __qbIsParagraphBasedQuestion(data)
                     ? __qbRenderParagraphScreen(data)
                     : Array.isArray(__displayOptions) && __displayOptions.length === 4
                       ? `
@@ -5964,7 +6301,7 @@ questionsHTML += `
                       <input
                         type="file"
                         class="question-image-input"
-                        accept="image/*"
+                        accept="${__qbEnglishContext(data) ? 'image/png' : 'image/*'}"
                         style="display:none;"
                       >
 
@@ -5981,6 +6318,12 @@ questionsHTML += `
             </div>`;
         });
 
+        const __englishSummary = document.getElementById('qb-english-summary');
+        if (__englishSummary && __qbEnglishContext()) {
+          const names = ['Reading','Grammar','Writing','Literature','Unclassified'];
+          __englishSummary.textContent = questionCount + ' visible records · ' + names.map(name=>
+            name + ' ' + __englishVisible.filter(data=>__qbEnglishInfo(data)?.section===name).length).join(' · ');
+        }
         if (questionCount > 0) {
           displayArea.innerHTML = questionsHTML;
 
@@ -6025,7 +6368,10 @@ if (!window.__explainItBound) {
       let explanation = '';
       let answer = '';
 
-      if (__qbIsParagraphBasedQuestion(data)) {
+      if (__qbEnglishManaged(data)) {
+        answer = __qbEnglishAnswerText(data, true);
+        explanation = '';
+      } else if (__qbIsParagraphBasedQuestion(data)) {
         explanation = __qbBuildParagraphAnswerText(data, true);
         answer = __qbBuildParagraphAnswerText(data, false);
       } else {
@@ -6114,7 +6460,8 @@ overlay.innerHTML = `
    COMPRESS QUESTION PICTURE BEFORE FIRESTORE SAVE
 ========================================================= */
 
-async function __qbCompressQuestionPicture(file) {
+async function __qbCompressQuestionPicture(file, forcePNG = false) {
+  if (forcePNG && file?.type !== 'image/png') throw new Error('Choose a PNG picture for English.');
 
   if (!file || !String(file.type || '').startsWith('image/')) {
     throw new Error('Please select a valid image file.');
@@ -6215,7 +6562,7 @@ async function __qbCompressQuestionPicture(file) {
 
       let imageData =
         canvas.toDataURL(
-          'image/webp',
+          forcePNG ? 'image/png' : 'image/webp',
           quality
         );
 
@@ -6223,7 +6570,7 @@ async function __qbCompressQuestionPicture(file) {
         Fallback for browsers without WebP canvas support.
       */
       if (
-        !imageData.startsWith(
+        !forcePNG && !imageData.startsWith(
           'data:image/webp'
         )
       ) {
@@ -6247,7 +6594,7 @@ async function __qbCompressQuestionPicture(file) {
         First reduce quality.
         Then reduce dimensions gradually.
       */
-      if (quality > 0.55) {
+      if (!forcePNG && quality > 0.55) {
 
         quality -= 0.08;
 
@@ -6335,7 +6682,8 @@ document.querySelectorAll('.question-img-btn').forEach(btn => {
       */
       const imageData =
         await __qbCompressQuestionPicture(
-          file
+          file,
+          __qbEnglishContext(window.__pdfQuestionDataMap?.[docId])
         );
 
       if (uploadBtn) {
@@ -6413,6 +6761,7 @@ document.querySelectorAll('.question-img-btn').forEach(btn => {
           displayArea.innerHTML = '<p class="no-questions-message">No questions found matching all filter criteria.</p>';
         }
       } catch (error) {
+        if (__englishRequest !== window.__qbEnglishFetchSerial) return;
         console.error("Error fetching questions: ", error);
         displayArea.innerHTML = '<p class="no-questions-message">An error occurred while fetching questions.</p>';
       }
@@ -6489,6 +6838,10 @@ function autoLatexAll(str) {
 ========================================================= */
 
 async function __qbDeleteSelectedChapterBankSet() {
+  if (__qbEnglishContext() && Object.values(__qbEnglishSelectedFilters()).some(Boolean)) {
+    await appInfo('Clear the English section/topic/exam filters before deleting a whole Chapter Bank set. This action covers the complete selected lesson.');
+    return;
+  }
 
   const classVal =
     String(document.getElementById('class-value')?.value || '').trim();
@@ -7557,6 +7910,7 @@ function setupQuestionActionMenus() {
 }
 
    function showEditPopupForBank(docId, data) {
+  if (__qbEnglishManaged(data)) return __qbShowEnglishEditor(docId, data);
   if (__qbIsParagraphBasedQuestion(data)) {
     showEditParagraphPopupForBank(docId, data);
     return;
@@ -8718,6 +9072,7 @@ if (sectionOptions) sectionOptions.innerHTML = '<div data-value="">Select Sectio
 }
 
 function __qbGetSectionKey(data = {}) {
+  if (__qbEnglishManaged(data)) return __qbEnglishSectionKey(data);
   const rawType = __qbNormalizeQuestionType(data);
   const board = String(data.board || '').trim();
 
@@ -9988,6 +10343,15 @@ document.getElementById('create-quiz-btn').addEventListener('click', async funct
       return;
     }
 
+    const unsupportedEnglish = nodes.some(item=>{
+      const data = window.__pdfQuestionDataMap?.[item.getAttribute('data-id')];
+      return data && __qbEnglishManaged(data) && ['Reading','Extract','Grammar','Writing','QuestionSet'].includes(__qbNormalizeQuestionType(data));
+    });
+    if (unsupportedEnglish) {
+      await appInfo('This selection contains new English Reading/Extract/Grammar/Writing set types. Use Download Worksheet / Questions & Answers for these records until the separate practice-quiz player supports these types. Existing quiz types, including MCQs, remain available.');
+      spinner.style.display = 'none';
+      return;
+    }
     const questions = [];
     for (const item of nodes) {
       const docId = item.getAttribute('data-id');
@@ -10032,7 +10396,12 @@ document.getElementById('create-quiz-btn').addEventListener('click', async funct
         originalQuestionNumber: data.questionNumber ?? null
       };
 
-      if (window.__quizShuffleOptions && !__isParagraphQuizQuestion) {
+      if (__qbEnglishManaged(data)) {
+        qObj.question = __qbEnglishQuestionText({...data, options:[]});
+        qObj.options = __qbNormalizeOptions(Array.isArray(data.options) ? data.options : []);
+        qObj.answer = String(data.parsedAnswer || data.answer || data.finalAnswer || '').replace(/^\s*(?:Answer|Ans)\s*:\s*/i,'').trim();
+      }
+      if (window.__quizShuffleOptions && !__isParagraphQuizQuestion && !__qbEnglishManaged(data)) {
         qObj = __qbShuffleQuestionOptions(qObj);
       }
 
