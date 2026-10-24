@@ -1847,7 +1847,7 @@ function buildQuestionHTML(item, __parent = printable) {
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
     if (source && __qbEnglishManaged(source)) {
-    const wrap = __qbEnglishAppendPrint(__parent, source, Number(source.questionNumber)||qCounter, false, docId);
+    const wrap = __qbEnglishAppendPrint(__parent, source, qCounter, false, docId);
     qCounter++;
     return wrap;
   }
@@ -2231,6 +2231,31 @@ function renderCenteredChapterTitle(text, chapterLabel = '') {
   const t = document.createElement('div');
   t.className = 'chapter-start-block';
   t.setAttribute('data-chapter-name', String(text || ''));
+
+  if (__qbEnglishContext()) {
+    const title = __qbSplitChapterDisplay(text).mainTitle || text;
+
+    t.style.cssText =
+      "font-family:'Times New Roman',serif;text-align:center;" +
+      "margin:8px 0 14px;break-inside:avoid;page-break-inside:avoid;" +
+      "break-after:avoid;page-break-after:avoid;";
+
+    t.innerHTML = `
+      <div style="font-size:12pt;font-weight:700;color:#183f63;margin-bottom:5px;">
+        ENGLISH QUESTION BANK${includeKey ? ' - ANSWERS' : ''}
+      </div>
+      <div style="font-size:18pt;font-weight:700;color:#7A2639;margin-bottom:5px;">
+        ${__qbEscapeHtml(title)}
+      </div>
+      <div style="font-size:11pt;color:#444;">
+        ${__qbEscapeHtml(
+          ['CBSE', classVal, chapterLabel].filter(Boolean).join(' | ')
+        )}
+      </div>`;
+
+    printable.appendChild(t);
+    return t;
+  }
   t.style.cssText = `
     display:block;
     width:100%;
@@ -2793,7 +2818,7 @@ function __getQuestionAnswerHTML(item, qNum, __parent = printable) {
   const source = (docId && window.__pdfQuestionDataMap) ? window.__pdfQuestionDataMap[docId] : null;
 
   if (source && __qbEnglishManaged(source)) {
-    return __qbEnglishAppendPrint(__parent, source, Number(source.questionNumber)||qNum, true, docId);
+    return __qbEnglishAppendPrint(__parent, source, qNum, true, docId);
   }
   if (source && __qbIsParagraphBasedQuestion(source)) {
     const subjectText = String(source.subject || '').trim();
@@ -3287,16 +3312,20 @@ if (includeWorksheet) {
   }
 
   function __qbRenderWorksheetLevelWise(listScope) {
-    if (__qbEnglishContext()) {
-      let previousSection = '';
+        if (__qbEnglishContext()) {
+      const headingState = {};
+
       __qbEnglishGroups(listScope, __wantedWorksheetTypes).forEach(group=>{
         const section = __qbCreateKeepBlock();
-        if (group.section !== previousSection) renderTypeHeading(group.section.toUpperCase(), section);
-        previousSection = group.section;
-        renderLeftHeading(group.label, section);
+
+        __qbEnglishPrintHeadings(section, group, headingState);
+
+        qCounter = 1;
+
         buildQuestionHTML(group.items[0], section);
         group.items.slice(1).forEach(item=>buildQuestionHTML(item));
       });
+
       return;
     }
     const levelBuckets = __qbGetLevelBuckets(listScope);
@@ -3546,16 +3575,20 @@ if (includeKey) {
   }
 
   function __qbRenderKeyLevelWise(listScope) {
-    if (__qbEnglishContext()) {
-      let previousSection = '';
+       if (__qbEnglishContext()) {
+      const headingState = {};
+
       __qbEnglishGroups(listScope, __wantedKeyTypes).forEach(group=>{
         const section = __qbCreateKeyKeepBlock();
-        if (group.section !== previousSection) renderTypeHeading(group.section.toUpperCase(), section);
-        previousSection = group.section;
-        renderLeftHeading(group.label, section);
+
+        __qbEnglishPrintHeadings(section, group, headingState);
+
+        keyCounter = 1;
+
         __renderKeyQuestion(group.items[0], section);
         group.items.slice(1).forEach(item=>__renderKeyQuestion(item));
       });
+
       return;
     }
     const levelBuckets = __qbGetKeyLevelBuckets(listScope);
@@ -3621,7 +3654,9 @@ await __waitForImages(printable);
   title: exportFileName.replace(/\.pdf$/i, ''),
   contentHtml: printable.innerHTML,
   headerText: `${classVal} / ${subjectVal}`,
-  headerRightText: includeKey ? 'QUESTIONS & ANSWERS' : 'WORKSHEET',
+  headerRightText: __qbEnglishContext()
+  ? (includeKey ? 'QUESTION BANK - ANSWERS' : 'QUESTION BANK')
+  : (includeKey ? 'QUESTIONS & ANSWERS' : 'WORKSHEET'),
   pageStartNumber: __pageStartNumber,
   pdfTheme: __pdfTheme
 });
@@ -5643,28 +5678,315 @@ function __qbEnglishRefreshFacets(records) {
   }
 }
 function __qbEnglishGroups(nodes, wantedTypes) {
-  const groups = new Map(), order = ['Reading','Grammar','Writing','Literature','Unclassified'];
-  for (const node of nodes) {
-    const data = window.__pdfQuestionDataMap?.[node.getAttribute('data-id')] || {}, info = __qbEnglishInfo(data);
+  const groups = new Map(), topicStarts = new Map();
+  const sections = ['Reading','Grammar','Writing','Literature','Unclassified'];
+  const topics = ['nouns','noun','pronouns','pronoun','articles','adjectives','verbs','helping verbs','tenses','prepositions','adverbs','conjunctions'];
+
+  nodes.forEach((node, index) => {
+    const data = window.__pdfQuestionDataMap?.[node.getAttribute('data-id')] || {};
+    const info = __qbEnglishInfo(data) || {};
     const type = node.getAttribute('data-type') || '';
-    if (!wantedTypes.includes(type)) continue;
-    const section = info?.section || 'Unclassified';
-    const label = section === 'Reading' ? (info.readingKind || type) : section === 'Grammar' ? (info.topic || type) :
-      section === 'Writing' ? (info.format || type) : `${type} — ${Number(data.marks)||0} marks`;
-    const key = section+'|'+label;
-    if (!groups.has(key)) groups.set(key,{section,label,items:[]});
+
+    if (!wantedTypes.includes(type)) return;
+
+    const section = info.section || 'Unclassified';
+    const marks = Number(data.marks) || 0;
+    const mcq = /MCQ/i.test(type);
+    const exercise = info.exercise || (mcq ? 'MCQ' : 'Practice questions');
+
+    let topic = type, topicRank = 100, exerciseRank = 0;
+
+    if (section === 'Reading') {
+      topic = info.readingKind === 'Prose'
+        ? 'Unseen Prose'
+        : info.readingKind === 'Poetry'
+          ? 'Unseen Poetry'
+          : 'Other Reading';
+
+      topicRank = topic === 'Unseen Prose'
+        ? 0
+        : topic === 'Unseen Poetry' ? 1 : 2;
+
+    } else if (section === 'Grammar') {
+      topic = info.topic || 'Grammar Practice';
+
+      const rank = topics.indexOf(__qbEnglishKey(topic));
+      topicRank = rank < 0 ? 100 : rank;
+
+      exerciseRank = mcq ? 0
+        : /gap|blank|complet/i.test(exercise) ? 1
+        : /edit|correct/i.test(exercise) ? 2
+        : /omi[st]/i.test(exercise) ? 3
+        : /rewrit|transform/i.test(exercise) ? 4 : 5;
+
+    } else if (section === 'Writing') {
+      topic = info.format || 'Writing Practice';
+
+    } else if (section === 'Literature') {
+      topicRank = __qbEnglishIsSet(data) ? 0
+        : marks === 3 ? 1
+        : marks === 6 ? 2 : 3;
+
+      topic = topicRank === 0
+        ? 'Extract-based Questions'
+        : topicRank === 1
+          ? 'Short-answer Questions - 3 marks each'
+          : topicRank === 2
+            ? 'Long-answer Questions - 6 marks each'
+            : `Literature Questions - ${marks} marks each`;
+    }
+
+    const key = [
+      section,
+      topic,
+      section === 'Grammar' ? exercise + '|' + mcq : ''
+    ].join('|');
+
+    const topicKey = section + '|' + topic;
+
+    if (!topicStarts.has(topicKey)) {
+      topicStarts.set(topicKey, index);
+    }
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        section, topic, label: topic, exercise, mcq,
+        topicRank, exerciseRank,
+        topicFirst: topicStarts.get(topicKey),
+        first: index,
+        items: []
+      });
+    }
+
     groups.get(key).items.push(node);
-  }
-  return [...groups.values()].sort((a,b)=>order.indexOf(a.section)-order.indexOf(b.section)||a.label.localeCompare(b.label,undefined,{numeric:true}));
+  });
+
+  return [...groups.values()].sort((a, b) =>
+    sections.indexOf(a.section) - sections.indexOf(b.section) ||
+    a.topicRank - b.topicRank ||
+    a.topicFirst - b.topicFirst ||
+    a.exerciseRank - b.exerciseRank ||
+    a.first - b.first
+  );
 }
-function __qbEnglishAppendPrint(parent, data, number, includeAnswers, docId = '') {
-  if (__qbEnglishIsSet(data) && !__qbEnglishParseSet(data).parts.length) throw new Error('Repair the complete English passage/extract set before exporting.');
-  const wrap = document.createElement('div'); wrap.className = 'worksheet-flow-block';
-  wrap.style.cssText = 'font-size:12pt;color:#000;margin:0 0 14px;break-inside:auto;page-break-inside:auto;';
-  wrap.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Q${number}. ${__qbEscapeHtml(__qbEnglishInfo(data)?.section || '')} · ${Number(data.marks)||0} marks</div>`+__qbEnglishBodyHTML(data,includeAnswers)+
-    (data.image ? `<img src="${__qbEscapeHtml(data.image)}" style="max-width:170px;max-height:110px;margin:8px 0;">` : '')+
-    (includeAnswers && docId ? `<div style="display:flex;justify-content:flex-end;margin-top:8px;" data-qr-link="${__qbEscapeHtml(__qbGetAiHelperUrl(docId))}"><img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;margin=2&amp;data=${encodeURIComponent(__qbGetAiHelperUrl(docId))}" style="width:58px;height:58px;margin:0;"></div>` : '');
-  parent.appendChild(wrap); return wrap;
+
+function __qbEnglishPrintHeadings(parent, group, state) {
+  const roman = n =>
+    ['I','II','III','IV','V','VI','VII','VIII','IX','X'][n - 1] ||
+    String(n);
+
+  const heading = (text, kind) => {
+    const node = document.createElement('div');
+
+    node.className = 'english-print-heading';
+    node.textContent = text;
+
+    node.style.cssText =
+      "font-family:'Times New Roman',serif;" +
+      "line-height:1.4;display:block;" +
+      "page-break-inside:avoid;break-inside:avoid;" +
+      "page-break-after:avoid;break-after:avoid;" +
+      (
+        kind === 'section'
+          ? 'text-align:center;font-size:13pt;font-weight:700;color:#7A2639;margin:14px 0 8px;'
+          : kind === 'topic'
+            ? 'text-align:left;font-size:12pt;font-weight:700;color:#183f63;margin:8px 0 5px;'
+            : 'text-align:left;font-size:12pt;font-weight:400;font-style:italic;color:#111;margin:6px 0 5px;'
+      );
+
+    parent.appendChild(node);
+  };
+
+  if (state.section !== group.section) {
+    state.section = group.section;
+    state.topic = '';
+    state.topicNumber = 0;
+
+    const labels = {
+      Reading: 'A. READING',
+      Grammar: 'B. GRAMMAR',
+      Writing: 'C. WRITING',
+      Literature: 'D. LITERATURE',
+      Unclassified: 'E. OTHER QUESTIONS'
+    };
+
+    heading(
+      labels[group.section] || group.section.toUpperCase(),
+      'section'
+    );
+  }
+
+  if (state.topic !== group.topic) {
+    state.topic = group.topic;
+    state.exerciseNumber = 0;
+    state.topicNumber++;
+
+    const number = ['Reading','Literature'].includes(group.section)
+      ? group.topicRank + 1
+      : state.topicNumber;
+
+    heading(roman(number) + '. ' + group.topic, 'topic');
+  }
+
+  if (group.section === 'Grammar') {
+    const ex = group.exercise;
+
+    const instruction = group.mcq
+      ? 'Choose the correct option.'
+      : /gap|blank/i.test(ex)
+        ? 'Fill in the blanks.'
+        : /complet/i.test(ex)
+          ? 'Complete the sentences as directed.'
+          : /edit|correct/i.test(ex)
+            ? 'Correct the errors as directed.'
+            : /omi[st]/i.test(ex)
+              ? 'Supply the missing words as directed.'
+              : /rewrit|transform/i.test(ex)
+                ? 'Rewrite the sentences as directed.'
+                : ex.replace(/[.!?]$/, '') + '.';
+
+    heading(
+      'Exercise ' + (++state.exerciseNumber) + '. ' + instruction,
+      'exercise'
+    );
+  }
+}
+
+function __qbEnglishPrintRow(label, text, marks, options = []) {
+  const e = __qbEscapeHtml;
+
+  const columns = options.some(option =>
+    String(option).length > 75 || /\n/.test(option)
+  ) ? 1 : 2;
+
+  const choices = options.length
+    ? `<div style="display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:3px 20px;margin-top:5px;">` +
+      options.map((option, i) =>
+        `<div style="min-width:0;overflow-wrap:break-word;">
+          ${String.fromCharCode(65 + i)}) ${e(
+            String(option).replace(/^[A-D][).]\s*/i, '')
+          )}
+        </div>`
+      ).join('') +
+      '</div>'
+    : '';
+
+  return `
+    <div class="english-print-row"
+      style="display:grid;grid-template-columns:30px minmax(0,1fr) 44px;
+      column-gap:6px;align-items:start;line-height:1.5;
+      break-inside:avoid;page-break-inside:avoid;margin:0 0 8px;">
+      <div>${e(label)}</div>
+      <div style="min-width:0;">
+        <div style="white-space:pre-wrap;overflow-wrap:break-word;">${e(text)}</div>
+        ${choices}
+      </div>
+      <div style="text-align:right;white-space:nowrap;">(${Number(marks) || 0})</div>
+    </div>`;
+}
+
+function __qbEnglishAppendPrint(
+  parent, data, number, includeAnswers, docId = ''
+) {
+  const e = __qbEscapeHtml;
+  const info = __qbEnglishInfo(data) || {};
+  const set = __qbEnglishIsSet(data);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'worksheet-flow-block';
+
+  wrap.style.cssText =
+    "font-family:'Times New Roman',serif;font-size:12pt;" +
+    "color:#111;font-weight:400;line-height:1.5;" +
+    "margin:0 0 12px;break-inside:auto;page-break-inside:auto;";
+
+  const answer = text =>
+    `<div class="english-print-answer"
+      style="white-space:pre-wrap;line-height:1.5;margin:5px 0 10px 36px;"><b>Answer:</b> ${e(text)}</div>`;
+
+  if (set) {
+    const parsed = __qbEnglishParseSet(data);
+
+    if (!parsed.passage || !parsed.parts.length) {
+      throw new Error(
+        'Repair the complete English passage/extract set before exporting.'
+      );
+    }
+
+    const label = info.section === 'Literature'
+      ? 'Extract'
+      : info.readingKind === 'Poetry' ? 'Poem' : 'Passage';
+
+    const passage = info.readingKind === 'Poetry'
+      ? `<div style="white-space:pre-wrap;">${e(parsed.passage)}</div>`
+      : parsed.passage.split(/\n\s*\n/).map(paragraph =>
+          `<div style="white-space:pre-wrap;margin-bottom:8px;">${e(paragraph)}</div>`
+        ).join('');
+
+    wrap.innerHTML = `
+      <div class="paragraph-first-part"
+        style="margin-bottom:10px;line-height:1.5;">
+        <div style="display:flex;justify-content:space-between;
+          gap:12px;margin-bottom:6px;">
+          <b>${label} ${number}</b>
+          <span>(${Number(data.marks) || 0})</span>
+        </div>
+        ${passage}
+      </div>` +
+      parsed.parts.map((part, i) =>
+        `<div class="english-print-part"
+          style="break-inside:avoid;page-break-inside:avoid;">` +
+          __qbEnglishPrintRow(
+            '(' + String.fromCharCode(97 + i) + ')',
+            part.text,
+            part.marks,
+            part.options
+          ) +
+          (
+            includeAnswers
+              ? answer(
+                  part.answer +
+                  (part.explanation
+                    ? '\nExplanation: ' + part.explanation : '')
+                )
+              : ''
+          ) +
+        '</div>'
+      ).join('');
+
+  } else {
+    const options = Array.isArray(data.options) ? data.options : [];
+    let question = __qbEnglishQuestionText(data);
+
+    if (options.length) {
+      question = question.split(/\nA\)\s*/)[0].trim();
+    }
+
+    wrap.innerHTML =
+      __qbEnglishPrintRow(number + '.', question, data.marks, options) +
+      (includeAnswers ? answer(__qbEnglishAnswerText(data)) : '');
+  }
+
+  if (data.image) {
+    wrap.innerHTML +=
+      `<img src="${e(data.image)}"
+        style="max-width:170px;max-height:110px;margin:8px 0 8px 36px;">`;
+  }
+
+  if (includeAnswers && docId) {
+    const url = __qbGetAiHelperUrl(docId);
+
+    wrap.innerHTML +=
+      `<div style="display:flex;justify-content:flex-end;margin-top:8px;"
+        data-qr-link="${e(url)}">
+        <img alt="QR"
+          src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&amp;margin=2&amp;data=${encodeURIComponent(url)}"
+          style="width:58px;height:58px;margin:0;">
+      </div>`;
+  }
+
+  parent.appendChild(wrap);
+  return wrap;
 }
 function __qbEnglishEditableText(data) {
   if (__qbEnglishIsSet(data)) return __qbEnglishHeader(data)+'\n'+__qbEnglishRawBody(data);
