@@ -62,9 +62,48 @@
       font-weight: 600; margin-bottom: 5px; color: #185496; display: block;
     }
     .custom-dropdown { position: relative; }
-    .selected-option {
+        .selected-option {
       padding: 10px 12px; color: #12416c; background: #f7fafd; border-radius: 6px;
       border: 1.3px solid #bcd6ef; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    #filter-form .selected-option {
+      box-sizing: border-box;
+      height: 2.75em;
+      min-height: 44px;
+      font: inherit;
+    }
+
+    #qb-english-filters .qb-english-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    #qb-english-filters .form-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    #qb-english-filters select.selected-option {
+      display: block;
+      width: 100%;
+      margin-top: auto;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    #qb-english-filters select.selected-option:focus-visible {
+      outline: 2px solid #1762a7;
+      outline-offset: 2px;
+    }
+
+    @media (max-width: 560px) {
+      #qb-english-filters .qb-english-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
     }
    .dropdown-options {
   display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff;
@@ -5613,48 +5652,144 @@ function __qbEnglishMetaHTML(data, number) {
 }
 function __qbEnglishSelectedFilters() {
   const out = {};
-  for (const key of ['section','detail','exam','course','reading']) out[key] = document.getElementById('qb-english-'+key)?.value || '';
+
+  for (const key of ['section','detail','reading']) {
+    out[key] = document.getElementById('qb-english-'+key)?.value || '';
+  }
+
   return out;
 }
-function __qbEnglishMatches(data, filters) {
+
+function __qbEnglishMatches(data, filters = {}) {
   const info = __qbEnglishInfo(data);
   if (!info) return true;
-  const values = {section:info.section, detail:info.topic ? 'Grammar: '+info.topic : info.format ? 'Writing: '+info.format : '',
-    exam:info.exam, course:info.course, reading:info.readingKind};
-  return Object.keys(values).every(key => !filters[key] || (filters[key] === '__missing__' ? !values[key] : values[key] === filters[key]));
+
+  const values = {
+    section: info.section,
+    detail: info.topic
+      ? 'Grammar: '+info.topic
+      : info.format
+        ? 'Writing: '+info.format
+        : '',
+    reading: info.readingKind
+  };
+
+  return Object.keys(values).every(
+    key => !filters[key] || values[key] === filters[key]
+  );
 }
 function __qbSyncEnglishFilters() {
   const form = document.getElementById('filter-form');
   if (!form) return;
+
+  const keys = ['section','detail','reading'];
   let panel = document.getElementById('qb-english-filters');
+
   if (!panel) {
-    panel = document.createElement('div'); panel.id = 'qb-english-filters';
-    panel.style.cssText = 'grid-column:1/-1;border:1px solid #c7d8e8;border-radius:12px;padding:12px;background:#f6faff;';
-    panel.innerHTML = '<b>English lesson bank</b><p style="font-size:13px;margin:6px 0 12px;">Choose lessons above, then filter their saved Reading, Grammar, Writing and Literature records.</p>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;">'+
-      [['section','Section'],['detail','Grammar topic / Writing format'],['exam','Saved exam tag'],['course','Course'],['reading','Reading kind']].map(([key,label])=>
-        `<label style="font-weight:600;font-size:13px;">${label}<select id="qb-english-${key}" style="display:block;width:100%;padding:8px;margin-top:4px;"><option value="">All</option></select></label>`).join('')+
-      '</div><p id="qb-english-summary" style="font-size:13px;margin:10px 0 0;"></p>';
+    panel = document.createElement('div');
+    panel.id = 'qb-english-filters';
+
+    panel.style.cssText =
+      'grid-column:1/-1;border-top:1px solid #e0eaff;padding:18px 0 0;min-width:0;';
+
+    panel.innerHTML =
+      '<b style="color:#0f3d6b;">English lesson bank</b>'+
+      '<p style="font-size:13px;color:#526a80;margin:6px 0 16px;">Choose lessons above, then filter their saved Reading, Grammar, Writing and Literature records.</p>'+
+      '<div class="qb-english-grid">'+
+      [
+        ['section','Section'],
+        ['detail','Grammar topic / Writing format'],
+        ['reading','Reading kind']
+      ].map(([key,label])=>
+        `<div class="form-group">
+          <label for="qb-english-${key}">${label}:</label>
+          <select id="qb-english-${key}" class="selected-option">
+            <option value="">All</option>
+          </select>
+        </div>`
+      ).join('')+
+      '</div>'+
+      '<p id="qb-english-summary" style="font-size:13px;color:#526a80;margin:12px 0 0;"></p>';
+
     form.appendChild(panel);
-    for (const key of ['section','detail','exam','course','reading']) document.getElementById('qb-english-'+key).addEventListener('change', fetchAndDisplayQuestions);
-  }
-  const active = __qbEnglishContext(), context = ['class','board','subject'].map(k=>document.getElementById(k+'-value')?.value||'').join('|');
-  panel.hidden = !active;
-  if (panel.dataset.context !== context) {
-    const wasActive = panel.dataset.active === 'true';
-    panel.dataset.context = context;
-    panel.dataset.active = String(active);
-    window.__qbEnglishFetchSerial = (window.__qbEnglishFetchSerial || 0) + 1;
-    for (const key of ['section','detail','exam','course','reading']) document.getElementById('qb-english-'+key).innerHTML = '<option value="">All</option>';
-    document.getElementById('qb-english-summary').textContent = '';
-    const dd = document.getElementById('qtype-dropdown');
-    if (dd && (active || wasActive)) {
-      const board = document.getElementById('board-value')?.value || '';
-      const types = [...__qbGetQuestionTypesForBoard(board), ...(active ? ['Reading','Extract','Grammar','Writing','QuestionSet'] : [])];
-      dd.innerHTML = createMultiDropdownHTML('qtype', [...new Set(types)], 'All');
-      addMultiDropdownListener('qtype-dropdown', fetchAndDisplayQuestions);
+
+    for (const key of keys) {
+      document.getElementById('qb-english-'+key)
+        .addEventListener('change', fetchAndDisplayQuestions);
     }
   }
+
+  const active = __qbEnglishContext();
+
+  const context = ['class','board','subject']
+    .map(k=>document.getElementById(k+'-value')?.value||'')
+    .join('|');
+
+  panel.hidden = !active;
+
+  if (panel.dataset.context !== context) {
+    const wasActive = panel.dataset.active === 'true';
+
+    panel.dataset.context = context;
+    panel.dataset.active = String(active);
+
+    window.__qbEnglishFetchSerial =
+      (window.__qbEnglishFetchSerial || 0) + 1;
+
+    for (const key of keys) {
+      document.getElementById('qb-english-'+key).innerHTML =
+        '<option value="">All</option>';
+    }
+
+    document.getElementById('qb-english-summary').textContent = '';
+
+    const dd = document.getElementById('qtype-dropdown');
+
+    if (dd && (active || wasActive)) {
+      const board =
+        document.getElementById('board-value')?.value || '';
+
+      const types = [
+        ...__qbGetQuestionTypesForBoard(board),
+        ...(active
+          ? ['Reading','Extract','Grammar','Writing','QuestionSet']
+          : [])
+      ];
+
+      dd.innerHTML = createMultiDropdownHTML(
+        'qtype',
+        [...new Set(types)],
+        'All'
+      );
+
+      addMultiDropdownListener(
+        'qtype-dropdown',
+        fetchAndDisplayQuestions
+      );
+    }
+  }
+
+  const level = document.getElementById('level-dropdown');
+  const group = level?.closest('.form-group');
+
+  if (group) {
+    group.style.display =
+      active ||
+      __qbIsEntranceExamBoard(
+        document.getElementById('board-value')?.value
+      )
+        ? 'none'
+        : '';
+  }
+
+  if (active) {
+    const hidden = document.getElementById('level-values');
+    if (hidden) hidden.value = '';
+
+    level?.querySelectorAll('input[type="checkbox"]')
+      .forEach(b=>b.checked=false);
+  }
+}
   const level = document.getElementById('level-dropdown'), group = level?.closest('.form-group');
   if (group) group.style.display = active || __qbIsEntranceExamBoard(document.getElementById('board-value')?.value) ? 'none' : '';
   if (active) {
@@ -5664,17 +5799,51 @@ function __qbSyncEnglishFilters() {
 }
 function __qbEnglishRefreshFacets(records) {
   if (!__qbEnglishContext()) return;
+
   const infos = records.map(__qbEnglishInfo).filter(Boolean);
-  const pools = {section:['Reading','Grammar','Writing','Literature','Unclassified'],
-    detail:infos.map(i=>i.topic?'Grammar: '+i.topic:i.format?'Writing: '+i.format:''),
-    exam:infos.map(i=>i.exam), course:infos.map(i=>i.course), reading:infos.map(i=>i.readingKind)};
+
+  const pools = {
+    section: [
+      'Reading',
+      'Grammar',
+      'Writing',
+      'Literature',
+      'Unclassified'
+    ],
+
+    detail: infos.map(i=>
+      i.topic
+        ? 'Grammar: '+i.topic
+        : i.format
+          ? 'Writing: '+i.format
+          : ''
+    ),
+
+    reading: infos.map(i=>i.readingKind)
+  };
+
   for (const [key,pool] of Object.entries(pools)) {
-    const select = document.getElementById('qb-english-'+key); if (!select) continue;
+    const select = document.getElementById('qb-english-'+key);
+    if (!select) continue;
+
     const before = select.value;
-    const values = [...new Set(pool.filter(Boolean))]; if (key !== 'section') values.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-    select.innerHTML = '<option value="">All</option>'+values.map(value=>`<option value="${__qbEscapeHtml(value)}">${__qbEscapeHtml(value)}</option>`).join('')+
-      (['exam','course'].includes(key) && pool.some(t=>!t) ? '<option value="__missing__">No '+key+' tag (older records)</option>' : '');
-    select.value = [...select.options].some(o=>o.value===before) ? before : '';
+    const values = [...new Set(pool.filter(Boolean))];
+
+    if (key !== 'section') {
+      values.sort((a,b)=>
+        a.localeCompare(b,undefined,{numeric:true})
+      );
+    }
+
+    select.innerHTML =
+      '<option value="">All</option>'+
+      values.map(value=>
+        `<option value="${__qbEscapeHtml(value)}">${__qbEscapeHtml(value)}</option>`
+      ).join('');
+
+    select.value = [...select.options].some(o=>o.value===before)
+      ? before
+      : '';
   }
 }
 function __qbEnglishGroups(nodes, wantedTypes) {
