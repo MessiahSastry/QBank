@@ -6206,12 +6206,16 @@ function __qbEnglishPrintHeadings(parent, group, state) {
   if (group.section === 'Grammar') {
     const ex = group.exercise;
 
-        heading(
-      group.section === 'Grammar'
-        ? group.topic.toUpperCase()
-        : roman(number) + '. ' + group.topic,
-      'topic'
+            const topicTitle = roman(number) + '. ' + group.topic;
+
+    const alreadyShown = Array.from(parent.children).some(node =>
+      node.classList.contains('english-print-heading') &&
+      node.textContent.trim() === topicTitle
     );
+
+    if (!alreadyShown) {
+      heading(topicTitle, 'topic');
+    }
   }
 }
 
@@ -6274,12 +6278,15 @@ function __qbEnglishAppendPrint(
       ? 'Extract'
       : info.readingKind === 'Poetry' ? 'Poem' : 'Passage';
 
-       const passage = info.readingKind === 'Poetry'
+       const passage = (
+  info.readingKind === 'Poetry' ||
+  /^poetry$/i.test(data.subjectArea || __qbEnglishTag(data, 'Area'))
+)
       ? parsed.passage.split(/\n/).map(line=>
           `<div class="english-flow-text" style="white-space:pre-wrap;overflow-wrap:break-word;line-height:1.5;">${line ? e(line) : '&nbsp;'}</div>`
         ).join('')
       : parsed.passage.split(/\n\s*\n/).map(paragraph=>
-          `<div class="english-flow-text" style="white-space:pre-wrap;overflow-wrap:break-word;line-height:1.5;margin-bottom:8px;">${e(paragraph)}</div>`
+          `<div class="english-flow-text" style="white-space:normal;text-align:justify;text-align-last:left;text-justify:inter-word;overflow-wrap:break-word;line-height:1.5;margin-bottom:8px;">${e(paragraph)}</div>`
         ).join('');
 
     wrap.innerHTML = `
