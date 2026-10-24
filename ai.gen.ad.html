@@ -706,6 +706,459 @@ body.chat-lock .chat-messages-area {
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
+  <script id="scimentra-english-lesson-bank">
+/* SciMentra English lesson packages. School bank policy, not an official exam blueprint. */
+function __scEnglishKey(value) {
+  return String(value == null ? '' : value).normalize('NFKC').toLowerCase()
+    .replace(/[’‘]/g, "'").replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function __scEnglishEscape(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function __scIsCBSEEnglish(params = {}) {
+  const grade = Number((String(params.class || '').match(/\d+/) || [0])[0]);
+  return __scEnglishKey(params.board) === 'cbse' && grade >= 6 && grade <= 12 &&
+    /^english(?:\s|$)/i.test(String(params.subject || '').trim());
+}
+function __scIsEnglishLessonBank(params = {}) {
+  return __scIsCBSEEnglish(params) && (
+    params.bankMode === 'chapter' || params.generationMode === 'chapter-bank' ||
+    params.questionType === 'Complete Chapter Bank');
+}
+function __scEnglishTag(meta, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (String(meta || '').match(new RegExp('\\[' + escaped + ':\\s*([^\\]]+)\\]', 'i')) || [])[1]?.trim() || '';
+}
+function __scEnglishList(value) {
+  return [...new Set(String(value || '').split(/[\n;,]+/).map(x => x.trim()).filter(Boolean))];
+}
+function __scEnglishPlan(params = {}) {
+  const catalogue = typeof window.getCBSEEnglishChapterPlan === 'function'
+    ? window.getCBSEEnglishChapterPlan(params.class, params.chapter, params.subject) : null;
+  return {
+    version: '2026-10-24', scope: 'all', book: catalogue?.book || '',
+    unit: catalogue?.unit || null, unitTitle: catalogue?.unitTitle || '',
+    literaryArea: catalogue?.area || '', course: catalogue?.course || '',
+    grammarTopics: catalogue?.grammarTopics || [], writingFormats: catalogue?.writingFormats || [],
+    lessonOrder: typeof window.getCBSEChapters === 'function' ? window.getCBSEChapters(params.class, params.subject) : [],
+    ...(params.englishBank || {})
+  };
+}
+function __scEnglishFormParams() {
+  return {
+    class: document.getElementById('class-value-ai')?.value || '',
+    board: document.getElementById('board-value-ai')?.value || '',
+    subject: document.getElementById('subject-value-ai')?.value || '',
+    chapter: document.getElementById('chapter-value-ai')?.value || ''
+  };
+}
+function __scSyncEnglishBankForm() {
+  const host = document.getElementById('english-lesson-bank-options');
+  if (!host) return;
+  const params = __scEnglishFormParams();
+  const mode = document.getElementById('generation-mode-value-ai')?.value;
+  const active = __scIsCBSEEnglish(params) && mode === 'chapter-bank';
+  host.hidden = !active;
+  if (!active) return;
+  const context = [params.class, params.subject, params.chapter].join('|');
+  if (host.dataset.context === context) return;
+  host.dataset.context = context;
+  const plan = __scEnglishPlan(params);
+  host.innerHTML = `
+    <h3 style="margin:0 0 8px;">English lesson question bank</h3>
+    <p style="margin:0 0 10px;">Reading, Grammar, Writing and Literature are saved under the selected lesson.</p>
+    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><th style="text-align:left;">Section</th><th style="text-align:left;">Quantity for this lesson</th></tr>
+      <tr><td>Reading</td><td>2 unseen prose sets + 2 unseen poem sets</td></tr>
+      <tr><td>Grammar</td><td>2–3 topics; AI chooses exercise varieties and counts</td></tr>
+      <tr><td>Writing</td><td>5 tasks per assigned format</td></tr>
+      <tr><td>Literature</td><td>3 extracts (5 marks); 8 answers (3 marks); up to 3 answers (6 marks)</td></tr>
+    </table></div>
+    <p style="font-size:13px;margin:10px 0;">These are school practice-bank quantities. The selected exam must use its own class/course blueprint and matching marks.</p>
+    <label for="english-bank-scope">Generate</label>
+    <select id="english-bank-scope" style="width:100%;padding:10px;margin:4px 0 12px;">
+      <option value="all">All four sections</option>
+      <option value="reading">Reading only</option>
+      <option value="grammar">Grammar only</option>
+      <option value="writing">Writing only</option>
+      <option value="literature">Literature only</option>
+    </select>
+    <label for="english-bank-grammar">Grammar topics (2–3; leave blank for AI selection)</label>
+    <textarea id="english-bank-grammar" rows="2" style="width:100%;box-sizing:border-box;margin:4px 0 12px;" placeholder="AI checks the lesson language work and selects 2–3 suitable topics.">${__scEnglishEscape(plan.grammarTopics.join('; '))}</textarea>
+    <label for="english-bank-writing">Writing format(s) (leave blank for AI selection)</label>
+    <textarea id="english-bank-writing" rows="2" style="width:100%;box-sizing:border-box;margin:4px 0 8px;" placeholder="AI selects a suitable format from the verified class/course syllabus.">${__scEnglishEscape(plan.writingFormats.join('; '))}</textarea>
+    <p style="font-size:13px;margin:4px 0;">${__scEnglishEscape([plan.book, plan.unit ? 'Unit ' + plan.unit : '', plan.unitTitle].filter(Boolean).join(' · '))}</p>
+    <p style="font-size:13px;margin:4px 0;">Suggested grammar/writing placements are the school plan. AI must check the actual textbook language work and class-level scope before generating.</p>`;
+}
+function __scReadEnglishBankForm(params) {
+  const plan = __scEnglishPlan(params);
+  const scope = document.getElementById('english-bank-scope')?.value || 'all';
+  const grammarTopics = __scEnglishList(document.getElementById('english-bank-grammar')?.value);
+  const writingFormats = __scEnglishList(document.getElementById('english-bank-writing')?.value);
+  if (['all', 'grammar'].includes(scope) && grammarTopics.length &&
+      (grammarTopics.length < 2 || grammarTopics.length > 3)) {
+    throw new Error('Choose 2–3 grammar topics, or leave the grammar box blank for AI selection.');
+  }
+  if (!['all', 'reading', 'grammar', 'writing', 'literature'].includes(scope)) {
+    throw new Error('Select a valid English section.');
+  }
+  if ([...grammarTopics, ...writingFormats].some(t => /[\[\]]/.test(t))) {
+    throw new Error('Topic and format names cannot contain square brackets.');
+  }
+  return {...plan, scope, grammarTopics, writingFormats};
+}
+function __scEnglishCacheKey(params) {
+  return __scIsEnglishLessonBank(params) && params.englishBank
+    ? 'scimentra:english:' + JSON.stringify([params.class, params.board, params.subject, params.chapter, __scEnglishPlan(params).scope])
+    : 'currentSessionQuestions';
+}
+function __scStoreSessionQuestions(questions, params) {
+  const current = params || (typeof lastSessionParams !== 'undefined' ? lastSessionParams : {}) || {};
+  sessionStorage.setItem(__scEnglishCacheKey(current), JSON.stringify(questions));
+}
+function __scBuildEnglishLessonBankPrompt(params) {
+  const plan = __scEnglishPlan(params);
+  const scope = plan.scope;
+  const all = scope === 'all';
+  const includes = section => all || scope === section;
+  const grammar = plan.grammarTopics.length ? plan.grammarTopics.join('; ') :
+    'AI must select 2–3 suitable topics after checking the actual lesson language work and current class/course syllabus.';
+  const writing = plan.writingFormats.length ? plan.writingFormats.join('; ') :
+    'AI must select one suitable writing format from the verified class/course syllabus; explain the choice in the draft plan.';
+  const blocks = [];
+  if (includes('reading')) blocks.push(`READING — FOUR COMPLETE SETS FOR THIS LESSON
+- 2 original unseen prose sets, 10 marks each: one narrative/discursive and one factual/informational.
+- 2 original unseen poem sets, 10 marks each.
+- These are distinct new texts for this lesson package, not extracts from its prescribed literature text.
+- Include the complete prose/poem and every subquestion, mark, option where required and answer.
+- The first prose set and each poem set use 8 subquestions with marks 1,1,2,1,1,1,2,1.
+- The factual prose set uses 9 subquestions with marks 1,1,2,1,1,1,1,1,1.
+- Use [Reading Kind: Prose] or [Reading Kind: Poetry]. Model is Discursive, Factual/Data or Poetry Comprehension.
+- Use accessible, age-appropriate original texts with genuinely answerable inference and comprehension questions. Verify factual claims; no invented facts or medical advice.`);
+  if (includes('grammar')) blocks.push(`GRAMMAR — 2–3 TOPICS FOR THIS LESSON
+Assigned topics: ${grammar}
+- Check actual textbook language work as well as the school's assigned topics. Keep extensions within taught class-level scope.
+- AI decides a justified number of exercises and questions for each topic. Do not force every topic to the same count.
+- Give each topic varied suitable exercise forms, such as MCQ, contextual gap filling, editing, omission, sentence construction or rewriting.
+- Each saved grammar record is one independently answerable one-mark item with a complete context and answer. Repeat necessary context in dependent items.
+- Every grammar record needs [Topic: exact topic] and [Exercise: exact exercise form].
+- Avoid ambiguity; provide all valid alternatives when necessary. Editing contains an actual error; omission clearly identifies the missing-word position.
+- No L1/L2/L3 labels. Use the school's annual topic/revision plan so earlier skills are revisited and all topics are covered by year-end.`);
+  if (includes('writing')) blocks.push(`WRITING — FIVE TASKS FOR EACH ASSIGNED FORMAT
+Assigned writing formats: ${writing}
+- Exactly 5 distinct complete tasks per assigned format, initially 5 marks each.
+- Every task has [Format: exact writing format], full instructions, appropriate audience/purpose/word limit, a complete properly formatted model response and a marking rubric totalling 5.
+- Keep Formal Letters, Informal Letters and Application to Principal distinct.
+- Use situations relevant to the lesson/unit theme where natural, with suitable new prompts; do not invent events in the prescribed literary text.
+- Include only writing formats appropriate to the verified class and course. The later yearly placement should revisit a format with new contexts.`);
+  if (includes('literature')) blocks.push(`LITERATURE — FOURTEEN TARGET RECORDS FOR THIS LESSON
+- 3 extract-based sets, normally 5 marks each. Each has the actual short permissible extract or verified brief textual reference and 4 subquestions worth 1,1,1,2 marks.
+- 8 distinct short written responses, 3 marks each.
+- Up to 3 distinct long written responses, 6 marks each, only where the actual text supports the demand and marks.
+- These are school practice-bank requests, not a claim that every CBSE class/course uses 3- and 6-mark exam responses.
+- Spread questions over the real text: understanding, inference, character/idea/theme, interpretation and competency. Do not introduce a separate 5-mark written-response pool.
+- For short poems, do not pad or create unsupported long answers. Explain a justified shortfall in the draft review before Q1.
+- All questions, events, quotations and answers must be supported by the actual text. Extracts must not be invented. Use brief permissible excerpts; avoid long copyrighted reproduction.
+- Answer keys are clear, natural and point-wise where appropriate, with credit for supported alternative interpretations. Do not force the number of answer points to equal the marks.
+- [Area: ${plan.literaryArea || 'Prose/Poetry/Drama/Supplementary — select the actual literary area'}] must describe the actual selected text.`);
+  return `You are an expert CBSE English teacher, question setter and independent academic reviewer.
+
+PREPARE A CHAPTER/LESSON-WISE PRACTICE QUESTION BANK
+Class: ${params.class}
+Board: CBSE
+Subject: ${params.subject}
+Selected lesson: ${params.chapter}
+Catalogue book: ${plan.book || 'verify from the current prescribed syllabus'}
+Catalogue unit: ${plan.unit || 'verify if applicable'} ${plan.unitTitle || ''}
+Catalogue course: ${plan.course || 'verify the prescribed course'}
+Requested section(s): ${all ? 'Reading, Grammar, Writing and Literature' : scope}
+
+All records in this package belong to the exact selected lesson above. Reading, Grammar and Writing are lesson-linked sections, not new subjects or replacement chapter names.
+
+SOURCE AND ACADEMIC REQUIREMENTS
+- Check the current class, academic-session curriculum, actual prescribed textbook/course and selected lesson using CBSE Academic, NCERT, ePathshala or a school-supplied actual text.
+- The catalogue supplies titles and metadata; it is not proof that the full chapter has been read.
+- Read the actual lesson and relevant language/writing exercises before claiming textbook alignment. Preserve their coverage alongside appropriate school-assigned practice.
+- For Classes 11–12, confirm English Core/Elective from the actual source/course. Do not use another course's literature, writing formats or grammar requirements.
+- If the necessary source is unavailable or the selected task is unsupported, explain the specific issue before Q1. Never claim a source was checked when it was not accessed.
+- Unseen reading and independent writing must be suitable ORIGINAL material, not questions copied from external question banks.
+- Verify questions, calculations/data if any, grammar, wording, options, intended correct answers, marks, rubrics, clarity and duplicates independently before final output.
+- Use visuals only when genuinely necessary. English visuals are PNG files added through the existing review process, not embedded SVG. No missing pictures or invented image URLs.
+- This is a stock-building policy. A final exam must follow its selected class/course blueprint; create genuine mark-specific variants if a paper needs marks different from this practice stock.
+
+YEARLY COVERAGE CONTEXT
+Catalogue lesson order: ${(plan.lessonOrder || []).join('; ') || 'check the supplied class syllabus'}
+- Use the assigned school plan when supplied. For an unassigned class, first propose a complete annual grammar/writing distribution using the verified syllabus and this lesson order, then prepare only the selected lesson's requested bank.
+- Plan 2–3 grammar topics per lesson with progressive introduction and revision. Distribute all applicable writing formats across the year and revisit them with different tasks.
+- Put the annual/topic coverage plan outside the final question-record block. Do not claim all annual topics are covered merely because one lesson batch is complete.
+
+${blocks.join('\n\n')}
+
+EXACT IMPORT FORMAT
+Number saved parent records continuously Q1, Q2, ... . No section headings inside the final record block. Do not number a dependent subquestion as a new Q record.
+Every header must carry [Section: Reading/Grammar/Writing/Literature], [Area: ...], [Model: ...] and the exact [Chapter: ${params.chapter}]. Keep optional Book/Unit metadata when known.
+
+READING OR EXTRACT SET (one complete saved record):
+Q1: 10 Marks [Reading] [Section: Reading] [Area: Reading] [Reading Kind: Prose] [Model: Discursive] [Chapter: ${params.chapter}]
+Passage:
+<complete original text>
+Sub-question 1 (1 Mark):
+<complete question; A), B), C), D) on separate lines if MCQ>
+Answer: <correct answer; MCQ key is one letter followed by its correct text>
+Explanation: <only when useful>
+Sub-question 2 (1 Mark):
+<question>
+Answer: <answer>
+<continue all remaining marked subquestions; their marks must sum to the parent marks>
+
+For unseen poetry use Poem: and [Reading Kind: Poetry]. For literature extracts use [Extract] [Section: Literature] [Area: actual literary area], Extract:, 5 parent marks, and the four 1,1,1,2 subquestions.
+
+GRAMMAR MCQ:
+Q2: 1 Mark [MCQ (Single)] [Section: Grammar] [Area: Grammar] [Topic: Tenses] [Exercise: MCQ] [Model: Application] [Chapter: ${params.chapter}]
+<self-contained question>
+A) <choice>
+B) <choice>
+C) <choice>
+D) <choice>
+Ans: B)
+Explanation: <accurate explanation>
+
+GRAMMAR WITHOUT OPTIONS:
+Q3: 1 Mark [Grammar] [Section: Grammar] [Area: Grammar] [Topic: exact topic] [Exercise: exact exercise form] [Model: Application] [Chapter: ${params.chapter}]
+<complete instructions and context>
+Answer: <complete correct answer and valid alternatives where needed>
+
+WRITING:
+Q4: 5 Marks [Writing] [Section: Writing] [Area: Writing] [Format: exact writing format] [Model: exact writing format] [Chapter: ${params.chapter}]
+<complete task>
+Answer:
+<complete model response in the required format>
+Marking Rubric:
+<format-appropriate allocation summing to 5>
+
+LITERATURE ANSWER:
+Q5: 3 Marks [Descriptive] [Section: Literature] [Area: actual literary area] [Category: SA] [Model: Interpretation] [Chapter: ${params.chapter}]
+<question>
+Answer:
+<complete supported marking points>
+For a long answer use 6 Marks, [Category: LA] and an appropriate model such as Interpretation, Analysis or Evaluation. Vary genuine question models rather than relabelling the same question.
+
+FINAL FORMAT RULES
+- All subquestion answers stay inside their parent set. Preserve the full passage/poem/extract, every subquestion and all answers.
+- Exactly one defensible answer for a single-correct MCQ, with four nonempty plausible options. Let correct options occur naturally; do not artificially balance them.
+- Do not include L1/L2/L3 labels, markdown tables, paper headers, introductory prose, missing-content placeholders or citations inside final question records.
+- Keep research citations, the topic/exercise inventory and shortfall explanations outside the final record block.
+- Use DRAFT → INDEPENDENT RECHECK → CORRECT → FINAL SET. The assistant's recheck is the final academic review; do not assume a later teacher review.
+- First produce the draft and its coverage plan. When asked to recheck, review every record independently and correct every resolvable issue.
+- When asked for the final set, return the COMPLETE corrected requested batch in one copyable plain-text code block from Q1 through its last parent record. Nothing outside that block should be needed to answer any question.
+`;
+}
+function __scParseEnglishSet(body) {
+  const re = /(?:^|\n)\s*Sub[- ]question\s+(\d+)\s*\((\d+(?:\.\d+)?)\s*Marks?\)\s*:\s*/gi;
+  const matches = [...body.matchAll(re)];
+  const passage = (matches.length ? body.slice(0, matches[0].index) : body)
+    .replace(/^\s*(?:Passage|Poem|Extract)\s*:\s*/i, '').trim();
+  const parts = matches.map((m, i) => {
+    const content = body.slice(m.index + m[0].length, matches[i + 1]?.index ?? body.length).trim();
+    const ans = content.match(/(?:^|\n)\s*(?:Answer|Ans)\s*:\s*([\s\S]*?)(?=\n\s*Explanation\s*:|$)/i);
+    const exp = content.match(/(?:^|\n)\s*Explanation\s*:\s*([\s\S]*)$/i);
+    const question = content.split(/(?:^|\n)\s*(?:Answer|Ans|Explanation)\s*:/i)[0].trim();
+    const opts = [...question.matchAll(/(?:^|\n)\s*([A-D])[).]\s*([^\n]+)/g)];
+    return {number: Number(m[1]), marks: Number(m[2]), text: opts.length ? question.slice(0, opts[0].index).trim() : question,
+      options: opts.map(o => o[2].trim()), optionLabels: opts.map(o => o[1].toUpperCase()), answer: ans?.[1]?.trim() || '', explanation: exp?.[1]?.trim() || ''};
+  });
+  return {passage, parts};
+}
+function __scEnrichEnglishBankQuestion(q, body) {
+  q.englishSection = __scEnglishTag(q.parsedMeta, 'Section');
+  q.englishTopic = __scEnglishTag(q.parsedMeta, 'Topic');
+  q.englishExercise = __scEnglishTag(q.parsedMeta, 'Exercise');
+  q.englishFormat = __scEnglishTag(q.parsedMeta, 'Format');
+  q.readingKind = __scEnglishTag(q.parsedMeta, 'Reading Kind');
+  if (q.type !== 'MCQ (Single)') q.question = q.parsedBody;
+  if (q.type === 'Reading' || q.type === 'Extract') {
+    const set = __scParseEnglishSet(body);
+    q.passage = set.passage;
+    q.parts = set.parts;
+    // Keep complete dependent questions and their answers in existing body/question/text fields.
+    q.question = body;
+    q.parsedBody = body;
+    q.parsedAnswer = 'Answer:\n' + set.parts.map((p, i) => `${i + 1}. ${p.answer}`).join('\n');
+    q.fullText = q.parsedMeta + '\n' + body;
+    q.explanation = '';
+  }
+  return q;
+}
+function __scEnglishContentKey(q) {
+  const meta = q.parsedMeta || q.metaLine || '';
+  const type = q.type || __scEnglishTag(meta, 'Type');
+  const body = q.parsedBody || q.body || q.question || '';
+  if (type === 'Reading' || type === 'Extract') {
+    const set = q.parts?.length ? q : __scParseEnglishSet(body);
+    return __scEnglishKey([set.passage, ...set.parts.map(p => [p.text, ...(p.options || [])].join(' '))].join(' '));
+  }
+  return __scEnglishKey([q.question || body, ...(q.options || [])].join(' '));
+}
+function __scEnglishInventory(questions = [], params = {}) {
+  const errors = [], warnings = [], counts = {prose: 0, poetry: 0, grammar: 0, writing: 0, extracts: 0, short: 0, long: 0};
+  const grammarTopics = new Map(), formats = new Map(), duplicates = new Set();
+  const plan = __scEnglishPlan(params);
+  const sectionKeys = {reading: 'Reading', grammar: 'Grammar', writing: 'Writing', literature: 'Literature'};
+  const addError = (i, text) => errors.push(`Q${i + 1}: ${text}`);
+  questions.forEach((q, i) => {
+    const meta = q.parsedMeta || q.metaLine || '';
+    const section = __scEnglishKey(__scEnglishTag(meta, 'Section'));
+    const area = __scEnglishKey(q.subjectArea || __scEnglishTag(meta, 'Area'));
+    const chapter = __scEnglishTag(meta, 'Chapter');
+    const topic = __scEnglishTag(meta, 'Topic'), format = __scEnglishTag(meta, 'Format');
+    const exercise = __scEnglishTag(meta, 'Exercise');
+    const marks = Number(q.marks);
+    if (!sectionKeys[section]) addError(i, 'a valid Section tag is required.');
+    if (plan.scope !== 'all' && section !== plan.scope) addError(i, `the record is outside the selected ${plan.scope} batch.`);
+    if (!chapter || __scEnglishKey(chapter) !== __scEnglishKey(params.chapter)) addError(i, 'Chapter tag must match the selected lesson.');
+    for (const field of ['class', 'board', 'subject', 'chapter']) {
+      if (__scEnglishKey(q[field]) !== __scEnglishKey(params[field])) addError(i, `${field} mapping differs from this session.`);
+    }
+    if (!Number.isFinite(marks) || marks <= 0) addError(i, 'valid marks are required.');
+    if (!String(q.parsedBody || q.question || '').trim()) addError(i, 'question text is missing.');
+    if (!String(q.parsedAnswer || '').replace(/^Answer:\s*/i, '').trim()) addError(i, 'the answer is missing.');
+    if (/\b(?:Level\s*[123]|L[123])\b/i.test(meta)) addError(i, 'chapter-bank records must not carry L1/L2/L3 labels.');
+    const content = __scEnglishContentKey(q);
+    if (duplicates.has(content)) addError(i, 'this question duplicates another imported record.');
+    duplicates.add(content);
+    if (q.type === 'MCQ (Single)') {
+      if (q.options?.length !== 4 || q.options.some(o => !String(o).trim())) addError(i, 'a single-correct MCQ needs four nonempty options.');
+      const key = String(q.parsedAnswer || '').replace(/^Ans:\s*/i, '').trim();
+      if (!/^[A-D]\)?\.?$/i.test(key)) addError(i, 'a single-correct MCQ needs exactly one A–D key.');
+      if (new Set((q.options || []).map(__scEnglishKey)).size !== 4) addError(i, 'MCQ options must be distinct.');
+    }
+    if (section === 'reading' || q.type === 'Extract') {
+      const parts = q.parts || __scParseEnglishSet(q.parsedBody || '').parts;
+      if (!q.passage?.trim()) addError(i, 'the complete passage, poem or extract is missing.');
+      if (!parts.length) addError(i, 'marked Sub-question blocks are required.');
+      if (parts.reduce((s, p) => s + p.marks, 0) !== marks) addError(i, 'subquestion marks do not add up to the parent marks.');
+      parts.forEach((p, k) => {
+        if (p.number !== k + 1) addError(i, 'subquestions must be numbered consecutively from 1.');
+        if (!p.text || !p.answer || !(p.marks > 0)) addError(i, `subquestion ${k + 1} needs complete text, marks and answer.`);
+        if (p.options.length) {
+          const key = p.answer.match(/^([A-D])(?:[).:]|\b)\s*/i);
+          const multipleKeys = key && /^(?:(?:[,;/&]|\band\b|\bor\b)\s*)+[A-D](?:[).:]|\b)/i.test(p.answer.slice(key[0].length));
+          if (p.options.length !== 4 || p.options.some(o => !o) || new Set(p.options.map(__scEnglishKey)).size !== 4 ||
+              (p.optionLabels && p.optionLabels.join('') !== 'ABCD') || !key || multipleKeys) {
+            addError(i, `subquestion ${k + 1} needs four distinct A–D options and exactly one correct key.`);
+          }
+        }
+      });
+      if (section === 'reading') {
+        if (q.type !== 'Reading' || area !== 'reading' || marks !== 10) addError(i, 'unseen reading must use Reading type/area and 10 marks.');
+        const kind = __scEnglishKey(__scEnglishTag(meta, 'Reading Kind'));
+        if (kind === 'prose') counts.prose++;
+        else if (kind === 'poetry') counts.poetry++;
+        else addError(i, 'Reading Kind must be Prose or Poetry.');
+      } else if (section === 'literature') {
+        counts.extracts++;
+        if (marks !== 5 || parts.map(p => p.marks).join(',') !== '1,1,1,2') addError(i, 'a literature extract needs 5 marks split 1,1,1,2.');
+      }
+    }
+    if (section === 'grammar') {
+      counts.grammar++;
+      if (area !== 'grammar' || marks !== 1 || !['Grammar', 'MCQ (Single)'].includes(q.type)) addError(i, 'grammar records need Grammar area, one mark and Grammar/MCQ (Single) type.');
+      if (!topic || !exercise) addError(i, 'grammar needs Topic and Exercise tags.');
+      const key = __scEnglishKey(topic);
+      if (!grammarTopics.has(key)) grammarTopics.set(key, new Set());
+      grammarTopics.get(key).add(__scEnglishKey(exercise));
+      if (plan.grammarTopics.length && !plan.grammarTopics.some(t => __scEnglishKey(t) === key)) addError(i, 'grammar topic is outside the assigned list.');
+    }
+    if (section === 'writing') {
+      counts.writing++;
+      if (q.type !== 'Writing' || area !== 'writing' || marks !== 5 || !format) addError(i, 'writing needs Writing type/area, 5 marks and an exact Format tag.');
+      if (!/Marking Rubric\s*:/i.test(q.parsedAnswer || '')) addError(i, 'writing needs its complete model response and Marking Rubric.');
+      const key = __scEnglishKey(format);
+      formats.set(key, (formats.get(key) || 0) + 1);
+      if (plan.writingFormats.length && !plan.writingFormats.some(f => __scEnglishKey(f) === key)) addError(i, 'writing format is outside the assigned list.');
+    }
+    if (section === 'literature') {
+      if (!['prose', 'poetry', 'drama', 'supplementary', 'literature'].includes(area)) addError(i, 'literature needs its correct literary Area.');
+      if (plan.literaryArea && area !== __scEnglishKey(plan.literaryArea)) addError(i, 'literary Area does not match the catalogue.');
+      if (q.type !== 'Extract') {
+        if (q.type !== 'Descriptive' || ![3, 6].includes(marks)) addError(i, 'literature answers must be Descriptive at 3 or 6 marks.');
+        if (marks === 3) counts.short++;
+        if (marks === 6) counts.long++;
+      }
+    }
+  });
+  const needs = section => plan.scope === 'all' || plan.scope === section;
+  const expect = (actual, target, label) => {if (actual !== target) errors.push(`${label}: expected ${target}; found ${actual}.`);};
+  if (questions.length) {
+    if (needs('reading')) {expect(counts.prose, 2, 'Unseen prose sets'); expect(counts.poetry, 2, 'Unseen poem sets');}
+    if (needs('literature')) {
+      expect(counts.extracts, 3, 'Literature extract sets'); expect(counts.short, 8, 'Three-mark literature answers');
+      if (counts.long > 3) errors.push('Six-mark literature answers: at most 3 are permitted.');
+      if (counts.long < 3) warnings.push(`Six-mark answers: ${counts.long}/3. Keep this reduction only when justified by the actual text.`);
+    }
+    if (needs('grammar')) {
+      if (grammarTopics.size < 2 || grammarTopics.size > 3) errors.push(`Grammar needs 2–3 distinct topics; found ${grammarTopics.size}.`);
+      for (const [topic, types] of grammarTopics) if (types.size < 2) errors.push(`Grammar topic "${topic}" needs varied exercises (at least two suitable forms).`);
+      for (const topic of plan.grammarTopics) if (!grammarTopics.has(__scEnglishKey(topic))) errors.push(`Assigned grammar topic is missing: ${topic}.`);
+    }
+    if (needs('writing')) {
+      if (!formats.size) errors.push('The assigned writing format and five tasks are missing.');
+      for (const [format, count] of formats) expect(count, 5, `Writing format "${format}"`);
+      for (const format of plan.writingFormats) if (!formats.has(__scEnglishKey(format))) errors.push(`Assigned writing format is missing: ${format}.`);
+    }
+  }
+  return {errors: [...new Set(errors)], warnings, counts, grammarTopics: [...grammarTopics.keys()], writingFormats: [...formats.keys()]};
+}
+function __scRenderEnglishInventory() {
+  const params = typeof lastSessionParams !== 'undefined' ? lastSessionParams : null;
+  if (!params || !__scIsEnglishLessonBank(params) || !params.englishBank) return;
+  const header = document.querySelector('.ai-chat-header');
+  if (!header) return;
+  let panel = document.getElementById('english-bank-inventory');
+  if (!panel) {panel = document.createElement('div'); panel.id = 'english-bank-inventory'; header.appendChild(panel);}
+  const questions = typeof currentSessionQuestions !== 'undefined' ? currentSessionQuestions : [];
+  const status = __scEnglishInventory(questions, params), c = status.counts;
+  const requested = section => params.englishBank.scope === 'all' || params.englishBank.scope === section;
+  const tally = [
+    requested('reading') ? `Prose ${c.prose}/2 · Poems ${c.poetry}/2` : '',
+    requested('grammar') ? `Grammar ${c.grammar} items / ${status.grammarTopics.length} topics` : '',
+    requested('writing') ? `Writing ${c.writing} tasks / ${status.writingFormats.length} formats` : '',
+    requested('literature') ? `Extracts ${c.extracts}/3 · 3-mark ${c.short}/8 · 6-mark ${c.long}/3` : ''
+  ].filter(Boolean).join(' · ');
+  panel.style.cssText = 'font-size:13px;background:#f4f8fc;border-radius:8px;padding:8px;margin-top:8px;max-height:180px;overflow:auto;';
+  panel.innerHTML = `<b>${__scEnglishEscape(params.englishBank.scope === 'all' ? 'All four sections' : params.englishBank.scope)} · ${questions.length} records</b><br>
+    ${tally}
+    ${status.errors.length ? '<div style="color:#a32a20;margin-top:6px;">' + status.errors.map(__scEnglishEscape).join('<br>') + '</div>' : ''}
+    ${status.warnings.length ? '<div style="color:#855b00;margin-top:6px;">' + status.warnings.map(__scEnglishEscape).join('<br>') + '</div>' : ''}
+    <div style="margin-top:6px;">${questions.length && !status.errors.length ? 'Format and inventory checks passed. ' : ''}Academic accuracy still requires the independent AI recheck before the final set.</div>`;
+  const save = document.getElementById('ai-save-all-btn');
+  if (save && !save.dataset.saving) save.disabled = !questions.length || !!status.errors.length;
+}
+function __scEditEnglishRecord(index) {
+  const q = currentSessionQuestions[index];
+  document.querySelectorAll('.edit-popup').forEach(p => p.remove());
+  const popup = document.createElement('div'); popup.className = 'edit-popup';
+  popup.innerHTML = '<h3>Edit complete English record</h3><label>Keep its header, complete question and answers:</label><textarea rows="20" style="width:100%;box-sizing:border-box;"></textarea><div class="popup-buttons"><button type="button" data-cancel>Cancel</button><button type="button" data-save>Save</button></div>';
+  const box = popup.querySelector('textarea'); box.value = q.fullText;
+  popup.querySelector('[data-cancel]').onclick = () => popup.remove();
+  popup.querySelector('[data-save]').onclick = () => {
+    const parsed = parseCompleteChapterBankQuestions(box.value, lastSessionParams);
+    if (parsed.length !== 1) return alert('Keep exactly one complete Q record.');
+    currentSessionQuestions[index] = parsed[0];
+    __scStoreSessionQuestions(currentSessionQuestions, lastSessionParams);
+    popup.remove(); rerenderAllQuestions();
+  };
+  document.body.appendChild(popup);
+}
+window.SciMentraEnglishBank = {
+  plan: __scEnglishPlan, buildPrompt: __scBuildEnglishLessonBankPrompt,
+  parseSet: __scParseEnglishSet, inventory: __scEnglishInventory,
+  isLessonBank: __scIsEnglishLessonBank, cacheKey: __scEnglishCacheKey
+};
+
+  </script>
   <script>
     // --- FULL JAVASCRIPT ---
     const API_BASE_URL = 'https://question-bank-lqsu.onrender.com';
@@ -1446,6 +1899,8 @@ const subjectsHTML = initialSubjectsWithOther
             </div>
           </div>
 
+          <div id="english-lesson-bank-options" class="form-group" hidden style="border:1px solid #c7d8e8;border-radius:10px;padding:14px;background:#f6faff;"></div>
+
           <div
             class="form-group"
             id="normal-qtype-wrap-ai"
@@ -1613,7 +2068,7 @@ window.loadBoardChapterFile = function(boardName) {
     }
 
     const s = document.createElement('script');
-    s.src = fileName;
+    s.src = fileName + (board.toLowerCase() === 'cbse' ? '?v=2026-10-24-english-lesson' : '');
     s.async = true;
     s.setAttribute('data-chapter-file', fileName);
 
@@ -1780,6 +2235,7 @@ const qtypeWrap =
       }
     }
   }
+  __scSyncEnglishBankForm();
 };
 
 setupCustomDropdownsForForm();
@@ -2085,6 +2541,11 @@ if (isChapterBankMode) {
     marks: 0
   };
 
+  if (__scIsCBSEEnglish(sessionParams)) {
+    try { sessionParams.englishBank = __scReadEnglishBankForm(sessionParams); }
+    catch (error) { __qb_toast(error.message); return; }
+  }
+
   history.pushState(
     { page: 'chat', sessionParams: sessionParams },
     'Chat',
@@ -2199,12 +2660,13 @@ if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)' && ses
 
     function loadAiChatInterface(sessionParams) {
       currentPage = 'chat';
+      if (__scIsEnglishLessonBank(sessionParams) && !sessionParams.englishBank) sessionParams.englishBank = __scEnglishPlan(sessionParams);
       lastSessionParams = sessionParams;
       document.body.classList.add('chat-lock');
       document.getElementById('main-header').style.display = 'none';
 
       const container = document.getElementById('ai-container');
-      currentSessionQuestions = JSON.parse(sessionStorage.getItem('currentSessionQuestions') || '[]');
+      currentSessionQuestions = JSON.parse(sessionStorage.getItem(__scEnglishCacheKey(sessionParams)) || '[]');
 
       container.innerHTML = `
         <div class="ai-chat-container">
@@ -2218,7 +2680,7 @@ if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)' && ses
             <div class="chat-header-line">
                  ${__isEntranceExamBoard(sessionParams.board)
                 ? ''
-                : `<p><b>Plan:</b> ${sessionParams.levelPlan || ''}</p>`}
+                : `<p><b>Plan:</b> ${__scIsEnglishLessonBank(sessionParams) ? __scEnglishEscape('English lesson package · ' + __scEnglishPlan(sessionParams).scope) : (sessionParams.levelPlan || '')}</p>`}
             </div>
             <div class="chat-header-line buttons actions-row">
               <button id="ai-change-setup-btn" class="btn action-saffron">Change Setup</button>
@@ -2292,6 +2754,8 @@ if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)' && ses
       };
       document.getElementById('ai-save-all-btn').onclick = () => saveSessionQuestions(sessionParams);
 
+      if (__scIsEnglishLessonBank(sessionParams)) rerenderAllQuestions();
+
       // Toggle the paste panel thin strip
       const pasteToggleBtn = document.getElementById('ai-toggle-paste-btn');
       const pasteZone = document.getElementById('paste-zone');
@@ -2317,7 +2781,9 @@ if (_pzExpected) {
       sessionParams.questionType === 'Complete Chapter Bank'
     );
 
-  _pzExpected.textContent =
+  if (__scIsEnglishLessonBank(sessionParams)) {
+    _pzExpected.closest('.pz-note').textContent = 'Paste the complete requested English batch (Q1–QN). Preview checks its section inventory, complete sets, marks and lesson mapping.';
+  } else _pzExpected.textContent =
     isChapterBank
       ? '50'
       : String(sessionParams.numQuestions || 20);
@@ -2348,7 +2814,7 @@ if (_pzExpected) {
             const parsed = parseFinalSetIntoQuestions(raw, sessionParams);
             if (!parsed.length) return __qb_toast('Could not find any Q1… blocks.');
             currentSessionQuestions = parsed;
-sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+__scStoreSessionQuestions(currentSessionQuestions, lastSessionParams);
 rerenderAllQuestions();
             __qb_toast(`Parsed ${parsed.length} question(s).`);
             const pz = document.getElementById('paste-zone');
@@ -2626,7 +3092,7 @@ if (subjectInput.value === 'Other') {
     syncEntranceExamUI(currentBoard);
   });
 
-  setupCustomDropdown('chapter-dropdown-ai', 'chapter-value-ai');
+  setupCustomDropdown('chapter-dropdown-ai', 'chapter-value-ai', __scSyncEnglishBankForm);
 
   // Initial board UI
   syncEntranceExamUI(
@@ -2646,6 +3112,7 @@ async function updateChapterDropdown(selectedClass, selectedSubject) {
     chapterOptions.innerHTML = `<div data-value="">${msg}</div>`;
     chapterSelected.textContent = msg;
     chapterInput.value = '';
+    __scSyncEnglishBankForm();
   };
 
   const rawBoard = document.getElementById('board-value-ai')?.value || '';
@@ -2663,6 +3130,13 @@ async function updateChapterDropdown(selectedClass, selectedSubject) {
   }
 
     await window.loadBoardChapterFile(finalBoard);
+    // Ignore a catalogue response when the teacher has already changed the selection.
+    const liveClass = (document.getElementById('class-value-ai')?.value || '').trim();
+    const liveBoardRaw = document.getElementById('board-value-ai')?.value || '';
+    const liveBoard = liveBoardRaw === 'Other' ? (document.getElementById('board-other-input')?.value || '').trim() : liveBoardRaw;
+    const liveSubjectRaw = document.getElementById('subject-value-ai')?.value || '';
+    const liveSubject = liveSubjectRaw === 'Other' ? (document.getElementById('subject-other-input')?.value || '').trim() : liveSubjectRaw;
+    if (liveClass !== selectedClass || liveBoard !== finalBoard || liveSubject !== finalSubject) return;
 
     const boardData = window.getBoardChapterData(finalBoard);
 
@@ -2710,12 +3184,14 @@ async function updateChapterDropdown(selectedClass, selectedSubject) {
 
   chapterSelected.textContent = uniqueChapters[0];
   chapterInput.value = uniqueChapters[0];
+  __scSyncEnglishBankForm();
 
   optionsContainerListener(
     chapterOptions,
     chapterSelected,
     chapterInput,
-    chapterDropdown
+    chapterDropdown,
+    __scSyncEnglishBankForm
   );
 }
 function setupCustomDropdown(dropdownId, inputId, callback) {
@@ -3580,7 +4056,7 @@ async function saveSessionQuestions(sessionParams) {
   }
 
   if (!Array.isArray(currentSessionQuestions) || currentSessionQuestions.length === 0) {
-    const cachedQuestions = JSON.parse(sessionStorage.getItem('currentSessionQuestions') || '[]');
+    const cachedQuestions = JSON.parse(sessionStorage.getItem(__scEnglishCacheKey(sessionParams)) || '[]');
     if (Array.isArray(cachedQuestions) && cachedQuestions.length > 0) {
       currentSessionQuestions = cachedQuestions;
     }
@@ -3591,7 +4067,17 @@ async function saveSessionQuestions(sessionParams) {
     return;
   }
 
+  if (__scIsEnglishLessonBank(sessionParams) && sessionParams.englishBank) {
+    const checked = __scEnglishInventory(currentSessionQuestions, sessionParams);
+    if (checked.errors.length) {
+      __scRenderEnglishInventory();
+      alert('Correct the English bank format/inventory before saving:\n' + checked.errors.slice(0, 12).join('\n'));
+      return;
+    }
+  }
+
   saveButton.disabled = true;
+  saveButton.dataset.saving = 'true';
   saveButton.innerHTML = "⏳ Saving...";
 
   let savedCount = 0,
@@ -3632,6 +4118,9 @@ async function saveSessionQuestions(sessionParams) {
       );
     }
 
+    if (__scIsEnglishLessonBank(sessionParams) && __scEnglishTag(qData.parsedMeta, 'Section')) {
+      compareText = __scEnglishContentKey(qData);
+    }
     console.log("CHECKING DUPLICATES FOR", i, qData.subject, qData.chapter);
 
    const snapshot = await db
@@ -3665,6 +4154,9 @@ async function saveSessionQuestions(sessionParams) {
         );
       }
 
+      if (__scIsEnglishLessonBank(sessionParams) && __scEnglishTag(qData.parsedMeta, 'Section')) {
+        existingText = __scEnglishContentKey(doc.data());
+      }
       if (compareText === existingText) {
         isDuplicate = true;
       }
@@ -3958,7 +4450,7 @@ async function saveSessionQuestions(sessionParams) {
         await __qbRenumberSectionQuestionsFromSeed(seed);
       }
 
-      sessionStorage.removeItem('currentSessionQuestions');
+      sessionStorage.removeItem(__scEnglishCacheKey(sessionParams));
 currentSessionQuestions = [];
 alert(`${savedCount} question(s) saved. ${skippedCount} duplicate(s) skipped.`);
   } catch (err) {
@@ -3967,6 +4459,8 @@ alert(`${savedCount} question(s) saved. ${skippedCount} duplicate(s) skipped.`);
   } finally {
     saveButton.disabled = false;
     saveButton.innerHTML = "💾 Save All";
+    delete saveButton.dataset.saving;
+    __scRenderEnglishInventory();
   }
 }
 function appendChatMessage(text, type, messagesArea) {
@@ -4708,6 +5202,8 @@ Do not impose an entire examination blueprint.`}
 }
 
 function buildCompleteChapterBankPrompt(sessionParams = {}) {
+  if (__scIsEnglishLessonBank(sessionParams)) return __scBuildEnglishLessonBankPrompt(sessionParams);
+
   const cls = String(sessionParams.class || '').trim();
   const board = String(sessionParams.board || '').trim();
   const subj = String(sessionParams.subject || '').trim();
@@ -6513,6 +7009,7 @@ function __qbParseParagraphSetBlock(block, sessionParams) {
 ========================================================= */
 
 function parseCompleteChapterBankQuestions(text, sessionParams = {}) {
+  text = String(text || '').replace(/\r\n?/g, '\n').replace(/^\s*```[a-z]*\s*$/gim, '').trim();
   const startIdx = text.search(/\bQ\s*1\s*:/i);
   const cleaned = startIdx >= 0 ? text.slice(startIdx) : text;
 
@@ -6532,7 +7029,7 @@ function parseCompleteChapterBankQuestions(text, sessionParams = {}) {
     const marks = marksMatch ? parseInt(marksMatch[1], 10) : 0;
 
     const typeMatch = rawMeta.match(
-      /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map)\]/i
+      /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Reading|Extract|Grammar|Writing|QuestionSet)\]/i
     );
 
     let questionType = typeMatch
@@ -6791,6 +7288,7 @@ function parseCompleteChapterBankQuestions(text, sessionParams = {}) {
         `${qData.explanation ? `\nExplanation: ${qData.explanation}` : ''}`;
     }
 
+    if (__scIsCBSEEnglish(sessionParams)) __scEnrichEnglishBankQuestion(qData, body);
     out.push(qData);
   });
 
@@ -7089,6 +7587,14 @@ function parseFinalSetIntoQuestions(text, sessionParams) {
 /* ========== END FINAL SET parser ========== */
 
 function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
+  if (__scIsEnglishLessonBank(sessionParams)) {
+    const parsed = parseFinalSetIntoQuestions(responseText, sessionParams);
+    if (!parsed.length) return appendChatMessage(responseText, 'ai', messagesArea);
+    currentSessionQuestions = parsed;
+    __scStoreSessionQuestions(currentSessionQuestions, sessionParams);
+    rerenderAllQuestions();
+    return;
+  }
   if (sessionParams.questionType === 'Paragraph-Based MCQ (Single Correct)') {
     const parsed = parseFinalSetIntoQuestions(responseText, sessionParams);
 
@@ -7098,7 +7604,7 @@ function parseAndDisplayAiQuestions(responseText, messagesArea, sessionParams) {
     }
 
     currentSessionQuestions.push(...parsed);
-    sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+    __scStoreSessionQuestions(currentSessionQuestions, lastSessionParams);
     rerenderAllQuestions();
     return;
   }
@@ -7361,8 +7867,8 @@ function createQuestionElement(qData, index) {
   questionEl.dataset.sessionQuestionIndex = index;
 
   questionEl.innerHTML = `
-    <div class="question-meta-ai">${qData.parsedMeta}</div>
-    <div class="question-text-ai">${(qData.parsedBody || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+    <div class="question-meta-ai">${__scEnglishEscape(qData.parsedMeta)}</div>
+    <div class="question-text-ai" style="${__scEnglishTag(qData.parsedMeta, 'Section') ? 'white-space:pre-wrap;' : ''}">${(qData.parsedBody || '').replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
     ${qData.parsedAnswer ? (() => {
   const safeAns = (qData.parsedAnswer || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -7482,7 +7988,7 @@ function showEditPopupForParagraph(index) {
     }
 
     currentSessionQuestions[index] = parsed[0];
-    sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+    __scStoreSessionQuestions(currentSessionQuestions, lastSessionParams);
 
     popup.remove();
     rerenderAllQuestions();
@@ -7624,7 +8130,7 @@ function rerenderAllQuestions() {
         menu.querySelector('.menu-delete-btn').onclick = () => {
                    if (confirm('Are you sure you want to delete this paragraph-based passage set?')) {
             currentSessionQuestions.splice(i, 1);
-sessionStorage.setItem('currentSessionQuestions', JSON.stringify(currentSessionQuestions));
+__scStoreSessionQuestions(currentSessionQuestions, lastSessionParams);
 rerenderAllQuestions();
           }
           menu.remove();
@@ -7639,6 +8145,7 @@ rerenderAllQuestions();
       const details = metaPartsMatch ? metaPartsMatch[1] : '';
       q.parsedMeta = `Q${i + 1}: ${details}`;
 
+      if (__scEnglishTag(q.parsedMeta, 'Section')) q.fullText = String(q.fullText || '').replace(/^Q\s*\d+\s*:[^\n]*/i, q.parsedMeta);
       const questionEl = createQuestionElement(q, i);
       fragment.appendChild(questionEl);
     }
@@ -7646,6 +8153,8 @@ rerenderAllQuestions();
 
   messagesArea.appendChild(fragment);
   if (window.MathJax) MathJax.typesetPromise([messagesArea]);
+  __scStoreSessionQuestions(currentSessionQuestions, lastSessionParams);
+  __scRenderEnglishInventory();
 }
 
 function parseMetaLine(metaLine) {
@@ -7679,7 +8188,7 @@ function parseMetaLine(metaLine) {
 
   const typeMatch =
     text.match(
-      /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Fill in the Blanks|Matching Matrix|Matching List|Numerical Value|Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i
+      /\[(MCQ \(Single\)|MCQ \(Multiple\)|Assertion and Reason \(MCQ Single\)|Descriptive|Case Based|Map|Reading|Extract|Grammar|Writing|QuestionSet|Fill in the Blanks|Matching Matrix|Matching List|Numerical Value|Paragraph-Based MCQ \(Single Correct\)|Comprehensive)\]/i
     );
 
   if (levelMatch) {
@@ -7760,6 +8269,7 @@ document.addEventListener('click', function (event) {
 });
 
 function showEditPopupForQuestion(index) {
+  if (__scIsEnglishLessonBank(lastSessionParams || {}) && __scEnglishTag(currentSessionQuestions[index]?.parsedMeta, 'Section')) return __scEditEnglishRecord(index);
   const qData = currentSessionQuestions[index];
 
   // Remove existing popup if any
