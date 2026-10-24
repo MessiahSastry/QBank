@@ -1152,12 +1152,362 @@ function __scEditEnglishRecord(index) {
   };
   document.body.appendChild(popup);
 }
+/* SciMentra school English exam syllabus, Classes 6–12, 2026–27. */
+(function () {
+  'use strict';
+  const VERSION = '2026-10-24-school-exams-v1';
+  if (window.SciMentraEnglishExamSyllabus?.version === VERSION) return;
+  const previousPlan = __scEnglishPlan;
+  const previousPrompt = __scBuildEnglishLessonBankPrompt;
+  const previousInventory = __scEnglishInventory;
+  const previousCacheKey = __scEnglishCacheKey;
+  const syllabus = {
+    "6": {
+      course: "English",
+      titles: ["A Bottle of Dew","The Raven and the Fox","Rama to the Rescue","The Unlikely Best Friends","A Friend's Prayer","The Chair","Neem Baba","What a Bird Thought","Spices that Heal Us","Change of Heart","The Winner","Yoga - A Way of Life","Hamara Bharat - Incredible India!","The Kites","Ila Sachani: Embroidering Dreams with her Feet","National War Memorial"],
+      grammar: ["Nouns","Pronouns","Articles","Adjectives","Verbs","Prepositions","Helping verbs","Adverbs","Conjunctions","Tenses","Gap filling","Reported speech","Sentence rearrangement","One-word substitution","Editing","Omission","Active and passive voice"],
+      writing: ["Paragraph writing","Formal letter writing","Informal letter writing","Notice writing","Message writing","Short-story writing","Article writing","Application to the Principal"],
+      first: [0,0,1,1,1,1,2,2,2,3,3,3,4,4,5,5],
+      exams: [
+        ["PT 1",[0,1,2],[0],[[0,[0,2],[0]],[1,[1,2],[0]]],["Unseen prose passage"]],
+        ["PT 2",[3,4,5],[1,2,3],[[2,[4,5],[1]],[3,[3,4],[2]],[4,[3,5],[3]],[5,[3,4,5],[1]]],["Unseen prose passage"]],
+        ["TERM 1",[0,1,2,3,4,5,6,7,8,9,10],[0,1,2,3,4],[[0,[0,2],[0]],[1,[1,2],[0]],[2,[4,5],[1]],[3,[3,4],[2]],[4,[3,5],[3]],[5,[3,4,5],[1]],[6,[6,7],[4]],[7,[9,8],[0]],[8,[10,9,5],[2]]],["Unseen prose passage"]],
+        ["PT 3",[11,12],[5],[[9,[11,12],[5]],[10,[11,12],[5]],[11,[11,12],[5]]],["Unseen poem"]],
+        ["PT 4",[13,14,15],[6],[[12,[13,14],[6]],[13,[15,14],[6]]],["Unseen prose passage"]],
+        ["TERM 2 AND ANNUAL",[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],[0,1,2,3,4,5,6,7],[[0,[0,2],[0]],[1,[1,2],[0]],[2,[4,5],[1]],[3,[3,4],[2]],[4,[3,5],[3]],[5,[3,4,5],[1]],[6,[6,7],[4]],[7,[9,8],[0]],[8,[10,9,5],[2]],[9,[11,12],[5]],[10,[11,12],[5]],[11,[11,12],[5]],[12,[13,14],[6]],[13,[15,14],[6]],[14,[16,11],[7]],[15,[16,12],[7]]],["Unseen prose passage","Unseen poem"]],
+      ]
+    },
+    "7": {
+      course: "English",
+      titles: ["The Day the River Spoke","Try Again","Three Days to See","Animals, Birds, and Dr. Dolittle","A Funny Man","Say the Right Thing","My Brother's Great Invention","Paper Boats","North, South, East, West","The Tunnel","Travel","Conquering the Summit","A Homage to Our Brave Soldiers","My Dear Soldiers","Rani Abbakka"],
+      grammar: ["Nouns","Pronouns","Articles","Adjectives","Verbs","Prepositions","Helping verbs","Adverbs","Conjunctions","Tenses","Gap filling","Reported speech","Sentence rearrangement","One-word substitution","Editing","Omission","Active and passive voice"],
+      writing: ["Paragraph writing","Formal letter writing","Informal letter writing","Notice writing","Message writing","Short-story writing","Article writing","Application to the Principal"],
+      first: [0,0,1,1,1,1,2,2,2,3,3,3,4,4,5],
+      exams: [
+        ["PT 1",[0,1,2],[0],[[0,[0,2],[0]],[1,[1,2],[0]]],["Unseen prose passage"]],
+        ["PT 2",[3,4,5],[1,2,3],[[2,[3,4],[1]],[3,[4,5],[2]],[4,[3,5],[3]],[5,[3,4,5],[1]]],["Unseen prose passage"]],
+        ["TERM 1",[0,1,2,3,4,5,6,7,8,9,10],[0,1,2,3,4],[[0,[0,2],[0]],[1,[1,2],[0]],[2,[3,4],[1]],[3,[4,5],[2]],[4,[3,5],[3]],[5,[3,4,5],[1]],[6,[6,7],[4]],[7,[9,8],[0]],[8,[10,9,5],[2]]],["Unseen prose passage"]],
+        ["PT 3",[11,12],[5],[[9,[11,12],[5]],[10,[11,12],[5]],[11,[11,12],[5]]],["Unseen poem"]],
+        ["PT 4",[13,14,15],[6],[[12,[13,14],[6]],[13,[15,14],[6]]],["Unseen prose passage"]],
+        ["TERM 2 AND ANNUAL",[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],[0,1,2,3,4,5,6,7],[[0,[0,2],[0]],[1,[1,2],[0]],[2,[3,4],[1]],[3,[4,5],[2]],[4,[3,5],[3]],[5,[3,4,5],[1]],[6,[6,7],[4]],[7,[9,8],[0]],[8,[10,9,5],[2]],[9,[11,12],[5]],[10,[11,12],[5]],[11,[11,12],[5]],[12,[13,14],[6]],[13,[15,14],[6]],[14,[16,11,12],[7]]],["Unseen prose passage","Unseen poem"]],
+      ]
+    },
+    "8": {
+      course: "English",
+      titles: ["The Wit that Won Hearts","A Concrete Example","Wisdom Paves the Way","A Tale of Valour: Major Somnath Sharma and the Battle of Badgam","Somebody's Mother","Verghese Kurien - I Too Had A Dream","The Case of the Fifth Word","The Magic Brush of Dreams","Spectacular Wonders","The Cherry Tree","Harvest Hymn","Waiting for the Rain","Feathered Friend","Magnifying Glass","Bibha Chowdhuri: The Beam of Light that Lit the Path for Women in Indian Science"],
+      grammar: ["Nouns","Pronouns","Adjectives","Verbs","Tenses","Articles","Prepositions","Helping verbs","Adverbs","Conjunctions","Gap filling","Reported speech","Editing","Omission","Sentence rearrangement","Idioms","Phrases","Proverbs","One-word substitution","Active and passive voice"],
+      writing: ["Paragraph writing","Formal letter writing","Informal letter writing","Notice writing","Message writing","Short-story writing","Article writing","Application to the Principal"],
+      first: [0,0,1,1,1,1,2,2,2,3,3,3,4,4,5],
+      exams: [
+        ["PT 1",[0,1],[0],[[0,[0,1],[0]],[1,[0,1],[0]]],["Unseen prose passage"]],
+        ["PT 2",[2,3,4,5,6],[1,2,3],[[2,[2,5,3],[1]],[3,[3,4,6],[3]],[4,[2,6],[2]],[5,[4,5,3],[1]]],["Unseen prose passage"]],
+        ["TERM 1",[0,1,2,3,4,5,6,7,8,9,10],[0,1,2,3,4],[[0,[0,1],[0]],[1,[0,1],[0]],[2,[2,5,3],[1]],[3,[3,4,6],[3]],[4,[2,6],[2]],[5,[4,5,3],[1]],[6,[7,8],[4]],[7,[9,10,4],[0]],[8,[8,9,10],[2]]],["Unseen prose passage"]],
+        ["PT 3",[11,12,13,14],[5],[[9,[11,14],[5]],[10,[12,13],[5]],[11,[11,13,14],[5]]],["Unseen poem"]],
+        ["PT 4",[15,16,17,18],[6],[[12,[15,16],[6]],[13,[17,18],[6]]],["Unseen prose passage"]],
+        ["TERM 2 AND ANNUAL",[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19],[0,1,2,3,4,5,6,7],[[0,[0,1],[0]],[1,[0,1],[0]],[2,[2,5,3],[1]],[3,[3,4,6],[3]],[4,[2,6],[2]],[5,[4,5,3],[1]],[6,[7,8],[4]],[7,[9,10,4],[0]],[8,[8,9,10],[2]],[9,[11,14],[5]],[10,[12,13],[5]],[11,[11,13,14],[5]],[12,[15,16],[6]],[13,[17,18],[6]],[14,[19,4,11],[7]]],["Unseen prose passage","Unseen poem"]],
+      ]
+    },
+    "9": {
+      course: "English",
+      titles: ["How I Taught My Grandmother to Read","Bharat Our Land","The Pot Maker","Gifts of Grace: Honouring Our Vocations","Winds of Change","Vitamin-M","Canvas of Soil","The World of Limitless Possibilities","I Cannot Remember My Mother","Twin Melodies","Carrier of Words","Nine Gold Medals","A Friend Found in Music","Follow That Dream","Words","Believe in Yourself"],
+      grammar: ["Modal auxiliaries","Sequence of tenses","Subject-verb concord","Paragraph completion","Editing","Omission","Sentence rearrangement","Determiners","Conditional clauses - Type 1","Reported statements","Reported questions","Reported commands and requests","Noun clauses","Relative clauses","Sentence transformation"],
+      writing: ["Notice writing","Formal e-mail writing","Poster creation","Magazine article writing","Letter to the Editor","Speech writing","Narrative essay writing","Factual description - R1","Informal invitation - R1","Descriptive essay - R1"],
+      first: [0,1,1,1,1,1,2,2,3,3,3,4,4,4,5,5],
+      exams: [
+        ["PT 1",[0],[0],[[0,[0],[0]]],["Unseen factual passage","Unseen literary passage"]],
+        ["PT 2",[1,2],[1,2],[[1,[1,2],[1]],[2,[1,2],[2]],[3,[1,2],[1]],[4,[1,2],[2]],[5,[1,2],[1]]],["Unseen factual passage","Unseen literary passage"]],
+        ["TERM 1",[0,1,2,3,4,5,6],[0,1,2,3],[[0,[0,1],[0]],[1,[1,2],[1]],[2,[1,2],[2]],[3,[1,2],[1]],[4,[1,2],[2]],[6,[3,4],[3]],[5,[1,2],[1]],[7,[5,6],[3]]],["Unseen factual passage","Unseen literary passage"]],
+        ["PT 3",[7,8],[4,5],[[8,[7,8],[4]],[9,[7,8],[5]],[10,[7,8],[4]]],["Case-based passage"]],
+        ["PT 4",[9,10,11],[6],[[11,[9,10],[6]],[12,[10,11],[6]],[13,[9,11],[6]]],["Case-based passage"]],
+        ["TERM 2 AND ANNUAL",[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],[0,1,2,3,4,5,6,7,8,9],[[0,[0,1],[0]],[1,[1,2],[1]],[2,[1,2],[2]],[3,[1,2],[1]],[4,[1,2],[2]],[6,[3,4],[3]],[5,[1,2],[1]],[8,[7,8],[4]],[7,[5,6],[3]],[11,[9,10],[6]],[9,[7,8],[5]],[12,[10,11],[6]],[10,[7,8],[4]],[14,[12,13],[5]],[13,[9,11],[6]],[15,[14,12,13],[6]]],["Unseen factual passage","Unseen literary passage","Case-based passage","Unseen descriptive or discursive passage - R1"]],
+      ]
+    },
+    "10": {
+      course: "English Language and Literature",
+      titles: ["A Letter to God","Nelson Mandela: Long Walk to Freedom","Two Stories about Flying (His First Flight; The Black Aeroplane)","Dust of Snow","Fire and Ice","A Triumph of Surgery","From the Diary of Anne Frank","Glimpses of India (A Baker from Goa; Coorg; Tea from Assam)","Mijbil the Otter","A Tiger in the Zoo","How to Tell Wild Animals","The Ball Poem","Amanda!","The Thief's Story","The Midnight Visitor","A Question of Trust","Madam Rides the Bus","The Sermon at Benares","The Proposal","The Trees","Fog","The Tale of Custard the Dragon","For Anne Gregory","Footprints Without Feet","The Making of a Scientist","The Necklace","Bholi","The Book that Saved the Earth"],
+      grammar: ["Gap filling","Editing","Tenses","Modals","Subject-verb concord","Reported statements","Reported questions","Reported commands and requests","Determiners"],
+      writing: ["Formal letter writing","Analytical paragraph writing","Letter to the Editor"],
+      first: [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2],
+      exams: [
+        ["PT 1",[0,1],[0],[[0,[0,1],[0]],[1,[0,1],[0]],[2,[0,1],[0]],[3,[0,1],[0]],[4,[0,1],[0]],[5,[0,1],[0]]],["Unseen discursive passage"]],
+        ["PT 2",[2,3,4],[1],[[6,[2,4],[1]],[7,[3,4],[1]],[8,[2,3],[1]],[9,[2,4],[1]],[10,[3,4],[1]],[11,[2,3],[1]],[12,[3,2],[1]],[13,[2,4],[1]],[14,[3,4],[1]],[15,[2,3],[1]]],["Case-based factual passage"]],
+        ["PT 3",[5,6,7,8],[2],[[16,[5,6],[2]],[17,[5,8],[2]],[18,[6,7],[2]],[19,[8,5],[2]],[20,[8,6],[2]],[21,[5,7],[2]],[22,[6,8],[2]],[23,[5,6],[2]],[24,[5,8],[2]],[25,[6,7],[2]],[26,[7,8],[2]],[27,[5,6,7],[2]]],["Unseen discursive passage"]],
+        ["RT 1",[0,1,2,3,4],[0,1],[[0,[0,1],[0]],[1,[0,1],[0]],[2,[0,1],[0]],[6,[2,4],[1]],[7,[3,4],[1]],[8,[2,3],[1]],[3,[0,1],[0]],[4,[0,1],[0]],[9,[2,4],[1]],[10,[3,4],[1]],[11,[2,3],[1]],[12,[3,2],[1]],[5,[0,1],[0]],[13,[2,4],[1]]],["Unseen discursive passage","Case-based factual passage"]],
+        ["RT 2",[0,1,2,3,4,5,6,7,8],[2],[[16,[5,6,0],[2]],[17,[5,8,1],[2]],[18,[6,7],[2]],[19,[8,5],[2]],[20,[8,6],[2]],[21,[5,7],[2]],[22,[6,8],[2]],[14,[3,4],[2]],[15,[2,3],[2]],[23,[5,6],[2]],[24,[5,8],[2]],[25,[6,7],[2]],[26,[7,8],[2]],[27,[5,6,7],[2]]],["Unseen discursive passage","Case-based factual passage"]],
+        ["PREFINAL 1",[0,1,2,3,4,5,6,7,8],[0,1,2],[[0,[0,1],[0]],[1,[0,1],[0]],[2,[0,1],[0]],[6,[2,4],[1]],[7,[3,4],[1]],[8,[2,3],[1]],[16,[5,6],[2]],[17,[5,8],[2]],[18,[6,7],[2]],[3,[0,1],[0]],[4,[0,1],[0]],[9,[2,4],[1]],[10,[3,4],[1]],[11,[2,3],[1]],[12,[3,2],[1]],[19,[8,5],[2]],[20,[8,6],[2]],[21,[5,7],[2]],[22,[6,8],[2]],[5,[0,1],[0]],[13,[2,4],[1]],[14,[3,4],[1]],[15,[2,3],[1]],[23,[5,6],[2]],[24,[5,8],[2]],[25,[6,7],[2]],[26,[7,8],[2]],[27,[5,6,7],[2]]],["Unseen discursive passage","Case-based factual passage"]],
+        ["PREFINAL 2",[0,1,2,3,4,5,6,7,8],[0,1,2],[[0,[0,1],[0]],[1,[0,1],[0]],[2,[0,1],[0]],[6,[2,4],[1]],[7,[3,4],[1]],[8,[2,3],[1]],[16,[5,6],[2]],[17,[5,8],[2]],[18,[6,7],[2]],[3,[0,1],[0]],[4,[0,1],[0]],[9,[2,4],[1]],[10,[3,4],[1]],[11,[2,3],[1]],[12,[3,2],[1]],[19,[8,5],[2]],[20,[8,6],[2]],[21,[5,7],[2]],[22,[6,8],[2]],[5,[0,1],[0]],[13,[2,4],[1]],[14,[3,4],[1]],[15,[2,3],[1]],[23,[5,6],[2]],[24,[5,8],[2]],[25,[6,7],[2]],[26,[7,8],[2]],[27,[5,6,7],[2]]],["Unseen discursive passage","Case-based factual passage"]],
+      ]
+    },
+    "11": {
+      course: "English Core",
+      titles: ["The Portrait of a Lady","A Photograph","The Summer of the Beautiful White Horse","We're Not Afraid to Die... if We Can All Be Together","The Laburnum Top","The Voice of the Rain","The Address","Mother's Day","Discovering Tut: The Saga Continues","Childhood","Birth","The Adventure","Father to Son","The Tale of Melon City","Silk Road"],
+      grammar: ["Sentence transformation","Sentence rearrangement","Tenses","Gap filling","Clauses"],
+      writing: ["Classified advertisement writing","Poster writing","Speech writing","Debate writing"],
+      first: [0,0,0,1,1,1,1,2,3,3,3,4,4,4,5],
+      exams: [
+        ["PT 1",[0],[0],[[0,[0],[0]],[1,[0],[0]],[2,[0],[0]]],["Unseen discursive passage"]],
+        ["PT 2",[1],[1],[[3,[1],[1]],[4,[1],[1]],[5,[1],[1]],[6,[1],[1]]],["Case-based factual passage"]],
+        ["TERM 1",[0,1,2],[0,1,2],[[0,[0,1],[0]],[3,[1,2],[1]],[1,[0,2],[0]],[4,[1,0],[1]],[5,[1,2],[1]],[2,[0,2],[0]],[6,[1,0],[1]],[7,[2,0,1],[2]]],["Unseen discursive passage","Case-based factual passage","Note-making","Summarising"]],
+        ["PT 3",[3,4],[3],[[8,[3,4],[3]],[9,[3,4],[3]],[10,[3,4],[3]]],["Unseen discursive passage"]],
+        ["PT 4",[0],[2,3],[[11,[0],[2]],[12,[0],[3]],[13,[0],[2]]],["Case-based factual passage"]],
+        ["TERM 2 AND ANNUAL",[0,1,2,3,4],[0,1,2,3],[[0,[0,1],[0]],[3,[1,2],[1]],[8,[3,4],[3]],[11,[0,2],[2]],[14,[2,4,3],[2]],[1,[0,1],[0]],[4,[1,3],[1]],[5,[1,4],[1]],[9,[3,4],[3]],[12,[0,2],[3]],[2,[0,2],[0]],[6,[1,3],[1]],[7,[2,0,1],[2]],[10,[3,4],[3]],[13,[0,4],[2]]],["Unseen discursive passage","Case-based factual passage","Note-making","Summarising"]],
+      ]
+    },
+    "12": {
+      course: "English Core",
+      titles: ["The Last Lesson","Lost Spring","My Mother at Sixty-Six","The Third Level","Deep Water","The Rattrap","Indigo","Keeping Quiet","A Thing of Beauty","The Tiger King","Journey to the End of the Earth","The Enemy","Poets and Pancakes","The Interview","Going Places","A Roadside Stand","Aunt Jennifer's Tigers","On the Face of It","Memories of Childhood (The Cutting of My Long Hair; We Too Are Human Beings)"],
+      grammar: [],
+      writing: ["Notice writing","Invitation writing","Replies to invitations","Letter to the Editor","Job application with bio-data or résumé","Article writing","Report writing"],
+      first: [0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2],
+      exams: [
+        ["PT 1",[],[0,1,2],[[0,[],[0]],[1,[],[1]],[2,[],[2]],[3,[],[0]]],["Unseen factual, descriptive or literary passage"]],
+        ["PT 2",[],[3,4],[[4,[],[3]],[5,[],[4]],[6,[],[3]],[7,[],[3]],[8,[],[3]],[9,[],[4]],[10,[],[3]],[11,[],[4]]],["Unseen factual, descriptive or literary passage"]],
+        ["PT 3",[],[5,6],[[12,[],[6]],[13,[],[5]],[14,[],[5]],[15,[],[6]],[16,[],[5]],[17,[],[6]],[18,[],[5]]],["Case-based factual passage"]],
+        ["RT 1",[],[0,1,2,3,4],[[0,[],[0]],[1,[],[1]],[4,[],[3]],[5,[],[4]],[6,[],[3]],[2,[],[2]],[7,[],[3]],[8,[],[3]],[3,[],[0]],[9,[],[4]]],["Unseen factual, descriptive or literary passage"]],
+        ["RT 2",[],[5,6],[[12,[],[6]],[13,[],[5]],[14,[],[5]],[15,[],[6]],[16,[],[5]],[10,[],[6]],[11,[],[5]],[17,[],[6]],[18,[],[5]]],["Unseen factual, descriptive or literary passage","Case-based factual passage"]],
+        ["PREFINAL 1",[],[0,1,2,3,4,5,6],[[0,[],[0]],[1,[],[1]],[4,[],[3]],[5,[],[4]],[6,[],[3]],[12,[],[6]],[13,[],[5]],[14,[],[5]],[2,[],[2]],[7,[],[3]],[8,[],[3]],[15,[],[6]],[16,[],[5]],[3,[],[0]],[9,[],[4]],[10,[],[3]],[11,[],[4]],[17,[],[6]],[18,[],[5]]],["Unseen factual, descriptive or literary passage","Case-based factual passage"]],
+        ["PREFINAL 2",[],[0,1,2,3,4,5,6],[[0,[],[0]],[1,[],[1]],[4,[],[3]],[5,[],[4]],[6,[],[3]],[12,[],[6]],[13,[],[5]],[14,[],[5]],[2,[],[2]],[7,[],[3]],[8,[],[3]],[15,[],[6]],[16,[],[5]],[3,[],[0]],[9,[],[4]],[10,[],[3]],[11,[],[4]],[17,[],[6]],[18,[],[5]]],["Unseen factual, descriptive or literary passage","Case-based factual passage"]],
+      ]
+    },
+  };
+
+  const same = (a, b) => __scEnglishKey(a) === __scEnglishKey(b);
+  const gradeOf = params => Number((String(params.class || '').match(/\d+/) || [0])[0]);
+  const aliases = {
+    10: {
+      'two stories about flying': 'Two Stories about Flying (His First Flight; The Black Aeroplane)',
+      'glimpses of india': 'Glimpses of India (A Baker from Goa; Coorg; Tea from Assam)'
+    },
+    12: {'memories of childhood': 'Memories of Childhood (The Cutting of My Long Hair; We Too Are Human Beings)'}
+  };
+  const r2Writing = ['Poster creation', 'Speech writing', 'Narrative essay writing'];
+  const isR1 = value => /\bR1\b/.test(value);
+  function lessonIndex(data, params) {
+    const title = aliases[gradeOf(params)]?.[__scEnglishKey(params.chapter)] || params.chapter;
+    return data.titles.findIndex(t => same(t, title));
+  }
+  function courseRows(data, exam, grade, course) {
+    const allowed = exam[2].filter(i => grade !== 9 ||
+      (course === 'R1' ? !r2Writing.some(t => same(t, data.writing[i])) : !isR1(data.writing[i])));
+    const rows = exam[3].map(([lesson, grammar, writing]) => ({
+      lesson, grammar: grammar.slice(), writing: writing.filter(i => allowed.includes(i))
+    }));
+    if (grade === 9 && course === 'R1' && exam[0] === 'TERM 2 AND ANNUAL') {
+      for (const row of rows) {
+        const title = data.titles[row.lesson];
+        if (title === 'Words') row.writing = ['Factual description - R1', 'Informal invitation - R1'].map(t => data.writing.indexOf(t));
+        if (title === 'Believe in Yourself') row.writing = [data.writing.indexOf('Descriptive essay - R1')];
+      }
+    }
+    const use = new Map(allowed.map(i => [i, rows.reduce((n, r) => n + Number(r.writing.includes(i)), 0)]));
+    for (const row of rows) {
+      if (!row.writing.length && allowed.length) {
+        const index = allowed.reduce((a, b) => use.get(a) <= use.get(b) ? a : b);
+        row.writing.push(index); use.set(index, use.get(index) + 1);
+      }
+    }
+    for (const index of allowed) {
+      if (use.get(index)) continue;
+      const row = rows.reduce((a, b) => a.writing.length <= b.writing.length ? a : b);
+      row.writing.push(index); use.set(index, 1);
+    }
+    return {allowed, rows};
+  }
+  __scEnglishPlan = function (params = {}) {
+    const base = previousPlan({...params, englishBank: undefined});
+    if (!__scIsCBSEEnglish(params)) return previousPlan(params);
+    const state = params.englishBank || {}, grade = gradeOf(params), data = syllabus[grade];
+    const index = lessonIndex(data, params), issues = [];
+    const choice = state.examChoice || '';
+    const courseChoice = grade === 9 ? (state.courseChoice || '') : '';
+    const exam = choice ? data.exams.find(e => same(e[0], choice)) : data.exams[data.first[index]];
+    if (index < 0) issues.push('Select a literature lesson listed in the supplied school syllabus.');
+    if (choice && !exam) issues.push('The selected exam is not listed for this class.');
+    if (grade >= 11 && /\belective\b/i.test(params.subject || '')) issues.push('The supplied school syllabus covers English Core for Classes 11–12. Select that course before generating.');
+    if (grade === 9 && !['R1', 'R2'].includes(courseChoice)) issues.push('Select the school\'s Class 9 English course: R1 or R2.');
+    if (state.version && state.version !== VERSION) issues.push('This draft uses the previous topic plan. Return to setup and start a new exam-specific batch.');
+    const resolved = exam ? courseRows(data, exam, grade, courseChoice) : {allowed: [], rows: []};
+    const row = resolved.rows.find(r => r.lesson === index);
+    if (exam && index >= 0 && !row) issues.push('This lesson is outside the selected exam syllabus. Choose another exam or lesson.');
+    const course = grade === 9 ? 'English — ' + (courseChoice || 'course not selected') : data.course;
+    return {...base, version: VERSION, scope: state.scope || 'all',
+      literaryArea: same(base.literaryArea, 'Supplementary Reader') ? 'Supplementary' : base.literaryArea,
+      examChoice: choice, exam: exam?.[0] || '', courseChoice, course,
+      source: 'New CBSE Syllabus.docx — school exam allocations',
+      syllabusLesson: index >= 0 ? data.titles[index] : '',
+      grammarTopics: row ? row.grammar.map(i => data.grammar[i]) : [],
+      writingFormats: row ? row.writing.map(i => data.writing[i]) : [],
+      allowedGrammarTopics: exam ? exam[1].map(i => data.grammar[i]) : [],
+      allowedWritingFormats: resolved.allowed.map(i => data.writing[i]),
+      examReading: exam ? exam[4].filter(t => grade !== 9 || courseChoice === 'R1' || !isR1(t)) : [],
+      lessonOrder: data.titles.slice(), issues};
+  };
+  function validatePlan(params, plan) {
+    const issues = plan.issues.slice();
+    if (!['all', 'reading', 'grammar', 'writing', 'literature'].includes(plan.scope)) issues.push('Select a valid English section.');
+    if (plan.scope === 'grammar' && !plan.grammarTopics.length) issues.push('No separate grammar is listed for this class/exam. Choose another section.');
+    if (plan.scope === 'writing' && !plan.writingFormats.length) issues.push('No writing format is listed for this class/exam/course. Choose another section.');
+    if (params.englishBank && params.englishBank.version !== VERSION) issues.push('Return to setup and start a new exam-specific batch with the updated syllabus.');
+    return [...new Set(issues)];
+  }
+  __scSyncEnglishBankForm = function () {
+    const host = document.getElementById('english-lesson-bank-options');
+    if (!host) return;
+    const params = __scEnglishFormParams();
+    const active = __scIsCBSEEnglish(params) && document.getElementById('generation-mode-value-ai')?.value === 'chapter-bank';
+    host.hidden = !active;
+    if (!active) return;
+    const context = [params.class, params.board, params.subject, params.chapter].join('|');
+    if (host.dataset.context === context) return;
+    const courseContext = [params.class, params.board, params.subject].join('|');
+    if (host.dataset.courseContext !== courseContext) {
+      host.dataset.examChoice = ''; host.dataset.courseChoice = ''; host.dataset.scope = 'all';
+    }
+    host.dataset.courseContext = courseContext; host.dataset.context = context;
+    const plan = __scEnglishPlan({...params, englishBank: {
+      version: VERSION, examChoice: host.dataset.examChoice, courseChoice: host.dataset.courseChoice,
+      scope: host.dataset.scope || 'all'
+    }});
+    if ((plan.scope === 'grammar' && !plan.grammarTopics.length) ||
+        (plan.scope === 'writing' && !plan.writingFormats.length)) plan.scope = host.dataset.scope = 'all';
+    const escape = __scEnglishEscape, data = syllabus[gradeOf(params)];
+    const options = data.exams.map(e => `<option value="${escape(e[0])}" ${same(e[0], plan.examChoice) ? 'selected' : ''}>${escape(e[0])}</option>`).join('');
+    host.innerHTML = `
+      <h3 style="margin:0 0 8px;">English lesson question bank</h3>
+      <p>Grammar and writing follow the selected class, exam and lesson in your school syllabus.</p>
+      <label for="english-bank-exam">Exam</label>
+      <select id="english-bank-exam" style="width:100%;padding:10px;margin:4px 0 12px;">
+        <option value="">First teaching placement for this lesson</option>${options}
+      </select>
+      ${gradeOf(params) === 9 ? `<label for="english-bank-course">Class 9 course — choose the school's course</label>
+      <select id="english-bank-course" style="width:100%;padding:10px;margin:4px 0 12px;">
+        <option value="">Select R1 or R2</option>
+        <option value="R1" ${plan.courseChoice === 'R1' ? 'selected' : ''}>R1 — apply R1 tasks where listed</option>
+        <option value="R2" ${plan.courseChoice === 'R2' ? 'selected' : ''}>R2 — apply R2 tasks; exclude R1 additions</option>
+      </select>` : ''}
+      <p><b>Resolved exam:</b> ${escape(plan.exam || 'No matching placement')}<br><b>Course:</b> ${escape(plan.course)}</p>
+      ${plan.issues.length ? `<p role="alert" style="color:#a32a20;">${plan.issues.map(escape).join('<br>')}</p>` : ''}
+      <div style="overflow-x:auto;"><table style="width:100%;font-size:14px;">
+        <tr><th style="text-align:left;">Section</th><th style="text-align:left;">Quantity for this lesson</th></tr>
+        <tr><td>Reading</td><td>2 unseen prose sets + 2 unseen poem sets</td></tr>
+        <tr><td>Grammar</td><td>${plan.grammarTopics.length ? plan.grammarTopics.length + ' assigned topic(s); AI chooses exercise varieties and counts' : 'No separate grammar listed — omit grammar'}</td></tr>
+        <tr><td>Writing</td><td>${plan.writingFormats.length ? '5 tasks per assigned format' : 'No writing format listed for this course/exam — omit writing'}</td></tr>
+        <tr><td>Literature</td><td>3 extracts (5 marks); 8 answers (3 marks); up to 3 answers (6 marks)</td></tr>
+      </table></div>
+      <label for="english-bank-scope">Generate</label>
+      <select id="english-bank-scope" style="width:100%;padding:10px;margin:4px 0 12px;">
+        ${[['all','All available sections'],['reading','Reading only'],['grammar','Grammar only'],['writing','Writing only'],['literature','Literature only']].map(([value, label]) =>
+          `<option value="${value}" ${plan.scope === value ? 'selected' : ''} ${(value === 'grammar' && !plan.grammarTopics.length) || (value === 'writing' && !plan.writingFormats.length) ? 'disabled' : ''}>${label}</option>`).join('')}
+      </select>
+      <label for="english-bank-grammar">Assigned grammar topics</label>
+      <textarea id="english-bank-grammar" rows="2" readonly style="width:100%;box-sizing:border-box;margin:4px 0 12px;">${escape(plan.grammarTopics.join('; ') || 'No separate grammar listed')}</textarea>
+      <label for="english-bank-writing">Assigned writing format(s)</label>
+      <textarea id="english-bank-writing" rows="2" readonly style="width:100%;box-sizing:border-box;margin:4px 0 12px;">${escape(plan.writingFormats.join('; ') || 'No writing format listed')}</textarea>
+      <details><summary>Allowed exam topics and formats</summary>
+        <p><b>Grammar:</b> ${escape(plan.allowedGrammarTopics.join('; ') || 'None listed')}</p>
+        <p><b>Writing:</b> ${escape(plan.allowedWritingFormats.join('; ') || 'None listed')}</p>
+        <p><b>Exam reading:</b> ${escape(plan.examReading.join('; ') || 'Check the school syllabus')}</p>
+      </details>
+      <p style="font-size:13px;">${escape([plan.book, plan.unit ? 'Unit ' + plan.unit : '', plan.unitTitle].filter(Boolean).join(' · '))}</p>
+      <p style="font-size:13px;">Lesson allocations are the proposed school plan, not claims about NCERT's chapter exercises. Reading and literature quantities remain practice-bank targets; a final exam uses its own blueprint.</p>`;
+    const rebuild = () => {
+      host.dataset.examChoice = document.getElementById('english-bank-exam')?.value || '';
+      host.dataset.courseChoice = document.getElementById('english-bank-course')?.value || '';
+      host.dataset.scope = document.getElementById('english-bank-scope')?.value || 'all';
+      delete host.dataset.context; __scSyncEnglishBankForm();
+    };
+    document.getElementById('english-bank-exam').onchange = rebuild;
+    const course = document.getElementById('english-bank-course');
+    if (course) course.onchange = rebuild;
+    document.getElementById('english-bank-scope').onchange = () => {
+      host.dataset.scope = document.getElementById('english-bank-scope').value;
+    };
+  };
+  __scReadEnglishBankForm = function (params) {
+    const plan = __scEnglishPlan({...params, englishBank: {
+      version: VERSION, scope: document.getElementById('english-bank-scope')?.value || 'all',
+      examChoice: document.getElementById('english-bank-exam')?.value || '',
+      courseChoice: document.getElementById('english-bank-course')?.value || ''
+    }});
+    const errors = validatePlan({...params, englishBank: plan}, plan);
+    if (errors.length) throw new Error(errors.join('\n'));
+    return plan;
+  };
+  __scEnglishCacheKey = function (params) {
+    if (!__scIsEnglishLessonBank(params)) return previousCacheKey(params);
+    const plan = __scEnglishPlan(params);
+    return 'scimentra:english:' + JSON.stringify([VERSION, params.class, params.board, params.subject,
+      params.chapter, plan.exam, plan.course, plan.scope, plan.grammarTopics, plan.writingFormats]);
+  };
+  __scBuildEnglishLessonBankPrompt = function (params) {
+    const plan = __scEnglishPlan(params), errors = validatePlan(params, plan);
+    if (errors.length) throw new Error(errors.join('\n'));
+    let prompt = previousPrompt(params);
+    const grammar = plan.grammarTopics.length ? `GRAMMAR — EXACT ASSIGNED TOPICS FOR THIS LESSON\nAssigned topics: ${plan.grammarTopics.join('; ')}\n- Generate only these ${plan.grammarTopics.length} topic(s), using at least two suitable exercise forms for each.\n- AI decides a justified exercise/question count for each topic; do not force identical counts.\n- Each saved record is one independently answerable one-mark Grammar or single-correct MCQ item.\n- Use [Topic: exact assigned topic] and [Exercise: exact exercise form].\n- Verify grammar, context, valid alternatives and explanations. Editing must contain a real error; omission must identify the missing-word position.\n- Use the actual lesson language work within this assigned school scope. No L1/L2/L3 labels.` :
+      'GRAMMAR — OMIT THIS SECTION\nThe supplied class/exam has no separate grammar entry. Generate no grammar records or substitute topics.';
+    prompt = prompt.replace(/GRAMMAR — 2–3 TOPICS FOR THIS LESSON[\s\S]*?(?=\n\n(?:WRITING —|LITERATURE —|EXACT IMPORT FORMAT))/, grammar);
+    if (!plan.writingFormats.length) prompt = prompt.replace(/WRITING — FIVE TASKS FOR EACH ASSIGNED FORMAT[\s\S]*?(?=\n\n(?:LITERATURE —|EXACT IMPORT FORMAT))/, 'WRITING — OMIT THIS SECTION\nNo writing format is listed for the selected class/exam/course. Generate no writing tasks.');
+    prompt = prompt.replace(/YEARLY COVERAGE CONTEXT\n[\s\S]*?(?=\n\n(?:READING —|GRAMMAR —|WRITING —|LITERATURE —))/, `SCHOOL EXAM AND LESSON ALLOCATION\nSchool source: ${plan.source}\nSelected exam: ${plan.exam}\nSelected course: ${plan.course}\nAssigned grammar: ${plan.grammarTopics.join('; ') || 'None — omit'}\nAssigned writing: ${plan.writingFormats.join('; ') || 'None — omit'}\n- These exact assignments replace the earlier generic annual suggestions. Do not select additional topics or writing formats.\n- A one-topic exam uses its one topic. Class 12 has no separate grammar entry.\n- Do not merge another exam or Class 9 course. The school syllabus is the eligibility source; the lesson placements are school practice allocations.\n- Check actual textbook content before drafting questions; do not present these placements as NCERT exercise requirements.\n- The agreed practice bank retains 2 unseen prose sets and 2 unseen poem sets per lesson. The final exam's reading list is: ${plan.examReading.join('; ')}. Match that list when building the paper.`);
+    if (!plan.grammarTopics.length) prompt = prompt.replace(/GRAMMAR MCQ:\n[\s\S]*?(?=\n\nWRITING:)/, '');
+    if (!plan.writingFormats.length) prompt = prompt.replace(/WRITING:\nQ4:[\s\S]*?(?=\n\nLITERATURE ANSWER:)/, '');
+    prompt = prompt.replaceAll('[Topic: Tenses]', '[Topic: ' + (plan.grammarTopics[0] || 'not applicable') + ']');
+    prompt = prompt.replaceAll(`[Chapter: ${params.chapter}]`, `[Chapter: ${params.chapter}] [Exam: ${plan.exam}] [Course: ${plan.course}]`);
+    prompt = prompt.replace('Requested section(s): Reading, Grammar, Writing and Literature',
+      'Requested section(s): ' + ['Reading', plan.grammarTopics.length ? 'Grammar' : '', plan.writingFormats.length ? 'Writing' : '', 'Literature'].filter(Boolean).join(', '));
+    return prompt;
+  };
+  __scEnglishInventory = function (questions = [], params = {}) {
+    const result = previousInventory(questions, params);
+    if (!__scIsEnglishLessonBank(params)) return result;
+    const plan = __scEnglishPlan(params);
+    result.errors = result.errors.filter(message => !/^Grammar needs 2–3 distinct topics;/.test(message));
+    result.errors.push(...validatePlan(params, plan));
+    const needsGrammar = plan.scope === 'all' || plan.scope === 'grammar';
+    if (questions.length && needsGrammar && result.grammarTopics.length !== plan.grammarTopics.length) {
+      result.errors.push(`Grammar: expected the ${plan.grammarTopics.length} assigned topic(s); found ${result.grammarTopics.length}.`);
+    }
+    questions.forEach((q, i) => {
+      const meta = q.parsedMeta || q.metaLine || '', section = __scEnglishTag(meta, 'Section');
+      if (!same(__scEnglishTag(meta, 'Exam'), plan.exam)) result.errors.push(`Q${i + 1}: Exam tag must match ${plan.exam}.`);
+      if (!same(__scEnglishTag(meta, 'Course'), plan.course)) result.errors.push(`Q${i + 1}: Course tag must match ${plan.course}.`);
+      if (same(section, 'Grammar') && !plan.grammarTopics.some(t => same(t, __scEnglishTag(meta, 'Topic')))) result.errors.push(`Q${i + 1}: grammar topic is not assigned to this lesson and exam.`);
+      if (same(section, 'Writing') && !plan.writingFormats.some(t => same(t, __scEnglishTag(meta, 'Format')))) result.errors.push(`Q${i + 1}: writing format is not assigned to this lesson and exam.`);
+    });
+    if (!plan.writingFormats.length) result.errors = result.errors.filter(message => message !== 'The assigned writing format and five tasks are missing.');
+    result.errors = [...new Set(result.errors)];
+    return result;
+  };
+  __scRenderEnglishInventory = function () {
+    const params = typeof lastSessionParams !== 'undefined' ? lastSessionParams : null;
+    if (!params || !__scIsEnglishLessonBank(params) || !params.englishBank) return;
+    const header = document.querySelector('.ai-chat-header');
+    if (!header) return;
+    let panel = document.getElementById('english-bank-inventory');
+    if (!panel) {panel = document.createElement('div'); panel.id = 'english-bank-inventory'; header.appendChild(panel);}
+    const questions = typeof currentSessionQuestions !== 'undefined' ? currentSessionQuestions : [];
+    const plan = __scEnglishPlan(params), status = __scEnglishInventory(questions, params), c = status.counts;
+    const requested = section => plan.scope === 'all' || plan.scope === section;
+    const tally = [requested('reading') ? `Prose ${c.prose}/2 · Poems ${c.poetry}/2` : '',
+      requested('grammar') ? `Grammar ${status.grammarTopics.length}/${plan.grammarTopics.length} topics · ${c.grammar} items` : '',
+      requested('writing') ? `Writing ${c.writing}/${plan.writingFormats.length * 5} tasks` : '',
+      requested('literature') ? `Extracts ${c.extracts}/3 · 3-mark ${c.short}/8 · 6-mark ${c.long}/3` : ''].filter(Boolean).join(' · ');
+    const escape = __scEnglishEscape;
+    panel.style.cssText = 'font-size:13px;background:#f4f8fc;border-radius:8px;padding:8px;margin-top:8px;max-height:220px;overflow:auto;';
+    panel.innerHTML = `<b>${escape(plan.exam)} · ${escape(plan.course)} · ${questions.length} records</b><br>${escape(tally)}
+      ${status.errors.length ? '<div style="color:#a32a20;">' + status.errors.map(escape).join('<br>') + '</div>' : ''}
+      ${status.warnings.length ? '<div style="color:#855b00;">' + status.warnings.map(escape).join('<br>') + '</div>' : ''}
+      <div>Format and inventory checks do not verify academic accuracy. Complete the independent AI recheck before saving.</div>`;
+    const save = document.getElementById('ai-save-all-btn');
+    if (save && !save.dataset.saving) save.disabled = !questions.length || !!status.errors.length;
+  };
+  window.SciMentraEnglishExamSyllabus = {version: VERSION, data: syllabus, plan: __scEnglishPlan};
+})();
+
 window.SciMentraEnglishBank = {
   plan: __scEnglishPlan, buildPrompt: __scBuildEnglishLessonBankPrompt,
   parseSet: __scParseEnglishSet, inventory: __scEnglishInventory,
   isLessonBank: __scIsEnglishLessonBank, cacheKey: __scEnglishCacheKey
 };
-
   </script>
   <script>
     // --- FULL JAVASCRIPT ---
