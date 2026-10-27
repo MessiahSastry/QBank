@@ -14035,8 +14035,10 @@ ${records.join('\n\n')}`;
     $('.add-section-btn', block).style.display = 'none';
     list.classList.add('cb-subject-content');
     const chapters = selectedChapters(sIdx);
-    if (!chapters.length) { list.innerHTML = '<p class="cb-notice">Select the chapters / lessons above to see the available blueprints.</p>'; syncSource(); return; }
-    if (cfg.variant === 'english' && getSourceTypeGlobal() === 'Question Bank') {
+   const cbChapterNotice = !chapters.length
+  ? '<p class="cb-notice">The blueprint is displayed below. Select the chapters or lessons before generating the question paper.</p>'
+  : '';
+    if (chapters.length && cfg.variant === 'english' && getSourceTypeGlobal() === 'Question Bank') {
       const bankKey = englishBankKey(subject, chapters);
       if (cfg.englishBankKey !== bankKey && cfg.englishLoadingKey !== bankKey && cfg.englishErrorKey !== bankKey) {
         loadEnglishBank(sIdx).catch(() => {});
@@ -14048,7 +14050,7 @@ ${records.join('\n\n')}`;
         ? [20, 40, 70]
         : [20, 40, ...(cfg.variant === 'computer' ? [50] : []), 80];
     const rows = cfg.blueprint.rows;
-    list.innerHTML = `<div class="cb-flex"><label>Reference course<select class="cb-variant">${variants.map(([v, l]) => option(v, l, cfg.variant)).join('')}</select></label>
+    list.innerHTML = `${cbChapterNotice}<div class="cb-flex"><label>Reference course<select class="cb-variant">${variants.map(([v, l]) => option(v, l, cfg.variant)).join('')}</select></label>
             <label>Available Blueprint<select class="cb-size">${choices.map(n => option(n, `${n}-mark school blueprint`, cfg.marks)).join('')}${option('custom', 'Custom Paper', cfg.blueprint.custom ? 'custom' : cfg.marks)}</select></label>
       ${cfg.variant === 'english' && cfg.marks === 40 && !cfg.blueprint.custom ? `<label>Reading set<select class="cb-reading-kind">${option('Prose', 'Unseen prose — 10 marks', cfg.englishReadingKind || 'Prose')}${option('Poetry', 'Unseen poetry — 10 marks', cfg.englishReadingKind || 'Prose')}</select></label>` : ''}
       <button type="button" class="cb-button cb-custom">Edit as Custom Paper</button>
@@ -15169,9 +15171,55 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
   function initPanel() {
     if ($('#cb-panel')) return;
     const panel = document.createElement('div'); panel.id = 'cb-panel'; panel.className = 'cb-panel'; panel.hidden = true;
-    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–12</h3><div class="cb-flex"><label>Default size for new subjects<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><details class="cb-more-tools"><summary class="cb-button"><i class="fas fa-ellipsis-h" aria-hidden="true" style="margin-right:8px"></i>More Tools</summary><div class="cb-more-tools-menu"><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div></details></div><div id="cb-status" class="cb-notice" hidden></div>`;
+    panel.innerHTML = `<span class="cb-kicker">SUBJECT-WISE CBSE BUILDER</span><h3>Chapter-based papers · Classes 6–12</h3><div class="cb-flex"><label>Paper Blueprint<select id="cb-default-size">${[20, 40, 80].map(n => option(n, `${n} marks`, 80)).join('')}</select></label><label>School / organisation<input id="cb-school" value="SciMentra"></label><button type="button" class="cb-button" id="cb-saved">Your Papers</button><button type="button" class="cb-button" id="cb-prompt-btn">Get Questions in ChatGPT</button><details class="cb-more-tools"><summary class="cb-button"><i class="fas fa-ellipsis-h" aria-hidden="true" style="margin-right:8px"></i>More Tools</summary><div class="cb-more-tools-menu"><label class="cb-button cb-file-label">Import draft / questions<input type="file" id="cb-import-file" accept=".json,application/json"></label><button type="button" class="cb-button" id="cb-copy-prompt-btn">Copy / download request</button></div></details></div><div id="cb-status" class="cb-notice" hidden></div>`;
     $('#subjects-sections-area').after(panel);
-    $('#cb-default-size').onchange = e => { state.defaultMarks = Number(e.target.value); status('Default size updated. Existing subjects keep their selected sizes; change those in their own cards.'); };
+   $('#cb-default-size').onchange = e => {
+  const marks = Number(e.target.value);
+  state.defaultMarks = marks;
+
+  const skipped = [];
+
+  getSelectedSubjects().forEach((subject, index) => {
+    const cfg = getConfig(subject);
+
+    const allowed = ['physics', 'chemistry', 'biology', 'geography']
+      .includes(cfg.variant)
+      ? [20, 40, 70]
+      : cfg.variant === 'computer'
+        ? [20, 40, 50, 80]
+        : [20, 40, 80];
+
+    if (!allowed.includes(marks)) {
+      skipped.push(subject);
+      return;
+    }
+
+    cfg.marks = marks;
+    cfg.englishSignature = '';
+
+    cfg.blueprint = C.buildChapterPreset(
+      cfg.variant,
+      marks,
+      {
+        class: getSelectedClass(),
+        includeMaps: cfg.includeMaps !== false
+      }
+    );
+
+    renderSubject(index);
+  });
+
+  syncTotal();
+
+  status(
+    skipped.length
+      ? `Updated compatible subjects to ${marks} marks. ` +
+        `These subjects require their own supported blueprint: ${skipped.join(', ')}.`
+      : `Selected subject blueprints updated to ${marks} marks. ` +
+        `The question distribution and Max Marks have been refreshed.`,
+    skipped.length > 0
+  );
+};
     $('#cb-saved').onclick = savedDrafts; $('#cb-prompt-btn').onclick = openCBSEInChatGPT; $('#cb-copy-prompt-btn').onclick = aiPromptDialog;
     $('#cb-import-file').onchange = async e => {
       const file = e.target.files[0]; if (!file) return;
