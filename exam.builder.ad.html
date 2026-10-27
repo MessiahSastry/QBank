@@ -2683,7 +2683,13 @@ tr, td, th {
                        spellcheck="true" autocapitalize="characters" style="text-transform: uppercase;">
                     </div>
                     <div class="form-group">
-                        <label>Max Marks</label>
+                        <label>
+    Max Marks
+    <span id="cb-selected-blueprint-total"
+          hidden
+          style="font-size:14px;font-weight:500;margin-left:8px;">
+    </span>
+</label>
                         <input type="number" id="max-marks-input" placeholder="e.g. 100">
                     </div>
                     <div class="form-group">
@@ -15031,11 +15037,76 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
   }
   function filename(s) { return String(s || 'cbse-paper').replace(/[^\p{L}\p{N}._-]+/gu, '-').slice(0, 90); }
   function download(name, text, mime) { const url = URL.createObjectURL(new Blob([text], { type: mime + ';charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-  function syncTotal() {
-    if (!cbse()) return;
-    const subjects = getSelectedSubjects(); if (!subjects.length) return;
-    $('#max-marks-input').value = subjects.reduce((s, subject) => s + getConfig(subject).marks, 0); $('#max-marks-input').readOnly = true;
-    $('#max-marks-input').title = 'Total of the subject blueprint marks. Change marks in each subject card.';
+    function syncTotal() {
+    const input = $('#max-marks-input');
+    const label = $('#cb-selected-blueprint-total');
+
+    if (!cbse()) {
+      if (label) label.hidden = true;
+      input.readOnly = false;
+      return;
+    }
+
+    const subjects = getSelectedSubjects();
+
+    const details = subjects.map(subject => {
+      const cfg = getConfig(subject);
+
+      const counted = (cfg.blueprint?.rows || [])
+        .reduce((sum, row) =>
+          sum +
+          (Number(row.attempt) || 0) *
+          (Number(row.marks) || 0), 0);
+
+      return {
+        subject,
+        target: Number(cfg.marks) || 0,
+        counted
+      };
+    });
+
+    const maxMarks = details.reduce(
+      (sum, item) => sum + item.target, 0
+    );
+
+    const blueprintTotal = details.reduce(
+      (sum, item) => sum + item.counted, 0
+    );
+
+    input.value = subjects.length
+      ? String(maxMarks)
+      : '';
+
+    input.readOnly = true;
+
+    if (!label) return;
+
+    label.hidden = false;
+
+    if (!subjects.length) {
+      label.textContent = '(Select a blueprint)';
+      label.style.color = '#54656f';
+      return;
+    }
+
+    const matches =
+      Math.abs(maxMarks - blueprintTotal) < 0.001;
+
+    label.textContent = matches
+      ? `(Selected Blueprint: ${blueprintTotal} Marks)`
+      : `(Blueprint: ${blueprintTotal} Marks — Mismatch)`;
+
+    label.style.color = matches
+      ? '#21804a'
+      : '#c82333';
+
+    label.title = details.map(item =>
+      `${item.subject}: ${item.counted} Marks`
+    ).join(' | ');
+
+    input.title = matches
+      ? `Blueprint total: ${blueprintTotal} Marks`
+      : `Max Marks: ${maxMarks}; Blueprint total: ${blueprintTotal}. Check the selected blueprint.`;
   }
   function syncSource() {
     if (!cbse()) return;
@@ -15109,7 +15180,8 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       state.lastSource = source;
       $$('.subject-block').forEach((block, index) => renderSubject(index));
     }
-    previousBoard = board;
+        previousBoard = board;
+    syncTotal();
   }
   document.addEventListener('DOMContentLoaded', () => {
     initPanel();
