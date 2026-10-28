@@ -12847,7 +12847,7 @@ if (cleanedErrors.length) {
 
     if ([MCQ, AR].includes(q.type) || (q.options?.length && q.type !== 'MCQ (Multiple)')) {
       if (q.options?.length !== 4 || q.options.some(x => !clean(x))) errors.push(`${path}: four non-empty options are required.`);
-      if (q.options?.length === 4 && new Set(q.options.map(key)).size !== 4) errors.push(`${path}: options must be distinct.`);
+      if (q.options?.length === 4 && new Set(q.options.map(x => clean(x).replace(/\s+/g, ' '))).size !== 4) errors.push(`${path}: options must be distinct.`);
       if (!/^[A-D][).]?$/i.test(clean(q.answer))) errors.push(`${path}: single-correct answer must be A, B, C or D.`);
     }
     if (/^english$/i.test(q.subject || '')) {
