@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Teacher AI Tools | SciMentra</title>
+  <title>IIT & NEET Foundation | Teacher AI Tools</title>
    <meta name="theme-color" content="#0f3d6b">
 
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="scimentra-free-chapters.js"></script>
 
   <style>
     :root{
@@ -32,7 +33,7 @@
     }
 
     body::after{
-      content:"SciMentra\A IIT & NEET FOUNDATION";
+      content:attr(data-school-name) "\A IIT & NEET FOUNDATION";
       white-space:pre;
       position:fixed;
       left:50%;
@@ -393,10 +394,135 @@
     }
 
     .auth-input:focus{
-      outline:none;
-      border-color:#1762a7;
-      box-shadow:0 0 0 3px rgba(23,98,167,.12);
-    }
+  outline:none;
+  border-color:#1762a7;
+  box-shadow:0 0 0 3px rgba(23,98,167,.12);
+}
+
+/* MODERN TITLE DROPDOWN */
+
+.modern-select{
+  position:relative;
+  width:100%;
+}
+
+.modern-select-button{
+  width:100%;
+  min-height:50px;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+
+  padding:11px 14px;
+
+  border:1.5px solid #bcd6ef;
+  border-radius:12px;
+
+  background:#fff;
+  color:#123c62;
+
+  font-family:inherit;
+  font-size:16px;
+  font-weight:700;
+
+  text-align:left;
+  cursor:pointer;
+
+  transition:
+    border-color .18s ease,
+    box-shadow .18s ease,
+    background-color .18s ease;
+}
+
+.modern-select-button:hover{
+  border-color:#8abce5;
+  background:#fbfdff;
+}
+
+.modern-select.open .modern-select-button{
+  border-color:#1762a7;
+  box-shadow:0 0 0 3px rgba(23,98,167,.12);
+}
+
+.modern-select-arrow{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  flex-shrink:0;
+  color:#1762a7;
+
+  transition:transform .2s ease;
+}
+
+.modern-select.open .modern-select-arrow{
+  transform:rotate(180deg);
+}
+
+.modern-select-menu{
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc(100% + 7px);
+
+  display:none;
+
+  padding:7px;
+
+  background:#fff;
+
+  border:1px solid #d7e7f5;
+  border-radius:14px;
+
+  box-shadow:
+    0 14px 35px rgba(15,61,107,.18);
+
+  z-index:5000;
+}
+
+.modern-select.open .modern-select-menu{
+  display:block;
+}
+
+.modern-select-menu button{
+  width:100%;
+
+  display:flex;
+  align-items:center;
+
+  padding:11px 12px;
+  margin:0;
+
+  border:none;
+  border-radius:9px;
+
+  background:transparent;
+  color:#123c62;
+
+  font-family:inherit;
+  font-size:15px;
+  font-weight:700;
+
+  text-align:left;
+  cursor:pointer;
+
+  transition:
+    background .15s ease,
+    color .15s ease;
+}
+
+.modern-select-menu button:hover{
+  background:#edf6ff;
+  color:#1762a7;
+}
+
+.modern-select-menu button.selected{
+  background:#e4f1fc;
+  color:#1762a7;
+  font-weight:900;
+}
 
     .auth-login-btn{
       width:100%;
@@ -487,14 +613,13 @@
   </style>
 </head>
 
-<body>
-<body>
+<body data-school-name="">
 
 <div id="role-gate" class="auth-gate">
   <div class="auth-card">
 
-    <div class="auth-brand">SciMentra</div>
-    <div class="auth-sub">IIT &amp; NEET FOUNDATION</div>
+    <div class="auth-brand">IIT &amp; NEET FOUNDATION</div>
+<div class="auth-sub">SCHOOL LEARNING PORTAL</div>
 
     <h2 class="auth-title">Choose Access</h2>
 
@@ -517,7 +642,8 @@
     </button>
 
     <div class="auth-footer">
-      Teacher access requires the SciMentra school login.
+      Chapter 1 includes complimentary Teacher access.<br>
+      Other chapters require the school login.<br>
       Student learning tools open directly.
     </div>
 
@@ -528,16 +654,91 @@
 <div id="auth-gate" class="auth-gate" style="display:none;">
   <div class="auth-card">
 
-    <div class="auth-brand">SciMentra</div>
-    <div class="auth-sub">IIT &amp; NEET FOUNDATION</div>
+    <div class="auth-brand">IIT &amp; NEET FOUNDATION</div>
+<div class="auth-sub">TEACHER ACCESS</div>
 
     <h2 class="auth-title">Teacher Login</h2>
 
     <p class="auth-description">
-      Sign in using the SciMentra login provided to your school.
+      Sign in using the login provided to your school.
     </p>
 
-    <form id="school-login-form">
+   <form id="school-login-form">
+
+      <div class="auth-field">
+        <label for="teacher-name">Teacher Name</label>
+        <input
+          type="text"
+          id="teacher-name"
+          class="auth-input"
+          placeholder="Enter teacher name"
+          autocomplete="name"
+          required>
+      </div>
+
+      <div class="auth-field">
+  <label>Title</label>
+
+  <div class="modern-select" id="teacher-title-select">
+
+    <button
+      type="button"
+      class="modern-select-button"
+      id="teacher-title-button">
+      <span id="teacher-title-text">Select Title</span>
+
+      <span class="modern-select-arrow">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
+      </span>
+    </button>
+
+    <div
+      class="modern-select-menu"
+      id="teacher-title-menu">
+
+      <button type="button" data-value="Sir">
+        Sir
+      </button>
+
+      <button type="button" data-value="Madam">
+        Madam
+      </button>
+
+      <button type="button" data-value="Mr.">
+        Mr.
+      </button>
+
+      <button type="button" data-value="Ms.">
+        Ms.
+      </button>
+
+      <button type="button" data-value="Mrs.">
+        Mrs.
+      </button>
+
+      <button type="button" data-value="Dr.">
+        Dr.
+      </button>
+
+    </div>
+
+  </div>
+
+  <input
+    type="hidden"
+    id="teacher-title"
+    value="">
+</div>
 
       <div class="auth-field">
         <label for="school-email">Email</label>
@@ -572,7 +773,7 @@
 
     </form>
 
-    <button
+        <button
       type="button"
       id="back-to-role-btn"
       class="auth-back-btn">
@@ -583,11 +784,82 @@
 </div>
 
 
-<div class="page" id="main-page" style="display:none;">
+<div id="student-profile-gate" class="auth-gate" style="display:none;">
+  <div class="auth-card">
 
+    <div class="auth-brand">IIT &amp; NEET FOUNDATION</div>
+    <div class="auth-sub">STUDENT LEARNING</div>
+
+       <h2 class="auth-title">Student Details</h2>
+
+    <p class="auth-description">
+      Enter your details once. They will be remembered on this device for future chapter learning.
+    </p>
+
+    <form id="student-profile-form">
+
+      <div class="auth-field">
+        <label for="student-name">Student Name</label>
+
+        <input
+          type="text"
+          id="student-name"
+          class="auth-input"
+          placeholder="Enter student name"
+          autocomplete="name"
+          required>
+      </div>
+
+      <div class="auth-field">
+        <label for="student-school-name">School Name</label>
+
+        <input
+          type="text"
+          id="student-school-name"
+          class="auth-input"
+          placeholder="Enter school name"
+          autocomplete="organization"
+          required>
+      </div>
+
+      <button
+        type="submit"
+        class="auth-login-btn">
+        Continue
+      </button>
+
+      <div
+        id="student-profile-error"
+        class="auth-error">
+      </div>
+
+    </form>
+
+    <button
+      type="button"
+      id="student-back-to-role-btn"
+      class="auth-back-btn">
+      ← Back
+    </button>
+
+    <div class="auth-footer">
+      Your student and school details are stored only in this browser on this device.
+    </div>
+  </div>
+</div>
+
+
+<div class="page" id="main-page" style="display:none;">
   <header>
-    <h1 class="brand">SciMentra</h1>
-    <div class="brand-sub">IIT &amp; NEET FOUNDATION</div>
+  <h1
+  class="brand"
+  id="school-brand-name"
+  style="display:none;">
+</h1>
+
+<div class="brand-sub" style="margin-top:0;">
+  IIT &amp; NEET FOUNDATION
+</div>
 
     <button
       type="button"
@@ -641,13 +913,14 @@
           <span style="font-weight:700;color:#6a7f94;">(Optional)</span>
         </label>
 
-        <input
-          id="topic-input"
-          class="topic-input"
-          type="text"
-          placeholder="Example: Variables and Constants"
-          autocomplete="off"
-        >
+        
+<textarea
+  id="topic-input"
+  class="topic-input"
+  rows="3"
+  placeholder="Assimilation subtopics will appear here automatically"
+  autocomplete="off"
+></textarea>
 
         <p class="topic-note" id="topic-note">
           Leave this blank to use the whole chapter.
@@ -669,7 +942,7 @@
 
       <div class="tools-grid">
 
-        <article class="tool-card">
+               <article class="tool-card" id="tool-card-1">
           <div class="tool-icon" id="tool-icon-1">📝</div>
           <div class="tool-name" id="tool-name-1">
             Board Work Generator
@@ -687,7 +960,7 @@
         </article>
 
 
-        <article class="tool-card">
+        <article class="tool-card" id="tool-card-2">
           <div class="tool-icon" id="tool-icon-2">✅</div>
           <div class="tool-name" id="tool-name-2">
             Exit Ticket Generator
@@ -705,7 +978,7 @@
         </article>
 
 
-        <article class="tool-card">
+        <article class="tool-card" id="tool-card-3">
           <div class="tool-icon" id="tool-icon-3">🎯</div>
           <div class="tool-name" id="tool-name-3">
             Remedial Teaching
@@ -723,9 +996,8 @@
         </article>
 
 
-        <article class="tool-card">
-          <div class="tool-icon" id="tool-icon-4">💡</div>
-          <div class="tool-name" id="tool-name-4">
+        <article class="tool-card" id="tool-card-4">
+          <div class="tool-icon" id="tool-icon-4">💡</div>          <div class="tool-name" id="tool-name-4">
             Teaching Support
           </div>
           <div class="tool-desc" id="tool-desc-4">
@@ -740,8 +1012,121 @@
           </button>
         </article>
 
-      </div>
 
+               <article class="tool-card" id="tool-card-5">
+          <div class="tool-icon" id="tool-icon-5">🗺️</div>
+          <div class="tool-name" id="tool-name-5">
+            Mind Map
+          </div>
+          <div class="tool-desc" id="tool-desc-5">
+            Generate a clear visual mind map for the selected chapter or topic.
+          </div>
+          <button
+            type="button"
+            class="tool-btn"
+            id="tool-btn-5"
+            data-tool="mind-map">
+            Generate Mind Map
+          </button>
+        </article>
+
+
+        <article class="tool-card" id="tool-card-6">
+          <div class="tool-icon" id="tool-icon-6">🧠</div>
+          <div class="tool-name" id="tool-name-6">
+            Flashcards
+          </div>
+          <div class="tool-desc" id="tool-desc-6">
+            Create concise study flashcards from the selected chapter or topic.
+          </div>
+          <button
+            type="button"
+            class="tool-btn"
+            id="tool-btn-6"
+            data-tool="flashcards">
+            Create Flashcards
+          </button>
+        </article>
+
+
+        <article class="tool-card" id="tool-card-7">
+          <div class="tool-icon" id="tool-icon-7">📊</div>
+          <div class="tool-name" id="tool-name-7">
+            Slide Deck
+          </div>
+          <div class="tool-desc" id="tool-desc-7">
+            Prepare a classroom-ready slide deck for the selected chapter or topic.
+          </div>
+          <button
+            type="button"
+            class="tool-btn"
+            id="tool-btn-7"
+            data-tool="slide-deck">
+            Create Slide Deck
+          </button>
+        </article>
+
+
+               <article class="tool-card" id="tool-card-8">
+          <div class="tool-icon" id="tool-icon-8">🎨</div>
+          <div class="tool-name" id="tool-name-8">
+            Infographic
+          </div>
+          <div class="tool-desc" id="tool-desc-8">
+            Generate a visual educational infographic for the selected chapter or topic.
+          </div>
+          <button
+            type="button"
+            class="tool-btn"
+            id="tool-btn-8"
+            data-tool="infographic">
+            Generate Infographic
+          </button>
+        </article>
+
+
+        <article class="tool-card" id="tool-card-9">
+  <div class="tool-icon" id="tool-icon-9">🎯</div>
+  <div class="tool-name" id="tool-name-9">
+    Interactive Quiz
+  </div>
+  <div class="tool-desc" id="tool-desc-9">
+    Create a Foundation Concepts, Mains and Advanced interactive quiz with Gemini.
+  </div>
+  <button
+    type="button"
+    class="tool-btn"
+    id="tool-btn-9"
+    data-tool="interactive-quiz">
+    Create Interactive Quiz
+  </button>
+</article>
+
+<article class="tool-card" id="tool-card-10">
+  <div class="tool-icon" id="tool-icon-10">📋</div>
+  <div class="tool-name" id="tool-name-10">
+    Visual Revision Sheet
+  </div>
+  <div class="tool-desc" id="tool-desc-10">
+    Create an A4 visual quick-revision sheet with key concepts, formulas, diagrams and high-value chapter points.
+  </div>
+  <button
+    type="button"
+    class="tool-btn"
+    id="tool-btn-10"
+    data-tool="visual-revision-sheet">
+    Generate Revision Sheet
+  </button>
+</article>
+<article class="tool-card" id="tool-card-11">
+  <div class="tool-icon" id="tool-icon-11">🎞️</div>
+  <div class="tool-name" id="tool-name-11">Educational GIF</div>
+  <div class="tool-desc" id="tool-desc-11">Generate detailed animated lesson diagrams using ChatGPT SVG code.</div>
+  <button type="button" class="tool-btn" id="tool-btn-11" data-tool="educational-gif">Create Educational GIF</button>
+</article>
+
+
+      </div>
       <p class="footer-note" id="footer-note">
         AI output should be reviewed by the teacher before classroom use.
       </p>
@@ -800,14 +1185,130 @@
   const studentRoleBtn =
     document.getElementById("role-student-btn");
 
-  const authGate =
+   const authGate =
     document.getElementById("auth-gate");
 
+  const studentProfileGate =
+    document.getElementById("student-profile-gate");
+
+  const studentProfileForm =
+    document.getElementById("student-profile-form");
+
+    const studentNameInput =
+    document.getElementById("student-name");
+
+  const studentSchoolNameInput =
+    document.getElementById("student-school-name");
+
+  const studentProfileError =
+    document.getElementById("student-profile-error");
+
+  const studentBackToRoleBtn =
+    document.getElementById("student-back-to-role-btn");
   const mainPage =
     document.getElementById("main-page");
 
-  const schoolLoginForm =
+const schoolBrandName =
+  document.getElementById("school-brand-name");
+
+   const schoolLoginForm =
     document.getElementById("school-login-form");
+
+  const teacherName =
+    document.getElementById("teacher-name");
+
+   const teacherTitle =
+    document.getElementById("teacher-title");
+
+  const teacherTitleSelect =
+    document.getElementById(
+      "teacher-title-select"
+    );
+
+  const teacherTitleButton =
+    document.getElementById(
+      "teacher-title-button"
+    );
+
+  const teacherTitleText =
+    document.getElementById(
+      "teacher-title-text"
+    );
+
+  const teacherTitleMenu =
+    document.getElementById(
+      "teacher-title-menu"
+    );
+
+  teacherTitleButton.addEventListener(
+    "click",
+    () => {
+
+      teacherTitleSelect.classList.toggle(
+        "open"
+      );
+
+    }
+  );
+
+  teacherTitleMenu
+    .querySelectorAll("button")
+    .forEach(option => {
+
+      option.addEventListener(
+        "click",
+        () => {
+
+          const value =
+            option.dataset.value;
+
+          teacherTitle.value =
+            value;
+
+          teacherTitleText.textContent =
+            value;
+
+          teacherTitleMenu
+            .querySelectorAll("button")
+            .forEach(item => {
+
+              item.classList.remove(
+                "selected"
+              );
+
+            });
+
+          option.classList.add(
+            "selected"
+          );
+
+          teacherTitleSelect.classList.remove(
+            "open"
+          );
+
+        }
+      );
+
+    });
+
+  document.addEventListener(
+    "click",
+    event => {
+
+      if (
+        !teacherTitleSelect.contains(
+          event.target
+        )
+      ) {
+
+        teacherTitleSelect.classList.remove(
+          "open"
+        );
+
+      }
+
+    }
+  );
 
   const schoolEmail =
     document.getElementById("school-email");
@@ -828,11 +1329,88 @@
     document.getElementById("teacher-logout-btn");
 
 
-  let selectedRole = "";
+             let selectedRole = "";
+   let isFreeTeacherAccess = false;
+   let currentSchoolName = "";
+   let currentTeacherName = "";
+   let currentTeacherTitle = "";
+
+   const STUDENT_PROFILE_KEY =
+     "scimentraStudentProfile";
+
+   let currentStudentName = "";
+   let currentStudentSchoolName = "";
+
+   try {
+
+     const savedStudentProfile =
+       JSON.parse(
+         localStorage.getItem(
+           STUDENT_PROFILE_KEY
+         ) || "{}"
+       );
+
+     currentStudentName =
+       String(
+         savedStudentProfile.name || ""
+       ).trim();
+
+     currentStudentSchoolName =
+       String(
+         savedStudentProfile.schoolName || ""
+       ).trim();
+
+   } catch (error) {
+
+     console.error(
+       "Student profile could not be read:",
+       error
+     );
+
+     localStorage.removeItem(
+       STUDENT_PROFILE_KEY
+     );
+
+     currentStudentName = "";
+     currentStudentSchoolName = "";
+   }
+
+  function openFreeTeacherAccess() {
+
+    isFreeTeacherAccess = true;
+    selectedRole = "teacher";
+
+    currentSchoolName = "SciMentra Foundation";
+    currentTeacherName = "Teacher";
+    currentTeacherTitle = "";
+
+    schoolBrandName.textContent =
+      "SciMentra Foundation";
+
+    document.body.setAttribute(
+      "data-school-name",
+      "SciMentra Foundation"
+    );
+
+    document.title =
+      "SciMentra Foundation | Teacher AI Tools";
+
+    roleGate.style.display = "none";
+    authGate.style.display = "none";
+
+    applyRoleUI("teacher");
+
+    modeBadgeText.textContent =
+      "👨‍🏫 Complimentary Teacher Access";
+
+    teacherLogoutBtn.textContent =
+      "School Login";
+
+    mainPage.style.display = "block";
+  }
 
 
   async function handleTeacherAccess(user) {
-
     mainPage.style.display = "none";
 
     authError.style.display = "none";
@@ -854,23 +1432,123 @@
           .get();
 
 
-      if (
-        schoolDoc.exists &&
-        schoolDoc.data() &&
-        schoolDoc.data().active === true
-      ) {
+     if (
+  schoolDoc.exists &&
+  schoolDoc.data() &&
+  schoolDoc.data().active === true
+) {
 
-        selectedRole = "teacher";
+  const schoolData = schoolDoc.data();
 
-        roleGate.style.display = "none";
-        authGate.style.display = "none";
+  const schoolName =
+    String(
+      schoolData.schoolName || ""
+    ).trim();
 
-        applyRoleUI("teacher");
+  if (!schoolName) {
 
-        mainPage.style.display = "block";
+    await questionsAuth.signOut();
 
-        return;
-      }
+    authGate.style.display = "flex";
+
+    authError.textContent =
+      "School name is not configured for this account. Please contact the administrator.";
+
+    authError.style.display = "block";
+
+    return;
+  }
+
+    selectedRole = "teacher";
+  isFreeTeacherAccess = false;
+  currentSchoolName = schoolName;
+
+  teacherLogoutBtn.textContent =
+    "Logout";
+
+  const teacherProfileKey =
+    "scimentraTeacherProfile_" + user.uid;
+
+  const savedTeacherProfile =
+    JSON.parse(
+      localStorage.getItem(teacherProfileKey) || "{}"
+    );
+
+  if (!currentTeacherName) {
+    currentTeacherName =
+      String(savedTeacherProfile.name || "").trim();
+  }
+
+    if (!currentTeacherTitle) {
+    currentTeacherTitle =
+      String(savedTeacherProfile.title || "").trim();
+  }
+
+   if (
+    !currentTeacherName ||
+    !currentTeacherTitle
+  ) {
+
+    await questionsAuth.signOut();
+
+    authGate.style.display = "flex";
+
+    authError.textContent =
+      "Please enter your teacher name and select a title before login.";
+
+    authError.style.display = "block";
+
+    return;
+  }
+  localStorage.setItem(
+    teacherProfileKey,
+    JSON.stringify({
+      name: currentTeacherName,
+      title: currentTeacherTitle
+    })
+  );
+
+  teacherName.value =
+    currentTeacherName;
+
+    teacherTitle.value =
+    currentTeacherTitle;
+
+  teacherTitleText.textContent =
+    currentTeacherTitle || "Select Title";
+
+  teacherTitleMenu
+    .querySelectorAll("button")
+    .forEach(option => {
+
+      option.classList.toggle(
+        "selected",
+        option.dataset.value ===
+          currentTeacherTitle
+      );
+
+    });
+
+  schoolBrandName.textContent =
+    schoolName;
+
+  document.body.setAttribute(
+    "data-school-name",
+    schoolName
+  );
+
+  document.title =
+    schoolName + " | Teacher AI Tools";
+
+  roleGate.style.display = "none";
+  authGate.style.display = "none";
+
+  applyRoleUI("teacher");
+
+  mainPage.style.display = "block";
+
+  return;
+}
 
 
       await questionsAuth.signOut();
@@ -879,8 +1557,7 @@
       authGate.style.display = "flex";
 
       authError.textContent =
-        "This school account is not authorised by SciMentra. Please contact SciMentra.";
-
+       "This school account is not authorised. Please contact the administrator.";
       authError.style.display = "block";
 
 
@@ -895,21 +1572,37 @@
       authGate.style.display = "flex";
 
       authError.textContent =
-        "Unable to verify SciMentra access. Please try again.";
+       "Unable to verify school access. Please try again.";
 
       authError.style.display = "block";
     }
   }
 
 
-  teacherRoleBtn.addEventListener(
+ teacherRoleBtn.addEventListener(
     "click",
     async () => {
 
       selectedRole = "teacher";
+      isFreeTeacherAccess = false;
 
       roleGate.style.display = "none";
       mainPage.style.display = "none";
+
+      const isFreeChapter =
+        !questionsAuth.currentUser &&
+        window.SCIMENTRA_FREE_ACCESS &&
+        typeof window.SCIMENTRA_FREE_ACCESS
+          .isTeacherChapterFree === "function" &&
+        window.SCIMENTRA_FREE_ACCESS
+          .isTeacherChapterFree(
+            TEACHER_CONTEXT
+          );
+
+      if (isFreeChapter) {
+        openFreeTeacherAccess();
+        return;
+      }
 
       await handleTeacherAccess(
         questionsAuth.currentUser
@@ -918,7 +1611,7 @@
   );
 
 
-  studentRoleBtn.addEventListener(
+       studentRoleBtn.addEventListener(
     "click",
     () => {
 
@@ -926,19 +1619,157 @@
 
       roleGate.style.display = "none";
       authGate.style.display = "none";
+      mainPage.style.display = "none";
 
-      applyRoleUI("student");
+      if (
+        currentStudentName &&
+        currentStudentSchoolName
+      ) {
 
-      mainPage.style.display = "block";
+        studentProfileGate.style.display =
+          "none";
+
+        applyRoleUI("student");
+
+        mainPage.style.display =
+          "block";
+
+        return;
+      }
+
+      studentProfileError.style.display =
+        "none";
+
+      studentProfileError.textContent =
+        "";
+
+      studentNameInput.value =
+        currentStudentName || "";
+
+      studentSchoolNameInput.value =
+        currentStudentSchoolName || "";
+
+      studentProfileGate.style.display =
+        "flex";
+
+      setTimeout(() => {
+
+        if (!studentNameInput.value) {
+          studentNameInput.focus();
+        } else {
+          studentSchoolNameInput.focus();
+        }
+
+      }, 50);
     }
   );
 
+
+  studentProfileForm.addEventListener(
+    "submit",
+    event => {
+
+      event.preventDefault();
+
+      const enteredName =
+        String(
+          studentNameInput.value || ""
+        ).trim();
+
+      const enteredSchoolName =
+        String(
+          studentSchoolNameInput.value || ""
+        ).trim();
+
+      if (!enteredName) {
+
+        studentProfileError.textContent =
+          "Please enter the student name.";
+
+        studentProfileError.style.display =
+          "block";
+
+        studentNameInput.focus();
+
+        return;
+      }
+
+      if (!enteredSchoolName) {
+
+        studentProfileError.textContent =
+          "Please enter the school name.";
+
+        studentProfileError.style.display =
+          "block";
+
+        studentSchoolNameInput.focus();
+
+        return;
+      }
+
+      currentStudentName =
+        enteredName;
+
+      currentStudentSchoolName =
+        enteredSchoolName;
+
+      localStorage.setItem(
+        STUDENT_PROFILE_KEY,
+        JSON.stringify({
+          name: currentStudentName,
+          schoolName:
+            currentStudentSchoolName
+        })
+      );
+
+      studentProfileError.style.display =
+        "none";
+
+      studentProfileError.textContent =
+        "";
+
+      studentProfileGate.style.display =
+        "none";
+
+      applyRoleUI("student");
+
+      mainPage.style.display =
+        "block";
+    }
+  );
+
+  studentBackToRoleBtn.addEventListener(
+    "click",
+    () => {
+
+      selectedRole = "";
+
+      studentProfileGate.style.display =
+        "none";
+
+      mainPage.style.display =
+        "none";
+
+      studentProfileError.style.display =
+        "none";
+
+      studentProfileError.textContent =
+        "";
+
+      roleGate.style.display =
+        "flex";
+    }
+  );
 
   backToRoleBtn.addEventListener(
     "click",
     () => {
 
-      selectedRole = "";
+     selectedRole = "";
+      isFreeTeacherAccess = false;
+
+      teacherLogoutBtn.textContent =
+        "Logout";
 
       authGate.style.display = "none";
       mainPage.style.display = "none";
@@ -952,10 +1783,13 @@
   );
 
 
-  questionsAuth.onAuthStateChanged(
+ questionsAuth.onAuthStateChanged(
     user => {
 
-      if (selectedRole === "teacher") {
+      if (
+        selectedRole === "teacher" &&
+        !isFreeTeacherAccess
+      ) {
         handleTeacherAccess(user);
       }
     }
@@ -966,7 +1800,39 @@
     "submit",
     async event => {
 
-      event.preventDefault();
+            event.preventDefault();
+
+           currentTeacherName =
+        teacherName.value.trim();
+
+      currentTeacherTitle =
+        teacherTitle.value.trim();
+
+      if (!currentTeacherName) {
+
+        authError.textContent =
+          "Please enter your teacher name.";
+
+        authError.style.display =
+          "block";
+
+        return;
+      }
+
+      if (!currentTeacherTitle) {
+
+        authError.textContent =
+          "Please select your title.";
+
+        authError.style.display =
+          "block";
+
+        teacherTitleSelect.classList.add(
+          "open"
+        );
+
+        return;
+      }
 
       const email =
         schoolEmail.value.trim();
@@ -1001,7 +1867,7 @@
         );
 
         authError.textContent =
-          "Invalid email or password. Please check the SciMentra login provided to your school.";
+          "Invalid email or password. Please check the login provided to your school.";
 
         authError.style.display =
           "block";
@@ -1019,13 +1885,90 @@
   );
 
 
-  teacherLogoutBtn.addEventListener(
+   teacherLogoutBtn.addEventListener(
     "click",
     async () => {
 
+           if (selectedRole === "student") {
+
+        localStorage.removeItem(
+          STUDENT_PROFILE_KEY
+        );
+
+        currentStudentName = "";
+        currentStudentSchoolName = "";
+
+        mainPage.style.display =
+          "none";
+
+        roleGate.style.display =
+          "none";
+
+        authGate.style.display =
+          "none";
+
+        teacherLogoutBtn.style.display =
+          "none";
+
+        studentNameInput.value = "";
+        studentSchoolNameInput.value = "";
+
+        studentProfileError.style.display =
+          "none";
+
+        studentProfileError.textContent =
+          "";
+
+        studentProfileGate.style.display =
+          "flex";
+
+        setTimeout(() => {
+          studentNameInput.focus();
+        }, 50);
+
+        return;
+      }
+
+      if (isFreeTeacherAccess) {
+
+        isFreeTeacherAccess = false;
+        selectedRole = "teacher";
+
+        currentSchoolName = "";
+        currentTeacherName = "";
+        currentTeacherTitle = "";
+
+        teacherLogoutBtn.textContent =
+          "Logout";
+
+        teacherLogoutBtn.style.display =
+          "none";
+
+        teacherName.value = "";
+        teacherTitle.value = "";
+
+        teacherTitleText.textContent =
+          "Select Title";
+
+        mainPage.style.display = "none";
+        roleGate.style.display = "none";
+        authGate.style.display = "flex";
+
+        schoolEmail.value = "";
+        schoolPassword.value = "";
+
+        authError.style.display = "none";
+        authError.textContent = "";
+
+        return;
+      }
+
       try {
 
-        selectedRole = "";
+               selectedRole = "";
+        currentSchoolName = "";
+        currentTeacherName = "";
+        currentTeacherTitle = "";
 
         await questionsAuth.signOut();
 
@@ -1060,8 +2003,7 @@
 
   const qs =
     new URLSearchParams(
-      window.location.search
-    );
+      window.location.search    );
 
   function firstParam(names, fallback = "") {
     for (const name of names) {
@@ -1092,8 +2034,18 @@
   const infoChapter =
     document.getElementById("info-chapter");
 
-  const topicInput =
+  
+const topicInput =
     document.getElementById("topic-input");
+
+// Automatically fill assimilation subtopics from QR URL.
+// Existing chapter-only QR codes continue to work.
+const qrSubtopics = firstParam(["subtopics", "subtopic"]);
+
+if (qrSubtopics) {
+  topicInput.value = qrSubtopics;
+}
+
 
   const topicLabel =
     document.getElementById("topic-label");
@@ -1142,8 +2094,13 @@
     );
 
 
-  const toolUI = [1,2,3,4].map(
+   const toolUI = [1,2,3,4,5,6,7,8,9,10,11].map(
     number => ({
+
+      card:
+        document.getElementById(
+          `tool-card-${number}`
+        ),
 
       icon:
         document.getElementById(
@@ -1166,7 +2123,6 @@
         )
     })
   );
-
   infoClass.textContent = TEACHER_CONTEXT.className || "Not provided";
   infoBoard.textContent = TEACHER_CONTEXT.board || "Not provided";
   infoSubject.textContent = TEACHER_CONTEXT.subject || "Not provided";
@@ -1198,7 +2154,52 @@
       ).trim();
 
 
-    let text =
+           let text = "";
+
+    if (selectedRole === "teacher") {
+
+      if (currentSchoolName) {
+        text +=
+          `School Name: ${currentSchoolName}\n`;
+      }
+
+      if (currentTeacherName) {
+
+        const teacherDisplayName =
+          `${currentTeacherName} ${currentTeacherTitle}`.trim();
+
+        text +=
+          `Teacher Name: ${currentTeacherName}\n` +
+          `Teacher Title: ${currentTeacherTitle}\n` +
+          `Address Teacher As: ${teacherDisplayName}\n`;
+      }
+
+           text +=
+        `\nPERSONALISATION RULE:\n` +
+        `- You are assisting the teacher identified above.\n` +
+        `- Address the teacher naturally using the exact value given in "Address Teacher As".\n` +
+        `- Use the teacher's name naturally in the opening and when giving important direct guidance.\n` +
+        `- Do not repeat the teacher's name unnecessarily.\n` +
+        `- Use only the provided Teacher Name, Teacher Title and School Name.\n` +
+        `- Never invent or substitute another teacher name or school name.\n\n`;
+    }
+
+        if (
+      selectedRole === "student" &&
+      currentStudentName
+    ) {
+
+      text +=
+        `Student Name: ${currentStudentName}\n` +
+        `School Name: ${currentStudentSchoolName}\n` +
+        `\nSTUDENT PERSONALISATION RULE:\n` +
+        `- The student's name and school name are provided above.\n` +
+        `- Use the student's exact name naturally when appropriate.\n` +
+        `- Use the exact School Name wherever the school name is required.\n` +
+        `- Do not invent, change or replace the student's name or school name.\n\n`;
+    }
+
+    text +=
       `Class: ${TEACHER_CONTEXT.className}\n` +
       `Board: ${TEACHER_CONTEXT.board}\n` +
       `Subject: ${TEACHER_CONTEXT.subject}\n` +
@@ -1232,8 +2233,13 @@
 
     if (role === "teacher") {
 
+           const teacherDisplayName =
+        `${currentTeacherName} ${currentTeacherTitle}`.trim();
+
       modeBadgeText.textContent =
-        "👨‍🏫 Teacher Copy";
+        teacherDisplayName
+          ? `👨‍🏫 ${teacherDisplayName}`
+          : "👨‍🏫 Teacher";
 
       pageTitle.textContent =
         "Teacher AI Tools";
@@ -1253,8 +2259,8 @@
       toolsTitle.textContent =
         "Choose a Teacher Tool";
 
-      toolsNote.textContent =
-        "Tap a tool to open ChatGPT with the class, subject, chapter and optional topic already included.";
+                toolsNote.textContent =
+         "Choose a teaching tool for this chapter.";
 
       footerNote.textContent =
         "AI output should be reviewed by the teacher before classroom use.";
@@ -1263,69 +2269,127 @@
         "inline-block";
 
 
-      const teacherTools = [
+            const teacherTools = [
 
-        {
-          icon:"📝",
-          name:"Board Work Generator",
-          desc:"Prepare concise, classroom-ready board work in a clear teaching sequence with definitions, examples and recap.",
-          button:"Create Board Work",
-          tool:"board-work"
-        },
+  {
+    icon:"📝",
+    name:"Board Work Generator",
+    desc:"Prepare concise, classroom-ready board work in a clear teaching sequence with definitions, examples and recap.",
+    button:"Create Board Work",
+    tool:"board-work"
+  },
 
-        {
-          icon:"✅",
-          name:"Exit Ticket Generator",
-          desc:"Create a short end-of-class assessment to quickly check concept understanding, application and reasoning.",
-          button:"Create Exit Ticket",
-          tool:"exit-ticket"
-        },
+  {
+    icon:"✅",
+    name:"Exit Ticket Generator",
+    desc:"Create a short end-of-class assessment to quickly check concept understanding, application and reasoning.",
+    button:"Create Exit Ticket",
+    tool:"exit-ticket"
+  },
 
-        {
-          icon:"🎯",
-          name:"Remedial Teaching",
-          desc:"Prepare a simple reteaching plan for students who are weak in the lesson, with easier explanations and practice.",
-          button:"Create Remedial Plan",
-          tool:"remedial"
-        },
+  {
+    icon:"🎯",
+    name:"Remedial Teaching",
+    desc:"Prepare a simple reteaching plan for students who are weak in the lesson, with easier explanations and practice.",
+    button:"Create Remedial Plan",
+    tool:"remedial"
+  },
 
-        {
-          icon:"💡",
-          name:"Teaching Support",
-          desc:"Get concept sequence, prerequisites, common misconceptions, teaching tips, oral checks and classroom guidance.",
-          button:"Get Teaching Support",
-          tool:"teaching-support"
+  {
+    icon:"💡",
+    name:"Teaching Support",
+    desc:"Get concept sequence, prerequisites, common misconceptions, teaching tips, oral checks and classroom guidance.",
+    button:"Get Teaching Support",
+    tool:"teaching-support"
+  },
+
+  {
+    icon:"🗺️",
+    name:"Mind Map",
+    desc:"Generate a clear visual mind map for the selected chapter or topic.",
+    button:"Generate Mind Map",
+    tool:"mind-map"
+  },
+
+  {
+    icon:"🧠",
+    name:"Flashcards",
+    desc:"Create concise study flashcards from the selected chapter or topic.",
+    button:"Create Flashcards",
+    tool:"flashcards"
+  },
+
+  {
+    icon:"📊",
+    name:"Slide Deck",
+    desc:"Prepare a classroom-ready slide deck for the selected chapter or topic.",
+    button:"Create Slide Deck",
+    tool:"slide-deck"
+  },
+
+  {
+    icon:"🎨",
+    name:"Infographic",
+    desc:"Generate a visual educational infographic for the selected chapter or topic.",
+    button:"Generate Infographic",
+    tool:"infographic"
+  },
+
+  {
+    icon:"🎯",
+    name:"Interactive Quiz",
+    desc:"Create a Foundation Concepts, Mains and Advanced interactive quiz with Gemini.",
+    button:"Create Interactive Quiz",
+    tool:"interactive-quiz"
+  },
+
+  {
+    icon:"📋",
+    name:"Visual Revision Sheet",
+    desc:"Create an A4 visual quick-revision sheet with key concepts, formulas, diagrams and high-value chapter points.",
+    button:"Generate Revision Sheet",
+    tool:"visual-revision-sheet"
+  }
+
+,
+  {
+    icon:"🎞️",
+    name:"Educational GIF",
+    desc:"Create an animated educational GIF using code generated by ChatGPT, with preview, speed control and download.",
+    button:"Create Educational GIF",
+    tool:"educational-gif"
+  }
+
+];
+
+           toolUI.forEach((ui,index) => {
+
+        const item = teacherTools[index];
+
+        if (item) {
+
+          ui.card.style.display = "flex";
+          ui.icon.textContent = item.icon;
+          ui.name.textContent = item.name;
+          ui.desc.textContent = item.desc;
+          ui.button.textContent = item.button;
+          ui.button.dataset.tool = item.tool;
+          ui.button.disabled = false;
+
+        } else {
+
+          ui.card.style.display = "none";
         }
-      ];
-
-
-      teacherTools.forEach(
-        (item,index) => {
-
-          toolUI[index].icon.textContent =
-            item.icon;
-
-          toolUI[index].name.textContent =
-            item.name;
-
-          toolUI[index].desc.textContent =
-            item.desc;
-
-          toolUI[index].button.textContent =
-            item.button;
-
-          toolUI[index].button.dataset.tool =
-            item.tool;
-        }
-      );
-
+      });
       return;
     }
 
 
 
-    modeBadgeText.textContent =
-      "🎓 Student Learning";
+       modeBadgeText.textContent =
+      currentStudentName
+        ? `🎓 ${currentStudentName}`
+        : "🎓 Student Learning";
 
     pageTitle.textContent =
       "Student AI Learning Tools";
@@ -1345,25 +2409,19 @@
     toolsTitle.textContent =
       "Choose a Student Tool";
 
-    toolsNote.textContent =
-      "Choose how you want ChatGPT to help you learn this chapter.";
-
+       toolsNote.textContent =
+      "Choose a learning tool for this chapter.";
     footerNote.textContent =
       "These tools are designed to help you understand and practise independently.";
 
+        teacherLogoutBtn.textContent =
+      "Change Details";
+
     teacherLogoutBtn.style.display =
-      "none";
+      "inline-block";
 
 
     const studentTools = [
-
-      {
-        icon:"⚡",
-        name:"Quick Revision",
-        desc:"Revise the important concepts, rules, formulas and common mistakes from this chapter.",
-        button:"Start Quick Revision",
-        tool:"quick-revision"
-      },
 
       {
         icon:"🧠",
@@ -1374,6 +2432,14 @@
       },
 
       {
+        icon:"⚡",
+        name:"Quick Revision",
+        desc:"Revise the important concepts, rules, formulas and common mistakes from this chapter.",
+        button:"Start Quick Revision",
+        tool:"quick-revision"
+      },
+
+      {
         icon:"✏️",
         name:"Practice Me",
         desc:"Get fresh chapter-based practice questions one at a time and receive hints when you need help.",
@@ -1381,35 +2447,36 @@
         tool:"practice-me"
       },
 
-      {
+           {
         icon:"🏆",
         name:"Chapter Challenge",
-        desc:"Challenge yourself with questions that gradually move from basic understanding to Foundation reasoning.",
+        desc:"Take a 4-stage IIT & NEET Foundation challenge progressing from Foundation Concepts to Foundation Advanced.",
         button:"Start Challenge",
         tool:"chapter-challenge"
       }
+
     ];
 
 
-    studentTools.forEach(
-      (item,index) => {
+        toolUI.forEach((ui,index) => {
 
-        toolUI[index].icon.textContent =
-          item.icon;
+      const item = studentTools[index];
 
-        toolUI[index].name.textContent =
-          item.name;
+      if (item) {
 
-        toolUI[index].desc.textContent =
-          item.desc;
+        ui.card.style.display = "flex";
+        ui.icon.textContent = item.icon;
+        ui.name.textContent = item.name;
+        ui.desc.textContent = item.desc;
+        ui.button.textContent = item.button;
+        ui.button.dataset.tool = item.tool;
+        ui.button.disabled = false;
 
-        toolUI[index].button.textContent =
-          item.button;
+      } else {
 
-        toolUI[index].button.dataset.tool =
-          item.tool;
+        ui.card.style.display = "none";
       }
-    );
+    });
   }
 
 
@@ -1575,190 +2642,1194 @@ ${getStudentLearningRules()}`;
 
 
 
-  function buildChapterChallengePrompt() {
+      function buildChapterChallengePrompt() {
 
-    return `You are conducting a CHAPTER CHALLENGE for a student.
+    return `You are conducting an INTERACTIVE IIT & NEET FOUNDATION MCQ CHAPTER CHALLENGE for a student.
 
 ${getLessonContext()}
 
-Create an interactive 4-stage chapter challenge.
+This is a progressive FOUR-STAGE IIT & NEET FOUNDATION challenge.
+
+Every question must be appropriate to the student's given class and selected chapter, but the standard must be stronger than ordinary school-level recall.
 
 The stages are:
 
-STAGE 1 - CONCEPT CHECK
-STAGE 2 - APPLICATION
-STAGE 3 - FOUNDATION REASONING
-STAGE 4 - CHALLENGE
+STAGE 1 - FOUNDATION CONCEPTS
+STAGE 2 - FOUNDATION APPLICATION
+STAGE 3 - FOUNDATION MAINS REASONING
+STAGE 4 - FOUNDATION ADVANCED CHALLENGE
+
+==================================================
+CORE QUESTION RULES
+==================================================
+
+- EVERY challenge question must be an MCQ.
+- Every MCQ must have exactly FOUR options:
+  A)
+  B)
+  C)
+  D)
+- There must be one clearly correct option.
+- Show ONLY ONE question at a time.
+- NEVER display several questions together.
+- NEVER show future questions in advance.
+- NEVER reveal the answer before the student attempts the question.
+- Keep every question strictly within the given Class, Board, Subject, Chapter and selected Topic / Concept if one is provided.
+- Use fresh questions throughout the challenge.
+- Do not unnecessarily repeat the same numbers, examples or question structure.
+- Use correct mathematical or scientific notation wherever applicable.
+
+
+==================================================
+OFFICIAL CHALLENGE STRUCTURE
+==================================================
+
+There are exactly 12 OFFICIAL SCORED QUESTIONS.
+
+STAGE 1:
+3 official MCQs
+
+STAGE 2:
+3 official MCQs
+
+STAGE 3:
+3 official MCQs
+
+STAGE 4:
+3 official MCQs
+
+The 12 official questions are used to calculate the student's final CHAPTER POWER.
+
+Retry questions are NOT part of the 12-question official score.
+
+
+==================================================
+ANSWER CHECKING
+==================================================
+
+After the student answers the current question, evaluate the answer immediately.
+
+Accept an answer when the student gives:
+- the option letter,
+- the option text,
+- or a numerical / mathematical answer that clearly corresponds to one option.
+
+If the student's response is unclear or does not actually answer the MCQ:
+- do not count it as an attempt,
+- ask the student to choose or state the answer clearly.
+
+IF CORRECT:
+
+Say clearly:
+
+✅ Correct!
+
+Then:
+- state the correct option,
+- give a short student-friendly explanation,
+- update the reward display,
+- and automatically give the next question when appropriate.
+
+IF INCORRECT:
+
+Say clearly:
+
+❌ Incorrect.
+
+Then:
+- state the correct option,
+- state the correct answer,
+- briefly explain the student's mistake,
+- briefly explain the correct reasoning,
+- update the reward display,
+- and automatically give the next question when appropriate.
+
+Do NOT continue using hint-only rules for this Chapter Challenge.
+
+For this Chapter Challenge, AFTER the student has attempted a question, you MUST tell the student whether the answer is correct or incorrect and explain the correct answer.
+
+If the student asks for help BEFORE attempting the question:
+- give only one useful hint,
+- do not reveal the answer,
+- and do not score the question until the student gives an answer.
+
+
+==================================================
+STRICT STAGE PASSING RULE
+==================================================
+
+Each stage has a set of 3 questions.
+
+The student must get at least 2 out of 3 correct to PASS that stage.
 
 IMPORTANT:
 
-Show ONLY STAGE 1 first.
+- Ask ALL 3 questions in the current set, one at a time.
+- Do not declare the stage passed before all 3 questions in that set have been answered.
+- 2/3 or 3/3 = PASS.
+- 0/3 or 1/3 = NOT YET PASSED.
 
-Do not show later questions until the student has attempted the current stage.
+STRICTLY enforce this progression:
 
-Do not give:
-- the final answer,
-- the correct option,
-- an answer key,
-- or a complete solution.
+STAGE 1 must be passed before STAGE 2.
+STAGE 2 must be passed before STAGE 3.
+STAGE 3 must be passed before STAGE 4.
 
-If the student needs help, give only one hint at a time.
+NEVER unlock or show a later stage before the current stage has been passed.
 
-Keep every question strictly within the student's class syllabus and the selected chapter.
 
-Begin with:
+==================================================
+IF A STAGE IS PASSED
+==================================================
+
+After the third question of the current set:
+
+If the student scored 2/3 or 3/3:
+
+Clearly show:
+
+✅ STAGE PASSED!
+
+Then show the stage result.
+
+For example:
+
+Stage Score: 2/3
+⭐ Stage Star Earned
+🔓 Next Stage Unlocked
+
+Then announce the next stage and immediately give ONLY its first MCQ.
+
+
+==================================================
+IF A STAGE IS NOT PASSED
+==================================================
+
+If the student scored only 0/3 or 1/3:
+
+Clearly show:
+
+🔒 STAGE NOT YET PASSED
+
+Do NOT move to the next stage.
+
+Briefly identify the concept or concepts that need improvement.
+
+Then create a completely FRESH RETRY SET of 3 MCQs from the SAME STAGE.
+
+Show those retry questions ONE AT A TIME.
+
+The student must again score at least 2/3 in that fresh retry set.
+
+If the student again scores below 2/3:
+- keep the next stage locked,
+- generate another fresh retry set of 3 questions,
+- and continue until the student passes.
+
+Retry questions must remain at the current stage level.
+
+Do not make the student jump to a higher-stage concept merely because it is a retry.
+
+
+==================================================
+IIT & NEET FOUNDATION DIFFICULTY PROGRESSION
+==================================================
+
+EVERY stage must maintain IIT & NEET Foundation quality appropriate to the student's class.
+
+Do not reduce the challenge to ordinary textbook recall.
+
+Do not use unnecessarily higher-class concepts merely to make questions difficult.
+
+
+STAGE 1 - FOUNDATION CONCEPTS
+
+Test:
+- strong conceptual clarity,
+- definitions and properties,
+- rules and relationships,
+- concept identification,
+- simple reasoning,
+- meaningful conceptual understanding.
+
+Questions may be direct, but they must test understanding rather than memorisation alone.
+
+Difficulty:
+Foundation Basic to Moderate.
+
+
+STAGE 2 - FOUNDATION APPLICATION
+
+Test:
+- application of concepts,
+- formula or rule selection,
+- numerical application,
+- short multi-step problems,
+- interpretation,
+- less-direct applications.
+
+Difficulty:
+Foundation Moderate.
+
+
+STAGE 3 - FOUNDATION MAINS REASONING
+
+Test:
+- connected concepts,
+- analytical reasoning,
+- inference,
+- comparison,
+- multi-step calculations,
+- non-direct applications,
+- option analysis,
+- Foundation Mains style thinking.
+
+Difficulty:
+Foundation Difficult.
+
+
+STAGE 4 - FOUNDATION ADVANCED CHALLENGE
+
+Test:
+- deeper reasoning,
+- non-routine applications,
+- multiple connected ideas,
+- advanced option analysis,
+- challenging multi-step thinking,
+- Foundation Advanced style problems.
+
+Difficulty:
+Foundation Advanced for the student's class.
+
+The question must be challenging because of reasoning and concept depth, not because it uses out-of-syllabus material.
+
+Keep every question strictly within the selected Class, Subject, Chapter and Topic / Concept when provided.
+
+==================================================
+REWARD SYSTEM
+==================================================
+
+Maintain the student's running rewards throughout this Chapter Challenge.
+
+OFFICIAL QUESTION REWARD:
+
+For every correct OFFICIAL question:
+🪙 +10 Coins
+
+For an incorrect official answer:
+0 Coins
+
+Never deduct coins.
+
+
+STAGE REWARD:
+
+Every time a stage is successfully passed:
+⭐ +1 Stage Star
+
+
+PERFECT STAGE BONUS:
+
+If the student gets 3/3 correct in the ORIGINAL official set of that stage:
+
+⭐ +1 Bonus Star
+🪙 +10 Bonus Coins
+
+
+RETRY RULE:
+
+Retry questions do NOT earn the normal +10 question coins.
+
+When a student who initially failed a stage later successfully passes that stage through a retry set:
+
+🪙 +5 Comeback Bonus Coins
+
+Award this Comeback Bonus only ONCE for that stage.
+
+The normal Stage Star is still awarded when the stage is passed.
+
+
+MAXIMUM OFFICIAL REWARDS:
+
+12 correct official questions = 120 Coins
+
+4 perfect-stage bonuses = 40 additional Coins
+
+Maximum standard total = 160 Coins
+
+Maximum Stars:
+4 Stage Stars + 4 Perfect Stage Bonus Stars = 8 Stars
+
+
+==================================================
+LIVE SCOREBOARD
+==================================================
+
+After checking each answer, display a short scoreboard such as:
+
+⭐ Stars: 2
+🪙 Coins: 70
+🧠 Chapter Power so far: 83%
+
+Also display stage status in a compact form such as:
+
+Stage 1 ✅ | Stage 2 🔓 | Stage 3 🔒 | Stage 4 🔒
+
+Do not show a future stage as unlocked until the previous stage has actually been passed.
+
+
+==================================================
+CHAPTER POWER
+==================================================
+
+CHAPTER POWER measures performance in THIS CHAPTER only.
+
+It is NOT intelligence, IQ or general brain ability.
+
+Calculate final Chapter Power ONLY from the student's FIRST 3 OFFICIAL questions in each of the four stages.
+
+Total official questions = 12.
+
+Formula:
+
+Chapter Power =
+(Number of correct answers in the 12 official questions ÷ 12) × 100
+
+Round to the nearest whole percentage if necessary.
+
+Retry questions must NEVER alter the 12-question Chapter Power score.
+
+Always keep the original official results internally so the final calculation remains accurate.
+
+
+==================================================
+ACHIEVEMENT TITLE
+==================================================
+
+Use the final Chapter Power to assign ONE positive achievement title:
+
+90% to 100%:
+CHAPTER CHAMPION
+
+75% to 89%:FOUNDATION STAR
+
+60% to 74%:
+CONCEPT BUILDER
+
+Below 60%:
+DETERMINED LEARNER
+
+These titles describe performance in this challenge only.
+
+
+==================================================
+WHEN THE CHALLENGE ENDS
+==================================================
+
+The Chapter Challenge ends ONLY when STAGE 4 has been successfully PASSED.
+
+Passing Stage 1, Stage 2 or Stage 3 is NOT completion of the challenge.
+
+If a stage is not passed:
+- remain in that stage,
+- continue with fresh retry sets,
+- and do not end the challenge.
+
+After Stage 4 has been successfully passed:
+
+1. Check and explain the final answer normally.
+
+2. Clearly announce:
+
+🏆 CHAPTER CHALLENGE COMPLETED!
+
+3. Show the student's final results:
+
+- Student Name
+- School Name
+- Class
+- Board
+- Subject
+- Chapter
+- Selected Topic / Concept, if one was provided
+- Official Score out of 12
+- Chapter Power %
+- Total Stars
+- Total Coins
+- Stage 1 status
+- Stage 2 status
+- Stage 3 status
+- Stage 4 status
+- Achievement Title
+
+4. Give one short, positive, performance-based message.
+
+5. Then GENERATE a final ACHIEVEMENT CARD IMAGE using the image generation capability.
+
+
+==================================================
+FINAL ACHIEVEMENT IMAGE
+==================================================
+
+After Stage 4 has been successfully passed, actually GENERATE a polished educational achievement card image.
+
+IMAGE SIZE AND FORMAT:
+
+- Target canvas: 1080 × 1920 pixels.
+- Portrait orientation.
+- 9:16 aspect ratio.
+- Optimised for mobile viewing and sharing.
+- High-quality, premium educational achievement-card design.
+- Keep all text and important elements safely inside the image margins.
+- Use large, clear and highly readable typography.
+
+
+STRICT BRANDING RULE:
+
+DO NOT mention:
+
+SciMentra
+SCIMENTRA
+Sci Mentra
+
+or any variation of that name anywhere on the achievement image.
+
+Do not add any invented brand name.
+
+Do not invent or add a school logo.
+
+
+TOP OF IMAGE:
+
+The FIRST and most prominent institutional text must be the exact:
+
+School Name
+
+Use the School Name supplied in the student details exactly as provided.
+
+Immediately below it show:
+
+IIT & NEET FOUNDATION
+
+Then show:
 
 CHAPTER CHALLENGE
-STAGE 1 - CONCEPT CHECK
+ACHIEVEMENT
 
-Then give only the first question.
 
-${getStudentLearningRules()}`;
+STUDENT DETAILS:
+
+Student Name:
+Use the student's exact provided name.
+
+Class:
+Use the exact provided class.
+
+Board:
+Use the provided board.
+
+Subject:
+Use the exact provided subject.
+
+Chapter:
+Use the exact provided chapter.
+
+If a Selected Topic / Concept was provided, also show:
+
+Focus Topic:
+[exact selected topic]
+
+
+PERFORMANCE SECTION:
+
+Show prominently:
+
+⭐ Stars Earned: [number]
+
+🪙 Coins Earned: [number]
+
+🧠 Chapter Power: [percentage]
+
+🏆 Achievement Title:
+[achievement title]
+
+Official Score:
+[correct]/12
+
+
+STAGE COMPLETION SECTION:
+
+Show all four stages as successfully completed:
+
+STAGE 1
+FOUNDATION CONCEPTS
+✓
+
+STAGE 2
+FOUNDATION APPLICATION
+✓
+
+STAGE 3
+FOUNDATION MAINS REASONING
+✓
+
+STAGE 4
+FOUNDATION ADVANCED CHALLENGE
+✓
+
+
+DESIGN:
+
+- Modern and premium.
+- Professional rather than childish.
+- Strong educational achievement look.
+- Use trophy, star, medal or achievement-style visual elements.
+- Use visually distinct score panels for Stars, Coins and Chapter Power.
+- Keep the student's name prominent.
+- Keep the School Name prominent at the top.
+- Make IIT & NEET FOUNDATION clearly visible.
+- Use a clear four-stage completion section.
+- Avoid excessive decoration.
+- Avoid overcrowding.
+- Do not invent any student details.
+- Do not invent any school details.
+- Do not call Chapter Power IQ, intelligence or brain intelligence.
+- Chapter Power refers only to performance in this chapter challenge.
+
+Include one short positive message based on the student's actual performance.
+
+Do not merely describe the achievement card.
+
+At the end of the completed challenge, actually GENERATE the achievement image.
+
+
+==================================================
+START NOW
+==================================================
+
+Begin exactly with:
+
+CHAPTER CHALLENGE
+STAGE 1 - FOUNDATION CONCEPTS
+
+Greet the student briefly using the exact provided Student Name.
+
+Then give ONLY:
+
+Question 1
+
+with four options:
+
+A)
+B)
+C)
+D)
+
+The first question must already be IIT & NEET Foundation quality appropriate to the student's class and chapter.
+
+Do not give the answer until the student attempts Question 1.`;
   }
-
-
 
   function buildBoardWorkPrompt() {
-    return `You are assisting a teacher preparing classroom board work.
+    return `You are assisting a teacher in preparing classroom board work.
 
 ${getLessonContext()}
 
-Prepare clear, concise and classroom-ready BOARD WORK for this lesson.
+Prepare classroom-ready BOARD WORK for the selected chapter or topic.
 
-Give:
+First identify the major concepts and subtopics appropriate to the given class, subject and chapter.
 
-1. TOPIC HEADING
-2. LEARNING OBJECTIVE
-3. PREREQUISITE RECALL
-4. KEY DEFINITIONS / RULES / FORMULAS
-5. TEACHING SEQUENCE
-6. TWO SIMPLE WORKED EXAMPLES
-7. ONE FOUNDATION MAINS EXAMPLE
-8. ONE COMMON STUDENT MISTAKE AND HOW TO CORRECT IT
-9. THREE QUICK ORAL CHECK QUESTIONS WITH ANSWERS
-10. FINAL BOARD RECAP
+If a specific Today's Topic / Concept is provided:
+- Prepare detailed board work only for that topic.
+
+If Scope says "Use the whole chapter":
+- Divide the chapter into realistic 40-minute periods: PERIOD 1, PERIOD 2, PERIOD 3 and so on.
+- Decide the number of periods according to the chapter content and difficulty.
+- Follow a logical concept sequence.
+- Do not overload any period.
+- Keep prerequisite concepts before dependent concepts.
+
+FOR EACH 40-MINUTE PERIOD GIVE:
+
+1. PERIOD TITLE / SUBTOPICS
+
+2. QUICK RECALL / INTRODUCTION
+Brief prerequisite recall needed for this period.
+
+3. KEY CONCEPTS / DEFINITIONS / RULES / FORMULAS
+Use concise board-ready wording.
+
+4. BOARD EXPLANATION SEQUENCE
+Show what the teacher should write and explain in order.
+
+5. SIMPLE WORKED EXAMPLES
+Give as many examples as genuinely required for the concepts in that period.
+Do not use a fixed number of examples.
+
+6. FOUNDATION MAINS
+Give suitable Foundation Mains example(s) wherever applicable.
+
+7. FOUNDATION ADVANCED
+Give suitable Foundation Advanced reasoning or challenge example(s) wherever applicable.
+
+8. COMMON STUDENT MISTAKES
+Mention likely mistakes related to the concepts taught in that period and how to correct them.
+
+9. QUICK ORAL CHECK
+Give short oral questions with concise teacher answers.
+
+10. PERIOD RECAP
+Give the important points that should remain on the board at the end.
 
 IMPORTANT:
-- Keep the board work concise enough for practical classroom use.
-- Arrange it in the order a teacher should write and explain it.
-- Use language suitable for the given class.
+- Keep all content appropriate to the selected class, subject and chapter.
+- Preserve the progression from basic understanding to Foundation Mains and Foundation Advanced.
+- Do not introduce unnecessarily higher-class or unrelated concepts.
+- Keep every period realistic for approximately 40 minutes.
+- Keep the output concise and practical for actual classroom board work.
 - Use correct mathematical/scientific notation.
-- Keep all methods within the selected class syllabus.
-- Maintain IIT & NEET Foundation standard.
-- Do not overcrowd the board.
-- Independently verify all calculations, formulas and answers before responding.`;
+- Verify all formulas, calculations, examples and answers before responding.`;
   }
-
   function buildExitTicketPrompt() {
-    return `You are assisting a teacher who wants to check student understanding at the end of the lesson.
+    return `You are assisting a teacher in preparing an end-of-class assessment.
 
 ${getLessonContext()}
 
-Create a short EXIT TICKET for this lesson.
+Prepare a classroom-ready EXIT TICKET for the selected chapter or topic.
 
-Give exactly 5 questions:
+If a specific Today's Topic / Concept is provided:
+- Prepare one Exit Ticket only for that selected topic.
 
-1. One basic concept-check question.
-2. One direct-application question.
-3. One misconception-check question.
-4. One Foundation Mains reasoning question.
-5. One short challenge question suitable for the given class.
+If Scope says "Use the whole chapter":
+- Divide the chapter into realistic teaching periods.
+- Follow a logical concept sequence.
+- Prepare a separate Exit Ticket for EACH period.
+- Each Exit Ticket must assess only the concepts assigned to that period.
 
-After the questions, give a separate TEACHER ANSWER KEY with concise answers.
+FOR EACH EXIT TICKET GIVE EXACTLY 5 QUESTIONS:
+
+1. BASIC CONCEPT CHECK
+Check whether the student understood an essential idea, definition, rule or relationship.
+
+2. DIRECT APPLICATION
+Give a short question requiring direct use of the concept taught.
+
+3. MISCONCEPTION CHECK
+Test a likely student misunderstanding or common mistake related to that lesson.
+
+4. FOUNDATION MAINS
+Give one suitable application or reasoning question at Foundation Mains level.
+
+5. FOUNDATION ADVANCED
+Give one short reasoning or challenge question at Foundation Advanced level.
+
+After the 5 questions give:
+
+TEACHER ANSWER KEY
+Give concise and clearly numbered answers to all 5 questions.
 
 IMPORTANT:
-- The questions must be answerable in about 5 to 8 minutes.
-- Keep every question strictly within the selected class and lesson.
-- Do not repeat the same concept unnecessarily.
-- Use clear and unambiguous wording.
-- Maintain IIT & NEET Foundation standard.
-- Independently verify every answer before responding.`;
+- Keep all questions appropriate to the selected class, subject and chapter.
+- Preserve the progression from Basic to Foundation Mains to Foundation Advanced.
+- Do not introduce unnecessarily higher-class or unrelated concepts.
+- Each Exit Ticket must be realistically answerable in about 5 to 8 minutes.
+- Keep questions short, clear and unambiguous.
+- Do not unnecessarily repeat the same concept.
+- Use correct mathematical/scientific notation.
+- Verify every question, calculation and answer before responding.`;
   }
-
   function buildRemedialPrompt() {
-    return `You are assisting a teacher who needs to reteach this lesson to students who are struggling.
+   return `You are assisting a teacher with remedial teaching.
 
 ${getLessonContext()}
 
-Prepare a REMEDIAL TEACHING PLAN.
+Prepare practical REMEDIAL TEACHING SUPPORT for the selected chapter or topic.
 
-Give:
+First identify the concepts, prerequisite knowledge and learning difficulties connected with the selected scope.
 
-1. LIKELY LEARNING GAP
-   Identify the prerequisite or concept students may be missing.
+If a specific Today's Topic / Concept is provided:
+- Focus only on that selected topic.
+- Prepare remedial support for students struggling with that concept.
+
+If Scope says "Use the whole chapter":
+- Identify the major subtopics in the chapter.
+- Organise remedial teaching subtopic by subtopic.
+- Follow a logical concept sequence.
+- Do not try to reteach the whole chapter in one period.
+- Divide the remedial support into realistic 40-minute periods where required.
+
+FOR EACH REMEDIAL PERIOD / SELECTED TOPIC GIVE:
+
+1. LEARNING GAP
+Identify what students may not have understood and the prerequisite knowledge they may be missing.
 
 2. SIMPLE RETEACHING EXPLANATION
-   Explain the concept in very simple classroom language.
+Explain the concept in simpler classroom language while keeping the meaning accurate.
 
-3. ANOTHER WAY TO EXPLAIN IT
-   Give an alternative explanation, analogy, model or example.
+3. ANOTHER WAY TO EXPLAIN
+Give a suitable analogy, comparison, demonstration, visual idea or familiar example where appropriate.
 
-4. STEP-BY-STEP TEACHING SEQUENCE
-   Show how the teacher should rebuild the concept from easy to difficult.
+4. STEP-BY-STEP REBUILDING
+Show how the teacher should rebuild understanding from the easiest idea to the regular textbook level.
 
-5. THREE VERY EASY GUIDED EXAMPLES
-   Give worked examples suitable for weak students.
+5. GUIDED EXAMPLES
+Give as many simple worked examples as genuinely required.
+Begin with very easy examples and gradually increase difficulty.
 
-6. FIVE REMEDIAL PRACTICE QUESTIONS
-   Start easy and increase difficulty gradually.
+6. COMMON MISTAKES
+Identify likely errors made by struggling students and explain how the teacher should correct them.
 
-7. ANSWERS
-   Give concise answers to all five practice questions.
+7. REMEDIAL PRACTICE
+Give suitable short practice questions progressing from easy understanding to direct application.
 
-8. QUICK MASTERY CHECK
-   Give 3 short oral questions the teacher can use to decide whether students are ready to return to regular Foundation practice.
+8. FOUNDATION BRIDGE
+After the basic concept is secure, show how the teacher can gradually move students towards Foundation Mains level.
+
+9. FOUNDATION ADVANCED READINESS
+Do not immediately push weak students into Advanced questions.
+State what understanding or skills students should demonstrate before attempting the Foundation Advanced level of this chapter.
+
+10. QUICK MASTERY CHECK
+Give short oral or written questions with concise teacher answers to check whether students are ready to return to regular Foundation teaching.
 
 IMPORTANT:
-- Keep the explanation age-appropriate.
-- Do not use higher-class methods.
-- Focus on conceptual understanding before speed.
-- Use proper mathematical/scientific notation.
-- Verify every example and answer before responding.`;
+- Keep all content appropriate to the selected class, subject and chapter.
+- Use clear and age-appropriate terminology.
+- Do not introduce higher-class or unrelated concepts.
+- Focus first on conceptual understanding, then application, then Foundation progression.
+- Do not use a fixed number of examples or practice questions; give enough for the concept being retaught.
+- Keep each remedial period realistic for approximately 40 minutes where periods are required.
+- Keep explanations simple without changing the mathematical/scientific meaning.
+- Use correct mathematical/scientific notation.
+- Verify all facts, formulas, examples, calculations and answers before responding.`;
   }
 
-  function buildTeachingSupportPrompt() {
-    return `You are assisting a teacher in planning and teaching this lesson effectively.
+ function buildTeachingSupportPrompt() {
+    return `You are assisting a teacher in teaching this lesson effectively.
 
 ${getLessonContext()}
 
-Prepare TEACHING SUPPORT for this lesson.
+Prepare practical TEACHING SUPPORT for the selected chapter or topic.
 
-Give:
+First identify the major concepts and subtopics appropriate to the selected class and chapter.
 
-1. CORE CONCEPTS
-   List the most important concepts students must understand.
+If a specific Today's Topic / Concept is provided:
+- Focus only on that topic.
+- Give detailed guidance for teaching that concept effectively.
 
-2. PREREQUISITE KNOWLEDGE
-   Mention what students should already know.
+If Scope says "Use the whole chapter":
+- Divide the chapter into realistic 40-minute periods: PERIOD 1, PERIOD 2, PERIOD 3 and so on.
+- Decide the number of periods according to the actual chapter content and difficulty.
+- Follow a logical teaching sequence.
+- Do not overload any period.
+- Teach prerequisite concepts before dependent concepts.
 
-3. BEST TEACHING SEQUENCE
-   Suggest the order in which the ideas should be taught.
+FOR EACH PERIOD GIVE:
 
-4. CLASSROOM EXPLANATION STRATEGY
-   Explain how the teacher can introduce and develop the lesson.
+1. PERIOD TOPIC / CONCEPTS
 
-5. COMMON STUDENT MISCONCEPTIONS
-   List likely mistakes or misunderstandings and how to correct each one.
+2. CORE CONCEPTS
+State exactly what students should understand.
 
-6. TEACHING TIPS
-   Give useful examples, analogies, questioning techniques or demonstrations.
+3. PREREQUISITE KNOWLEDGE
+Mention only the previous knowledge genuinely required.
 
-7. CHECK FOR UNDERSTANDING
-   Give 5 short oral questions with answers.
+4. HOW TO INTRODUCE THE LESSON
+Suggest a suitable question, situation, observation, demonstration or familiar example.
 
-8. FOUNDATION CONNECTION
-   Explain how to move students from basic understanding to Foundation Mains reasoning without going beyond the class syllabus.
+5. BEST TEACHING SEQUENCE
+Explain the order in which the concepts should be developed.
 
-9. TEACHER CLOSURE
-   Give a 2-minute recap the teacher can use at the end of the lesson.
+6. CLASSROOM EXPLANATION STRATEGY
+Explain how the teacher should make each concept clear to students.
+
+7. TEACHING EXAMPLES
+Suggest examples suitable for the selected class and chapter.
+Use as many examples as genuinely required.
+
+8. COMMON STUDENT MISCONCEPTIONS
+Identify likely mistakes or misunderstandings and explain how to correct them.
+
+9. TEACHING TIPS
+Give useful analogies, demonstrations, questioning techniques or classroom strategies where appropriate.
+
+10. CHECK FOR UNDERSTANDING
+Give suitable short oral questions with concise teacher answers.
+
+11. FOUNDATION MAINS CONNECTION
+Explain how to move students from basic understanding to Foundation Mains application.
+
+12. FOUNDATION ADVANCED CONNECTION
+Explain how to develop deeper reasoning and Foundation Advanced thinking using the same chapter concepts.
+
+13. TEACHER CLOSURE
+Give a short 2-minute recap for the end of the period.
 
 IMPORTANT:
-- Keep everything practical for classroom use.
-- Maintain the given class level and IIT & NEET Foundation standard.
-- Do not use higher-class methods unless absolutely necessary.
-- Use clear mathematical/scientific notation.
-- Verify all factual statements, examples and answers before responding.`;
+- Keep all content appropriate to the selected class, subject and chapter.
+- Use clear and age-appropriate terminology.
+- Preserve Basic → Foundation Mains → Foundation Advanced progression.
+- Do not introduce higher-class or unrelated concepts.
+- Adapt the teaching strategy to each subtopic.
+- Keep every period realistic for approximately 40 minutes.
+- Keep everything practical for actual classroom teaching.
+- Verify all facts, formulas, examples, calculations and answers.`;
   }
+      function buildMindMapPrompt() {
+
+   return `You are creating a VISUAL EDUCATIONAL MIND MAP for learning and revision.
+
+${getLessonContext()}
+
+Create the final result as a TRUE TEXTBOOK-STYLE MIND MAP IMAGE.
+
+IMAGE SIZE AND FORMAT:
+- A4 size.
+- Landscape orientation.
+- A4 aspect ratio approximately 1.414:1.
+- High-resolution image suitable for printing and classroom projection.
+- Keep all nodes, text and connecting lines safely inside the A4 page margins.
+- Use a clean white or very light background.
+
+MIND MAP STRUCTURE:
+- Place the selected chapter/topic title in ONE clear CENTRAL NODE.
+- Major concepts must branch directly from the central node.
+- Each major concept may branch further into smaller child nodes.
+- Supporting nodes may contain:
+  - important definitions,
+  - key ideas,
+  - rules or formulas,
+  - short examples,
+  - relationships,
+  - common mistakes,
+  - Foundation-level connections,
+  only where relevant.
+
+VISUAL STYLE:
+- Create a simple SCHOOL TEXTBOOK-STYLE concept map.
+- The design must look like a genuine mind map, NOT an infographic or poster.
+- Use simple circles, ovals and small rounded rectangles for nodes.
+- Connect nodes using clear coloured lines or arrows.
+- Use different soft colours for different main branches.
+- Keep the branch-and-node structure clearly visible.
+- Arrange the branches naturally around the central node.
+- Maintain clear parent → child → sub-child relationships.
+- Use clean, flat educational styling.
+- Leave enough white space between branches.
+
+TEXT STYLE:
+- Use short keywords and concise statements.
+- Prefer 1 or 2 short lines inside each node.
+- Avoid paragraphs.
+- Avoid long bullet lists.
+- Keep all text large and clearly readable.
+- Use correct mathematical/scientific notation.
+
+DO NOT:
+- Do not use emojis.
+- Do not use icons.
+- Do not use cartoons or characters.
+- Do not use decorative illustrations.
+- Do not number the branches like infographic sections.
+- Do not create large information panels.
+- Do not use a grid or card-based infographic layout.
+- Do not overcrowd the page.
+- Do not make it look like a poster.
+
+CONTENT QUALITY:
+- Keep all content appropriate to the selected class, board, subject and chapter.
+- Follow a logical concept sequence.
+- Include only important information suitable for a mind map.
+- Do not force every possible section if it makes the mind map crowded.
+- Verify all definitions, formulas, examples and mathematical/scientific notation before generating the image.
+
+The final response should be the MIND MAP IMAGE itself, not a text outline or long explanation.`;
+  }
+
+
+  function buildFlashcardsPrompt() {
+
+    return `You are creating classroom-ready STUDY FLASHCARDS.
+
+${getLessonContext()}
+
+Prepare useful flashcards for the selected chapter or topic.
+
+First identify the important concepts actually required for understanding and revision.
+
+Create as many flashcards as genuinely useful.
+Do not force a fixed number.
+
+FOR EACH FLASHCARD GIVE:
+
+FRONT:
+A short question, term, formula, concept or prompt.
+
+BACK:
+A concise and accurate explanation, definition, rule, example or answer.
+
+Organise the flashcards where appropriate into:
+
+1. KEY DEFINITIONS
+2. IMPORTANT RULES / FORMULAS
+3. CONCEPT UNDERSTANDING
+4. COMMON MISTAKES
+5. FOUNDATION CONCEPTS
+6. FOUNDATION MAINS
+7. FOUNDATION ADVANCED
+
+IMPORTANT:
+- Keep each card short.
+- One main idea per card.
+- Avoid unnecessary long explanations.
+- Use clear mathematical/scientific notation.
+- Keep everything suitable for the selected class.
+- Verify all facts, formulas and examples.`;
+  }
+
+
+  function buildSlideDeckPrompt() {
+
+        return `You are creating a CLASSROOM TEACHING SLIDE DECK.
+
+${getLessonContext()}
+
+SCHOOL IDENTITY RULE:
+- Use exactly the School Name provided above wherever a school name is appropriate.
+- Use that exact School Name on the title slide.
+- Do not use any other school or organisation name.
+- Never guess, invent, replace or substitute the School Name.
+
+Prepare a professional slide-by-slide presentation for the selected chapter or topic.
+If the whole chapter is selected:
+- Decide the number of slides according to the actual chapter content.
+- Follow a logical teaching sequence.
+- Do not overload slides.
+
+FOR EACH SLIDE GIVE:
+
+SLIDE NUMBER
+SLIDE TITLE
+MAIN CONTENT
+VISUAL / DIAGRAM SUGGESTION
+TEACHER EXPLANATION NOTE
+
+The presentation should include where appropriate:
+
+1. TITLE SLIDE
+2. LEARNING OBJECTIVES
+3. PREREQUISITE RECALL
+4. MAIN CONCEPTS
+5. DEFINITIONS / RULES / FORMULAS
+6. CLEAR EXAMPLES
+7. VISUAL EXPLANATIONS
+8. FOUNDATION CONCEPTS
+9. FOUNDATION MAINS
+10. FOUNDATION ADVANCED
+11. COMMON MISTAKES
+12. QUICK CHECK QUESTIONS
+13. CHAPTER / TOPIC RECAP
+
+IMPORTANT:
+- Keep slide text concise.
+- Use large classroom-friendly content.
+- Do not turn slides into textbook paragraphs.
+- Suggest diagrams, illustrations or visual elements where useful.
+- Use correct mathematical/scientific notation.
+- Verify all formulas, examples and answers.
+
+If presentation-file creation is available, create the actual editable slide deck.
+Otherwise provide the complete slide-by-slide deck content.`;
+  }
+
+
+  function buildVisualRevisionSheetPrompt() {
+
+  return `You are creating a PROFESSIONAL VISUAL REVISION SHEET for classroom teaching and student revision.
+
+${getLessonContext()}
+
+Create the FINAL RESULT as a HIGH-QUALITY A4 EDUCATIONAL REVISION SHEET IMAGE.
+
+PURPOSE:
+Create a one-page visual study sheet that allows a student to revise the most important content of the selected chapter or topic quickly.
+
+This is NOT a mind map.
+This is NOT a poster with decorative text.
+This is NOT a long textbook page.
+This is NOT a generic infographic.
+
+It should look like a professionally designed textbook QUICK REVISION / FORMULA / CONCEPT SHEET.
+
+PAGE FORMAT:
+- A4 portrait orientation.
+- High resolution.
+- Suitable for printing, classroom projection, PPT use and student sharing.
+- Clean light background.
+- Keep all important content safely inside page margins.
+- Use the available page space efficiently.
+- Avoid large empty areas.
+- Avoid overcrowding.
+- All text must be clearly readable.
+
+VISUAL STRUCTURE:
+- Put the Chapter / Topic title prominently at the top.
+- Organise content into clear rectangular or softly rounded sections.
+- Use logical section headings.
+- Use a balanced grid layout where appropriate.
+- Use diagrams, arrows, tables, mini-illustrations and visual representations wherever they genuinely improve understanding.
+- Keep related formulas and concepts together.
+- Make important formulas, laws, definitions and relationships visually prominent.
+- Use professional educational colours.
+- Do not make the design childish.
+- Do not add unnecessary decoration.
+
+CONTENT SELECTION:
+First analyse the selected Class, Subject, Chapter and Topic.
+
+Then select ONLY the highest-value revision content genuinely needed for that chapter.
+
+Do NOT force every category below if it is not relevant.
+
+SUBJECT-ADAPTIVE RULE:
+
+For MATHEMATICS:
+- Important formulas
+- Definitions
+- Rules and properties
+- Standard relationships
+- Useful diagrams / graphs / geometric figures
+- Short representative examples
+- Common mistakes or special conditions
+
+For PHYSICS:
+- Important laws
+- Formulae
+- Meaning of symbols
+- SI units where useful
+- Important conditions
+- Constants where relevant
+- Graphs and labelled physical diagrams
+- Key relationships between quantities
+- Short conceptual reminders
+
+For CHEMISTRY:
+- Important laws and formulae
+- Chemical equations / reactions
+- Definitions
+- Trends and relationships
+- Important conditions
+- Tables or comparisons
+- Structure / apparatus / particle diagrams where relevant
+- Key exceptions or cautions
+
+For BIOLOGY:
+- Important definitions and terminology
+- Labelled diagrams
+- Processes and sequences
+- Flow diagrams
+- Functions
+- Comparisons
+- Important structures and relationships
+- High-value recall points
+
+For SOCIAL SCIENCE:
+- Key facts
+- Important dates only where relevant
+- Timelines
+- Cause-and-effect relationships
+- Comparisons
+- Maps / schematic diagrams where useful
+- Important terms
+- People / places / events essential to the chapter
+
+For ENGLISH / LANGUAGE:
+- Important grammar rules or structures
+- Definitions
+- Patterns
+- Examples
+- Comparison tables
+- Common errors
+- Usage reminders
+- Literary elements only when relevant to the selected chapter
+
+QUALITY RULES:
+- Use only content appropriate to the selected class and chapter.
+- Do not introduce unnecessary higher-class material.
+- Use correct mathematical and scientific notation.
+- Check every formula, unit, equation, definition, label and example carefully.
+- Never invent facts merely to fill space.
+- Keep explanations short and revision-friendly.
+- Prefer visual explanation over long paragraphs.
+- Use diagrams only when they are educationally meaningful.
+- Make diagram labels clear and accurate.
+- Give enough information for useful revision without turning the sheet into a textbook page.
+
+FOUNDATION LEVEL:
+Where genuinely relevant, include a small section for important IIT & NEET Foundation connections, relationships, shortcuts or deeper observations appropriate to this class.
+
+Do NOT force advanced material if the selected chapter does not require it.
+
+SCHOOL IDENTITY:
+- Use exactly the School Name provided above if a school identity is shown.
+- Do not invent or substitute another school name.
+- Keep school identity small and professional so the academic content remains dominant.
+
+FINAL OUTPUT RULE:
+Generate the actual A4 VISUAL REVISION SHEET IMAGE.
+Do not respond with a long textual explanation of how to design it.
+Do not merely describe the sheet.
+Produce the finished visual revision sheet.`;
+}
+
+
+function buildInfographicPrompt() {
+
+  return `You are creating a VISUAL EDUCATIONAL INFOGRAPHIC.
+
+${getLessonContext()}
+
+Create the final result as a PORTRAIT EDUCATIONAL INFOGRAPHIC IMAGE.
+
+IMAGE SIZE AND FORMAT:
+- A4 size.
+- Portrait orientation.
+- High-resolution image suitable for printing, classroom display, PPT use and student sharing.
+- Keep important content safely inside the A4 page margins.
+
+INFOGRAPHIC DESIGN:
+- This must look like a professional EDUCATIONAL INFOGRAPHIC, NOT a mind map.
+- Use a clear top-to-bottom visual flow.
+- Use organised sections, panels, cards or information blocks.
+- Use suitable icons, arrows, diagrams, highlights and visual cues.
+- Use colourful but professional educational styling.
+- Make important formulas, definitions, examples and warnings visually distinct.
+- Do NOT use a central-node branching mind-map structure.
+- Do NOT arrange concepts as radial branches.
+- Keep all text large, clear and readable.
+- Avoid overcrowding.
+Include the most important chapter/topic content such as:
+
+1. TITLE
+2. MAIN CONCEPTS
+3. IMPORTANT DEFINITIONS
+4. RULES / FORMULAS / KEY IDEAS
+5. ONE OR MORE USEFUL EXAMPLES
+6. COMMON MISTAKES
+7. FOUNDATION CONCEPTS
+8. FOUNDATION MAINS
+9. FOUNDATION ADVANCED
+10. QUICK RECAP
+
+Design the image for classroom display, revision, PPT use and student sharing.
+
+Use age-appropriate language for the selected class.
+Use correct mathematical/scientific notation.
+Verify all facts, formulas and examples.
+
+The final response should be the generated INFOGRAPHIC IMAGE, not a long textual explanation.`;
+  }
+
 
     function buildPrompt(tool) {
 
@@ -1775,13 +3846,19 @@ IMPORTANT:
         case "practice-me":
           return buildPracticeMePrompt();
 
-        case "chapter-challenge":
+              case "chapter-challenge":
           return buildChapterChallengePrompt();
 
-        default:
-          throw new Error(
-            "Unknown student learning tool."
-          );
+        case "mind-map":
+          return buildMindMapPrompt();
+
+        case "infographic":
+  return buildInfographicPrompt();
+
+default:
+  throw new Error(
+    "Unknown student learning tool."
+  );
       }
     }
 
@@ -1797,39 +3874,112 @@ IMPORTANT:
       case "remedial":
         return buildRemedialPrompt();
 
-      case "teaching-support":
+           case "teaching-support":
         return buildTeachingSupportPrompt();
 
-      default:
-        throw new Error(
-          "Unknown teacher tool."
-        );
+      case "mind-map":
+        return buildMindMapPrompt();
+
+      case "flashcards":
+        return buildFlashcardsPrompt();
+
+      case "slide-deck":
+        return buildSlideDeckPrompt();
+
+      case "infographic":
+  return buildInfographicPrompt();
+
+case "visual-revision-sheet":
+  return buildVisualRevisionSheetPrompt();
+
+default:
+  throw new Error(
+    "Unknown teacher tool."
+  );
     }
   }
-  function openChatGPT(promptText) {
+function openChatGPT(promptText) {
     const chatgptUrl =
       "https://chatgpt.com/?q=" +
       encodeURIComponent(promptText);
 
-    window.open(
-      chatgptUrl,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    window.location.href = chatgptUrl;
   }
 
+
+  // Visual teacher tools use ChatGPT-generated JSON/SVG code.
+  // Keep the logged-in school identity dynamic and preserve the separate quiz and student routes.
+  const visualToolIds = new Set([
+    "mind-map", "flashcards", "slide-deck", "infographic",
+    "visual-revision-sheet", "educational-gif"
+  ]);
   toolButtons.forEach(button => {
     button.addEventListener("click", () => {
       try {
-        const tool = button.dataset.tool || "";
+
+               const tool = button.dataset.tool || "";
+
+        if (selectedRole === "teacher" && visualToolIds.has(tool)) {
+          const visualContext = {
+            role: "teacher",
+            createdAt: Date.now(),
+            schoolName: currentSchoolName || "",
+            teacherName: currentTeacherName || "",
+            teacherTitle: currentTeacherTitle || "",
+            className: TEACHER_CONTEXT.className,
+            board: TEACHER_CONTEXT.board,
+            subject: TEACHER_CONTEXT.subject,
+            chapter: TEACHER_CONTEXT.chapter,
+            topic: String(topicInput.value || "").trim()
+          };
+          sessionStorage.setItem(
+            "scimentraVisualStudioContext",
+            JSON.stringify(visualContext)
+          );
+          window.location.href =
+            "scimentra-visual-studio.html?tool=" +
+            encodeURIComponent(tool);
+          return;
+        }
+
+
+
+               if (
+          tool === "interactive-quiz"
+        ) {
+
+  const quizParams = new URLSearchParams({
+  class: TEACHER_CONTEXT.className,
+  board: TEACHER_CONTEXT.board,
+  subject: TEACHER_CONTEXT.subject,
+  chapter: TEACHER_CONTEXT.chapter,
+  role: selectedRole,
+  school: currentSchoolName || "",
+  teacher: currentTeacherName || "",
+  teacherTitle: currentTeacherTitle || ""
+});
+
+          const quizUrl =
+            "scimentra-interactive-quiz.html?" +
+            quizParams.toString();
+
+                           window.location.href = quizUrl;
+
+          return;
+        }
+
         const prompt = buildPrompt(tool);
+
         openChatGPT(prompt);
+
       } catch (error) {
+
         alert(
           error && error.message
             ? error.message
-                         : "Could not open the AI learning tool."
+            : "Could not open the AI learning tool."
         );
+
       }
     });
   });
