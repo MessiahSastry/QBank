@@ -74,8 +74,7 @@ $('getCode').addEventListener('click',()=>{
  if(!valid)return;
  const prompt=basePrompt+'\n\nOUTPUT CODE REQUIREMENTS:\n'+formatPrompts[tool];
  const url='https://chatgpt.com/?q='+encodeURIComponent(prompt);
- const tab=window.open(url,'_blank','noopener,noreferrer');
- if(!tab)say('Your browser may have blocked the ChatGPT tab. Enable pop-ups for this page and press Get Code again.',true);
+ window.open(url,'_blank','noopener,noreferrer');
 });
 const draftKey='scimentraStudioDraft:'+ctx.schoolName+':'+ctx.teacherName+':'+tool;
 try{$('codeInput').value=sessionStorage.getItem(draftKey)||''}catch(e){}
