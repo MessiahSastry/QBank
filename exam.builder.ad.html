@@ -416,6 +416,21 @@ VISUAL QUESTION QUALITY
             min-height: 42px;
             box-shadow: 0 2px 12px rgba(0, 27, 68, 0.07);
         }
+        /* Per-section selectable difficulty — ordinary Foundation/School Builder only. */
+        body:not(.cb-mode) #difficulty-config-group { display:none !important; }
+        .eb-section-levels {
+            width:100%; flex:0 0 100%; display:flex; align-items:center;
+            flex-wrap:wrap; gap:8px 20px; padding:8px 10px;
+            margin-top:1px; background:#f4f8fc; border:1px solid #d9e8f7;
+            border-radius:8px; box-sizing:border-box;
+        }
+        .eb-section-levels-title { color:#185496; font-weight:700; font-size:.95em; }
+        .eb-section-levels .eb-level-choice {
+            display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+            font-size:.95em; color:#12416c; white-space:nowrap;
+        }
+        .eb-section-levels .eb-level-choice input { width:18px; height:18px; accent-color:#1762a7; margin:0; }
+        @media (max-width:600px) { .eb-section-levels {gap:10px 14px} }
         .section-logic-fields {
             flex: 1 1 260px;
             min-width: 220px;
@@ -3050,6 +3065,9 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
                         ${questionContent}
                         <div style="margin-top:8px;font-size:.92em;color:#5d6d7e;">
                             Marks: ${Number(marksPerQuestion || q.marks || 0)}
+                            ${getQuestionDifficultyLabel(q)
+                                ? ` &nbsp;|&nbsp; <b>${getQuestionDifficultyLabel(q)}</b>`
+                                : ''}
                         </div>
                     </div>
                 </div>
@@ -3111,15 +3129,7 @@ function openManualPickModal({ title, questions, requiredCount, marksPerQuestion
                 });
 
                 picked.forEach(question => {
-                    const rawLevel = String(question?.difficulty || question?.level || '')
-                        .replace(/\s+/g, '')
-                        .toLowerCase();
-
-                    const level =
-                        rawLevel.includes('1') ? 'L1' :
-                        rawLevel.includes('2') ? 'L2' :
-                        rawLevel.includes('3') ? 'L3' :
-                        '';
+                    const level = getQuestionDifficultyLevelKey(question);
 
                     if (level && pickedCounts[level] != null) {
                         pickedCounts[level]++;
@@ -6212,6 +6222,130 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
         };
     });
 }
+    // Difficulty selection is independent for each non-entrance, non-CBSE section.
+    // Question Bank's bank.ad.html is intentionally not involved.
+    function __ebPerSectionLevelsEnabled(board) {
+        const b = String(board || getSelectedBoard() || '').trim();
+        return b !== 'CBSE' && !__ebIsEntranceExamBoard(b);
+    }
+
+    function __ebCreateSectionLevelWidget() {
+        const node = document.createElement('div');
+        node.className = 'eb-section-levels';
+        node.innerHTML = `
+          <span class="eb-section-levels-title">Difficulty levels:</span>
+          ${[1, 2, 3].map(i => `
+             <label class="eb-level-choice"><input type="checkbox" value="L${i}" checked>
+                Level ${i}</label>
+          `).join('')}
+          <small style="color:#54656f">Select one, two or all three.</small>
+        `;
+        node.style.display = __ebPerSectionLevelsEnabled(getSelectedBoard()) ? 'flex' : 'none';
+        return node;
+    }
+
+    function __ebReadSectionLevels(sectionItem) {
+        return Array.from(sectionItem.querySelectorAll('.eb-section-levels input[type="checkbox"]:checked'))
+            .map(x => x.value).filter(x => ['L1','L2','L3'].includes(x));
+    }
+
+    function __ebLevelLabel(key) { return `Level ${String(key).slice(-1)}`; }
+
+    // Nearly equal allocations. If one chosen level has too few eligible items,
+    // redistribute ONLY to other checked levels, never to unchecked levels.
+    function __ebBalancedLevelPlan(count, levels, capacity = null) {
+        const n = Math.max(0, Math.floor(Number(count) || 0));
+        const order = [...new Set((levels || []).filter(k => ['L1','L2','L3'].includes(k)))];
+        for (let i=order.length-1;i>0;i--) {
+            const j=Math.floor(Math.random()*(i+1));
+            [order[i],order[j]]=[order[j],order[i]];
+        }
+        const tally = Object.fromEntries(order.map(k=>[k,0]));
+        const plan = [];
+        for (let i=0;i<n;i++) {
+            const canTake = order.filter(k => !capacity || tally[k] < (capacity[k] || 0));
+            if (!canTake.length) break;
+            canTake.sort((a,b)=>tally[a]-tally[b] || order.indexOf(a)-order.indexOf(b));
+            const level=canTake[0];
+            tally[level]++;
+            plan.push(level);
+        }
+        return plan;
+    }
+
+    function __ebSectionEligiblePool(pool, { chapters, marksPerQuestion, mcqType, levels, seenKeys }) {
+        const allowed = (levels || []).map(__ebLevelLabel);
+        const rows = filterQuestionsFromPool(pool, {
+            chapters, marksPerQuestion, mcqType,
+            allowedDifficulties: allowed
+        });
+        const unique = [], ids=new Set(), stems=new Set();
+        for (const q of rows) {
+            const level=getQuestionDifficultyLevelKey(q);
+            if (!levels.includes(level)) continue; // unknown/unlabelled levels are excluded
+            const id=String(q.id || '');
+            const stem=makeStemKey({text:getQuestionTextFromDoc(q),marks:marksPerQuestion});
+            if ((id && ids.has(id)) || (stem && (stems.has(stem)||seenKeys?.has(stem)))) continue;
+            if (id) ids.add(id);
+            if (stem) stems.add(stem);
+            unique.push(q);
+        }
+        shuffleArray(unique);
+        return unique;
+    }
+
+    function __ebBalancedPickSection(pool, count, levels, selectedChapters) {
+        const byLevel={L1:[],L2:[],L3:[]}, chapterCount=new Map();
+        pool.forEach(q=>byLevel[getQuestionDifficultyLevelKey(q)]?.push(q));
+        const caps=Object.fromEntries(levels.map(k=>[k,byLevel[k].length]));
+        const plan=__ebBalancedLevelPlan(count,levels,caps);
+        const usedIds=new Set(), usedStems=new Set(), chosen=[];
+        for (const level of plan) {
+            const options=byLevel[level].filter(q=>{
+                const stem=makeStemKey({text:getQuestionTextFromDoc(q),marks:q.marks});
+                return !(q.id && usedIds.has(q.id)) && !(stem && usedStems.has(stem));
+            });
+            if (!options.length) continue;
+            // Prefer chapters that currently have fewer questions in this section.
+            const prefCh=(selectedChapters || []).filter(Boolean);
+            options.sort((a,b)=>{
+                const ca=chapterCount.get(String(a.chapter||''))||0;
+                const cb=chapterCount.get(String(b.chapter||''))||0;
+                return ca-cb;
+            });
+            const q=options[0];
+            if (q.id) usedIds.add(q.id);
+            const stem=makeStemKey({text:getQuestionTextFromDoc(q),marks:q.marks});
+            if (stem) usedStems.add(stem);
+            const chapter=String(q.chapter||'');
+            chapterCount.set(chapter,(chapterCount.get(chapter)||0)+1);
+            chosen.push(q);
+        }
+        // Duplicates across level metadata can reduce a planned quota; top up only
+        // from checked levels, minimizing current level counts.
+        while (chosen.length < count) {
+            const counts=Object.fromEntries(levels.map(k=>[k,chosen.filter(q=>getQuestionDifficultyLevelKey(q)===k).length]));
+            const available=pool.filter(q=>{
+                const stem=makeStemKey({text:getQuestionTextFromDoc(q),marks:q.marks});
+                return levels.includes(getQuestionDifficultyLevelKey(q)) &&
+                    !(q.id && usedIds.has(q.id)) && !(stem && usedStems.has(stem));
+            });
+            if (!available.length) break;
+            available.sort((a,b)=>
+                counts[getQuestionDifficultyLevelKey(a)]-counts[getQuestionDifficultyLevelKey(b)] ||
+                (chapterCount.get(String(a.chapter||''))||0)-(chapterCount.get(String(b.chapter||''))||0)
+            );
+            const q=available[0];
+            chosen.push(q);
+            if (q.id) usedIds.add(q.id);
+            const stem=makeStemKey({text:getQuestionTextFromDoc(q),marks:q.marks});
+            if (stem) usedStems.add(stem);
+            const chapter=String(q.chapter||'');
+            chapterCount.set(chapter,(chapterCount.get(chapter)||0)+1);
+        }
+        return chosen;
+    }
+
     function addSectionForSubject(sIdx, preset = null) {
     const list = document.getElementById(`sections-list-${sIdx}`);
     if (!list) return;
@@ -6284,6 +6418,7 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     newItem.appendChild(mcqTypeDropdown);
     newItem.appendChild(sectionTypeDropdown);
     newItem.appendChild(logicFields);
+    newItem.appendChild(__ebCreateSectionLevelWidget());
     newItem.appendChild(removeBtn);
 
     updateSectionLogicFields(newItem, 'all');
@@ -7864,7 +7999,7 @@ function __ebCollectAIBlueprint() {
         errors.push('Please select at least one Subject.');
     }
 
-    if (!__ebIsEntranceExamBoard(selectedBoard)) {
+    if (!__ebPerSectionLevelsEnabled(selectedBoard) && !__ebIsEntranceExamBoard(selectedBoard)) {
 
         const totalDifficulty =
             Number(difficultyDistribution.L1 || 0) +
@@ -7996,8 +8131,14 @@ function __ebCollectAIBlueprint() {
                     const section = {
                         label,
                         mcqType,
-                        type
+                        type,
+                        levels: __ebPerSectionLevelsEnabled(selectedBoard)
+                            ? __ebReadSectionLevels(sectionItem)
+                            : []
                     };
+                    if (__ebPerSectionLevelsEnabled(selectedBoard) && !section.levels.length) {
+                        errors.push(`${subject} - ${label || 'Section'}: Select at least one difficulty level.`);
+                    }
 
                     if (!label) {
                         errors.push(
@@ -9470,16 +9611,13 @@ ${__ebBuildAIBoardRules(board)}
 `;
 
     if (!entranceMode) {
-
         prompt += `
 
-OVERALL DIFFICULTY DISTRIBUTION:
-
-Level 1: ${Number(difficultyDistribution.L1 || 0)}%
-Level 2: ${Number(difficultyDistribution.L2 || 0)}%
-Level 3: ${Number(difficultyDistribution.L3 || 0)}%
-
-Use this distribution across the generated questions unless an exact section-level plan is given below.
+DIFFICULTY LEVELS — SECTION BY SECTION:
+Every section has its own selected difficulty levels. Only generate questions from the
+levels explicitly selected for THAT section. If two or three levels are selected,
+distribute that section's exact question count as evenly as possible among them.
+Do not use difficulty levels that are unchecked for that section.
 `;
     }
 
@@ -9598,8 +9736,9 @@ QUESTION BLUEPRINT — FOLLOW THIS ORDER EXACTLY
                                 section.numQuestions || 0
                             );
 
-                    const fixedPlan =
-                        getFixedSectionLevelPlan({
+                    const fixedPlan = Array.isArray(section.levels) && section.levels.length
+                        ? __ebBalancedLevelPlan(planCount, section.levels)
+                        : getFixedSectionLevelPlan({
                             paperType,
                             maxMarks,
                             mcqType: section.mcqType,
@@ -10250,7 +10389,8 @@ const selectionMode = getSelectionMode();
         sourceTypeGlobal === 'Question Bank' ||
         sourceTypeGlobal === 'AI Generate'
     ) &&
-    !__ebIsEntranceExamBoard(selectedBoard)
+    !__ebIsEntranceExamBoard(selectedBoard) &&
+    !__ebPerSectionLevelsEnabled(selectedBoard)
 ) {
     const totalDifficulty =
         (difficultyDistribution.L1 || 0) +
@@ -10384,7 +10524,18 @@ const selectionMode = getSelectionMode();
                         const typeIndex = config.sectionTypes.indexOf(typeLabel);
                         const type = config.sectionTypeKeys[typeIndex];
 
-                        const sec = { label, mcqType, type };
+                        const sec = {
+                            label, mcqType, type,
+                            levels: __ebPerSectionLevelsEnabled(selectedBoard)
+                                ? __ebReadSectionLevels(section)
+                                : []
+                        };
+                        if (__ebPerSectionLevelsEnabled(selectedBoard) && !sec.levels.length) {
+                            showToast(`${subjectTitle} - ${label}: Please select at least one level.`, 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Build Exam Draft';
+                            return;
+                        }
 
                         if (type === "all") {
                             sec.numQuestions = parseInt(section.querySelector('.num-questions-input').value);
@@ -10534,7 +10685,61 @@ return { ...sl, assigned: pick };
                             let questions = [];
                             let sectionErrors = [];
 
-                            if (sec.type === "all" || sec.type === "any") {
+                            if ((sec.type === 'all' || sec.type === 'any') && __ebPerSectionLevelsEnabled(selectedBoard)) {
+                                const requestedCount = Number(sec.numQuestions || 0);
+                                const marksPerQuestion = Number(sec.marksPerQuestion || 0);
+                                const fullPool = await getSubjectQuestionPool(selectedClass, selectedBoard, subjData.subject);
+                                const eligible = __ebSectionEligiblePool(fullPool, {
+                                    chapters: subjData.chapters,
+                                    marksPerQuestion,
+                                    mcqType: sec.mcqType,
+                                    levels: sec.levels,
+                                    seenKeys: subjectSeenKeys
+                                });
+                                const counts = Object.fromEntries(sec.levels.map(k=>
+                                    [k, eligible.filter(q=>getQuestionDifficultyLevelKey(q)===k).length]));
+                                if (eligible.length < requestedCount) {
+                                    sectionErrors.push(
+                                        `${subjData.subject} - ${sec.label}: Requested ${requestedCount} ${sec.mcqType} question(s) `+
+                                        `from ${sec.levels.map(__ebLevelLabel).join(', ')}, but only ${eligible.length} eligible `+
+                                        `for ${marksPerQuestion} marks. Available: `+
+                                        sec.levels.map(k=>`${__ebLevelLabel(k)}: ${counts[k]}`).join(', ')+'.'
+                                    );
+                                } else {
+                                    let chosen = [];
+                                    if (selectionMode === 'Manual Select') {
+                                        const levelPlan = __ebBalancedLevelPlan(requestedCount, sec.levels, counts);
+                                        const manualChosen = await openManualPickModal({
+                                            title: `${subjData.subject} - ${sec.label}`,
+                                            questions: eligible,
+                                            requiredCount: requestedCount,
+                                            marksPerQuestion,
+                                            mcqType: sec.mcqType,
+                                            requiredLevelPlan: levelPlan
+                                        });
+                                        if (!manualChosen) {
+                                            btn.disabled = false;
+                                            btn.textContent = 'Build Exam Draft';
+                                            return;
+                                        }
+                                        chosen = manualChosen;
+                                    } else {
+                                        chosen = __ebBalancedPickSection(eligible,requestedCount,sec.levels,subjData.chapters);
+                                    }
+                                    if (chosen.length < requestedCount) {
+                                        sectionErrors.push(`${subjData.subject} - ${sec.label}: Only ${chosen.length} of ${requestedCount} unique questions could be selected from the checked levels.`);
+                                    }
+                                    questions = chosen.map((q,i)=>{
+                                        const out=mapBankQuestionToBuilderQuestion(q,sec.mcqType,marksPerQuestion);
+                                        out._assignedLevel=getQuestionDifficultyLevelKey(q);
+                                        const rawKey=makeStemKey({text:getQuestionTextFromDoc(q),marks:marksPerQuestion});
+                                        if (rawKey) subjectSeenKeys.add(rawKey);
+                                        const key=makeStemKey({text:out.text,marks:marksPerQuestion});
+                                        if (key) subjectSeenKeys.add(key);
+                                        return {...out,number:i+1};
+                                    });
+                                }
+                            } else if (sec.type === "all" || sec.type === "any") {
                                 const requestedCount = Number(sec.numQuestions || 0);
                                 const mPerQ = Number(sec.marksPerQuestion || 0);
 
@@ -11072,32 +11277,56 @@ const cleanPool = manualPool;
                             }
                         } else if (sec.type === "internal") {
                                 let missingPairs = 0;
+                                const perSectionInternal = __ebPerSectionLevelsEnabled(selectedBoard);
+                                const internalUsedIds = new Set();
+                                const internalLevelCount = {L1:0,L2:0,L3:0};
+                                const internalPool = perSectionInternal
+                                    ? await getSubjectQuestionPool(selectedClass,selectedBoard,subjData.subject)
+                                    : null;
 
                                 for (let p = 0; p < (sec.pairs || []).length; p++) {
                                     const pairAChapter = sec.pairs[p].chapterA ? [sec.pairs[p].chapterA] : [];
                                     const pairBChapter = sec.pairs[p].chapterB ? [sec.pairs[p].chapterB] : [];
 
-                                   const qA = await fetchQuestions({
-    selectedClass,
-    selectedBoard,
-    selectedSubject: subjData.subject,
-    chapters: pairAChapter,
-    marksPerQuestion: sec.marksPerQuestion,
-    mcqType: "Descriptive",
-    count: 1,
-    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-});
-
-const qB = await fetchQuestions({
-    selectedClass,
-    selectedBoard,
-    selectedSubject: subjData.subject,
-    chapters: pairBChapter,
-    marksPerQuestion: sec.marksPerQuestion,
-    mcqType: "Descriptive",
-    count: 1,
-    allowedDifficulties: allowedDifficultyLevels.map(k => k === 'L1' ? 'Level 1' : k === 'L2' ? 'Level 2' : 'Level 3')
-});
+                                   let qA, qB;
+                                   if (perSectionInternal) {
+                                       const pickInternal = (chapterList) => {
+                                           const eligible = __ebSectionEligiblePool(internalPool,{
+                                               chapters:chapterList.length ? chapterList : subjData.chapters,
+                                               marksPerQuestion:sec.marksPerQuestion,
+                                               mcqType:'Descriptive',
+                                               levels:sec.levels,
+                                               seenKeys:subjectSeenKeys
+                                           }).filter(q=>!internalUsedIds.has(q.id));
+                                           eligible.sort((a,b)=>
+                                               internalLevelCount[getQuestionDifficultyLevelKey(a)]-
+                                               internalLevelCount[getQuestionDifficultyLevelKey(b)]
+                                           );
+                                           const one=eligible[0];
+                                           if (!one) return [];
+                                           internalUsedIds.add(one.id);
+                                           const level=getQuestionDifficultyLevelKey(one);
+                                           internalLevelCount[level]++;
+                                           const key=makeStemKey({text:getQuestionTextFromDoc(one),marks:sec.marksPerQuestion});
+                                           if (key) subjectSeenKeys.add(key);
+                                           return [one];
+                                       };
+                                       qA=pickInternal(pairAChapter);
+                                       qB=pickInternal(pairBChapter);
+                                   } else {
+                                       qA = await fetchQuestions({
+                                           selectedClass,selectedBoard,selectedSubject:subjData.subject,
+                                           chapters:pairAChapter,marksPerQuestion:sec.marksPerQuestion,
+                                           mcqType:'Descriptive',count:1,
+                                           allowedDifficulties:allowedDifficultyLevels.map(__ebLevelLabel)
+                                       });
+                                       qB = await fetchQuestions({
+                                           selectedClass,selectedBoard,selectedSubject:subjData.subject,
+                                           chapters:pairBChapter,marksPerQuestion:sec.marksPerQuestion,
+                                           mcqType:'Descriptive',count:1,
+                                           allowedDifficulties:allowedDifficultyLevels.map(__ebLevelLabel)
+                                       });
+                                   }
 
                                     if (!qA.length || !qB.length) {
                                         missingPairs++;
@@ -11367,7 +11596,7 @@ if (rawText) {
     String(e).includes('Checked difficulty levels do not have enough questions.')
 );
 
-    if (sourceTypeGlobal === 'Question Bank' && shortageOnlySelectedLevels && currentlyUnselected.length > 0) {
+    if (sourceTypeGlobal === 'Question Bank' && !__ebPerSectionLevelsEnabled(selectedBoard) && shortageOnlySelectedLevels && currentlyUnselected.length > 0) {
         const labels = currentlyUnselected.map(levelKeyToLabel).join(', ');
         const allowMore = await showConfirmPrompt(
             `<b>Checked levels do not have enough questions.</b><br><br>` +
@@ -11423,6 +11652,7 @@ if (cleanedErrors.length) {
 
                  if (
     sourceTypeGlobal === 'Question Bank' &&
+    !__ebPerSectionLevelsEnabled(selectedBoard) &&
     !(
         (difficultyDistribution.L1 === 100 && difficultyDistribution.L2 === 0 && difficultyDistribution.L3 === 0) ||
         (difficultyDistribution.L1 === 0 && difficultyDistribution.L2 === 100 && difficultyDistribution.L3 === 0) ||
