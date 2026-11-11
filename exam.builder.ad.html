@@ -10157,6 +10157,7 @@ function __ebBuildDirectDocumentPrompt(blueprint) {
         requiresOriginal: true
     };
     let prompt = __ebBuildDocumentSelectionPrompt(blueprint, uploaded).prompt;
+    prompt = prompt.replace('The document is scanned or image-only and has no reliable extracted question text', 'The original Word/PDF is NOT attached to this website; attach it directly inside ChatGPT');
     const startMarker = '\nEXACT IMPORT AND ANSWER FORMAT — USE SAME RULES AS AI GENERATE:';
     const endMarker = '\nFINAL VALIDATION:';
     const start = prompt.indexOf(startMarker);
