@@ -3537,6 +3537,17 @@ function htmlToPlainText(html) {
   return s;
 }
 
+function getPastedQuestionHeaderRegex(value) {
+  // When explicit Q1:, Q2:, ... headers exist, explanation steps such as
+  // 1. / 2. / 3. must not be mistaken for additional questions.
+  const source = String(value || '');
+  if (/^[ \t]*Q\.?[ \t]*\d+[ \t]*[:.)]/mi.test(source)) {
+    return /^[ \t]*Q\.?[ \t]*(\d+)[ \t]*[:.)][ \t]*/gmi;
+  }
+  // Preserve the legacy paste format using bare numbered question headers.
+  return /^[ \t]*(?:Q\.?[ \t]*)?(\d+)(?:[.:)]|[ \t])[ \t]*/gmi;
+}
+
 function parsePastedQuestionsToPool(raw) {
   if (!raw) return [];
   let text = String(raw);
@@ -3581,7 +3592,7 @@ function parsePastedQuestionsToPool(raw) {
   }
   const norm = merged.join('\n');
 
-  const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[.:)]|\s)\s*/gmi;
+  const headerRe = getPastedQuestionHeaderRegex(norm);
   const starts = [];
   let m;
   while ((m = headerRe.exec(norm)) !== null) {
@@ -10534,7 +10545,7 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
 
             pasteArea?.addEventListener('input', () => {
                 const t = (pasteArea.value || '').trim();
-                const headerRe = /^[ \t]*(?:Q\.?\s*)?(\d+)(?:[.:)]|\s)\s*/gmi;
+                const headerRe = getPastedQuestionHeaderRegex(t);
                 const nums = [];
                 let m;
                 while ((m = headerRe.exec(t)) !== null) nums.push(parseInt(m[1], 10));
