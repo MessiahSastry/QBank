@@ -1055,7 +1055,7 @@
             Slide Deck
           </div>
           <div class="tool-desc" id="tool-desc-7">
-            Prepare a classroom-ready slide deck for the selected chapter or topic.
+            Create a professional, 3D-illustrated PowerPoint directly in ChatGPT.
           </div>
           <button
             type="button"
@@ -2322,7 +2322,7 @@ if (qrSubtopics) {
   {
     icon:"📊",
     name:"Slide Deck",
-    desc:"Prepare a classroom-ready slide deck for the selected chapter or topic.",
+    desc:"Create a professional, 3D-illustrated PowerPoint directly in ChatGPT.",
     button:"Create Slide Deck",
     tool:"slide-deck"
   },
@@ -3589,59 +3589,43 @@ IMPORTANT:
 
 
   function buildSlideDeckPrompt() {
+    return `You are an expert school subject teacher, scientific illustrator and premium PowerPoint presentation designer.
 
-        return `You are creating a CLASSROOM TEACHING SLIDE DECK.
+YOUR TASK: CREATE THE ACTUAL FINISHED, DOWNLOADABLE, EDITABLE POWERPOINT (.pptx) PRESENTATION DIRECTLY IN THIS CHAT.
+Do NOT respond with only an outline, slide-by-slide text, suggested visuals, JSON, code for the user to paste, or instructions to make a presentation elsewhere.
 
+LESSON AND SCHOOL CONTEXT:
 ${getLessonContext()}
 
-SCHOOL IDENTITY RULE:
-- Use exactly the School Name provided above wherever a school name is appropriate.
-- Use that exact School Name on the title slide.
-- Do not use any other school or organisation name.
-- Never guess, invent, replace or substitute the School Name.
+SCHOOL IDENTITY:
+- Use the exact School Name provided above on the title slide and discreetly on subsequent slides. Never invent another school name, logo, teacher name or personal details.
+- If no logo image was supplied, do not invent one.
 
-Prepare a professional slide-by-slide presentation for the selected chapter or topic.
-If the whole chapter is selected:
-- Decide the number of slides according to the actual chapter content.
-- Follow a logical teaching sequence.
-- Do not overload slides.
+CONTENT AND TEACHING QUALITY:
+- Teach the specified topic or, when no narrow topic is supplied, cover the full chapter thoroughly, following a logical learning sequence.
+- Decide the number of slides based on real content and teaching needs; do not force a fixed count. A narrow concept may need 6-12 slides, while a full chapter may require 18-35 or more when justified.
+- Suit the exact class, board and subject. Use accurate grade-appropriate explanations, definitions, equations, units, balanced chemical reactions and notation. Verify worked solutions and scientific labels.
+- Include as appropriate: title, learning objectives, brief prerequisite recall, concept-by-concept explanations, visual demonstrations, key formulas or definitions, relevant experiments or applications, worked examples, misconceptions, concept-check questions and final recap.
+- Put short teaching points on slides, with meaningful detail in speaker/teacher notes. Avoid cramming textbook paragraphs or irrelevant enrichment.
 
-FOR EACH SLIDE GIVE:
+PREMIUM VISUAL DESIGN — ESSENTIAL:
+- Make this beautiful and modern, like a professionally art-directed educational presentation: elegant colour palette, strong typography, generous whitespace, aligned grids, sophisticated section headers and clear hierarchy.
+- Use visually varied slide layouts, not the same title-and-bullet template throughout. Prefer visual-first explanation over text wherever it genuinely improves understanding.
+- CREATE AND EMBED high-quality original 3D-style illustrations, realistic educational renders, cutaway views, object models, scientific apparatus and labelled diagrams wherever appropriate and supported by available tools.
+- All scientific visuals must be physically and conceptually correct. Use clean schematic diagrams instead of misleading photorealism for abstract particles, ions, circuits, forces or microscopic processes. Clearly label conceptual illustrations when not to scale.
+- Use purposeful annotation arrows, callouts, process sequences, side-by-side comparisons, timelines and graphs; no generic stock-photo filler, irrelevant decoration, watermarks or unreadably tiny labels.
+- Choose subject-appropriate imagery rather than putting a 3D picture on every slide.
 
-SLIDE NUMBER
-SLIDE TITLE
-MAIN CONTENT
-VISUAL / DIAGRAM SUGGESTION
-TEACHER EXPLANATION NOTE
+POWERPOINT REQUIREMENTS:
+- Create a REAL .pptx file in 16:9 widescreen, projector-friendly format, with embedded images and editable native text, shapes, formulas, diagrams and charts wherever practical.
+- Add useful speaker notes on each substantial teaching slide: what to explain, key reasoning, and any questions to ask students.
+- Apply transitions or simple animations only when they improve understanding AND your file-creation capability supports them reliably. Do not claim animations were added unless they actually exist in the file.
+- No overlapping text, clipping, stretched images, spelling errors, incorrect diagrams or illegibly small fonts. Keep good contrast, balanced slide density and consistent visual identity.
+- Save the completed presentation and provide a direct download link to its .pptx file. A PDF preview may also be included if available.
 
-The presentation should include where appropriate:
-
-1. TITLE SLIDE
-2. LEARNING OBJECTIVES
-3. PREREQUISITE RECALL
-4. MAIN CONCEPTS
-5. DEFINITIONS / RULES / FORMULAS
-6. CLEAR EXAMPLES
-7. VISUAL EXPLANATIONS
-8. FOUNDATION CONCEPTS
-9. FOUNDATION MAINS
-10. FOUNDATION ADVANCED
-11. COMMON MISTAKES
-12. QUICK CHECK QUESTIONS
-13. CHAPTER / TOPIC RECAP
-
-IMPORTANT:
-- Keep slide text concise.
-- Use large classroom-friendly content.
-- Do not turn slides into textbook paragraphs.
-- Suggest diagrams, illustrations or visual elements where useful.
-- Use correct mathematical/scientific notation.
-- Verify all formulas, examples and answers.
-
-If presentation-file creation is available, create the actual editable slide deck.
-Otherwise provide the complete slide-by-slide deck content.`;
+FINAL DELIVERY:
+Generate the actual visual-rich PowerPoint NOW, using the file and image creation capabilities available in this chat. Do not ask the user to copy JSON back into a website. If creation of an actual file is unavailable, state that limitation explicitly rather than pretending to provide a PowerPoint.`;
   }
-
 
   function buildVisualRevisionSheetPrompt() {
 
@@ -3907,10 +3891,10 @@ function openChatGPT(promptText) {
   }
 
 
-  // Visual teacher tools use ChatGPT-generated JSON/SVG code.
+  // Other visual teacher tools use JSON/SVG in Visual Teaching Studio; Slide Deck opens ChatGPT directly.
   // Keep the logged-in school identity dynamic and preserve the separate quiz and student routes.
   const visualToolIds = new Set([
-    "mind-map", "flashcards", "slide-deck", "infographic",
+    "mind-map", "flashcards", "infographic",
     "visual-revision-sheet", "educational-gif"
   ]);
   toolButtons.forEach(button => {
