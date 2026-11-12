@@ -854,8 +854,12 @@ function shuffleMCQQuestion(questionObj) {
     let { options, answer } = questionObj;
     let correctIndices = [];
     if (typeof answer === 'string') {
-      const ansMatches = String(answer).toUpperCase().match(/[A-D]/g);
-      if (ansMatches) correctIndices = ansMatches.map(l => "ABCD".indexOf(l));
+      // "Ans: C)" contains an A in "Ans"; never count that A as an option.
+      const cleanedAnswer = String(answer)
+        .replace(/^\s*(?:ans|answer)\s*:\s*/i, '')
+        .toUpperCase();
+      const ansMatches = cleanedAnswer.match(/\b[A-D]\b/g);
+      if (ansMatches) correctIndices = [...new Set(ansMatches)].map(l => "ABCD".indexOf(l));
     } else if (Array.isArray(answer)) {
       if (answer.length && typeof answer[0] === 'string') {
         correctIndices = answer
@@ -869,7 +873,9 @@ function shuffleMCQQuestion(questionObj) {
     shuffleArray(optPairs);
     const newOptions = optPairs.map(p => p.opt);
     const newCorrectIndices = optPairs.map((p, newIdx) => (correctIndices.includes(p.idx) ? newIdx : null)).filter(x => x !== null);
-    const ansStr = "Ans: " + newCorrectIndices.map(i => "ABCD"[i] + ")").join(", ");
+    // Store only the new option letter(s). Downstream readers must not
+    // mistake the A in "Ans:" for an additional correct option.
+    const ansStr = newCorrectIndices.map(i => "ABCD"[i]).join(",");
     return { ...questionObj, options: newOptions, answer: ansStr };
 }
 function splitCounts(total, percents) {
