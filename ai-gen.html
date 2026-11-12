@@ -1908,8 +1908,10 @@ Ans: <A), B), C), or D) — only one>
 Explanation:
 Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
 But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 
 List all MCQ (Single) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
@@ -1957,8 +1959,10 @@ D) <Option D>
 Ans: <All correct options, e.g., "A), C), D)" — two or more, comma separated>
 Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
 But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 
 List all MCQ (Multiple) questions in the order they appear in the file, without any headings, extra text, or explanation. Do not add or change any question content — extract exactly as found. If any meta information is missing, do not reject the question. Insert the appropriate Level (using the definitions above) and "1 Mark" wherever needed. Output only the extracted questions in this format. Do not include any introduction, heading, or explanation.
 `;
@@ -2110,7 +2114,10 @@ Each question MUST follow this strict format:
 3. On the following lines, provide four options, each starting with "A)", "B)", "C)", and "D)".
 4. On the next line after options, specify the correct answer using the format "Ans: C and answer in Brackets".
 5. On the next line, write: "Explanation: < Give Step-by-step explanation>"
-6. Don't mention the option in the explanation, but give the correct answer.
+6. IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 
 Provide ONLY the questions in this exact format. Do not add any other text, introduction, or extra commentary.
 `;
@@ -2181,8 +2188,10 @@ Each question MUST follow this strict format:
 5. On the next line, write: 
 6.Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
 But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 
 Provide ONLY the questions in this exact format. Do not add any other text, introduction, or extra commentary.
 `;
@@ -2348,7 +2357,10 @@ C) ...
 D) ...
 Ans: ...
 Explanation: < Give Step-by-step explanation>
-Don't mention the option in the explanation, but give the correct answer.
+IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 `;
         }
       } else if (isTextbookBoard) {
@@ -2424,7 +2436,10 @@ C) ...
 D) ...
 Ans: ...
 Explanation: < Give Step-by-step explanation>
-Don't mention the option in the explanation, but give the correct answer.
+IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 `;
         }
       }
@@ -2859,7 +2874,7 @@ function buildChatGptPromptFromQuestion(qData, sessionParams) {
   }
 
   prompt += hasOptions
-    ? `\n\nRespond with the correct option (A–D) and a step-by-step explanation.`
+    ? `\n\nRespond with the correct option (A–D) and a step-by-step explanation. Mention the answer-choice letter ONLY in the answer, never in the explanation; explain the actual fact or method without saying that an option is correct.`
     : `\n\nRespond with the final answer and a step-by-step explanation.`;
 
   if (meta) prompt += `\n\nMeta: ${meta}`;
@@ -3098,6 +3113,10 @@ const eapcetLevels = `
 STRICT ACCURACY (applies to all):
 • Ensure every question is clear, unambiguous, and correct.
 • Double-check all facts, calculations, options, and answers.
+• MCQ ONLY: the correct answer-choice letter(s) belong exclusively in "Ans:", NOT in "Explanation:".
+• Explain the actual fact or solution without phrases such as "Option C is correct" or "అందువల్ల A సరైన సమాధానం". Shuffling must never make the explanation inconsistent.
+• This restriction concerns choice letters only; Assertion (A), Reason (R) and matrix row labels may still be discussed as concepts.
+
 • If any issue is found, fix it before output.
 • Write only real mathematical expressions in LaTeX.
 • Do NOT put plain numbers, plain words, plain labels, or normal option text inside LaTeX.
@@ -3126,8 +3145,10 @@ D) <Option D>
 Ans: <A) or B) or C) or D)>
 Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
 But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer> 
-Don't mention the option in the explanation, but give the correct answer.
+IMPORTANT: For MCQs, write the correct answer-choice letter(s) ONLY on the "Ans:" line.
+The "Explanation:" must contain ONLY the concept, facts, reasoning or calculation steps, never a conclusion naming an answer-choice letter (A/B/C/D).
+FORBIDDEN examples: "Therefore C is correct", "Option A is correct", "అందువల్ల C సరైన సమాధానం", "కాబట్టి B సరైన జవాబు".
+Do not repeat the answer-choice letter in any language, even in the final explanation sentence. Option order may be shuffled later.
 
 Rules:
 ${numberingNote}
@@ -3179,7 +3200,6 @@ D) A is false, but R is true.
 Ans: <A) or B) or C) or D)>
 Explanation: Write the math solution exactly like a teacher solving on the board.
 But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer>
 
 Rules:
 ${numberingNote}
@@ -3210,7 +3230,6 @@ D) A-S, B-R, C-Q, D-P
 Ans: <A) or B) or C) or D)>
 Explanation: Math-related Questions Write the solution in a proper step-wise format, as ChatGPT gives.
 But non-math-related should give a point-wise (each point in a new line, use a number for each point)
-Answer: <Final answer>
 
 Rules:
 ${numberingNote}
