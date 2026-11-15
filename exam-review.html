@@ -2463,12 +2463,14 @@ function __erBuildMatchingListTextFromEditor(
 function __erReadMatchingValue(el) {
   if (!el) return '';
 
-  return String(
+  const raw = String(
     el.dataset?.raw ||
     el.innerHTML ||
     el.innerText ||
     ''
   ).trim();
+
+  return __erRestoreMathSeparators(raw);
 }
 
 function __erBuildMatchingMatrixTextFromEditor(questionRow) {
@@ -2666,9 +2668,19 @@ window.alert = function(message) {
 function sciMentraConfirm(message) {
   return Promise.resolve(window.confirm(message || 'Do you want to continue?'));
 }
-function __erProtectMathHtml(value) {
+// Decode repeatedly HTML-escaped LaTeX matrix column separators before MathJax.
+function __erRestoreMathSeparators(value) {
   return String(value ?? '').replace(
-    /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g,
+    /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g,
+    latex => latex
+      .replace(/&(?:amp;)*(?:#0*38;|#x0*26;)/gi, '&')
+      .replace(/&(?:amp;)+/gi, '&')
+  );
+}
+
+function __erProtectMathHtml(value) {
+  return __erRestoreMathSeparators(value).replace(
+    /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g,
     latex => latex
       .replace(/&(?!(?:#\d+|#x[\da-f]+|[a-z][\w]+);)/gi, '&amp;')
       .replace(/</g, '&lt;')
@@ -3020,6 +3032,16 @@ const __scScience910 =
     });
         
         area.innerHTML = __erProtectMathHtml(html);
+        // Preserve the editable LaTeX source before MathJax replaces its nodes.
+        // Otherwise Save Changes can store rendered markup or nested &amp; entities.
+        area.querySelectorAll(
+          '.matching-matrix-review .matching-intro-text, ' +
+          '.matching-matrix-review .matching-col-i, ' +
+          '.matching-matrix-review .matching-col-ii'
+        ).forEach(el => {
+          el.dataset.raw = __erRestoreMathSeparators(el.innerHTML);
+        });
+
 
         // Fix combined OR + Attempt Any groups BEFORE
         // the ordinary CBSE subquestion formatter runs.
