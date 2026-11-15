@@ -2325,18 +2325,6 @@ tr, td, th {
     <div id="paper-type-dropdown" class="custom-dropdown"></div>
 </div>
 
-                  
-
-    
-
-                <div class="form-group" id="paste-docx-shuffle" style="display:none;">
-                    <label>Arrangement</label>
-                    <div style="margin-top:6px;">
-                        <label><input type="checkbox" id="chk-shuffle-questions" checked> Shuffle questions</label>
-                        <label style="margin-left:16px;"><input type="checkbox" id="chk-shuffle-options" checked> Shuffle options (MCQ)</label>
-                    </div>
-                </div>
-
                     <div class="form-group" id="difficulty-config-group">
     <label>Difficulty Distribution</label>
 
@@ -3147,45 +3135,8 @@ function extractMCQOptions(q) {
 
   return [A, B, C, D];
 }
-function shuffleArray(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-}
-function shuffleMCQQuestion(questionObj) {
-    if (!questionObj.options || !questionObj.options.length) return questionObj;
-
-    let { options, answer } = questionObj;
-    let correctIndices = [];
-
-    if (Array.isArray(answer)) {
-        if (answer.length && typeof answer[0] === 'number') {
-            correctIndices = answer.filter(i => Number.isInteger(i) && i >= 0 && i < 4);
-        } else {
-            correctIndices = extractAnswerLetters(answer)
-                .map(l => "ABCD".indexOf(l))
-                .filter(i => i >= 0);
-        }
-    } else {
-        correctIndices = extractAnswerLetters(answer)
-            .map(l => "ABCD".indexOf(l))
-            .filter(i => i >= 0);
-    }
-
-    const optPairs = options.map((opt, idx) => ({ opt, idx }));
-    shuffleArray(optPairs);
-
-    const newOptions = optPairs.map(p => p.opt);
-    const newCorrectIndices = [];
-
-    optPairs.forEach((p, newIdx) => {
-        if (correctIndices.includes(p.idx)) newCorrectIndices.push(newIdx);
-    });
-
-    const ansLetters = Array.from(new Set(newCorrectIndices.map(i => "ABCD"[i])));
-    return { ...questionObj, options: newOptions, answer: ansLetters.join(',') };
-}
+function shuffleArray(arr) { return arr; }
+function shuffleMCQQuestion(questionObj) { return questionObj; }
 function splitCounts(total, percents) {
     let result = percents.map(p => Math.floor(total * p / 100));
     let sum = result.reduce((a, b) => a + b, 0);
@@ -5956,10 +5907,7 @@ function renderSubjectsSectionsArea(subjects, selectedClass, selectedBoard) {
     function __ebBalancedLevelPlan(count, levels, capacity = null) {
         const n = Math.max(0, Math.floor(Number(count) || 0));
         const order = [...new Set((levels || []).filter(k => ['L1','L2','L3'].includes(k)))];
-        for (let i=order.length-1;i>0;i--) {
-            const j=Math.floor(Math.random()*(i+1));
-            [order[i],order[j]]=[order[j],order[i]];
-        }
+        
         const tally = Object.fromEntries(order.map(k=>[k,0]));
         const plan = [];
         for (let i=0;i<n;i++) {
@@ -7647,13 +7595,9 @@ function applyPaperTypePreset() {
     }
 }
 
-function getGlobalShuffleQuestions() {
-    return !!window._shuffleQuestions;
-}
+function getGlobalShuffleQuestions() { return false; }
 
-function getGlobalShuffleOptions() {
-    return !!window._shuffleOptions;
-}
+function getGlobalShuffleOptions() { return false; }
 
 /* =========================================================
    AI GENERATE — EXAM BUILDER PROMPT HELPERS
@@ -10109,8 +10053,8 @@ document.getElementById('max-marks-input').addEventListener('change', handleFixe
             const chkSQ = document.getElementById('chk-shuffle-questions');
             const chkSO = document.getElementById('chk-shuffle-options');
 
-            window._shuffleQuestions = true;
-            window._shuffleOptions = true;
+            window._shuffleQuestions = false;
+            window._shuffleOptions = false;
             window._globalDocxArrayBuffer = null;
 
            function toggle() {
@@ -15453,7 +15397,7 @@ ${snapshot.instructions ? `ADDITIONAL TEACHER INSTRUCTIONS:\n${snapshot.instruct
       $('#global-paste-label').textContent = 'Paste the Complete FINAL SET from ChatGPT';
       $('#global-paste-area').placeholder = 'Get Questions → review and recheck in ChatGPT → ask for the final set → paste its complete inline-LaTeX copy-code block here → Build Exam Draft → Exam Review.';
     }
-    $('#paste-docx-shuffle').style.display = 'none'; // Exact slot order and answer labels are retained.
+    // Review is the only page with question and option shuffling controls.
     $('#ai-generate-tools').style.display = 'none'; // CBSE uses its own Get Questions button.
     const promptButton = $('#cb-prompt-btn'); if (promptButton) promptButton.hidden = source !== 'AI Generate' && source !== __EB_DOCUMENT_SOURCE;
     const copyButton = $('#cb-copy-prompt-btn'); if (copyButton) copyButton.hidden = source === 'Question Bank';
