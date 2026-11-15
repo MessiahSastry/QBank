@@ -3279,6 +3279,45 @@ function __epRenderMatchingListBody(q = {}) {
 }
 
 
+function __epParseSplitMatchingColumns(lines) {
+  const leftHeaderIndex = lines.findIndex(line =>
+    /^(?:Column|Group)\s*(?:A|I)\s*:?\s*$/i.test(line)
+  );
+  if (leftHeaderIndex < 0) return null;
+  const rightHeaderIndex = lines.findIndex((line, index) =>
+    index > leftHeaderIndex &&
+    /^(?:Column|Group)\s*(?:B|II)\s*:?\s*$/i.test(line)
+  );
+  if (rightHeaderIndex < 0) return null;
+  function parseItems(items, isLeft) {
+    const regex = isLeft
+      ? /^([ivxlcdm]+|[A-D]|\d+)[).:\-]\s*(.+)$/i
+      : /^([A-Z]|\d+)[).:\-]\s*(.+)$/i;
+    const parsed = [];
+    items.forEach(line => {
+      const match = line.match(regex);
+      if (match) {
+        parsed.push({ label: match[1], text: match[2].trim() });
+      } else if (parsed.length) {
+        parsed[parsed.length - 1].text += ' ' + line.trim();
+      }
+    });
+    return parsed;
+  }
+  const left = parseItems(lines.slice(leftHeaderIndex + 1, rightHeaderIndex), true);
+  const right = parseItems(lines.slice(rightHeaderIndex + 1), false);
+  if (!left.length || left.length !== right.length) return null;
+  return {
+    intro: lines.slice(0, leftHeaderIndex).join('\n').trim(),
+    rows: left.map((item, index) => ({
+      leftLabel: item.label,
+      leftText: item.text,
+      rightLabel: right[index].label,
+      rightText: right[index].text
+    }))
+  };
+}
+
 function __epParseMatchingMatrix(q = {}) {
   const cleaned = __epGetPlainQuestionText(q)
     .replace(/\s*\bOptions\s*:?\s*[\s\S]*$/i, '')
@@ -3289,6 +3328,12 @@ function __epParseMatchingMatrix(q = {}) {
     .split(/\n+/)
     .map(line => line.trim())
     .filter(Boolean);
+
+  // Format two separately listed matching columns as aligned matrix rows.
+  const splitColumns = __epParseSplitMatchingColumns(lines);
+  if (splitColumns) {
+    return { ...splitColumns, raw: cleaned };
+  }
 
   const headingIndex = lines.findIndex(line =>
     /Column\s*I/i.test(line) && /Column\s*II/i.test(line)
