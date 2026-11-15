@@ -8794,6 +8794,8 @@ MATCHING MATRIX RULES:
 
 - Column I must contain exactly A), B), C), D).
 - Column II must contain exactly P), Q), R), S).
+- Print one Column-I and one Column-II entry together on EACH of the four physical row lines, never as separate vertical lists.
+- Re-label source item markers only when necessary for the parser, and translate every answer mapping without changing the original source content.
 - This is a 4 × 4 matching structure.
 - Do NOT add a fifth item to Column II.
 - The line "Options:" is compulsory.
@@ -10061,6 +10063,7 @@ MANDATORY SOURCE-ONLY RULE (takes precedence over any generic "generate" wording
 - Use ONLY questions actually present in the teacher-uploaded Word/PDF document.
 - Select EXACTLY the number and question TYPES in the blueprint below. Each internal OR alternative is a separate source question and separate Q record.
 - Keep original question wording, choices, values, passage content, diagrams' meaning, and academic standard as faithful to the source as possible. Do not invent, expand or combine questions simply to meet a target.
+- For Matching Matrix, reassign only item labels when the import parser requires Column I A-D / Column II P-S. Preserve each source item and transform every source option mapping exactly; never alter the correct relationship.
 - You may correct demonstrable grammar, typographical mistakes and academic errors ONLY when needed. Explain substantial corrections in the draft. Do not silently change the mathematics, marks, difficulty or answer options.
 - Independently VERIFY and include a correct Ans: or Answer: AND an Explanation: for EVERY selected question. If the source has no key or an incorrect key, solve independently; never copy a wrong answer.
 - For numerical Mathematics/Physics show complete line-by-line working; for conceptual topics explain point-wise.
@@ -10174,15 +10177,44 @@ function __ebBuildDirectDocumentPrompt(blueprint) {
     const start = prompt.indexOf(startMarker);
     const end = prompt.indexOf(endMarker, start);
     if (start >= 0 && end > start) {
-        prompt = prompt.slice(0, start) +
-            '\nEXACT EXAM BUILDER IMPORT FORMAT:\n' +
-            '- Number source questions Q1:, Q2:, etc. in precisely the blueprint order.\n' +
-            '- Include all MCQ options on separate A), B), C), D) lines (or the original available number of choices); give Ans: A) etc.\n' +
-            '- After EVERY question include Ans: or Answer: and Explanation: with correct reasoning. For Mathematics use step-by-step working in inline \\( ... \\).\n' +
-            '- Retain every section, question type, marks, subpart, source passage, OR pair and answer. Each OR alternative is an independent Q record.\n' +
-            '- Preserve the same parser-ready Q:/Ans:/Explanation: format as AI Generate; no tables, JSON or decorative question-paper formatting.\n' +
-            '- DRAFT first. When requested, return the complete corrected FINAL SET in one plain-text copyable code block, no additional commentary.\n' +
-            prompt.slice(end);
+        // Keep the ChatGPT handoff short, but preserve the exact text grammar
+        // consumed by exam.builder.ad.html, exam-review.html and exam-preview.html.
+        const format = [
+            'EXACT EXAM BUILDER IMPORT FORMAT (REVIEW + PREVIEW COMPATIBLE):',
+            '- Q1:, Q2:, etc. in blueprint order. One Q record for every actual source question, including each OR alternative.',
+            '- Retain original question text, values, choices and correct academic meaning. Never invent or combine source questions.',
+            '- For ordinary MCQ or Assertion-Reason: put each choice on its own A), B), C), D) line.',
+            '- End EVERY Q record with Ans: B (the correct letter WITHOUT a closing parenthesis), then Explanation: with the verified solution.',
+            '- For all Mathematics use inline LaTeX such as \\(x^2\\), \\(10^5\\), \\(\\frac{3}{4}\\). Do not write raw x^2, 10^5 or frac{3}{4} outside \\( ... \\). Never use display math or Markdown tables.',
+            '- Keep lines separated; do not write section headers as standalone Q records. Draft first; when explicitly requested, send the complete final set in ONE plain-text code block.',
+            '',
+            'MATCHING MATRIX — EXACT 4 × 4 SOURCE-ONLY FORMAT (REQUIRED):',
+            'Q<num>: <original matching question introduction>',
+            'Column I                  Column II',
+            'A) <source left item 1>    P) <source right item 1>',
+            'B) <source left item 2>    Q) <source right item 2>',
+            'C) <source left item 3>    R) <source right item 3>',
+            'D) <source left item 4>    S) <source right item 4>',
+            'Options:',
+            'A) A-<P/Q/R/S>, B-<P/Q/R/S>, C-<P/Q/R/S>, D-<P/Q/R/S>',
+            'B) A-<P/Q/R/S>, B-<P/Q/R/S>, C-<P/Q/R/S>, D-<P/Q/R/S>',
+            'C) A-<P/Q/R/S>, B-<P/Q/R/S>, C-<P/Q/R/S>, D-<P/Q/R/S>',
+            'D) A-<P/Q/R/S>, B-<P/Q/R/S>, C-<P/Q/R/S>, D-<P/Q/R/S>',
+            'Ans: B',
+            'Explanation: <verified matching, with original and final pair identities>',
+            '',
+            'MATCHING MATRIX RULES:',
+            '- EXACTLY four paired physical row lines: each line has one A/B/C/D left item and one P/Q/R/S right item. Do NOT print the columns as two separate vertical lists; the Review and Preview table builders rely on paired rows.',
+            '- The line Options: on its OWN line is compulsory; exactly four complete A-D answer choices must follow it.',
+            '- The labels A-D before Options: are Column I item labels; A-D after Options: are answer-choice labels. Every choice contains all four mappings.',
+            '- If the source uses p/q/r/s and i/ii/iii/iv (or other labels), remap LABELS ONLY in original order to A/B/C/D and P/Q/R/S; faithfully translate EACH original answer choice and the correct pairing. NEVER change a number, formula, item, choice meaning or answer.',
+            '- If a 4 × 4 matching source item or its alternatives cannot be faithfully converted, report the shortage before Q1 rather than inventing content.',
+            '- NO Markdown pipe tables, HTML tables, aligned columns on separate lines, extra labels, new fifth items, or answer-choice lines before Options:.',
+            '',
+            'MATCHING LIST (when explicitly requested for JEE Advanced) is different: use List-I P/Q/R/S with List-II 1/2/3/4/5, including the fifth item, followed by Options: and four complete A-D mappings.',
+            'FINAL SET only after teacher approval; output only Q records, Ans: and Explanation: in one copyable code block.'
+        ].join('\n');
+        prompt = prompt.slice(0, start) + '\n' + format + '\n' + prompt.slice(end);
     }
     return prompt;
 }
