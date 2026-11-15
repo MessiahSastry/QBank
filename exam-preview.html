@@ -3318,8 +3318,22 @@ function __epParseSplitMatchingColumns(lines) {
   };
 }
 
+// Decode repeatedly escaped text in Matching Matrix math before MathJax.
+ // For example, &amp;gt; must become >, not a literal '&' in LaTeX.
+function __ebDecodeMatchingEntities(value) {
+  let result = String(value ?? '');
+  const decoder = document.createElement('textarea');
+  for (let i = 0; i < 5; i++) {
+    decoder.innerHTML = result;
+    const next = decoder.value;
+    if (next === result) break;
+    result = next;
+  }
+  return result;
+}
+
 function __epParseMatchingMatrix(q = {}) {
-  const cleaned = __epGetPlainQuestionText(q)
+  const cleaned = __ebDecodeMatchingEntities(__epGetPlainQuestionText(q))
     .replace(/\s*\bOptions\s*:?\s*[\s\S]*$/i, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
