@@ -1367,6 +1367,10 @@
     <i class="fas fa-paste"></i> Paste JSON from ChatGPT
   </button>
 
+  <button type="button" class="save-btn" id="shuffle-questions-btn" style="background:#1762a7;">
+    <i class="fas fa-random"></i> Shuffle Questions (Within Sections)
+  </button>
+
   <button type="button" class="save-btn" id="shuffle-options-btn" style="background:#13ad59;">
     <i class="fas fa-random"></i> Shuffle MCQ Options
   </button>
@@ -1457,7 +1461,9 @@
     }
   }
    function setExamPaper(paper) {
-    sessionStorage.setItem("examPaper", JSON.stringify(paper));
+    const serialized = JSON.stringify(paper);
+    sessionStorage.setItem("examPaper", serialized);
+    sessionStorage.setItem("finalExamData", serialized);
   }
 
 function __erIsParagraphBasedQuestion(q = {}) {
@@ -4386,117 +4392,132 @@ if (optNodes && optNodes.length === 4) {
   }
 
 function getUniqueAnswerLetters(answer) {
-  const seen = new Set();
-  const raw = String(answer || '')
-    .replace(/^\s*(?:ans|answer)\s*:\s*/i, '')
-    .toUpperCase();
-  return (raw.match(/\b[A-D]\b/g) || [])
-    .filter(ch => !seen.has(ch) && (seen.add(ch), true));
+ if(Array.isArray(answer)){
+  if(answer.every(value=>Number.isInteger(value))){
+   return answer.every(value=>value>=0&&value<4)?[...new Set(answer.map(value=>'ABCD'[value]))]:[];
+  }
+  answer=answer.join(',');
+ }
+ const raw=String(answer??'').trim().replace(/^\s*(?:ans|answer|correct\s*answer)\s*:\s*/i,'').trim();
+ if(!raw||!/^[\s(),./&+A-D]+$/i.test(raw))return [];
+ return [...new Set(raw.toUpperCase().match(/[A-D]/g)||[])];
 }
 
 function shuffledIndexMap(size) {
-  const arr = Array.from({ length: size }, (_, i) => i);
-  if (size <= 1) return arr;
-
-  let attempts = 0;
-  do {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    attempts++;
-  } while (attempts < 6 && arr.every((v, i) => v === i));
-
-  return arr;
+ const order=Array.from({length:size},(_,i)=>i);
+ if(size<=1)return order;
+ for(let i=size-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+ if(order.every((value,i)=>value===i)){[order[0],order[1]]=[order[1],order[0]];}
+ return order;
 }
 
-async function shuffleMcqOptionsInExamPaper() {
-  const ok = await sciMentraConfirm('Do you want to Shuffle Options?');
-  if (!ok) return;
+function __erRenumberPaper(paper){
+ let number=1;
+ (paper.subjects||[]).forEach(subject=>(subject.sections||[]).forEach(section=>(section.questions||[]).forEach(q=>{q.number=number++;})));
+}
 
-  saveEdits(false);
-
-  const paper = getExamPaper();
-  if (!paper) {
-    alert('No exam paper found!');
-    return;
-  }
-
-   let changed = 0;
-
-  function shuffleOneMcqTarget(target) {
-    if (!target || !Array.isArray(target.options) || target.options.length !== 4) {
-      return false;
-    }
-
-    const originalOptions = target.options.map(opt => String(opt ?? ''));
-    const map = shuffledIndexMap(originalOptions.length);
-    const shuffledOptions = map.map(oldIdx => originalOptions[oldIdx]);
-
-    const correctOldIndexes = getUniqueAnswerLetters(target.answer || target.parsedAnswer)
-      .map(letter => letter.charCodeAt(0) - 65)
-      .filter(idx => idx >= 0 && idx < originalOptions.length);
-
-    if (correctOldIndexes.length) {
-      const newLetters = [];
-
-      map.forEach((oldIdx, newIdx) => {
-        if (correctOldIndexes.includes(oldIdx)) {
-          newLetters.push(String.fromCharCode(65 + newIdx));
-        }
-      });
-
-      target.answer = newLetters.join(',');
-      target.parsedAnswer = target.answer;
-    }
-
-    target.options = shuffledOptions;
-    // The original option letter may now be wrong; keep only the reasoning.
-    target.explanation = __erCleanMcqExplanation(target.explanation);
-    if (typeof target.solution === 'string') {
-      target.solution = __erCleanMcqExplanation(target.solution);
-    }
-    target.body = [
-      __erGetParagraphSubQuestionText(target),
-      ...shuffledOptions.map((option, optionIndex) =>
-        `${String.fromCharCode(65 + optionIndex)}) ${option}`
-      )
-    ].join('\n');
-
-    changed++;
-    return true;
-  }
-
-  (paper.subjects || []).forEach(subjectBlock => {
-    (subjectBlock.sections || []).forEach(section => {
-      (section.questions || []).forEach(q => {
-        if (__erIsParagraphBasedQuestion(q)) {
-          __erGetParagraphMcqs(q).forEach(mcq => {
-            shuffleOneMcqTarget(mcq);
-          });
-
-          q.text = __erBuildParagraphPlainText(q);
-          q.body = q.text;
-          return;
-        }
-
-        shuffleOneMcqTarget(q);
-      });
-    });
+async function shuffleQuestionsInExamPaper() {
+ const current=getExamPaper();
+ if(!current){alert('No exam paper found!');return;}
+ const eligible=(current.subjects||[]).flatMap(subject=>(subject.sections||[]).filter(section=>Array.isArray(section.questions)&&section.questions.length>1));
+ if(!eligible.length){alert('There are no sections with two or more questions to shuffle.');return;}
+ const ok=await sciMentraConfirm('Shuffle question order within each section? OR alternatives and passage sub-questions will remain grouped.');
+ if(!ok)return;
+ saveEdits(false);
+ const paper=getExamPaper();
+ if(!paper)return;
+ let changed=0,sectionsChanged=0;
+ (paper.subjects||[]).forEach(subject=>{
+  (subject.sections||[]).forEach(section=>{
+   const original=section.questions;
+   if(!Array.isArray(original)||original.length<2)return;
+   section.questions=shuffledIndexMap(original.length).map(index=>original[index]);
+   changed+=original.length;
+   sectionsChanged++;
   });
-  setExamPaper(paper);
-  renderExam();
-
-  if (changed === 0) {
-    alert('No 4-option MCQ questions found to shuffle.');
-    return;
-  }
-
-  alert(`Shuffled options for ${changed} MCQ question${changed === 1 ? '' : 's'}.`);
+ });
+ __erRenumberPaper(paper);
+ paper._reviewShuffled=true;
+ setExamPaper(paper);
+ renderExam();
+ alert(`Rearranged ${changed} questions across ${sectionsChanged} section${sectionsChanged===1?'':'s'}.`);
 }
 
+function __erRemapMcqExplanation(raw,order){
+ const oldToNew=oldLetter=>{
+  const oldIndex='ABCD'.indexOf(oldLetter.toUpperCase());
+  const newIndex=order.indexOf(oldIndex);
+  return newIndex<0?oldLetter:'ABCD'[newIndex];
+ };
+ return String(raw||'')
+  .replace(/\b(options|choices)\s+((?:\(?[A-D]\)?\s*(?:,|and|or|&|\/)\s*)*\(?[A-D]\)?)/gi,(_,prefix,letters)=>`${prefix} ${letters.replace(/\b[A-D]\b/gi,oldToNew)}`)
+  .replace(/\b(option|choice)\s*\(?([A-D])\)?/gi,(_,prefix,letter)=>`${prefix} ${oldToNew(letter)}`)
+  .replace(/(ఆప్షన్|ఎంపిక)\s*\(?([A-D])\)?/giu,(_,prefix,letter)=>`${prefix} ${oldToNew(letter)}`)
+  .replace(/\b((?:the\s+)?(?:correct|right)\s+(?:answer|option|choice)\s*(?:is|:|=)\s*)\(?([A-D])\)?/gi,(_,prefix,letter)=>prefix+oldToNew(letter))
+  .replace(/((?:సరైన|సరియైన)\s*(?:సమాధానం|జవాబు|ఎంపిక)\s*(?:అనేది|:|=)?\s*)\(?([A-D])\)?/giu,(_,prefix,letter)=>prefix+oldToNew(letter))
+  .replace(/\b((?:ans|answer)\s*(?:is|:|=)\s*)([A-D](?:\s*,\s*[A-D])*)\b/gi,(_,prefix,letters)=>prefix+letters.replace(/[A-D]/gi,letter=>oldToNew(letter)));
+}
+
+async function shuffleMcqOptionsInExamPaper(){
+ const current=getExamPaper();
+ if(!current){alert('No exam paper found!');return;}
+ const ok=await sciMentraConfirm('Shuffle MCQ options? Correct answer letters will be updated automatically.');
+ if(!ok)return;
+ saveEdits(false);
+ const paper=getExamPaper();
+ if(!paper)return;
+ let changed=0,skipped=0;
+ function shuffleOneMcqTarget(target){
+  if(!target||!Array.isArray(target.options)||target.options.length!==4)return false;
+  const originalOptions=target.options.map(opt=>String(opt??''));
+  const answerSource=[target.answer,target.parsedAnswer,target.finalAnswer].find(value=>value!=null&&String(value).trim()!=='');
+  const correctLetters=getUniqueAnswerLetters(answerSource);
+  if(!correctLetters.length){skipped++;return false;}
+  const correctOldIndexes=correctLetters.map(letter=>'ABCD'.indexOf(letter));
+  const order=shuffledIndexMap(4);
+  const newOptions=order.map(oldIndex=>originalOptions[oldIndex]);
+  const newLetters=order.flatMap((oldIndex,newIndex)=>correctOldIndexes.includes(oldIndex)?['ABCD'[newIndex]]:[]);
+  const answer=newLetters.join(',');
+  target.options=newOptions;
+  target.answer=answer;
+  target.parsedAnswer=answer;
+  target.finalAnswer=answer;
+  delete target.answerKeyHtml;
+  delete target.answerKeySource;
+  target.explanation=__erRemapMcqExplanation(target.explanation,order);
+  if(typeof target.solution==='string')target.solution=__erRemapMcqExplanation(target.solution,order);
+  target.body=[__erGetParagraphSubQuestionText(target),...newOptions.map((option,index)=>`${'ABCD'[index]}) ${option}`)].join('\n');
+  changed++;
+  return true;
+ }
+ (paper.subjects||[]).forEach(subject=>(subject.sections||[]).forEach(section=>(section.questions||[]).forEach(question=>{
+  if(__erIsParagraphBasedQuestion(question)){
+   __erGetParagraphMcqs(question).forEach(shuffleOneMcqTarget);
+   question.text=__erBuildParagraphPlainText(question);
+   question.body=question.text;
+  }else shuffleOneMcqTarget(question);
+ })));
+ if(!changed){
+  alert(skipped?`No options shuffled: ${skipped} MCQ${skipped===1?' has':'s have'} a missing or ambiguous answer key. Please correct the answers first.`:'No 4-option MCQ questions found to shuffle.');
+  return;
+ }
+ paper._reviewShuffled=true;
+ setExamPaper(paper);
+ renderExam();
+ alert(`Shuffled options for ${changed} MCQ question${changed===1?'':'s'}.`+(skipped?` Skipped ${skipped} question${skipped===1?'':'s'} with missing or ambiguous answer keys.`:''));
+}
+
+const shuffleQuestionsBtn = document.getElementById('shuffle-questions-btn');
 const shuffleBtn = document.getElementById('shuffle-options-btn');
 const saveBtn = document.getElementById('save-review-btn');
+
+if (shuffleQuestionsBtn) {
+  shuffleQuestionsBtn.onclick = async function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    await shuffleQuestionsInExamPaper();
+  };
+}
 
 if (shuffleBtn) {
   shuffleBtn.onclick = async function (e) {
