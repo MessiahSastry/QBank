@@ -2092,18 +2092,38 @@ tr, td, th {
   });
   dialog.showModal();
   render();
-  // Read asynchronously AFTER the modal is visible, not before opening it.
-  try{
-    papers=(await store('readonly',records=>records.getAll())||[]).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')));
-    warning=window.__scPapersWarning||'';
-  }catch(err){
-    error='Cloud unavailable: '+err.message;
-    try{
-      papers=(await __scLocalPapersGetAll()).map(p=>({...p,__scLocalOnly:true})).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
-      warning='Showing browser backups. Cloud access is unavailable.';
-      error='';
-    }catch(localError){error+=' Browser backups unavailable: '+localError.message;}
-  }finally{loading=false;if(dialog.isConnected)render();}
+  // Show browser backups immediately; synchronize with cloud without blocking the popup.
+  const sorting=(a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||''));
+  const cloudRequest=store('readonly', records=>records.getAll())
+    .then(value=>({ok:true,value}), reason=>({ok:false,reason}));
+  let localLoadError='';
+  try {
+    const browserPapers=await __scLocalPapersGetAll();
+    if(browserPapers.length) {
+      papers=browserPapers.map(p=>({...p,__scLocalOnly:true})).sort(sorting);
+      loading=false;
+      warning='Showing browser backups; checking your cloud account…';
+      if(dialog.isConnected)render();
+    }
+  }catch(err){localLoadError=err.message;}
+  const cloudResult=await Promise.race([
+    cloudRequest,
+    new Promise(resolve=>setTimeout(()=>resolve({
+      ok:false,reason:new Error('Cloud retrieval took too long; try again when connected.')
+    }),12000))
+  ]);
+  if(cloudResult.ok){
+    papers=(cloudResult.value||[]).sort(sorting);
+    warning=window.__scPapersWarning||localLoadError&&('Browser backup unavailable: '+localLoadError)||'';
+    error='';
+  }else{
+    error='';
+    warning='Cloud unavailable: '+cloudResult.reason.message+
+      (papers.length?' Your browser backups are available below.':'');
+    if(!papers.length && localLoadError) warning+=' Browser backup unavailable: '+localLoadError;
+  }
+  loading=false;
+  if(dialog.isConnected)render();
 }
 
 
