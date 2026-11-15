@@ -1720,8 +1720,25 @@ function __erIsMatchingMatrixQuestion(q = {}) {
     (/Column\s*I/i.test(rawText) && /Column\s*II/i.test(rawText))
   );
 }
+
+// Normalize encoded mathematical characters when transferring Matching Matrix
+// source between the editable Review form and the PDF/print Preview.
+// Repeated HTML escaping (e.g. &amp;gt;) otherwise reaches MathJax as a
+// literal '&' and produces "Misplaced &" in expressions like m > n.
+function __ebDecodeMatchingEntities(value) {
+  let result = String(value ?? '');
+  const decoder = document.createElement('textarea');
+  for (let i = 0; i < 5; i++) {
+    decoder.innerHTML = result;
+    const next = decoder.value;
+    if (next === result) break;
+    result = next;
+  }
+  return result;
+}
+
 function __erGetMatchingMatrixRawText(q = {}) {
-  return stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''))
+  return __ebDecodeMatchingEntities(stripMetaTags(stripMetaLine(q.text || q.body || q.question || '')))
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/div\s*>/gi, '\n')
     .replace(/<div[^>]*>/gi, '')
@@ -2470,7 +2487,7 @@ function __erReadMatchingValue(el) {
     ''
   ).trim();
 
-  return __erRestoreMathSeparators(raw);
+  return __ebDecodeMatchingEntities(__erRestoreMathSeparators(raw));
 }
 
 function __erBuildMatchingMatrixTextFromEditor(questionRow) {
@@ -3039,7 +3056,7 @@ const __scScience910 =
           '.matching-matrix-review .matching-col-i, ' +
           '.matching-matrix-review .matching-col-ii'
         ).forEach(el => {
-          el.dataset.raw = __erRestoreMathSeparators(el.innerHTML);
+          el.dataset.raw = __ebDecodeMatchingEntities(__erRestoreMathSeparators(el.innerHTML));
         });
 
 
