@@ -1301,139 +1301,102 @@ VISUAL QUESTION QUALITY
       : 'exam-review.html';
   }
 
-    async function store(mode, action) {
+    function __scLocalPaperDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts', {keyPath:'id'});
+    };
+    request.onerror = () => reject(request.error || new Error('Cannot open saved browser papers.'));
+    request.onblocked = () => reject(new Error('Browser paper storage is blocked by another open tab.'));
+    request.onsuccess = () => resolve(request.result);
+  });
+}
 
-    // Use the same Firebase project as the administrator login.
-    const app = firebase.app();
-    const user = app.auth().currentUser;
+async function __scLocalPapersGetAll() {
+  const db = await __scLocalPaperDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('drafts', 'readonly');
+    const request = tx.objectStore('drafts').getAll();
+    let result = [];
+    request.onsuccess = () => {result = request.result || [];};
+    tx.oncomplete = () => {db.close();resolve(result);};
+    tx.onerror = tx.onabort = () => {db.close();reject(tx.error || new Error('Cannot read browser papers.'));};
+  });
+}
 
-    if (!user) {
-      throw new Error(
-        'Administrator login required. Please sign in again.'
-      );
-    }
+async function __scLocalPapersPut(paper) {
+  if (!paper || !paper.id) throw new Error('Paper ID is missing.');
+  const db=await __scLocalPaperDB();
+  return new Promise((resolve,reject) => {
+    const tx=db.transaction('drafts','readwrite');
+    tx.objectStore('drafts').put(JSON.parse(JSON.stringify(paper)));
+    tx.oncomplete=()=>{db.close();resolve(paper.id);};
+    tx.onerror=tx.onabort=()=>{db.close();reject(tx.error || new Error('Cannot save browser backup.'));};
+  });
+}
 
-    const papers = app.firestore()
-      .collection('adminExamPapers')
-      .doc(user.uid)
-      .collection('papers');
+async function __scLocalPapersDelete(id) {
+  if (!id) return;
+  const db=await __scLocalPaperDB();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction('drafts','readwrite');
+    tx.objectStore('drafts').delete(String(id));
+    tx.oncomplete=()=>{db.close();resolve();};
+    tx.onerror=tx.onabort=()=>{db.close();reject(tx.error || new Error('Cannot delete browser paper.'));};
+  });
+}
 
-    const cloud = {
-
-           async getAll() {
-        // Read cloud papers first.
-        const snapshot = await papers.get();
-        const saved = new Map(snapshot.docs.map(doc => [
-          doc.id, { ...doc.data(), id: doc.id }
-        ]));
-
-        // Recover papers saved by the older Exam Review / Exam Preview pages.
-        const legacy = await new Promise((resolve, reject) => {
-          const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
-
-          request.onupgradeneeded = () => {
-            if (!request.result.objectStoreNames.contains('drafts')) {
-              request.result.createObjectStore('drafts', {
-                keyPath: 'id'
-              });
-            }
-          };
-
-          request.onerror = () =>
-            reject(request.error || new Error('Cannot open browser papers.'));
-
-          request.onsuccess = () => {
-            const db = request.result;
-            const tx = db.transaction('drafts', 'readonly');
-            const read = tx.objectStore('drafts').getAll();
-
-            read.onsuccess = () => resolve(read.result || []);
-
-            read.onerror = () =>
-              reject(read.error || new Error('Cannot read browser papers.'));
-
-            tx.oncomplete = () => db.close();
-          };
-        });
-
-        // Transfer older papers to the administrator cloud account.
-        for (const paper of legacy) {
-          if (!paper?.id) continue;
-
-          const id = String(paper.id);
-          const cloudCopy = saved.get(id);
-
-          const localTime =
-            Date.parse(paper.updatedAt || paper.createdAt || '') || 0;
-
-          const cloudTime =
-            Date.parse(cloudCopy?.updatedAt || cloudCopy?.createdAt || '') || 0;
-
-          if (!cloudCopy || localTime > cloudTime) {
-            await papers.doc(id).set(
-              JSON.parse(JSON.stringify(paper))
-            );
-
-            saved.set(id, { ...paper, id });
+async function store(mode, action) {
+  const app = firebase.app();
+  const user = app.auth().currentUser;
+  if (!user) throw new Error('Administrator sign-in required. Please sign in again.');
+  const papers=app.firestore().collection('adminExamPapers').doc(user.uid).collection('papers');
+  const cloud = {
+    async getAll() {
+      window.__scPapersWarning = '';
+      const snapshot=await papers.get();
+      const saved=new Map(snapshot.docs.map(doc=>[doc.id,{...doc.data(),id:doc.id}]));
+      let local=[];
+      try { local=await __scLocalPapersGetAll(); }
+      catch(err) { window.__scPapersWarning='Browser backup unavailable: '+err.message; }
+      let missed=0;
+      for(const item of local){
+        if(!item?.id) continue;
+        const id=String(item.id);
+        const remote=saved.get(id);
+        const localTime=Date.parse(item.updatedAt || item.createdAt || '') || 0;
+        const remoteTime=Date.parse(remote?.updatedAt || remote?.createdAt || '') || 0;
+        if(!remote || localTime>remoteTime) {
+          try{
+            await papers.doc(id).set(JSON.parse(JSON.stringify(item)));
+            saved.set(id,{...item,id});
+          }catch(error) {
+            missed++;
+            if (!remote || localTime>=remoteTime) saved.set(id,{...item,id,__scLocalOnly:true});
           }
         }
-
-        // Clear old browser copies only after successful cloud storage.
-        if (legacy.some(paper => paper?.id)) {
-          await new Promise((resolve, reject) => {
-            const request = indexedDB.open('scimentra-cbse-builder-v2', 1);
-
-            request.onerror = () =>
-              reject(request.error || new Error('Cannot complete migration.'));
-
-            request.onsuccess = () => {
-              const db = request.result;
-              const tx = db.transaction('drafts', 'readwrite');
-              const drafts = tx.objectStore('drafts');
-
-              for (const paper of legacy) {
-                if (paper?.id) drafts.delete(paper.id);
-              }
-
-              tx.oncomplete = () => {
-                db.close();
-                resolve();
-              };
-
-              tx.onerror = tx.onabort = () => {
-                db.close();
-                reject(tx.error || new Error('Cannot finish migration.'));
-              };
-            };
-          });
-        }
-
-        return [...saved.values()];
-      },
-
-      async put(paper) {
-        if (!paper?.id) {
-          throw new Error('Paper ID is missing.');
-        }
-
-        await papers.doc(String(paper.id)).set(
-          JSON.parse(JSON.stringify(paper))
-        );
-
-        return paper.id;
-      },
-
-      async delete(id) {
-        if (!id) {
-          throw new Error('Paper ID is missing.');
-        }
-
-        await papers.doc(String(id)).delete();
       }
-    };
-
-    return action(cloud);
-  }
+      if(missed) window.__scPapersWarning=`${missed} paper(s) are saved in this browser but could not be uploaded to the cloud. You can still open and review them here.`;
+      return [...saved.values()];
+    },
+    async put(paper) {
+      if(!paper?.id) throw new Error('Paper ID is missing.');
+      await papers.doc(String(paper.id)).set(JSON.parse(JSON.stringify(paper)));
+      try {await __scLocalPapersPut(paper);}
+      catch(error){window.__scPapersWarning='Cloud saved, but browser backup failed: '+error.message;}
+      return paper.id;
+    },
+    async delete(id) {
+      if(!id)throw new Error('Paper ID is missing.');
+      await papers.doc(String(id)).delete();
+      try{await __scLocalPapersDelete(id);}
+      catch(error){window.__scPapersWarning='Paper deleted in cloud, but the browser copy could not be removed: '+error.message;}
+    }
+  };
+  return action(cloud);
+}
 
   // Shared Firestore storage for My Papers and CBSE drafts.
   window.SciMentraCloudPaperStore = store;
@@ -2023,428 +1986,126 @@ tr, td, th {
   }
 
   async function showMyPapers() {
-    try {
-      const papers = (
-        await store('readonly', records => records.getAll()) || []
-      ).sort((a, b) =>
-        String(b.updatedAt || b.createdAt)
-          .localeCompare(String(a.updatedAt || a.createdAt))
-      );
-
-      const dialog = document.createElement('dialog');
-
-           dialog.className = 'sc-papers-modal';
-
-      dialog.style.cssText = `
-        width:min(720px,calc(100vw - 28px));
-        max-height:min(85vh,800px);
-        border:0;
-        border-radius:20px;
-        padding:0;
-        overflow-y:auto;
-        box-shadow:0 24px 70px rgba(15,40,70,.23);
-        color:#19334b;
-      `;
-
-      dialog.innerHTML = `
-        <style>
-          .sc-papers-modal::backdrop {
-            background:rgba(12,30,50,.5);
-          }
-
-          .sc-papers-modal * {
-            box-sizing:border-box;
-          }
-
-          .sc-papers-head {
-            display:flex;
-            align-items:flex-start;
-            justify-content:space-between;
-            gap:14px;
-            padding:24px 26px 14px;
-          }
-
-          .sc-papers-head h2 {
-            margin:0;
-            color:#123b63;
-            font-size:24px;
-          }
-
-          .sc-papers-head p {
-            margin:6px 0 0;
-            color:#718096;
-            font-size:13px;
-          }
-
-          .sc-papers-close {
-            display:grid;
-            place-items:center;
-            width:36px;
-            height:36px;
-            flex-shrink:0;
-            border:0;
-            border-radius:50%;
-            background:#f0f4f9;
-            color:#43576c;
-            cursor:pointer;
-            font-size:17px;
-          }
-
-          .sc-papers-list {
-            padding:6px 24px 22px;
-            display:grid;
-            gap:12px;
-          }
-
-          .sc-paper-card {
-            border:1px solid #e0e8f0;
-            border-radius:14px;
-            padding:16px 18px;
-            background:#fff;
-          }
-
-          .sc-paper-top {
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:12px;
-            flex-wrap:wrap;
-          }
-
-          .sc-paper-name {
-            font-size:16px;
-            font-weight:700;
-            color:#173a5e;
-            overflow-wrap:anywhere;
-            line-height:1.4;
-          }
-
-          .sc-paper-name span {
-            font-weight:500;
-            color:#556a7f;
-          }
-
-          .sc-paper-meta {
-            margin:7px 0 0;
-            font-size:13px;
-            color:#687c8e;
-            line-height:1.5;
-          }
-
-          .sc-paper-toggle {
-            border:0;
-            border-radius:999px;
-            padding:10px 17px;
-            min-height:39px;
-            background:#195995;
-            color:#fff;
-            font-size:13px;
-            font-weight:700;
-            cursor:pointer;
-            display:inline-flex;
-            align-items:center;
-            gap:9px;
-          }
-
-          .sc-paper-toggle:hover {
-            background:#10446f;
-          }
-
-          .sc-paper-toggle[aria-expanded="true"] .fa-chevron-down {
-            transform:rotate(180deg);
-          }
-
-          .sc-paper-toggle .fa-chevron-down {
-            transition:transform .15s;
-          }
-
-          .sc-paper-menu {
-            display:grid;
-            gap:3px;
-            margin-top:13px;
-            padding:6px;
-            border-radius:12px;
-            border:1px solid #e3ebf2;
-            background:#f8fbfe;
-          }
-
-          .sc-paper-menu[hidden] {
-            display:none!important;
-          }
-
-          .sc-paper-menu button {
-            width:100%;
-            display:flex;
-            align-items:center;
-            gap:12px;
-            text-align:left;
-            padding:12px 13px;
-            border:0;
-            border-radius:8px;
-            background:transparent;
-            color:#294a66;
-            font-size:14px;
-            cursor:pointer;
-          }
-
-          .sc-paper-menu button:hover {
-            background:#eaf2fb;
-          }
-
-          .sc-paper-menu button i {
-            width:18px;
-            text-align:center;
-          }
-
-          .sc-paper-menu button.sc-delete {
-            color:#b33131;
-            border-top:1px solid #e1e7ec;
-            border-radius:0 0 8px 8px;
-            margin-top:4px;
-          }
-
-          .sc-paper-menu button.sc-delete:hover {
-            background:#fff0f0;
-          }
-
-          .sc-papers-empty {
-            padding:26px;
-            text-align:center;
-            color:#66798b;
-          }
-
-          @media(max-width:540px) {
-            .sc-papers-head {
-              padding:18px 16px 12px;
-            }
-
-            .sc-papers-list {
-              padding:6px 14px 18px;
-            }
-
-            .sc-paper-card {
-              padding:14px;
-            }
-
-            .sc-paper-top {
-              align-items:flex-start;
-            }
-
-            .sc-paper-toggle {
-              margin-left:auto;
-            }
-          }
-        </style>
-
-        <div class="sc-papers-head">
-          <div>
-            <h2>My Papers</h2>
-            <p>Saved papers in your administrator cloud account</p>
-          </div>
-
-          <button
-            type="button"
-            class="sc-papers-close"
-            data-close
-            aria-label="Close My Papers"
-            title="Close">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div class="sc-papers-list">
-          ${
-            papers.length
-              ? papers.map((paper, index) => {
-
-                  const subjects = [...new Set(
-                    (Array.isArray(paper.subjects) ? paper.subjects : [])
-                      .map(s =>
-                        typeof s === 'string'
-                          ? s
-                          : (s?.subject || s?.name || '')
-                      )
-                      .map(s => String(s).trim())
-                      .filter(Boolean)
-                  )];
-
-                  const savedValue =
-                    paper.updatedAt || paper.createdAt;
-
-                  const savedDate = savedValue
-                    ? new Date(savedValue)
-                    : null;
-
-                  const savedLabel =
-                    savedDate && !Number.isNaN(savedDate.getTime())
-                      ? savedDate.toLocaleDateString('en-IN', {
-                          day:'2-digit',
-                          month:'short',
-                          year:'numeric'
-                        })
-                      : '';
-
-                  const details = [
-                    paper.class || '',
-                    paper.maxMarks != null
-                      ? `${paper.maxMarks} marks`
-                      : '',
-                    savedLabel ? `Saved ${savedLabel}` : ''
-                  ].filter(Boolean).map(esc).join(' &nbsp;·&nbsp; ');
-
-                  return `
-                    <article class="sc-paper-card">
-
-                      <div class="sc-paper-top">
-                        <div>
-                          <div class="sc-paper-name">
-                            ${esc(paper.examName || 'Untitled Exam')}
-                            ${subjects.length
-                              ? `<span>(${esc(subjects.join(', '))})</span>`
-                              : ''}
-                          </div>
-
-                          <p class="sc-paper-meta">
-                            ${details}
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          class="sc-paper-toggle"
-                          data-menu-toggle="${index}"
-                          aria-expanded="false"
-                          aria-controls="sc-paper-menu-${index}">
-                          Actions
-                          <i class="fas fa-chevron-down"
-                             aria-hidden="true"></i>
-                        </button>
-                      </div>
-
-                      <div
-                        class="sc-paper-menu"
-                        id="sc-paper-menu-${index}"
-                        hidden>
-
-                        ${
-                          [
-                            ['open','Open Paper','fa-file-alt'],
-                            ['review','Exam Review','fa-edit'],
-                            ['answers','Download Answer Key','fa-file-download'],
-                            ['blueprint','Download Blueprint','fa-list-alt'],
-                            ['delete','Delete Paper','fa-trash-alt']
-                          ].map(([action,label,icon]) => `
-                            <button
-                              type="button"
-                              data-action="${action}"
-                              data-index="${index}"
-                              class="${action === 'delete'
-                                ? 'sc-delete'
-                                : ''}">
-                              <i class="fas ${icon}"
-                                 aria-hidden="true"></i>
-                              ${label}
-                            </button>
-                          `).join('')
-                        }
-
-                      </div>
-                    </article>
-                  `;
-                }).join('')
-              : '<p class="sc-papers-empty">No saved papers yet. Save a paper from Exam Preview.</p>'
-          }
-        </div>
-      `;
-      dialog.addEventListener('close', () => dialog.remove());
-
-      dialog.onclick = async event => {
-        const button = event.target.closest('button');
-        if (!button) return;
-
-        if (button.hasAttribute('data-close')) {
-          dialog.close();
-          return;
-        }
-
-               if (button.hasAttribute('data-menu-toggle')) {
-
-          const index = button.dataset.menuToggle;
-
-          const menu = dialog.querySelector(
-            `#sc-paper-menu-${index}`
-          );
-
-          if (!menu) return;
-
-          const shouldOpen = menu.hidden;
-
-          dialog.querySelectorAll('.sc-paper-menu')
-            .forEach(item => {
-              item.hidden = true;
-            });
-
-          dialog.querySelectorAll('[data-menu-toggle]')
-            .forEach(toggle => {
-              toggle.setAttribute(
-                'aria-expanded',
-                'false'
-              );
-            });
-
-          menu.hidden = !shouldOpen;
-
-          button.setAttribute(
-            'aria-expanded',
-            String(shouldOpen)
-          );
-
-          return;
-        }
-
-        if (!button.hasAttribute('data-action')) return;
-
-        const paper = papers[Number(button.dataset.index)];
-
-        if (!paper) return;
-
-        try {
-          switch (button.dataset.action) {
-            case 'open':
-              openPaper(paper, true);
-              break;
-
-            case 'review':
-              openPaper(paper);
-              break;
-
-            case 'answers':
-              downloadReport(paper, true);
-              break;
-
-            case 'blueprint':
-              downloadReport(paper, false);
-              break;
-
-            case 'delete':
-              if (confirm(`Delete saved paper "${paper.examName}"?`)) {
-                await store('readwrite', records => records.delete(paper.id));
-                dialog.close();
-                await showMyPapers();
-              }
-              break;
-          }
-        } catch (error) {
-          alert(error.message);
-        }
-      };
-
-      document.body.append(dialog);
-      dialog.showModal();
-    } catch (error) {
-      alert('Could not load My Papers: ' + error.message);
-    }
+  const existing=document.querySelector('dialog.sc-papers-modal');
+  if(existing){if(!existing.open)existing.showModal();return;}
+  let papers=[],loading=true,error='',warning='';
+  const dialog=document.createElement('dialog');
+  dialog.className='sc-papers-modal';
+  dialog.style.cssText='width:min(760px,calc(100vw - 28px));max-height:min(88vh,820px);border:0;border-radius:18px;padding:0;overflow-y:auto;box-shadow:0 24px 70px rgba(15,40,70,.3);color:#19334b;';
+  dialog.innerHTML=`
+    <style>
+      .sc-papers-modal::backdrop{background:rgba(12,30,50,.52)}
+      .sc-papers-modal *{box-sizing:border-box}
+      .sc-papers-modal .sc-head{display:flex;justify-content:space-between;gap:12px;padding:22px 24px 10px;align-items:start}
+      .sc-papers-modal h2{margin:0;color:#123b63;font-size:23px}
+      .sc-papers-modal .sc-sub{margin:5px 0;color:#6e8193;font-size:13px}
+      .sc-papers-modal .sc-close{border:0;border-radius:50%;font-size:23px;width:35px;height:35px;color:#244664;background:#edf3f8;cursor:pointer}
+      .sc-papers-modal .sc-search{display:block;width:calc(100% - 48px);margin:6px 24px 12px;border:1px solid #bfd2e4;border-radius:9px;padding:11px 12px;font:inherit}
+      .sc-papers-modal .sc-status{margin:0 24px 10px;font-size:13px;line-height:1.5;color:#3d5a71}
+      .sc-papers-modal .sc-status.sc-warn{background:#fff7e9;color:#865315;padding:10px;border-radius:9px}
+      .sc-papers-modal .sc-list{padding:0 24px 23px;display:grid;gap:10px}
+      .sc-papers-modal .sc-card{border:1px solid #e1e9f0;border-radius:12px;padding:14px 16px;background:white}
+      .sc-papers-modal .sc-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+      .sc-papers-modal .sc-name{font-weight:700;color:#173a5e;line-height:1.4;overflow-wrap:anywhere}
+      .sc-papers-modal .sc-meta{font-size:12px;color:#667f90;margin-top:6px}
+      .sc-papers-modal .sc-toggle{background:#195995;color:white;border:0;border-radius:8px;cursor:pointer;font-weight:700;padding:9px 14px}
+      .sc-papers-modal .sc-menu{display:grid;gap:4px;padding:7px;margin-top:10px;border-radius:9px;border:1px solid #e3ebf2;background:#f7fbff}
+      .sc-papers-modal .sc-menu[hidden]{display:none!important}
+      .sc-papers-modal .sc-menu button{border:0;border-radius:6px;padding:10px 12px;text-align:left;background:transparent;color:#214a6d;cursor:pointer}
+      .sc-papers-modal .sc-menu button:hover{background:#e9f2fb}
+      .sc-papers-modal .sc-menu .sc-delete{color:#ae3131}
+      .sc-papers-modal .sc-menu button:disabled{opacity:.5;cursor:wait}
+      @media(max-width:540px){.sc-papers-modal .sc-head{padding:17px 16px 8px}.sc-papers-modal .sc-search{margin:5px 16px 12px;width:calc(100% - 32px)}.sc-papers-modal .sc-list{padding:0 16px 18px}.sc-papers-modal .sc-status{margin-left:16px;margin-right:16px}}
+    </style>
+    <div class="sc-head"><div><h2>My Papers</h2><p class="sc-sub">Saved examination papers</p></div><button class="sc-close" type="button" data-close aria-label="Close My Papers">×</button></div>
+    <input class="sc-search" type="search" placeholder="Search by exam, subject or class" aria-label="Search saved papers"/>
+    <p class="sc-status" role="status" aria-live="polite">Loading your saved papers…</p>
+    <div class="sc-list" aria-live="polite"></div>
+  `;
+  document.body.appendChild(dialog);
+  dialog.addEventListener('close',()=>dialog.remove());
+  const list=dialog.querySelector('.sc-list'),status=dialog.querySelector('.sc-status');
+  const input=dialog.querySelector('.sc-search');
+  function render() {
+    status.classList.toggle('sc-warn',!!(warning || error));
+    status.textContent=loading?'Loading saved papers…':error || warning || `${papers.length} saved paper${papers.length===1?'':'s'}`;
+    if(loading){list.innerHTML='<p>Retrieving your papers…</p>';return;}
+    const term=input.value.trim().toLowerCase();
+    const filtered=papers.map((paper,index)=>({paper,index})).filter(({paper})=>{
+      const subjects=(paper.subjects || []).map(s=>typeof s==='string'?s:(s.subject||s.name||'')).join(' ');
+      return [paper.examName,paper.class,paper.board,subjects].join(' ').toLowerCase().includes(term);
+    });
+    if(!filtered.length){list.innerHTML=`<p class="sc-sub">${papers.length?'No papers match your search.':'No saved papers found. Save a paper from Exam Preview to see it here.'}</p>`;return;}
+    list.innerHTML=filtered.map(({paper,index})=>{
+      const subjects=[...new Set((paper.subjects||[]).map(s=>typeof s==='string'?s:(s?.subject||s?.name||'')).filter(Boolean))].join(', ');
+      const date=paper.updatedAt||paper.createdAt;
+      const parsedDate=date?new Date(date):null;
+      const dateText=parsedDate&&!Number.isNaN(parsedDate.getTime())?parsedDate.toLocaleDateString('en-IN'):'';
+      return `<article class="sc-card"><div class="sc-top"><div><div class="sc-name">${esc(paper.examName||'Untitled Exam')}${subjects?` · ${esc(subjects)}`:''}</div>
+      <div class="sc-meta">${[paper.class||'',paper.maxMarks!=null?paper.maxMarks+' marks':'',dateText?('Saved '+dateText):'',paper.__scLocalOnly?'Browser backup':''].filter(Boolean).map(esc).join(' · ')}</div></div>
+      <button type="button" class="sc-toggle" data-menu-toggle="${index}" aria-controls="sc-paper-menu-${index}" aria-expanded="false">Actions ▾</button></div>
+      <div class="sc-menu" id="sc-paper-menu-${index}" hidden>
+      <button type="button" data-action="open" data-index="${index}">Open Paper</button>
+      <button type="button" data-action="review" data-index="${index}">Exam Review</button>
+      <button type="button" data-action="answers" data-index="${index}">Download Answer Key</button>
+      <button type="button" data-action="blueprint" data-index="${index}">Download Blueprint</button>
+      <button type="button" class="sc-delete" data-action="delete" data-index="${index}">Delete Paper</button></div></article>`;
+    }).join('');
   }
+  input.addEventListener('input',render);
+  dialog.addEventListener('click',async event=>{
+    if(event.target===dialog){dialog.close();return;}
+    const button=event.target.closest('button');
+    if(!button)return;
+    if(button.hasAttribute('data-close')){dialog.close();return;}
+    if(button.hasAttribute('data-menu-toggle')){
+      const target=dialog.querySelector(`#sc-paper-menu-${button.dataset.menuToggle}`);
+      if(!target)return;
+      const open=target.hidden;
+      dialog.querySelectorAll('.sc-menu').forEach(menu=>menu.hidden=true);
+      dialog.querySelectorAll('[data-menu-toggle]').forEach(el=>el.setAttribute('aria-expanded','false'));
+      target.hidden=!open;
+      button.setAttribute('aria-expanded',String(open));
+      return;
+    }
+    if(!button.hasAttribute('data-action'))return;
+    const paper=papers[Number(button.dataset.index)];
+    if(!paper)return;
+    button.disabled=true;
+    try{
+      switch(button.dataset.action) {
+        case 'open': openPaper(paper,true);return;
+        case 'review': openPaper(paper,false);return;
+        case 'answers': downloadReport(paper,true);break;
+        case 'blueprint': downloadReport(paper,false);break;
+        case 'delete':
+          if(!confirm(`Delete saved paper "${paper.examName||'Untitled Exam'}"? This cannot be undone.`))break;
+          if(paper.__scLocalOnly && error)throw new Error('Connect to the cloud before deleting this paper, to avoid it reappearing later.');
+          await store('readwrite',records=>records.delete(paper.id));
+          papers=papers.filter(item=>item.id!==paper.id);
+          warning=window.__scPapersWarning||'';
+          render();
+          break;
+      }
+    }catch(err){warning='Could not complete the action: '+err.message;render();}
+    finally{if(button.isConnected)button.disabled=false;}
+  });
+  dialog.showModal();
+  render();
+  // Read asynchronously AFTER the modal is visible, not before opening it.
+  try{
+    papers=(await store('readonly',records=>records.getAll())||[]).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')));
+    warning=window.__scPapersWarning||'';
+  }catch(err){
+    error='Cloud unavailable: '+err.message;
+    try{
+      papers=(await __scLocalPapersGetAll()).map(p=>({...p,__scLocalOnly:true})).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
+      warning='Showing browser backups. Cloud access is unavailable.';
+      error='';
+    }catch(localError){error+=' Browser backups unavailable: '+localError.message;}
+  }finally{loading=false;if(dialog.isConnected)render();}
+}
+
 
   function previewQuestion(question, number) {
     const optionLines = (question.options || []).map(
