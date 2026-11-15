@@ -1738,14 +1738,16 @@ function __ebDecodeMatchingEntities(value) {
 }
 
 function __erGetMatchingMatrixRawText(q = {}) {
-  return stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''))
+  // Strip HTML markup before decoding escaped comparisons, so mathematical
+  // less-than/greater-than signs are preserved rather than mistaken for tags.
+  const plain = stripMetaTags(stripMetaLine(q.text || q.body || q.question || ''))
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/div\s*>/gi, '\n')
     .replace(/<div[^>]*>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\r/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/\n{3,}/g, '\n\n');
+  return __ebDecodeMatchingEntities(plain).trim();
 }
 
 function __erParseMatchingMatrix(q = {}) {
