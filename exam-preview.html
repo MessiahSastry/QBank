@@ -9217,6 +9217,27 @@ function cbseFormatSectionBoxes(page) {
   }
 }
 
+// Keep a simple MCQ's direction and its sentence on separate print lines.
+// Review/import data may contain either real newlines or flattened whitespace.
+function __epPreserveSimpleMcqInstructionLines(value) {
+  let html = String(value || '');
+
+  // Convert source text line breaks only for non-block question stems.
+  // Preformatted paragraphs, matching tables and nested choices keep their markup.
+  if (!/<\/?(?:p|div|ul|ol|li|table|tr|td|blockquote)\b/i.test(html)) {
+    html = html
+      .replace(/\r\n?|\n/g, '<br>')
+      .replace(/(?:<br\s*\/?>\s*){2,}/gi, '<br>');
+  }
+
+  // Older imported questions sometimes have their direction and question
+  // flattened into one line. Restore the break after the direction sentence.
+  return html.replace(
+    /^(\s*)((?:choose|identify|select|find|fill|complete|match)\b[^<]{0,320}?[.!?])(?:[ \t]+|(?:&nbsp;)+)(?=[\w"'“‘(\[])/i,
+    '$1$2<br>'
+  );
+}
+
 function renderPrintPreview() {
   document.body.classList.toggle(
     'cbse-paper-preview',
@@ -9589,7 +9610,7 @@ const imageHTML = q.image
         .replace(/<p[^>]*>/gi, '')
         .replace(/<div[^>]*>/gi, '<br>')
         .replace(/<\/div>/gi, '');
-      return h;
+      return __epPreserveSimpleMcqInstructionLines(h);
     })();
     return `
       <div class="question-container">
@@ -9786,7 +9807,7 @@ const imageHTML = q.image
         .replace(/<p[^>]*>/gi, '')
         .replace(/<div[^>]*>/gi, '<br>')
         .replace(/<\/div>/gi, '');
-      return h;
+      return __epPreserveSimpleMcqInstructionLines(h);
     })();
     // --- END ---
 
