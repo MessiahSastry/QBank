@@ -5378,7 +5378,7 @@ function formatExamTime(mins) {
 
   let result = '';
   if (hours === 0) {
-    result = fraction ? `${fraction} hour` : `${mins} min`;
+    result = fraction ? `${mins} minutes` : `${mins} min`;
   } else {
     result = fraction ? `${hours}${fraction} hours` : `${hours} hour${hours > 1 ? 's' : ''}`;
   }
