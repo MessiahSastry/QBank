@@ -1908,7 +1908,7 @@ function updateSelectedChaptersDisplay(chapterDropdown) {
 function buildSectionInstructions(sec) {
     if (sec.type === "all") {
         const n = Number(sec.numQuestions) || 0;
-        return n ? `Answer all ${n} questions` : `Answer all the questions`;
+        return n === 1 ? 'Answer the question' : (n ? `Answer all ${n} questions` : `Answer all the questions`);
     }
     if (sec.type === "any") {
         const anyN = Number(sec.attemptAny) || 0;
