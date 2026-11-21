@@ -313,6 +313,12 @@
       font-size: 1.13em;
       font-weight: bold;
       margin: 7px 0 0 0;
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      width: 100%;
+      max-width: 100%;
+      transform-origin: center center;
     }
    .details-rect {
   margin: 20px 0 26px 0;
@@ -6536,6 +6542,39 @@ function applyExamQuestionGap(
   });
 }
 
+/* Fit the chapter/exam title within the school heading on one line.
+   Measure after the header has been placed on the actual A4 page,
+   so the QR-code space and print margins are taken into account. */
+function fitExamTitleOnOneLine(root) {
+  const title = root?.querySelector('.heading-row .exam-title');
+  if (!title || !title.parentElement) return;
+
+  title.style.whiteSpace = 'nowrap';
+  title.style.width = '100%';
+  title.style.maxWidth = '100%';
+  title.style.overflowWrap = 'normal';
+  title.style.wordBreak = 'normal';
+  title.style.transform = '';
+
+  const available = title.clientWidth;
+  if (!available) return;
+
+  let size = parseFloat(getComputedStyle(title).fontSize);
+  if (!Number.isFinite(size) || size <= 0) return;
+
+  // Preserve the usual font size for short titles; shrink only if necessary.
+  while (title.scrollWidth > available + 1 && size > 9) {
+    size = Math.max(9, size - 0.5);
+    title.style.fontSize = size + 'px';
+  }
+
+  // Extremely long names remain one line instead of colliding with the QR.
+  if (title.scrollWidth > available + 1) {
+    const ratio = Math.max(0.1, (available - 2) / title.scrollWidth);
+    title.style.transform = 'scaleX(' + ratio + ')';
+  }
+}
+
 async function paginateExamPreview(sourcePage, renderId) {
   if (!sourcePage || !sourcePage.isConnected) return;
 
@@ -6797,6 +6836,10 @@ async function paginateExamPreview(sourcePage, renderId) {
     currentShell.content.appendChild(
       block
     );
+
+    if (block.classList.contains('exam-first-page-header')) {
+      fitExamTitleOnOneLine(block);
+    }
 
     void currentShell.content.offsetHeight;
 
