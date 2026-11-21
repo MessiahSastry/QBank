@@ -1882,7 +1882,7 @@
 
           instructions: grouped
             ? 'Answer the following question as instructed.'
-            : `Answer all ${row.count} questions.${
+            : `${row.count === 1 ? 'Answer the question' : `Answer all ${row.count} questions`}.${
                 row.orCount
                   ? ' Where OR is given, answer only one alternative.'
                   : ''
@@ -4856,10 +4856,10 @@ function cleanAnswerKeyBlock(str) {
 }
 
 function getAnswerKeySectionInstruction(section) {
-  if (section.instructions) return section.instructions;
+  if (section.instructions) return formatSingleQuestionInstruction(section.instructions);
 
   if (section.type === 'all') {
-    return `Answer all ${section.numQuestions || 0} questions`;
+    return formatSingleQuestionInstruction(`Answer all ${section.numQuestions || 0} questions`);
   }
   if (section.type === 'any') {
     return `Answer any ${section.attemptAny || section.numQuestions || 0} questions`;
@@ -5363,6 +5363,9 @@ function sanitizeFileName(name) {
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
     .replace(/\s+/g, '_')
     .trim() || 'School';
+}
+function formatSingleQuestionInstruction(value) {
+  return String(value ?? '').replace(/\bAnswer all 1 questions\b/gi, 'Answer the question');
 }
 function formatExamTime(mins) {
   mins = parseInt(mins);
@@ -9152,6 +9155,8 @@ function cbseFormatSectionBoxes(page) {
           ].join(' ');
         }
 
+        instruction.textContent = formatSingleQuestionInstruction(instruction.textContent);
+
         const hasOR = group.sections.some(
           item =>
             Number(item.orCount) > 0 ||
@@ -9441,7 +9446,7 @@ if (printSubjects.length > 1) {
         section.type === 'all'      ? `Answer all ${section.numQuestions} questions` :
         section.type === 'any'      ? `Answer any ${section.attemptAny || section.numQuestions} questions` :
         section.type === 'internal' ? `Answer all ${section.numPairs} pairs` : '';
-      return section.instructions || instr;
+      return formatSingleQuestionInstruction(section.instructions || instr);
     })()
   }
 </span>
@@ -9649,7 +9654,7 @@ const imageHTML = q.image
                     section.type === 'all'      ? `Answer all ${section.numQuestions} questions` :
                     section.type === 'any'      ? `Answer any ${section.attemptAny || section.numQuestions} questions` :
                     section.type === 'internal' ? `Answer all ${section.numPairs} pairs` : '';
-                  return section.instructions || instr;
+                  return formatSingleQuestionInstruction(section.instructions || instr);
                 })()
               }
             </span>
