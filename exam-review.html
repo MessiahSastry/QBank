@@ -838,7 +838,7 @@
 
           instructions: grouped
             ? 'Answer the following question as instructed.'
-            : `Answer all ${row.count} questions.${
+            : `${row.count === 1 ? 'Answer the question' : `Answer all ${row.count} questions`}.${
                 row.orCount
                   ? ' Where OR is given, answer only one alternative.'
                   : ''
@@ -2866,7 +2866,7 @@ const __scScience910 =
                   )
           )
         : section.type === "all"
-          ? `Answer all ${section.numQuestions} questions`
+          ? (Number(section.numQuestions) === 1 ? 'Answer the question' : `Answer all ${section.numQuestions} questions`)
           : section.type === "any"
             ? `Answer any ${section.attemptAny || section.numQuestions} questions`
             : section.type === "internal"
